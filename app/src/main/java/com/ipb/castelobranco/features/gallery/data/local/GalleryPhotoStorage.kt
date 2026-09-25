@@ -35,8 +35,18 @@ class GalleryPhotoStorage(
         val dir = albumDir(albumId).apply { mkdirs() }
         val file = File(dir, "$photoId.$ext")
 
-        FileOutputStream(file).use { output ->
-            input.copyTo(output)
+        // Escreve fora da árvore da galeria e só move quando o corpo chegou inteiro: um arquivo
+        // truncado com o nome final seria tratado por exists() como foto já baixada, para sempre.
+        val temp = File.createTempFile("gallery-$photoId-", TEMP_SUFFIX, context.cacheDir)
+        try {
+            FileOutputStream(temp).use { output ->
+                input.copyTo(output)
+            }
+            if (!temp.renameTo(file)) {
+                temp.copyTo(file, overwrite = true)
+            }
+        } finally {
+            temp.delete()
         }
         return file
     }
@@ -142,5 +152,9 @@ class GalleryPhotoStorage(
 
         // Se achou a img00, retorna ela. Se não, retorna a primeira foto da lista.
         return img00 ?: files.firstOrNull()
+    }
+
+    private companion object {
+        const val TEMP_SUFFIX = ".part"
     }
 }
