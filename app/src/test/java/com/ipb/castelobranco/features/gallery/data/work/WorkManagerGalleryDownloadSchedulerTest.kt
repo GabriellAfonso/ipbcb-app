@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.gallery.data.work
 
+import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
@@ -76,5 +77,22 @@ class WorkManagerGalleryDownloadSchedulerTest {
         scheduler.cancel()
 
         verify(exactly = 1) { workManager.cancelUniqueWork(GalleryDownloadWorker.WORK_NAME) }
+    }
+
+    @Test
+    fun `both requests back off exponentially from 60 seconds`() {
+        val requests = mutableListOf<OneTimeWorkRequest>()
+        every {
+            workManager.enqueueUniqueWork(any<String>(), any<ExistingWorkPolicy>(), capture(requests))
+        } returns mockk(relaxed = true)
+
+        scheduler.enqueueWifiOnly()
+        scheduler.enqueueAnyNetwork()
+
+        assertEquals(2, requests.size)
+        requests.forEach { request ->
+            assertEquals(BackoffPolicy.EXPONENTIAL, request.workSpec.backoffPolicy)
+            assertEquals(60_000L, request.workSpec.backoffDelayDuration)
+        }
     }
 }

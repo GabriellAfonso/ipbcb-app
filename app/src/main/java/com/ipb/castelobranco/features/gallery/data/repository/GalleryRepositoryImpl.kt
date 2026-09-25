@@ -2,11 +2,12 @@ package com.ipb.castelobranco.features.gallery.data.repository
 
 import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.download.GalleryDownloadRun
+import com.ipb.castelobranco.features.gallery.data.download.GalleryPhotoDownloader
 import com.ipb.castelobranco.features.gallery.data.local.GalleryPhotoStorage
 import com.ipb.castelobranco.features.gallery.domain.model.Album
 import com.ipb.castelobranco.core.domain.download.DownloadProgress
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
-import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.di.IoDispatcher
 import com.ipb.castelobranco.core.network.error.toAppError
 import kotlinx.coroutines.CoroutineDispatcher
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.update
 class GalleryRepositoryImpl @Inject constructor(
     private val api: GalleryApi,
     private val storage: GalleryPhotoStorage,
+    private val downloader: GalleryPhotoDownloader,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : GalleryRepository {
 
@@ -78,23 +80,11 @@ class GalleryRepositoryImpl @Inject constructor(
     }
 
     private fun processDownload(photos: List<GalleryPhotoDto>): Flow<DownloadProgress> = flow {
-        if (photos.isEmpty()) { emit(DownloadProgress(0, 0)); return@flow }
-        val total = photos.size
-        var downloaded = 0
-        emit(DownloadProgress(downloaded, total))
-
-        for (photo in photos) {
-            if (!storage.exists(photo.albumId, photo.id)) {
-                val response = api.downloadFile(photo.imageUrl)
-                if (response.isSuccessful) {
-                    val body = response.body() ?: throw response.toAppError()
-                    storage.save(photo.albumId, photo.id, photo.fileExtension(), body.byteStream())
-                    storage.savePhotoMetadata(photo.albumId, photo.id, photo)
-                }
-            }
-            downloaded++
-            emit(DownloadProgress(downloaded, total))
-        }
+        val run = downloader.download(
+            photos = photos,
+            onProgress = { downloaded, total -> emit(DownloadProgress(downloaded, total)) },
+        )
+        if (run is GalleryDownloadRun.Stopped) throw run.error
     }.flowOn(ioDispatcher)
 
     override suspend fun clearAlbum(albumId: Long) = withContext(ioDispatcher) {

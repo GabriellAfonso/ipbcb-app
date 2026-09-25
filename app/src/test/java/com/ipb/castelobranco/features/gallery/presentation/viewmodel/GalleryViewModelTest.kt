@@ -133,6 +133,7 @@ class GalleryViewModelTest {
     fun `downloadState maps ENQUEUED WorkInfo to isPending with isResolved`() = runTest {
         val workInfo = mockk<WorkInfo>()
         every { workInfo.state } returns WorkInfo.State.ENQUEUED
+        every { workInfo.runAttemptCount } returns 0
         every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
         viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
 
@@ -143,6 +144,25 @@ class GalleryViewModelTest {
         val state = viewModel.downloadState.value
         assertTrue(state.isPending)
         assertFalse(state.isDownloading)
+        assertTrue(state.isResolved)
+    }
+
+    @Test
+    fun `downloadState maps ENQUEUED after a failed attempt to isResuming without error`() = runTest {
+        val workInfo = mockk<WorkInfo>()
+        every { workInfo.state } returns WorkInfo.State.ENQUEUED
+        every { workInfo.runAttemptCount } returns 2
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
+        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+
+        val job = launch { viewModel.downloadState.collect { } }
+        advanceUntilIdle()
+        job.cancel()
+
+        val state = viewModel.downloadState.value
+        assertTrue(state.isResuming)
+        assertFalse(state.isPending)
+        assertNull(state.error)
         assertTrue(state.isResolved)
     }
 
@@ -166,6 +186,30 @@ class GalleryViewModelTest {
         assertEquals("Não autorizado", state.error)
         assertEquals(401, state.errorCode)
         assertTrue(state.isResolved)
+    }
+
+    @Test
+    fun `downloadState maps FAILED 403 with albums on the device - errorCode kept, albums still exposed`() = runTest {
+        val albums = listOf(Album(1L, "Culto"))
+        every { repository.albumsFlow } returns MutableStateFlow(albums)
+        val outputData = workDataOf(
+            GalleryDownloadWorker.KEY_ERROR to "Disponível apenas para membros.",
+            GalleryDownloadWorker.KEY_ERROR_CODE to 403
+        )
+        val workInfo = mockk<WorkInfo>()
+        every { workInfo.state } returns WorkInfo.State.FAILED
+        every { workInfo.outputData } returns outputData
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
+        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+
+        val job = launch { viewModel.downloadState.collect { } }
+        advanceUntilIdle()
+        job.cancel()
+
+        val state = viewModel.downloadState.value
+        assertEquals(403, state.errorCode)
+        assertEquals("Disponível apenas para membros.", state.error)
+        assertEquals(albums, viewModel.albums.value)
     }
 
     @Test

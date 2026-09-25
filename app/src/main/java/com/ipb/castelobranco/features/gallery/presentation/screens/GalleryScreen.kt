@@ -21,6 +21,9 @@ import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryView
 
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_FORBIDDEN = 403
+private const val PENDING_WIFI_MESSAGE = "Aguardando WiFi para baixar a galeria…"
+private const val RESUMING_MESSAGE = "Download pausado. Continua automaticamente em instantes."
+private const val NO_ACCESS_MESSAGE = "Disponível apenas para membros."
 
 @Composable
 fun GalleryScreen(
@@ -77,12 +80,17 @@ fun GalleryContent(
 
             // Banner de progresso não-bloqueante (visível mesmo com álbuns na grid)
             when {
+                // 403 com álbuns no aparelho: a grid fica, e o aviso aparece acima dela. Sem álbuns, o
+                // placeholder abaixo trata o erro.
+                downloadState.errorCode == HTTP_FORBIDDEN && albums.isNotEmpty() ->
+                    MessageBanner(downloadState.error ?: NO_ACCESS_MESSAGE)
                 downloadState.error != null -> { /* tratado no bloco abaixo */ }
                 downloadState.isDownloading -> DownloadProgressBanner(downloadState)
+                downloadState.isResuming -> MessageBanner(RESUMING_MESSAGE)
                 downloadState.isPending && !isOnWifi -> WaitingForWifiBanner(
                     onDownloadWithMobileData = { viewModel.downloadWithMobileData() },
                 )
-                downloadState.isPending -> PendingWifiBanner()
+                downloadState.isPending -> MessageBanner(PENDING_WIFI_MESSAGE)
             }
 
             if (albums.isNotEmpty()) {
@@ -177,14 +185,15 @@ private fun DownloadProgressBanner(state: GalleryDownloadState) {
     }
 }
 
+/** Banner informativo de uma linha, sem ação — não é estado de erro. */
 @Composable
-private fun PendingWifiBanner() {
+private fun MessageBanner(text: String) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = "Aguardando WiFi para baixar a galeria…",
+            text = text,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),

@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.gallery.data.repository
 
 import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
+import com.ipb.castelobranco.features.gallery.data.download.GalleryPhotoDownloader
 import com.ipb.castelobranco.features.gallery.data.local.GalleryPhotoStorage
 import com.ipb.castelobranco.features.gallery.domain.model.Album
 import io.mockk.coVerify
@@ -28,7 +29,7 @@ class GalleryRepositoryImplTest {
     fun setup() {
         api = mockk()
         storage = mockk(relaxed = true)
-        repository = GalleryRepositoryImpl(api, storage, Dispatchers.Unconfined)
+        repository = GalleryRepositoryImpl(api, storage, GalleryPhotoDownloader(api, storage), Dispatchers.Unconfined)
     }
 
     // region preload

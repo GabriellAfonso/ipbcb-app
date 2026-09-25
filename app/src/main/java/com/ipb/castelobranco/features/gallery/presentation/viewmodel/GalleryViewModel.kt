@@ -21,6 +21,8 @@ import javax.inject.Inject
 data class GalleryDownloadState(
     val isDownloading: Boolean = false,
     val isPending: Boolean = false,
+    /** Waiting out a backoff after a rate limit or a network failure — not an error. */
+    val isResuming: Boolean = false,
     val downloaded: Int = 0,
     val total: Int = 0,
     val error: String? = null,
@@ -52,7 +54,9 @@ class GalleryViewModel @Inject constructor(
                     val total = info.progress.getInt(GalleryDownloadWorker.KEY_TOTAL, 0)
                     GalleryDownloadState(isDownloading = true, downloaded = done, total = total, isResolved = true)
                 }
-                WorkInfo.State.ENQUEUED -> GalleryDownloadState(isPending = true, isResolved = true)
+                WorkInfo.State.ENQUEUED ->
+                    if (info.runAttemptCount > 0) GalleryDownloadState(isResuming = true, isResolved = true)
+                    else GalleryDownloadState(isPending = true, isResolved = true)
                 WorkInfo.State.FAILED -> {
                     val errorMsg = info.outputData.getString(GalleryDownloadWorker.KEY_ERROR)
                         ?: "Falha ao baixar galeria"
