@@ -16,8 +16,12 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
+import retrofit2.Response
+import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,6 +61,13 @@ class ProfilePhotoDataSource @Inject constructor(
             }
         }
 
+    /**
+     * Downloads the profile photo from protected media (JWT required) and keeps the local copy in
+     * step with what the server allows:
+     * - 200: replaced; 304, 429 or no network: the last local photo stays;
+     * - 404 or 403: cleared, placeholder shown — neither is an error for the user;
+     * - anything else: failure, local photo untouched.
+     */
     suspend fun downloadAndPersist(photoUrl: String): Result<File?> =
         withContext(ioDispatcher) {
             runCatching {
@@ -70,54 +81,72 @@ class ProfilePhotoDataSource @Inject constructor(
 
                 val lastETag = photoCache.loadETagOrNull()
 
-                val response = api.downloadFile(
-                    absoluteUrl = absoluteUrl,
-                    ifNoneMatch = lastETag
-                )
-
-                when {
-                    response.code() == 404 -> {
-                        clearLocal().getOrNull()
-                        photoCache.clearAll()
-                        ProfilePhotoBus.bump()
-                        null
-                    }
-
-                    response.code() == 304 -> findLastLocalPhotoOrNull()
-
-                    !response.isSuccessful -> throw response.toAppError()
-
-                    else -> {
-                        val body = response.body()
-                            ?: throw AppError.Server(code = response.code(), message = "Corpo de resposta vazio")
-
-                        val contentType = body.contentType()?.toString().orEmpty()
-                        val ext = when {
-                            contentType.contains("png", ignoreCase = true) -> "png"
-                            contentType.contains("webp", ignoreCase = true) -> "webp"
-                            contentType.contains("jpeg", ignoreCase = true) ||
-                                    contentType.contains("jpg", ignoreCase = true) -> "jpg"
-                            else -> "jpg"
-                        }
-
-                        val dir = File(context.filesDir, StorageDirConstants.PROFILE).apply { mkdirs() }
-                        val outFile = File(dir, "profile_photo.$ext")
-
-                        body.byteStream().use { input ->
-                            FileOutputStream(outFile).use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-
-                        val newETag = response.headers()["ETag"]?.trim()
-                        if (!newETag.isNullOrBlank()) photoCache.saveETag(newETag)
-
-                        ProfilePhotoBus.bump()
-                        outFile
-                    }
+                try {
+                    val response = api.downloadFile(
+                        absoluteUrl = absoluteUrl,
+                        ifNoneMatch = lastETag
+                    )
+                    applyResponse(response)
+                } catch (e: IOException) {
+                    Timber.w(e, "Profile photo download failed: network")
+                    findLastLocalPhotoOrNull()
                 }
             }.mapError()
         }
+
+    private suspend fun applyResponse(response: Response<ResponseBody>): File? =
+        when (response.code()) {
+            HTTP_NOT_FOUND, HTTP_FORBIDDEN -> {
+                clearLocal().getOrNull()
+                photoCache.clearAll()
+                ProfilePhotoBus.bump()
+                null
+            }
+
+            HTTP_NOT_MODIFIED, HTTP_TOO_MANY_REQUESTS -> findLastLocalPhotoOrNull()
+
+            else -> {
+                if (!response.isSuccessful) throw response.toAppError()
+                persist(response)
+            }
+        }
+
+    private suspend fun persist(response: Response<ResponseBody>): File {
+        val body = response.body()
+            ?: throw AppError.Server(code = response.code(), message = "Corpo de resposta vazio")
+
+        val contentType = body.contentType()?.toString().orEmpty()
+        val ext = when {
+            contentType.contains("png", ignoreCase = true) -> "png"
+            contentType.contains("webp", ignoreCase = true) -> "webp"
+            contentType.contains("jpeg", ignoreCase = true) ||
+                    contentType.contains("jpg", ignoreCase = true) -> "jpg"
+            else -> "jpg"
+        }
+
+        val dir = File(context.filesDir, StorageDirConstants.PROFILE).apply { mkdirs() }
+        val outFile = File(dir, "profile_photo.$ext")
+
+        // Escreve num temporário e só troca quando o corpo chegou inteiro: uma conexão cortada no meio
+        // não pode estragar a foto que já estava na tela.
+        val temp = File(dir, TEMP_FILE_NAME)
+        try {
+            body.byteStream().use { input ->
+                FileOutputStream(temp).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            if (!temp.renameTo(outFile)) temp.copyTo(outFile, overwrite = true)
+        } finally {
+            temp.delete()
+        }
+
+        val newETag = response.headers()["ETag"]?.trim()
+        if (!newETag.isNullOrBlank()) photoCache.saveETag(newETag)
+
+        ProfilePhotoBus.bump()
+        return outFile
+    }
 
     suspend fun clearLocal(): Result<Unit> =
         withContext(ioDispatcher) {
@@ -150,5 +179,15 @@ class ProfilePhotoDataSource @Inject constructor(
         val trimmed = url.trim()
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
         return "${baseUrl.trimEnd('/')}/${trimmed.trimStart('/')}"
+    }
+
+    private companion object {
+        const val HTTP_NOT_MODIFIED = 304
+        const val HTTP_FORBIDDEN = 403
+        const val HTTP_NOT_FOUND = 404
+        const val HTTP_TOO_MANY_REQUESTS = 429
+
+        /** Fora do prefixo `profile_photo` para nunca ser lido como a foto. */
+        const val TEMP_FILE_NAME = "download.part"
     }
 }

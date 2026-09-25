@@ -431,6 +431,24 @@ Wrapper Scaffold + TopBar compartilhado por todas as telas de features.
 - Usa Coil AsyncImage (ou placeholder)
 - Bumpa versao quando login state muda (via `ProfilePhotoBus.version`)
 - ViewModel interno: `TopBarProfileViewModel`
+- So renderiza arquivo local: nenhuma tela carrega URL de midia direto. A midia (`/ipbcb/media/`) exige
+  JWT e so e baixada pelo `@AuthedRetrofit`.
+
+**Download da foto (`ProfilePhotoDataSource.downloadAndPersist`):** envia `If-None-Match` com o ETag
+salvo. A midia e protegida (backend `009-protected-media-access`); cada desfecho:
+
+| Resposta | Retorno | Foto local + ETag + ultima URL |
+|----------|---------|--------------------------------|
+| `200` | `success(novo arquivo)` | substituida (via temporario), ETag novo salvo |
+| `304` | `success(foto local)` | mantida |
+| `404` | `success(null)` | apagada, placeholder |
+| `403` | `success(null)` | apagada, placeholder — sem erro na tela |
+| `429` | `success(foto local)` | mantida |
+| sem rede / corpo cortado | `success(foto local)` | mantida |
+| `401`, outros | `failure(AppError)` | mantida |
+
+`401` so chega aqui depois de o `TokenAuthenticator` tentar o refresh; se o refresh foi recusado, os
+tokens ja foram apagados e `isLoggedInFlow` leva o app ao estado deslogado.
 
 **Navegacao:** usa `LocalAppNavigator` para profile/auth no clique do botao de conta.
 
