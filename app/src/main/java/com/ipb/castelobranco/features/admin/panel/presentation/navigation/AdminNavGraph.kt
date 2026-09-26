@@ -9,6 +9,8 @@ import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.admin.panel.presentation.screens.AdminScreen
+import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
+import com.ipb.castelobranco.features.admin.members.presentation.navigation.membersGraph
 import com.ipb.castelobranco.features.admin.register.presentation.screens.MusicRegistrationScreen
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.ReportsRoutes
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.reportsGraph
@@ -20,6 +22,7 @@ data class AdminNav(
     val register: () -> Unit,
     val schedule: () -> Unit,
     val reports: () -> Unit,
+    val members: () -> Unit,
 )
 
 object AdminRoutes {
@@ -34,6 +37,7 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         register = { navController.navigate(AdminRoutes.REGISTER) },
         schedule = { navController.navigate(AdminRoutes.SCHEDULE) },
         reports  = { navController.navigate(ReportsRoutes.GRAPH) },
+        members  = { navController.navigate(MembersRoutes.GRAPH) },
     )
 
     navigation(
@@ -66,5 +70,8 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         // Reports is an area of its own inside administration: the hub plus the hymnal history
         // surfaces, nested so they can share one loaded period.
         reportsGraph(navController)
+
+        // Members is its own area too: list, profile, form and history.
+        membersGraph(navController)
     }
 }
