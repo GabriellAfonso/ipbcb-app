@@ -107,8 +107,7 @@ fun AdminPanelContent(
             description = "Gerenciar cadastro",
             icon = Icons.Filled.People,
             accentColor = Blue,
-            enabled = false,
-            onClick = { /* TODO */ }
+            onClick = nav.members
         ),
         AdminAction(
             label = "Avisos",

@@ -21,13 +21,20 @@ implementação — elas já aparecem no painel como cards inativos.
 | Ficha do hino            | `ReportsHymnCard`           | Qualquer lista do relatório     |
 | Janelas de culto         | `ReportsServiceWindows`     | Menu da TopBar do relatório     |
 | Parâmetros de coleta     | `ReportsCollectionSettings` | Menu da TopBar do relatório     |
+| Lista de membros         | `MembersList`               | Card "Membros"                  |
+| Perfil do membro         | `MembersProfile/{memberId}` | Cartão da lista                 |
+| Formulário do membro     | `MembersForm?memberId=`     | "Novo membro" / editar no perfil|
+| Histórico do membro      | `MembersHistory/{memberId}` | Card de histórico no perfil     |
 
 As três primeiras vivem em `adminGraph` (`AdminNavGraph.kt`). A navegação chega às telas pelo
-`data class` `AdminNav` (`back`, `register`, `schedule`, `reports`), montado no grafo e repassado
-como parâmetro — o painel não conhece o `NavController`.
+`data class` `AdminNav` (`back`, `register`, `schedule`, `reports`, `members`), montado no grafo e
+repassado como parâmetro — o painel não conhece o `NavController`.
 
-As cinco últimas vivem em `reportsGraph` (`ReportsNavGraph.kt`), **aninhado dentro de**
+As cinco de relatório vivem em `reportsGraph` (`ReportsNavGraph.kt`), **aninhado dentro de**
 `adminGraph`, como `worshipHubGraph` aninha seus sub-grafos. Ver §6.
+
+As quatro de membros vivem em `membersGraph` (`MembersNavGraph.kt`, rota `graph/admin/members`),
+também aninhado em `adminGraph`. Ver §7.
 
 ## 2. Painel
 
@@ -65,7 +72,7 @@ fica guardada no código mas o card aparece cinza.
 | Gestão do Louvor   | Laranja  | `MusicNote`     | Navega para `AdminRegister`  |
 | Marcar Presença    | Teal     | `Person`        | Sem implementação            |
 | Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`  |
-| Membros            | Azul     | `People`        | Sem implementação            |
+| Membros            | Azul     | `People`        | Navega para a lista de membros |
 | Avisos             | Rosa     | `Send`          | Sem implementação            |
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`     |
 | Galeria            | Âmbar    | `PhotoLibrary`  | Sem implementação            |
@@ -180,3 +187,71 @@ administração.
 - `HymnalReportViewModel` é escopado ao grafo (`hiltViewModel(graphEntry)`) para que a ficha do
   hino reaproveite o período já carregado. As ViewModels de janelas e de parâmetros são de tela
   única e usam `hiltViewModel()` puro, como as demais telas do `adminGraph`.
+
+---
+
+## 7. Membros
+
+Spec completa da feature: [`specs/005-admin-members-management/`](../005-admin-members-management/spec.md).
+Contrato consumido: `specs/010-members-management` do backend.
+
+Área em que a liderança mantém o rol de membros: lista, perfil, cadastro, edição, foto (visível só
+para líderes), histórico de alterações e exclusão. Vive em `features/admin/members/`.
+
+### 7.1 Situação × validade
+
+Dois atributos diferentes que a tela nunca mistura:
+
+- **Situação** (`status`) — cadastro do servidor (hoje Ativo, Inativo, Visitante). Aparece exatamente
+  com o nome que o servidor manda; vazia = "Sem situação". **Nenhum nome de situação é fixado no
+  código** e não há filtro por situação.
+- **Validade** (`is_active`) — se a ficha vale. Ficha inválida some da lista comum de membros e dos
+  aniversários. Na tela é sempre "Perfil válido" / "Perfil inválido", nunca "ativo/inativo".
+
+### 7.2 Ano de nascimento desconhecido
+
+A igreja registra "sei o aniversário, não sei o ano" como nascimento no ano **0001**
+(`0001-MM-DD`). O app trata esse ano como "ano não informado": mostra "dd/MM (ano não informado)",
+não calcula idade ("Idade não informada") e o formulário oferece "Não sei o ano" (dia e mês só).
+Datas com ano 0001 nunca contam como futuras e pulam a regra "batismo antes do nascimento". 29/02
+não cabe nessa convenção (0001 não é bissexto). A convenção mora em um único lugar,
+`domain/model/BirthDate.kt`.
+
+### 7.3 Telas
+
+- **Lista** — grade de 2 colunas (foto ou iniciais, nome, chip de situação, tag "Perfil inválido" com
+  cartão esmaecido), busca por nome no aparelho (sem acento/maiúscula), sem filtros, botão
+  "Novo membro". Estados: carregando, erro com "Tentar novamente", rol vazio, busca sem resultado.
+- **Perfil** — faixa verde, foto grande com botão de câmera, nome, idade · sexo, chips de situação e
+  cargo, aviso "Foto visível só para líderes", seções "Dados pessoais" e "Vida na igreja" (batismo
+  com "há N anos", ministérios), switch "Perfil válido" que salva na hora e volta se falhar, card da
+  última alteração, "Cadastrado em" e "Excluir membro".
+- **Formulário** — um só para criar e editar; opções de situação, cargo e ministérios vêm do
+  servidor; validação local (nome obrigatório, ≤ 255, datas não futuras, batismo não antes do
+  nascimento) e `field_errors` do servidor no campo certo; edição envia só o que mudou; sair com
+  alteração pendente pede confirmação. A foto de um membro novo é adicionada depois, no perfil.
+- **Histórico** — do mais novo ao mais antigo, frases em português ("X alterou Situação de A para B",
+  "X cadastrou o membro", "X trocou/removeu a foto"); editor apagado = "Usuário removido".
+- **Excluir** — diálogo avisa que ficha, histórico e foto somem para sempre; o botão só libera quando o
+  nome digitado bate (sem diferenciar maiúsculas nem espaços nas pontas).
+
+### 7.4 Regras
+
+- **Só online, só memória** (LGPD art. 11): nada de membro vai para o disco — sem snapshot, sem cache
+  de imagem em disco. O repositório (`@Singleton`) guarda lista, fichas abertas e ETags em memória,
+  e cada escrita atualiza a lista na hora. A foto carrega por um `ImageLoader` próprio
+  (`@MemberPhotoLoader`) no client autenticado, sem cache em disco; falha = iniciais. O único rastro
+  em disco é o recorte do UCrop, apagado logo depois de lido.
+- Logout e queda de sessão limpam tudo via `SessionScopedCache` (core §4.4.1).
+- Logs levam só o id do membro.
+- 403 em qualquer chamada: mostra o `detail` e volta ao painel. 404 numa ficha: "Este membro não
+  existe mais" e volta à lista.
+- PATCH é montado com `buildJsonObject` para que `null` (limpar campo) chegue ao servidor — o `Json`
+  compartilhado usa `explicitNulls = false`.
+
+### 7.5 Camadas
+
+`data/` (API em `@AuthedRetrofit`, DTOs, mapper, repositório em memória) → `domain/` (modelos, casos de
+uso puros: idade, validação, frases do histórico, checagem da foto, confirmação de exclusão) →
+`presentation/` (uma ViewModel por tela com `hiltViewModel()`; o estado compartilhado entre telas é o
+do repositório, não de uma ViewModel escopada ao grafo).

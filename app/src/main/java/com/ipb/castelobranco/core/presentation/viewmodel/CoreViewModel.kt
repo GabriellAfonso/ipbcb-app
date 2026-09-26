@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.domain.repository.MembersRepository
+import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.usecase.GetMonthlyBirthdaysUseCase
 import com.ipb.castelobranco.core.domain.usecase.PreloadDataUseCase
@@ -38,6 +39,7 @@ class CoreViewModel @Inject constructor(
     private val scheduleRepository: ScheduleRepository,
     private val getMonthlyBirthdaysUseCase: GetMonthlyBirthdaysUseCase,
     private val membersRepository: MembersRepository,
+    private val sessionScopedCaches: Set<@JvmSuppressWildcards SessionScopedCache>,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -68,7 +70,12 @@ class CoreViewModel @Inject constructor(
 
         // Observa estado de login
         viewModelScope.launch {
+            var wasLoggedIn = false
             authSession.isLoggedInFlow.collect { logged ->
+                // A sessão pode cair sem logout(): o TokenAuthenticator limpa os tokens quando o
+                // refresh falha. Dado que só vale para a sessão não pode sobreviver a isso.
+                if (wasLoggedIn && !logged) clearSessionScopedCaches()
+                wasLoggedIn = logged
                 _isLoggedIn.value = logged
             }
         }
@@ -156,9 +163,17 @@ class CoreViewModel @Inject constructor(
             scheduleRepository.clearScheduleCache()
             membersRepository.clearBirthdaysCache()
             galleryAutoDownload.clearOnLogout()
+            clearSessionScopedCaches()
             logoutUseCase()
             Timber.d("Logout completed")
             _events.trySend(CoreEvent.LogoutSuccess)
+        }
+    }
+
+    private suspend fun clearSessionScopedCaches() {
+        sessionScopedCaches.forEach { cache ->
+            runCatching { cache.clear() }
+                .onFailure { Timber.w(it, "Session cache clear failed") }
         }
     }
 }
