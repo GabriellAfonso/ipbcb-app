@@ -232,6 +232,24 @@ usuario voltar para a home.
 `initialize()` e idempotente (guarda `initialized`), entao a chamada redundante da `CoreView` e
 inofensiva.
 
+### 4.4.1 Caches da sessao — SessionScopedCache
+
+```kotlin
+fun interface SessionScopedCache { suspend fun clear() }
+```
+
+Dado que vive **so em memoria** e so vale para a sessao atual (ex.: fichas de membros vistas por um
+lider). Features registram implementacoes via `@IntoSet`; o set vazio e declarado em
+`core/di/SessionModule.kt` (`@Multibinds`).
+
+`CoreViewModel` chama `clear()` de todos:
+- em `logout()`, antes de `logoutUseCase()`;
+- quando `isLoggedInFlow` passa de `true` para `false` (sessao encerrada pelo `TokenAuthenticator`
+  depois de um refresh que falhou — nesse caminho `logout()` nao e chamado).
+
+Existe para que `core/` limpe dado de uma feature sem importa-la, do mesmo jeito que
+`Preloadable`/`Refreshable` disparam o boot.
+
 ### 4.5 SnapshotRepository (interface)
 
 ```kotlin
@@ -383,7 +401,7 @@ Orquestra inicializacao e estado global.
 **Metodos:**
 - `initialize()` — setup de observables e trigger startup. Idempotente; chamado pelo `AppNavHost`
   (escopo da Activity) para garantir o boot em qualquer rota restaurada — ver secao 4.4.
-- `logout()` — limpa todos os caches + tokens
+- `logout()` — limpa todos os caches (incluindo todo `SessionScopedCache`, secao 4.4.1) + tokens
 
 ### 6.3 CoreScreen (Tela Principal)
 
@@ -514,6 +532,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `ElasticPullToRefresh` | Wrapper para Material 3 PullToRefreshBox |
 | `InDevelopmentScreen` | Placeholder "Pagina em construcao" |
 | `PermissionErrorPlaceholder` | Erro de permissao com botao opcional "Conectar a sua conta" |
+| `SquarePhotoPicker` | `rememberSquarePhotoPicker(onPicked, onCancelled)`: escolhe imagem da galeria, recorta com UCrop (1:1, max 512x512, titulo "Recortar Foto") e entrega os bytes JPEG. Apaga o arquivo recortado logo depois de ler e varre `cacheDir/cropped_*` a cada abertura — nenhuma copia fica no aparelho. Usado pela foto de perfil e pela foto de membro |
 
 ### 6.8 Modifiers
 

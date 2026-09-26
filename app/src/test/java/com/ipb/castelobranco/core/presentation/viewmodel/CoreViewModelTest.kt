@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.core.presentation.viewmodel
 
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
+import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.usecase.PreloadDataUseCase
 import com.ipb.castelobranco.features.auth.data.local.AuthSession
@@ -55,6 +56,9 @@ class CoreViewModelTest {
     private lateinit var getMonthlyBirthdaysUseCase: GetMonthlyBirthdaysUseCase
     private lateinit var membersRepository: MembersRepository
     private lateinit var viewModel: CoreViewModel
+
+    private var sessionCacheClears = 0
+    private val sessionCache = SessionScopedCache { sessionCacheClears++ }
 
     private val authEventsFlow = MutableSharedFlow<AuthEventBus.Event>()
 
@@ -113,7 +117,8 @@ class CoreViewModelTest {
             bibleRepository,
             scheduleRepository,
             getMonthlyBirthdaysUseCase,
-            membersRepository
+            membersRepository,
+            setOf(sessionCache),
         )
     }
 
@@ -384,6 +389,44 @@ class CoreViewModelTest {
             listOf("clearPhoto", "clearSchedule", "clearBirthdays", "clearGallery", "logout"),
             order
         )
+    }
+
+    // endregion
+
+    // region session-scoped caches
+
+    @Test
+    fun `logout clears every session-scoped cache`() = runTest {
+        viewModel.logout()
+        advanceUntilIdle()
+
+        assertEquals(1, sessionCacheClears)
+    }
+
+    @Test
+    fun `session dropping from logged in to logged out clears session-scoped caches`() = runTest {
+        val loginFlow = MutableStateFlow(true)
+        every { authSession.isLoggedInFlow } returns loginFlow
+
+        viewModel.initialize()
+        advanceUntilIdle()
+        assertEquals(0, sessionCacheClears)
+
+        loginFlow.value = false
+        advanceUntilIdle()
+
+        assertEquals(1, sessionCacheClears)
+    }
+
+    @Test
+    fun `staying logged out never clears session-scoped caches`() = runTest {
+        val loginFlow = MutableStateFlow(false)
+        every { authSession.isLoggedInFlow } returns loginFlow
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(0, sessionCacheClears)
     }
 
     // endregion
