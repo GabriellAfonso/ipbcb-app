@@ -118,6 +118,9 @@ Eventos de uma vez saem por `AdminScheduleEvent`.
 - O acesso ao painel é oferecido pelo menu do `CoreScreen` apenas quando
   `authState.isLoggedIn && authState.isAdmin` (`isAdmin` vem do perfil). É um filtro de UI: quem
   de fato autoriza cada operação é o backend, nas chamadas das telas internas.
+- `isAdmin` sai do snapshot do perfil carregado do disco no boot, então o item aparece junto com a
+  home, sem esperar o `/me`. Se o papel mudou no servidor, o item se ajusta quando o refresh do
+  perfil chega.
 - O painel não faz chamada de rede — não há o que autorizar nele. As telas internas fazem, e todas
   usam `@AuthedRetrofit`.
 - Ação sem implementação nunca navega para uma tela vazia.

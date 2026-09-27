@@ -398,6 +398,11 @@ Orquestra inicializacao e estado global.
 2. Reage a `LoginSuccess` do AuthEventBus
 3. Cascata: preload disco -> refresh rede -> auto-download gallery/bible -> fetch profile
 
+O snapshot do perfil (`ProfileSnapshotRepository`) e um `Preloadable` como os demais: o `/me` salvo
+em disco entra na fase de preload, entao `isAdmin`/`isMember` ja valem desde o boot, sem esperar a
+rede. O refresh de rede do perfil continua no fim da cascata (depende de login) e corrige o valor
+se ele mudou no servidor.
+
 **Metodos:**
 - `initialize()` — setup de observables e trigger startup. Idempotente; chamado pelo `AppNavHost`
   (escopo da Activity) para garantir o boot em qualquer rota restaurada — ver secao 4.4.
