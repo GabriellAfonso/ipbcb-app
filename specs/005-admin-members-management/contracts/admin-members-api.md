@@ -54,7 +54,8 @@ HistoryEntryDto(id: Int, editor: HistoryEditorDto?, field: String, old_value: St
 HistoryDto(history: List<HistoryEntryDto>)
 ```
 
-Date strings: `YYYY-MM-DD`; `created_at`/`changed_at`: ISO-8601 with `Z`.
+Date strings: `YYYY-MM-DD`; `created_at`/`changed_at`: ISO-8601 with an offset — `Z` or the server's
+local offset (e.g. `2026-02-23T21:21:35.359000-03:00`); the app parses any offset.
 
 ## Errors
 

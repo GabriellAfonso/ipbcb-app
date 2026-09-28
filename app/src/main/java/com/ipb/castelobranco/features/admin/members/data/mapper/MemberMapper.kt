@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 fun NamedRefDto.toDomain(): NamedRef = NamedRef(id = id, name = name)
 
@@ -45,7 +46,7 @@ fun MemberRecordDto.toDomain(): MemberRecord = MemberRecord(
     baptismDate = baptismDate.toLocalDateOrNull(),
     isValid = isActive,
     photoUrl = photoUrl?.ifBlank { null },
-    createdAt = Instant.parse(createdAt),
+    createdAt = createdAt.toInstant(),
 )
 
 fun MemberOptionsDto.toDomain(): MemberOptions = MemberOptions(
@@ -60,7 +61,7 @@ fun HistoryEntryDto.toDomain(): HistoryEntry = HistoryEntry(
     field = field,
     oldValue = oldValue,
     newValue = newValue,
-    changedAt = Instant.parse(changedAt),
+    changedAt = changedAt.toInstant(),
 )
 
 /**
@@ -85,6 +86,12 @@ private fun MemberField.encode(value: Any?): JsonElement {
 
 /** ISO `YYYY-MM-DD`; `LocalDate` pads the year to four digits, so 0001 stays `0001`. */
 private fun LocalDate.toApiDate(): String = toString()
+
+/**
+ * ISO-8601 with any offset. The server serialises in its own time zone (`-03:00`), not `Z`, and
+ * Android's `Instant.parse` only accepts `Z`.
+ */
+private fun String.toInstant(): Instant = OffsetDateTime.parse(this).toInstant()
 
 private fun String?.toLocalDateOrNull(): LocalDate? =
     this?.takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }

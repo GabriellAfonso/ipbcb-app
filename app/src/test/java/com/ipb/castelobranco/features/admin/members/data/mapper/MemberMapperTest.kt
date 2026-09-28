@@ -74,6 +74,19 @@ class MemberMapperTest {
     }
 
     @Test
+    fun `timestamps with a non-UTC offset map to the same instant`() {
+        val record = MemberRecordDto(
+            id = 1, name = "X", isActive = true, createdAt = "2026-02-23T21:21:35.359000-03:00",
+        ).toDomain()
+        val entry = HistoryEntryDto(
+            id = 1, field = "created", changedAt = "2026-02-23T21:21:35.359000-03:00",
+        ).toDomain()
+
+        assertEquals(Instant.parse("2026-02-24T00:21:35.359Z"), record.createdAt)
+        assertEquals(Instant.parse("2026-02-24T00:21:35.359Z"), entry.changedAt)
+    }
+
+    @Test
     fun `summary dto maps validity from is_active`() {
         val summary = MemberSummaryDto(3, "Bruno", null, null, isActive = false).toDomain()
 
