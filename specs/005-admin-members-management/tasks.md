@@ -173,7 +173,7 @@ as a non-leader, confirm there is no entry (quickstart §3 rows 1–6).
   `ImageLoader`, circle or rounded shape, `error`/`fallback` = initials on `primaryContainer`; `@Preview` with
   initials
 - [X] T033 [P] [US1] Create `members/presentation/components/MemberCard.kt` (grid card from the design preview:
-  132 dp photo area, name 2 lines, status chip, "Perfil inválido" tag, faded when invalid) and
+  square photo area, name 2 lines, compact status chip, "Perfil inválido" tag, faded when invalid) and
   `members/presentation/components/ProfileSections.kt` (`SectionCard`, `InfoRow`, `MinistriesRow`, `StatusChip`,
   `Tag`), moved from `MembersDesignPreviews.kt`
 - [X] T034 [US1] Create `members/presentation/screens/MembersListScreen.kt`: `MembersListScreen(viewModel, onBack,
