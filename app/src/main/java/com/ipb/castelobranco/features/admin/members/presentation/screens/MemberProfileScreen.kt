@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.admin.members.presentation.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,19 +22,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,13 +38,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +63,8 @@ import com.ipb.castelobranco.features.admin.members.presentation.components.Dele
 import com.ipb.castelobranco.features.admin.members.presentation.components.HistoryCard
 import com.ipb.castelobranco.features.admin.members.presentation.components.InfoRow
 import com.ipb.castelobranco.features.admin.members.presentation.components.MemberAvatar
+import com.ipb.castelobranco.features.admin.members.presentation.components.MemberPhotoPreview
+import com.ipb.castelobranco.features.admin.members.presentation.components.MemberPhotoViewer
 import com.ipb.castelobranco.features.admin.members.presentation.components.MinistriesRow
 import com.ipb.castelobranco.features.admin.members.presentation.components.SectionCard
 import com.ipb.castelobranco.features.admin.members.presentation.components.StatusChip
@@ -216,7 +222,7 @@ private fun ProfileBody(
                     .height(HEADER_BAND.dp)
                     .background(colors.primary),
             )
-            PhotoWithCamera(
+            ExpandablePhoto(
                 profile = profile,
                 imageLoader = imageLoader,
                 isBusy = state.isPhotoBusy,
@@ -277,8 +283,15 @@ private fun ProfileBody(
     }
 }
 
+/** How far the photo is opened: in place, popped in front of the screen, or full screen. */
+private enum class PhotoStage { IN_PLACE, PREVIEW, FULL_SCREEN }
+
+/**
+ * The photo has no button of its own: a tap pops it in front of the screen as a square, a tap on
+ * that opens it full screen, where the camera lives. Without a photo the initials go the same way.
+ */
 @Composable
-private fun PhotoWithCamera(
+private fun ExpandablePhoto(
     profile: MemberProfileUi,
     imageLoader: ImageLoader?,
     isBusy: Boolean,
@@ -286,45 +299,47 @@ private fun PhotoWithCamera(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    var menuOpen by remember { mutableStateOf(false) }
+    var stage by rememberSaveable { mutableStateOf(PhotoStage.IN_PLACE) }
+    var bounds by remember { mutableStateOf<Rect?>(null) }
+
     Box(modifier = modifier) {
         MemberAvatar(
             initials = profile.initials,
             photoUrl = profile.photoUrl,
             imageLoader = imageLoader,
-            initialsSize = 44.sp,
+            initialsSize = PHOTO_INITIALS.sp,
             modifier = Modifier
-                .size(148.dp)
+                .size(PHOTO_SIZE.dp)
+                .onGloballyPositioned { bounds = Rect(it.positionOnScreen(), it.size.toSize()) }
+                // While popped out, the photo is the one in front, not a copy left behind.
+                .alpha(if (stage == PhotoStage.PREVIEW) 0f else 1f)
+                .clip(CircleShape)
+                .clickable(onClickLabel = "Ver foto") { stage = PhotoStage.PREVIEW }
                 .border(5.dp, colors.background, CircleShape),
         )
         if (isBusy) CircularProgressIndicator(Modifier.align(Alignment.Center))
-        Box(Modifier.align(Alignment.BottomEnd)) {
-            Surface(
-                onClick = { menuOpen = true },
-                enabled = !isBusy,
-                shape = CircleShape,
-                color = colors.primary,
-                contentColor = colors.onPrimary,
-                border = BorderStroke(3.dp, colors.background),
-                modifier = Modifier.size(44.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.PhotoCamera, contentDescription = "Foto do membro", Modifier.size(20.dp))
-                }
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text("Escolher foto") },
-                    onClick = { menuOpen = false; actions.onPickPhoto() },
-                )
-                if (profile.photoUrl != null) {
-                    DropdownMenuItem(
-                        text = { Text("Remover foto") },
-                        onClick = { menuOpen = false; actions.onRemovePhotoRequested() },
-                    )
-                }
-            }
-        }
+    }
+
+    when (stage) {
+        PhotoStage.IN_PLACE -> Unit
+        PhotoStage.PREVIEW -> MemberPhotoPreview(
+            initials = profile.initials,
+            photoUrl = profile.photoUrl,
+            imageLoader = imageLoader,
+            origin = bounds,
+            originInitialsSize = PHOTO_INITIALS.sp,
+            onOpenFullScreen = { stage = PhotoStage.FULL_SCREEN },
+            onDismiss = { stage = PhotoStage.IN_PLACE },
+        )
+        PhotoStage.FULL_SCREEN -> MemberPhotoViewer(
+            initials = profile.initials,
+            photoUrl = profile.photoUrl,
+            imageLoader = imageLoader,
+            isBusy = isBusy,
+            onPickPhoto = actions.onPickPhoto,
+            onRemovePhoto = actions.onRemovePhotoRequested,
+            onDismiss = { stage = PhotoStage.IN_PLACE },
+        )
     }
 }
 
@@ -355,6 +370,8 @@ private fun ProfileHeadline(profile: MemberProfileUi) {
 
 private const val HEADER_BAND = 120
 private const val PHOTO_OVERLAP = 84
+private const val PHOTO_SIZE = 148
+private const val PHOTO_INITIALS = 44
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 1200)
 @Composable

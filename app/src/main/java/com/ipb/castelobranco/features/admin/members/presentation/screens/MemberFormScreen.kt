@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.features.admin.members.presentation.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,15 +14,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,8 +43,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberDraft
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberField
@@ -47,6 +57,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.components.Birt
 import com.ipb.castelobranco.features.admin.members.presentation.components.FieldError
 import com.ipb.castelobranco.features.admin.members.presentation.components.GenderSelector
 import com.ipb.castelobranco.features.admin.members.presentation.components.InvalidContainer
+import com.ipb.castelobranco.features.admin.members.presentation.components.MemberAvatar
 import com.ipb.castelobranco.features.admin.members.presentation.components.MemberDateField
 import com.ipb.castelobranco.features.admin.members.presentation.components.MinistriesPicker
 import com.ipb.castelobranco.features.admin.members.presentation.components.OnInvalidContainer
@@ -64,6 +75,7 @@ fun MemberFormScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var confirmDiscard by remember { mutableStateOf(false) }
+    val pickPhoto = rememberSquarePhotoPicker(onPicked = viewModel::onPhotoPicked)
     val leave = { if (state.hasUnsavedChanges) confirmDiscard = true else onBack() }
 
     BackHandler(enabled = state.hasUnsavedChanges) { confirmDiscard = true }
@@ -84,6 +96,8 @@ fun MemberFormScreen(
         Box(Modifier.padding(innerPadding)) {
             MemberFormContent(
                 state = state,
+                imageLoader = viewModel.imageLoader,
+                onPickPhoto = pickPhoto,
                 onDraftChanged = viewModel::onDraftChanged,
                 onSave = viewModel::onSave,
                 onRetry = viewModel::load,
@@ -108,6 +122,8 @@ fun MemberFormScreen(
 @Composable
 fun MemberFormContent(
     state: MemberFormUiState,
+    imageLoader: ImageLoader?,
+    onPickPhoto: () -> Unit,
     onDraftChanged: (MemberDraft) -> Unit,
     onSave: () -> Unit,
     onRetry: () -> Unit,
@@ -126,7 +142,7 @@ fun MemberFormContent(
                 Text(state.loadError.orEmpty(), textAlign = TextAlign.Center)
                 Button(onClick = onRetry) { Text("Tentar novamente") }
             }
-            else -> FormFields(state, options, onDraftChanged, onSave)
+            else -> FormFields(state, options, imageLoader, onPickPhoto, onDraftChanged, onSave)
         }
     }
 }
@@ -135,6 +151,8 @@ fun MemberFormContent(
 private fun FormFields(
     state: MemberFormUiState,
     options: MemberOptions,
+    imageLoader: ImageLoader?,
+    onPickPhoto: () -> Unit,
     onChange: (MemberDraft) -> Unit,
     onSave: () -> Unit,
 ) {
@@ -147,6 +165,9 @@ private fun FormFields(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
+        if (state.isEditing) {
+            FormPhoto(state, imageLoader, onPickPhoto, Modifier.align(Alignment.CenterHorizontally))
+        }
         state.generalError?.let { message ->
             Text(
                 text = message,
@@ -227,6 +248,45 @@ private fun FormFields(
     }
 }
 
+/** Previews a picked photo; it is uploaded only on "Salvar". */
+@Composable
+private fun FormPhoto(
+    state: MemberFormUiState,
+    imageLoader: ImageLoader?,
+    onPickPhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Box(modifier) {
+        MemberAvatar(
+            initials = state.initials,
+            photoUrl = state.photoUrl,
+            imageLoader = imageLoader,
+            pickedPhoto = state.pickedPhoto,
+            initialsSize = 32.sp,
+            modifier = Modifier
+                .size(FORM_PHOTO_SIZE.dp)
+                .clip(CircleShape)
+                .clickable(enabled = !state.isSaving, onClick = onPickPhoto),
+        )
+        Surface(
+            onClick = onPickPhoto,
+            enabled = !state.isSaving,
+            shape = CircleShape,
+            color = colors.primary,
+            contentColor = colors.onPrimary,
+            border = BorderStroke(3.dp, colors.background),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(36.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.PhotoCamera, contentDescription = "Trocar foto", Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
 @Composable
 private fun TextInput(label: String, value: String, error: String?, onValueChange: (String) -> Unit) {
     Column {
@@ -242,12 +302,16 @@ private fun TextInput(label: String, value: String, error: String?, onValueChang
     }
 }
 
+private const val FORM_PHOTO_SIZE = 96
+
 @Preview(showBackground = true, widthDp = 390, heightDp = 1400)
 @Composable
 private fun MemberFormContentPreview() {
     IPBCasteloBrancoTheme(darkThemeOverride = false) {
         MemberFormContent(
             state = MemberFormUiState(
+                isEditing = true,
+                initials = "AS",
                 isLoading = false,
                 draft = MemberDraft(name = "", statusId = 3),
                 options = MemberOptions(
@@ -257,6 +321,8 @@ private fun MemberFormContentPreview() {
                 ),
                 fieldErrors = mapOf(MemberField.NAME to "Informe o nome."),
             ),
+            imageLoader = null,
+            onPickPhoto = {},
             onDraftChanged = {},
             onSave = {},
             onRetry = {},

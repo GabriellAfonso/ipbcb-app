@@ -7,6 +7,8 @@ import com.ipb.castelobranco.features.admin.members.domain.model.MemberOptions
 /**
  * @param fieldErrors local checks and server `field_errors` land here, on the same field.
  * @param generalError a server refusal that names no field.
+ * @param photoUrl the member's current photo; edit only.
+ * @param pickedPhoto a photo picked in the form, uploaded only when the leader saves.
  */
 data class MemberFormUiState(
     val isEditing: Boolean = false,
@@ -18,4 +20,7 @@ data class MemberFormUiState(
     val generalError: String? = null,
     val isSaving: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
+    val initials: String = "",
+    val photoUrl: String? = null,
+    val pickedPhoto: ByteArray? = null,
 )

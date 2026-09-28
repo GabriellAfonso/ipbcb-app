@@ -267,6 +267,15 @@ validity online and offline (quickstart §3 rows 7–13).
   foto", and "Remover foto" when there is one); "Escolher foto" → `rememberSquarePhotoPicker`; remove
   confirmation dialog; progress over the avatar while `isPhotoBusy`
 
+- [X] T074 [US3] Replace the camera button in `MemberProfileScreen.kt` (FR-023a): tap on the photo opens
+  `MemberPhotoPreview` (square popped over a dimmed background); tap on it opens `MemberPhotoViewer` full screen
+  with the camera menu top-left and close top-right (both new, in `components/`); initials stand in for no photo
+- [X] T075 [US3] Extend `MemberFormViewModelTest.kt` (FR-022a): picked photo previews and marks unsaved; invalid
+  bytes → message, nothing kept; save sends the fields then uploads; upload failure keeps the photo and the message,
+  and a second save retries only the upload; create mode ignores photos
+- [X] T076 [US3] Add `onPhotoPicked` and the post-save upload to `MemberFormViewModel.kt`; photo at the top of
+  `MemberFormScreen.kt` (edit only) with a camera badge. T075 green
+
 **Checkpoint**: Photos flow end to end with nothing written to disk (quickstart §2 grep).
 
 ---

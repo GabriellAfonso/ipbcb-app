@@ -21,11 +21,14 @@ import androidx.compose.ui.unit.sp
 import coil.ImageLoader
 import coil.compose.SubcomposeAsyncImage
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
+import java.nio.ByteBuffer
 
 /**
  * The member's photo, or their initials. The photo goes through the leader-only, memory-only
  * [imageLoader]; while it loads, and whenever it cannot be shown (refused, missing, rate-limited,
  * offline), the initials stand in — never a broken image or an error.
+ *
+ * @param pickedPhoto a photo picked but not uploaded yet; shown instead of [photoUrl].
  */
 @Composable
 fun MemberAvatar(
@@ -35,6 +38,7 @@ fun MemberAvatar(
     modifier: Modifier = Modifier,
     shape: Shape = CircleShape,
     initialsSize: TextUnit = 16.sp,
+    pickedPhoto: ByteArray? = null,
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -43,11 +47,13 @@ fun MemberAvatar(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         val initialsContent = @Composable { Initials(initials, initialsSize) }
-        if (photoUrl == null || imageLoader == null) {
+        // Coil 2 reads raw bytes as a ByteBuffer.
+        val model: Any? = pickedPhoto?.let(ByteBuffer::wrap) ?: photoUrl
+        if (model == null || imageLoader == null) {
             initialsContent()
         } else {
             SubcomposeAsyncImage(
-                model = photoUrl,
+                model = model,
                 imageLoader = imageLoader,
                 contentDescription = "Foto do membro",
                 contentScale = ContentScale.Crop,

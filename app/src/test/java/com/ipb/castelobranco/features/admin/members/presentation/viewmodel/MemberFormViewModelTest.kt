@@ -4,12 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
+import com.ipb.castelobranco.features.admin.members.data.dto.PhotoUrlDto
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberField
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberOptionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.SaveMemberUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.UploadMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ValidateMemberDraftUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ValidateMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.fieldError
 import com.ipb.castelobranco.features.admin.members.fixedDateProvider
 import com.ipb.castelobranco.features.admin.members.ok
@@ -17,6 +20,7 @@ import com.ipb.castelobranco.features.admin.members.optionsDto
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.recordDto
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -60,7 +64,12 @@ class MemberFormViewModelTest {
         getOptions = GetMemberOptionsUseCase(repository),
         validate = ValidateMemberDraftUseCase(fixedDateProvider),
         saveMember = SaveMemberUseCase(repository),
+        validatePhoto = ValidateMemberPhotoUseCase(),
+        uploadPhoto = UploadMemberPhotoUseCase(ValidateMemberPhotoUseCase(), repository),
+        imageLoader = mockk(),
     )
+
+    private val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0)
 
     @Test
     fun `new member starts empty and valid with the server options`() = runTest {
@@ -165,4 +174,86 @@ class MemberFormViewModelTest {
         advanceUntilIdle()
         assertNull(vm.uiState.value.loadError)
     }
+
+    // region photo
+
+    @Test
+    fun `a picked photo is previewed and counts as unsaved`() = runTest {
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+
+        vm.onPhotoPicked(jpeg)
+
+        assertTrue(vm.uiState.value.pickedPhoto.contentEquals(jpeg))
+        assertTrue(vm.uiState.value.hasUnsavedChanges)
+        assertTrue(api.uploadedParts.isEmpty())
+    }
+
+    @Test
+    fun `a file that is not an image is refused and not kept`() = runTest {
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+
+        vm.events.test {
+            vm.onPhotoPicked(byteArrayOf(1, 2, 3, 4))
+            advanceUntilIdle()
+            assertEquals(MembersEvent.ShowMessage("Use uma imagem JPEG, PNG, WEBP ou GIF."), awaitItem())
+        }
+        assertNull(vm.uiState.value.pickedPhoto)
+        assertFalse(vm.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `saving sends the fields and then uploads the photo`() = runTest {
+        val calls = mutableListOf<String>()
+        api.onUpdateMember = { id, _ -> calls += "fields"; ok(recordDto(id = id, isActive = false)) }
+        api.onUploadPhoto = { _, _ -> calls += "photo"; ok(PhotoUrlDto("https://host/n.jpg")) }
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+        vm.onDraftChanged(vm.uiState.value.draft.copy(isValid = false))
+        vm.onPhotoPicked(jpeg)
+
+        vm.events.test {
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(MembersEvent.Saved(12), awaitItem())
+        }
+        assertEquals(listOf("fields", "photo"), calls)
+        assertNull(vm.uiState.value.pickedPhoto)
+    }
+
+    @Test
+    fun `a failed upload keeps the photo and a second save retries only the upload`() = runTest {
+        api.onUpdateMember = { id, _ -> ok(recordDto(id = id, isActive = false)) }
+        api.onUploadPhoto = { _, _ -> throw IOException("offline") }
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+        vm.onDraftChanged(vm.uiState.value.draft.copy(isValid = false))
+        vm.onPhotoPicked(jpeg)
+
+        vm.events.test {
+            vm.onSave()
+            advanceUntilIdle()
+            assertTrue((awaitItem() as MembersEvent.ShowMessage).message.contains("conexão"))
+
+            api.onUploadPhoto = { _, _ -> ok(PhotoUrlDto("https://host/n.jpg")) }
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(MembersEvent.Saved(12), awaitItem())
+        }
+        assertEquals(1, api.updatedBodies.size)
+        assertEquals(2, api.uploadedParts.size)
+    }
+
+    @Test
+    fun `a new member ignores picked photos`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onPhotoPicked(jpeg)
+
+        assertNull(vm.uiState.value.pickedPhoto)
+    }
+
+    // endregion
 }

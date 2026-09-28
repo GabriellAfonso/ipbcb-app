@@ -57,6 +57,9 @@ functions, never in logic.
 | 12 | Edit only Situação | Only `status_id` in the PATCH (debug log shows one request); profile updated |
 | 13 | Edit, change a field, press back | Discard confirmation |
 | 14 | Add photo → replace → remove | Grid and profile follow; history gains "trocou a foto" / "removeu a foto" |
+| 14a | Tap photo → tap square → camera | Square pops over dimmed screen; full screen with camera top-left |
+| 14c | Member without photo: tap initials | Initials pop as a square, never the picker; camera in full screen |
+| 14b | Edit form: camera → pick → Salvar | Preview before saving; photo uploaded after the fields; discard keeps old |
 | 15 | Histórico | Sentences in Portuguese, dd/MM/yyyy, "Usuário removido" for a deleted editor |
 | 16 | Excluir: type wrong name / right name | Button disabled / member deleted, back to grid without it |
 | 17 | In Django admin, remove leader rights, then act in the app | Server message, back to admin panel |
