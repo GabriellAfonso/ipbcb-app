@@ -7,6 +7,7 @@ import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.dto.HistoryDto
 import com.ipb.castelobranco.features.admin.members.data.dto.PhotoUrlDto
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.usecase.BuildHistorySentenceUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ComputeMemberAgeUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.DeleteMemberUseCase
@@ -90,7 +91,7 @@ class MemberProfileViewModelTest {
         api.onGetMember = { id, _ ->
             ok(
                 recordDto(
-                    id = id, name = "Carla", birthDate = null, baptismDate = null, role = null,
+                    id = id, name = "Carla", birth = BirthDate.NONE, baptismDate = null, role = null,
                     ministries = emptyList(),
                 )
             )
@@ -109,8 +110,8 @@ class MemberProfileViewModelTest {
     }
 
     @Test
-    fun `birth year 0001 shows day and month and no age`() = runTest {
-        api.onGetMember = { id, _ -> ok(recordDto(id = id, birthDate = "0001-04-02")) }
+    fun `day and month only show dd-MM and an unknown age`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, birth = BirthDate(day = 2, month = 4))) }
         val vm = viewModel()
         advanceUntilIdle()
 
@@ -118,6 +119,17 @@ class MemberProfileViewModelTest {
         assertEquals("02/04", profile.birthDateLabel)
         assertEquals("Desconhecida", profile.ageLabel)
         assertEquals("Feminino", profile.headline)
+    }
+
+    @Test
+    fun `year only shows the year and the age by year`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, birth = BirthDate(year = 1990))) }
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val profile = vm.uiState.value.profile!!
+        assertEquals("1990", profile.birthDateLabel)
+        assertEquals("36 anos", profile.ageLabel)
     }
 
     @Test

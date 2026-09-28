@@ -185,9 +185,10 @@ private fun FormFields(
         }
         TextInput("Sobrenome", draft.lastName, errors[MemberField.LAST_NAME]) { onChange(draft.copy(lastName = it)) }
         BirthDateField(
-            date = draft.birthDate,
-            onChange = { onChange(draft.copy(birthDate = it)) },
-            error = errors[MemberField.BIRTH_DATE],
+            birth = draft.birth,
+            onChange = { onChange(draft.copy(birth = it)) },
+            birthdayError = errors[MemberField.BIRTH_DAY] ?: errors[MemberField.BIRTH_MONTH],
+            yearError = errors[MemberField.BIRTH_YEAR],
         )
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Sexo", style = MaterialTheme.typography.labelLarge)

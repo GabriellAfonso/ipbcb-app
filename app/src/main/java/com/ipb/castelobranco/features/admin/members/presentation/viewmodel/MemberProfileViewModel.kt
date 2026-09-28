@@ -21,6 +21,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEv
 import com.ipb.castelobranco.features.admin.members.presentation.util.AGE_UNKNOWN
 import com.ipb.castelobranco.features.admin.members.presentation.util.NOT_INFORMED
 import com.ipb.castelobranco.features.admin.members.presentation.util.NO_ROLE
+import com.ipb.castelobranco.features.admin.members.presentation.util.formatBirth
 import com.ipb.castelobranco.features.admin.members.presentation.util.formatDate
 import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
 import com.ipb.castelobranco.features.admin.members.presentation.util.statusLabel
@@ -204,7 +205,7 @@ class MemberProfileViewModel @Inject constructor(
     }
 
     private fun MemberRecord.toUi(): MemberProfileUi {
-        val age = computeAge.ageLabel(birthDate)
+        val age = computeAge.ageLabel(birth)
         val since = computeAge.sinceLabel(baptismDate)
         return MemberProfileUi(
             id = id,
@@ -216,8 +217,8 @@ class MemberProfileViewModel @Inject constructor(
             roleLabel = role?.name,
             firstName = firstName.ifBlank { NOT_INFORMED },
             lastName = lastName.ifBlank { NOT_INFORMED },
-            birthDateLabel = birthDate?.let(::formatDate) ?: NOT_INFORMED,
-            ageLabel = age ?: if (birthDate == null) NOT_INFORMED else AGE_UNKNOWN,
+            birthDateLabel = formatBirth(birth) ?: NOT_INFORMED,
+            ageLabel = age ?: if (birth.isEmpty) NOT_INFORMED else AGE_UNKNOWN,
             genderLabel = gender?.label ?: NOT_INFORMED,
             roleText = role?.name ?: NO_ROLE,
             baptismLabel = baptismDate

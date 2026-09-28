@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
@@ -21,7 +21,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -29,29 +28,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ipb.castelobranco.core.presentation.components.DateFieldWithPicker
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.Gender
 import com.ipb.castelobranco.features.admin.members.domain.model.NamedRef
-import com.ipb.castelobranco.features.admin.members.domain.model.birthDateWithUnknownYear
-import com.ipb.castelobranco.features.admin.members.domain.model.hasUnknownYear
 import com.ipb.castelobranco.features.admin.members.presentation.util.NOT_INFORMED
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
+import java.time.YearMonth
 import java.time.ZoneOffset
 import java.time.format.TextStyle
 import java.util.Locale
 
 private const val NONE = "Nenhum"
-private const val FEBRUARY_DAYS_WITHOUT_YEAR = 28
+private const val YEAR_DIGITS = 4
+
+/** A year shorter than this is still being typed; it does not narrow February yet. */
+private const val MIN_FULL_YEAR = 1000
 private val PT_BR: Locale = Locale.forLanguageTag("pt-BR")
 
 @Composable
@@ -181,62 +183,58 @@ fun MemberDateField(
 }
 
 /**
- * Birth date, with "Não sei o ano": the leader picks day and month only and the date is kept in
- * the year 0001, the church's "year unknown". February stops at 28 — 0001 has no 29 February.
+ * Birth date as two optional inputs: the birthday (day and month, always set together) and the
+ * year. Clearing one keeps the other. The day list follows the month and the year, so 29 February
+ * is offered with no year or a leap year.
  */
 @Composable
-fun BirthDateField(date: LocalDate?, onChange: (LocalDate?) -> Unit, error: String? = null) {
-    var yearUnknown by rememberSaveable { mutableStateOf(date?.hasUnknownYear() == true) }
+fun BirthDateField(
+    birth: BirthDate,
+    onChange: (BirthDate) -> Unit,
+    birthdayError: String? = null,
+    yearError: String? = null,
+) {
+    val (day, month, year) = birth
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Nascimento", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            Text("Não sei o ano", fontSize = 13.sp)
-            Switch(
-                checked = yearUnknown,
-                onCheckedChange = { unknown ->
-                    yearUnknown = unknown
-                    onChange(date?.takeIf { unknown }?.let { keepDayAndMonth(it) })
-                },
-                modifier = Modifier.padding(start = 8.dp),
-            )
+        Text("Nascimento", style = MaterialTheme.typography.labelLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) {
+                NumberDropdown(
+                    label = "Dia",
+                    value = day?.toString(),
+                    values = (1..maxDay(month ?: 1, year)).map { it to it.toString() },
+                    onSelect = { picked -> onChange(birth.copy(day = picked, month = month ?: 1)) },
+                )
+            }
+            Box(Modifier.weight(2f)) {
+                NumberDropdown(
+                    label = "Mês",
+                    value = month?.let(::monthName),
+                    values = (1..12).map { it to monthName(it) },
+                    onSelect = { picked ->
+                        onChange(birth.copy(day = minOf(day ?: 1, maxDay(picked, year)), month = picked))
+                    },
+                )
+            }
+            if (birth.hasBirthday) {
+                TextButton(onClick = { onChange(birth.copy(day = null, month = null)) }) { Text("Limpar") }
+            }
         }
-        if (yearUnknown) {
-            DayMonthPicker(date = date?.takeIf { it.hasUnknownYear() }, onChange = onChange)
-            FieldError(error)
-        } else {
-            MemberDateField(
-                label = "Data completa",
-                date = date?.takeUnless { it.hasUnknownYear() },
-                onChange = onChange,
-                error = error,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DayMonthPicker(date: LocalDate?, onChange: (LocalDate?) -> Unit) {
-    val month = date?.monthValue
-    val day = date?.dayOfMonth
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.weight(1f)) {
-            NumberDropdown(
-                label = "Dia",
-                value = day?.toString(),
-                values = (1..maxDayWithoutYear(month ?: 1)).map { it to it.toString() },
-                onSelect = { picked -> onChange(birthDateWithUnknownYear(month ?: 1, picked)) },
-            )
-        }
-        Box(Modifier.weight(2f)) {
-            NumberDropdown(
-                label = "Mês",
-                value = month?.let(::monthName),
-                values = (1..12).map { it to monthName(it) },
-                onSelect = { picked ->
-                    onChange(birthDateWithUnknownYear(picked, minOf(day ?: 1, maxDayWithoutYear(picked))))
-                },
-            )
-        }
+        FieldError(birthdayError)
+        OutlinedTextField(
+            value = year?.toString().orEmpty(),
+            onValueChange = { text ->
+                val digits = text.filter(Char::isDigit).take(YEAR_DIGITS)
+                onChange(birth.copy(year = digits.toIntOrNull()))
+            },
+            label = { Text("Ano") },
+            placeholder = { Text("Não informado") },
+            singleLine = true,
+            isError = yearError != null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FieldError(yearError)
     }
 }
 
@@ -296,11 +294,13 @@ private fun MemberDatePickerDialog(
     }
 }
 
-private fun keepDayAndMonth(date: LocalDate): LocalDate =
-    birthDateWithUnknownYear(date.monthValue, minOf(date.dayOfMonth, maxDayWithoutYear(date.monthValue)))
-
-private fun maxDayWithoutYear(month: Int): Int =
-    if (month == Month.FEBRUARY.value) FEBRUARY_DAYS_WITHOUT_YEAR else Month.of(month).maxLength()
+/** With no year (or one still being typed) February offers 29: it exists in some leap year. */
+private fun maxDay(month: Int, year: Int?): Int =
+    if (year != null && year >= MIN_FULL_YEAR) {
+        YearMonth.of(year, month).lengthOfMonth()
+    } else {
+        Month.of(month).maxLength()
+    }
 
 private fun monthName(month: Int): String =
     Month.of(month).getDisplayName(TextStyle.FULL, PT_BR).replaceFirstChar { it.titlecase(PT_BR) }
@@ -314,7 +314,7 @@ private fun MemberFormFieldsPreview() {
     IPBCasteloBrancoTheme(darkThemeOverride = false) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             GenderSelector(selected = Gender.FEMALE, onSelect = {})
-            BirthDateField(date = birthDateWithUnknownYear(4, 2), onChange = {})
+            BirthDateField(birth = BirthDate(day = 2, month = 4), onChange = {})
             MinistriesPicker(
                 options = listOf(NamedRef(2, "Louvor"), NamedRef(5, "Recepção")),
                 selectedIds = setOf(2),

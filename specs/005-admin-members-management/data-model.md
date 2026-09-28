@@ -23,11 +23,11 @@ No Android types. Dates are `java.time.LocalDate` / `Instant` (desugaring is on,
 `enum class Gender(val apiCode: String, val label: String) { MALE("M", "Masculino"), FEMALE("F", "Feminino") }`
 — `null` means not informed.
 
-### `BirthDate.kt` (year-unknown convention)
+### `BirthDate` (partial birth date)
 
-`const val UNKNOWN_BIRTH_YEAR = 1` and `fun LocalDate.hasUnknownYear(): Boolean = year == UNKNOWN_BIRTH_YEAR` —
-the only place that knows the church stores "birthday known, year unknown" as `0001-MM-DD` (research R10). Age,
-display, validation and the form all ask this predicate.
+`data class BirthDate(val day: Int?, val month: Int?, val year: Int?)` — the wire's `birth_day`, `birth_month`,
+`birth_year`. Day and month go together. `hasBirthday` (day and month set), `isEmpty`, and `fullDate(): LocalDate?`
+(all three set and a real date). `BirthDate.NONE` is the empty value.
 
 ### `MemberSummary` (list card)
 
@@ -46,7 +46,7 @@ display, validation and the form all ask this predicate.
 | `id` | `Int` | |
 | `name` | `String` | display name |
 | `firstName`, `lastName` | `String` | `""` = not informed |
-| `birthDate` | `LocalDate?` | |
+| `birth` | `BirthDate` | `BirthDate.NONE` when nothing is known |
 | `gender` | `Gender?` | |
 | `status`, `role` | `NamedRef?` | |
 | `ministries` | `List<NamedRef>` | server order (by name) |
@@ -68,7 +68,8 @@ display, validation and the form all ask this predicate.
 | `id` | `Int?` | `null` = create |
 | `name` | `String` | `""` |
 | `firstName`, `lastName` | `String` | `""` |
-| `birthDate`, `baptismDate` | `LocalDate?` | `null` — a year-unknown birth date is `LocalDate.of(1, m, d)` |
+| `birth` | `BirthDate` | `BirthDate.NONE` |
+| `baptismDate` | `LocalDate?` | `null` |
 | `gender` | `Gender?` | `null` |
 | `statusId`, `roleId` | `Int?` | `null` |
 | `ministryIds` | `Set<Int>` | empty |
@@ -78,8 +79,9 @@ display, validation and the form all ask this predicate.
 
 ### `MemberField`
 
-`enum` of the editable fields — `NAME, FIRST_NAME, LAST_NAME, BIRTH_DATE, GENDER, STATUS, ROLE, MINISTRIES,
-BAPTISM_DATE, IS_VALID` — each with its API key (`name`, `first_name`, `last_name`, `birth_date`, `gender`,
+`enum` of the editable fields — `NAME, FIRST_NAME, LAST_NAME, BIRTH_DAY, BIRTH_MONTH, BIRTH_YEAR, GENDER, STATUS,
+ROLE, MINISTRIES, BAPTISM_DATE, IS_VALID` — each with its API key (`name`, `first_name`, `last_name`, `birth_day`,
+`birth_month`, `birth_year`, `gender`,
 `status_id`, `role_id`, `ministry_ids`, `baptism_date`, `is_active`). `fromApiKey(key)` maps a server
 `field_errors` key back to a field; unknown → `null` (general message).
 

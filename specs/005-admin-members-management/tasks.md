@@ -266,7 +266,6 @@ validity online and offline (quickstart §3 rows 7–13).
 - [X] T055 [US3] Add to `MemberProfileScreen.kt`: camera button on the avatar opening a small menu ("Escolher
   foto", and "Remover foto" when there is one); "Escolher foto" → `rememberSquarePhotoPicker`; remove
   confirmation dialog; progress over the avatar while `isPhotoBusy`
-
 - [X] T074 [US3] Replace the camera button in `MemberProfileScreen.kt` (FR-023a): tap on the photo opens
   `MemberPhotoPreview` (square popped over a dimmed background); tap on it opens `MemberPhotoViewer` full screen
   with the camera menu top-left and close top-right (both new, in `components/`); initials stand in for no photo
@@ -343,6 +342,11 @@ reads correctly (quickstart §3 row 15).
   as constants), Portuguese UI text, no cross-feature imports (`features.profile` must not appear under
   `features/admin/members`)
 - [X] T071 Run `./gradlew :app:testDebugUnitTest` and `./gradlew :app:compileDebugKotlin`; all green
+- [X] T077 Split the birth date (FR-011, FR-016a, FR-018, FR-029; contract `birth_day`/`birth_month`/`birth_year`):
+  `BirthDate` model, one `MemberField` per part so a PATCH carries only changed parts with `null` to clear, DTO and
+  mapper, age (current year minus birth year for a year only), validation per part, form with birthday and year inputs,
+  history labels for the three parts and the old `birth_date`. Tests: the four wire combinations, PATCH bodies,
+  display, history labels, `detail` of a 400
 - [ ] T072 Walk the device checklist in `quickstart.md` §3 (rows 1–20) and record results in the PR description
 - [X] T073 Final pass on `specs/admin/spec.md` §7 and `specs/core/spec.md` so they match the shipped code
 

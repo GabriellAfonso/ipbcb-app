@@ -5,6 +5,7 @@ import com.ipb.castelobranco.features.admin.members.data.dto.MemberOptionsDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberRecordDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberSummaryDto
 import com.ipb.castelobranco.features.admin.members.data.dto.NamedRefDto
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.Gender
 import com.ipb.castelobranco.features.admin.members.domain.model.HistoryEditor
 import com.ipb.castelobranco.features.admin.members.domain.model.HistoryEntry
@@ -38,7 +39,7 @@ fun MemberRecordDto.toDomain(): MemberRecord = MemberRecord(
     name = name,
     firstName = firstName,
     lastName = lastName,
-    birthDate = birthDate.toLocalDateOrNull(),
+    birth = BirthDate(day = birthDay, month = birthMonth, year = birthYear),
     gender = Gender.fromApiCode(gender),
     status = status?.toDomain(),
     role = role?.toDomain(),
@@ -76,7 +77,8 @@ private fun MemberField.encode(value: Any?): JsonElement {
     if (value == null) return JsonNull
     return when (this) {
         MemberField.NAME, MemberField.FIRST_NAME, MemberField.LAST_NAME -> JsonPrimitive(value as String)
-        MemberField.BIRTH_DATE, MemberField.BAPTISM_DATE -> JsonPrimitive((value as LocalDate).toApiDate())
+        MemberField.BIRTH_DAY, MemberField.BIRTH_MONTH, MemberField.BIRTH_YEAR -> JsonPrimitive(value as Int)
+        MemberField.BAPTISM_DATE -> JsonPrimitive((value as LocalDate).toApiDate())
         MemberField.GENDER -> JsonPrimitive((value as Gender).apiCode)
         MemberField.STATUS, MemberField.ROLE -> JsonPrimitive(value as Int)
         MemberField.MINISTRIES -> JsonArray((value as Set<*>).map { it as Int }.sorted().map(::JsonPrimitive))

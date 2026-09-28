@@ -1,8 +1,8 @@
 package com.ipb.castelobranco.features.admin.members.presentation.util
 
 import com.ipb.castelobranco.core.domain.util.normalize
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.NamedRef
-import com.ipb.castelobranco.features.admin.members.domain.model.hasUnknownYear
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -15,7 +15,6 @@ const val NO_MINISTRY = "Nenhum ministério"
 const val AGE_UNKNOWN = "Desconhecida"
 
 private val DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-private val DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM")
 private val WHITESPACE = Regex("[ \t\n]+")
 private val DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 
@@ -31,9 +30,19 @@ fun initialsOf(name: String): String {
 /** Accent-, case- and punctuation-insensitive form used by the name search. */
 fun normalizeForSearch(text: String): String = text.normalize().lowercase().trim()
 
-/** dd/MM/yyyy, or just dd/MM for the church's year-0001 convention. */
-fun formatDate(date: LocalDate): String =
-    if (date.hasUnknownYear()) date.format(DAY_MONTH) else date.format(DATE)
+fun formatDate(date: LocalDate): String = date.format(DATE)
+
+/** "12/03/1990", "12/03" (year unknown), "1990" (year only), or null when nothing is known. */
+fun formatBirth(birth: BirthDate): String? {
+    val (day, month, year) = birth
+    val dayMonth = if (day != null && month != null) "%02d/%02d".format(day, month) else null
+    return when {
+        dayMonth != null && year != null -> "$dayMonth/$year"
+        dayMonth != null -> dayMonth
+        year != null -> year.toString()
+        else -> null
+    }
+}
 
 fun formatDateTime(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
     instant.atZone(zone).format(DATE_TIME)

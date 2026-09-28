@@ -25,11 +25,14 @@ POST / PATCH (`JsonObject`, built from `MemberChanges`):
 
 ```json
 {"name": "Ana Souza", "first_name": "Ana", "last_name": "Souza",
- "birth_date": "1990-04-02", "gender": "F", "status_id": 1, "role_id": null,
+ "birth_day": 2, "birth_month": 4, "birth_year": 1990, "gender": "F", "status_id": 1, "role_id": null,
  "ministry_ids": [2, 5], "baptism_date": "2005-06-12", "is_active": true}
 ```
 
-- PATCH carries only changed keys; `null` (`JsonNull`) clears `status_id`, `role_id`, `gender`, dates.
+- PATCH carries only changed keys; `null` (`JsonNull`) clears `status_id`, `role_id`, `gender`, dates and each
+  birth part on its own (`{"birth_year": null}` clears only the year). An absent birth part keeps its value.
+- Birth parts are integers or null. Day and month go together; valid combinations: all three, day+month, year
+  only, none. `birth_date` is not a key: sending it makes the whole request fail with 400.
 - `ministry_ids` replaces the whole list.
 - Any other key → 400. The app never sends `id`, `photo`, `created_at`.
 
@@ -43,7 +46,8 @@ NamedRefDto(id: Int, name: String)
 MemberSummaryDto(id, name, @SerialName("photo_url") photoUrl: String?, status: NamedRefDto?,
                  @SerialName("is_active") isActive: Boolean)
 MemberListDto(members: List<MemberSummaryDto>)
-MemberRecordDto(id, name, first_name, last_name, birth_date: String?, gender: String?, status: NamedRefDto?,
+MemberRecordDto(id, name, first_name, last_name, birth_day: Int?, birth_month: Int?, birth_year: Int?,
+                gender: String?, status: NamedRefDto?,
                 role: NamedRefDto?, ministries: List<NamedRefDto>, baptism_date: String?, is_active: Boolean,
                 photo_url: String?, created_at: String)
 MemberOptionsDto(statuses, roles, ministries: List<NamedRefDto>)
@@ -53,6 +57,9 @@ HistoryEntryDto(id: Int, editor: HistoryEditorDto?, field: String, old_value: St
                 changed_at: String)
 HistoryDto(history: List<HistoryEntryDto>)
 ```
+
+History `field` for the birth date: `birth_day`, `birth_month`, `birth_year` (values as number text, `null` when
+cleared); entries written before the split keep `birth_date` with `YYYY-MM-DD` values.
 
 Date strings: `YYYY-MM-DD`; `created_at`/`changed_at`: ISO-8601 with an offset — `Z` or the server's
 local offset (e.g. `2026-02-23T21:21:35.359000-03:00`); the app parses any offset.
@@ -65,6 +72,7 @@ Body `{"error_code", "detail"}` (+ `field_errors` on serializer errors), parsed 
 | Status | `AppError` | App reaction |
 |---|---|---|
 | 400 `VALIDATION_ERROR` | `Server(400, fieldErrors)` | fields or general form message |
+| 400 rule refusal (no `field_errors`) | `Server(400)`, `userMessage` = `detail` | `detail` shown as-is, e.g. the birth rules name the value |
 | 401 | `Auth(401)` (after refresh failed) | sign-out path |
 | 403 `PERMISSION_DENIED` | `Auth(403)` | leave members area with `detail` |
 | 404 `NOT_FOUND` | `Server(404)`, `userMessage` = "Este membro não existe mais" | back to list, member dropped |

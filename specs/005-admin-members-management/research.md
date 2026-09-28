@@ -146,17 +146,19 @@ a login flow to `AuthStatusProvider` widens a deliberately narrow interface.
 | name blank | `NAME` | "Informe o nome." |
 | name > 255 | `NAME` | "Use no máximo 255 caracteres." |
 | first/last name > 255 | `FIRST_NAME`/`LAST_NAME` | same |
-| birth date > today | `BIRTH_DATE` | "A data não pode estar no futuro." |
+| year < 1 or > current year | `BIRTH_YEAR` | "Ano de nascimento inválido." / "A data não pode estar no futuro." |
+| day/month not a real date for the year (29/02, non-leap) | `BIRTH_DAY` | "Esse dia não existe nesse mês e ano." |
+| full birth date > today | `BIRTH_YEAR` | "A data não pode estar no futuro." |
 | baptism date > today | `BAPTISM_DATE` | same |
-| baptism < birth | `BAPTISM_DATE` | "O batismo não pode ser antes do nascimento." |
+| baptism < full birth date, or baptism year < birth year (year only) | `BAPTISM_DATE` | "O batismo não pode ser antes do nascimento." |
 
-Server `field_errors` arrive on `AppError.Server.fieldErrors` keyed by API name (`name`, `birth_date`,
+Server `field_errors` arrive on `AppError.Server.fieldErrors` keyed by API name (`name`, `birth_year`,
 `status_id`, `ministry_ids`, …); a single mapper `MemberField.fromApiKey()` puts them on the same field. Unknown
 keys and `non_field_errors` go to the form's general message. Service-level 400s without `field_errors` (unknown
 status id, date rules re-checked by the server) show `detail` as the general message, and the form reloads the
 options (edge case "option removed while the form is open").
 
-**Year unknown**: a birth date in year 0001 skips the "future" and "baptism before birth" checks (R10).
+**Day and month only**: never "future", and the baptism rule is not checked (R10).
 
 **Stored data that breaks a rule**: validation runs on the *draft*; a draft is only saved when changed, so an
 untouched legacy value never blocks anything (spec edge case).
@@ -193,9 +195,11 @@ changedAt)`:
 | known field | "alterou <Rótulo> de <A> para <B>" |
 | unknown field | "alterou <field> de <A> para <B>" |
 
-Labels: name → Nome, first_name → Primeiro nome, last_name → Sobrenome, birth_date → Nascimento, gender → Sexo,
+Labels: name → Nome, first_name → Primeiro nome, last_name → Sobrenome, birth_day → Dia de nascimento,
+birth_month → Mês de nascimento, birth_year → Ano de nascimento, birth_date (entries before the split) →
+Nascimento, gender → Sexo,
 status → Situação, role → Cargo, ministries → Ministérios, baptism_date → Batismo, is_active → Perfil.
-Values: `YYYY-MM-DD` → dd/MM/yyyy (`0001-MM-DD` → "dd/MM", R10); `M`/`F` → Masculino/Feminino (gender field only); `true`/`false` →
+Values: `YYYY-MM-DD` → dd/MM/yyyy (old `birth_date` in year 0001 → "dd/MM"); `birth_month` → month name; `birth_day`/`birth_year` verbatim; `M`/`F` → Masculino/Feminino (gender field only); `true`/`false` →
 Válido/Inválido (is_active only); `null` → "vazio"; anything else verbatim (status/role/ministry names). Editor
 `null` → "Usuário removido". `changed_at` (UTC ISO) → device local time, dd/MM/yyyy HH:mm, formatted in
 presentation.
@@ -210,19 +214,16 @@ The profile's history card shows the first line of the same list (fetched when t
 "1 ano" / "N anos"; baptism the same with "há 1 ano" / "há N anos" / "este ano" when 0. Future or missing dates →
 no value (the UI shows "Não informado").
 
-**Year 0001 = year unknown** (spec FR-011, FR-016a): the church stores "birthday known, year unknown" as
-`0001-MM-DD`. One domain constant `UNKNOWN_BIRTH_YEAR = 1` and one predicate `LocalDate.hasUnknownYear()` in
-`members/domain/model/BirthDate.kt` are the only place that knows the convention. Consequences:
+**Partial birth date** (spec FR-011, FR-016a): the wire carries `birth_day`, `birth_month`, `birth_year`, mapped
+to `BirthDate(day, month, year)` in `members/domain/model/BirthDate.kt`. Consequences:
 
 | Where | Rule |
 |---|---|
-| Age | `hasUnknownYear()` → no age ("Desconhecida") |
-| Profile / history display | "dd/MM" |
-| Form | toggle "Não sei o ano"; on → day/month picker, saved as `LocalDate.of(1, month, day)`; editing a 0001 date opens with the toggle on; turning it off asks for a full date |
-| Validation (R7) | a 0001 date is never "future"; baptism-before-birth is skipped when the birth year is unknown |
-| 29 February | cannot be stored with an unknown year: 0001 is not a leap year, so `0001-02-29` is not a valid date (the server rejects it too). With "Não sei o ano" the February day list stops at 28. Known limit, listed in the spec's edge cases |
-
-The wire format is unchanged (`"0001-04-02"`); `LocalDate.parse` handles it.
+| Age | full date → exact; year only → "N anos" (current year − year); day+month only → "Desconhecida" |
+| Profile display | "dd/MM/yyyy", "dd/MM", "yyyy", or "Não informado" |
+| Form | birthday (day + month dropdowns, both or neither, "Limpar") and year (number field) are separate; clearing one keeps the other; February offers 29 with no year or a leap year |
+| Validation (R7) | day+month only is never "future" and skips the baptism rule |
+| PATCH | each part is its own `MemberField`, so only changed parts are sent; `null` clears one part |
 
 ---
 

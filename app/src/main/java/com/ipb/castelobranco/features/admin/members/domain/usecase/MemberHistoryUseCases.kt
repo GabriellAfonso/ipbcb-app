@@ -3,10 +3,12 @@ package com.ipb.castelobranco.features.admin.members.domain.usecase
 import com.ipb.castelobranco.features.admin.members.domain.model.Gender
 import com.ipb.castelobranco.features.admin.members.domain.model.HistoryEntry
 import com.ipb.castelobranco.features.admin.members.domain.model.HistoryLine
-import com.ipb.castelobranco.features.admin.members.domain.model.hasUnknownYear
 import com.ipb.castelobranco.features.admin.members.domain.repository.MembersAdminRepository
 import java.time.LocalDate
+import java.time.Month
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -43,15 +45,24 @@ class BuildHistorySentenceUseCase @Inject constructor() {
                 FALSE -> "Inválido"
                 else -> value
             }
+            FIELD_BIRTH_MONTH -> value.toIntOrNull()?.takeIf { it in Month.JANUARY.value..Month.DECEMBER.value }
+                ?.let(::monthName) ?: value
             FIELD_BIRTH_DATE, FIELD_BAPTISM_DATE -> formatIsoDate(value)
             else -> value
         }
     }
 
+    /**
+     * Entries from before the birth date was split still say `birth_date`, and back then the
+     * church wrote "year unknown" as the year 0001.
+     */
     private fun formatIsoDate(value: String): String {
         val date = runCatching { LocalDate.parse(value) }.getOrNull() ?: return value
-        return if (date.hasUnknownYear()) date.format(DAY_MONTH) else date.format(DATE)
+        return if (date.year == LEGACY_UNKNOWN_YEAR) date.format(DAY_MONTH) else date.format(DATE)
     }
+
+    private fun monthName(month: Int): String =
+        Month.of(month).getDisplayName(TextStyle.FULL, PT_BR).replaceFirstChar { it.titlecase(PT_BR) }
 
     companion object {
         const val UNKNOWN_EDITOR = "Usuário removido"
@@ -61,6 +72,11 @@ class BuildHistorySentenceUseCase @Inject constructor() {
         private const val FIELD_GENDER = "gender"
         private const val FIELD_IS_ACTIVE = "is_active"
         private const val FIELD_BIRTH_DATE = "birth_date"
+        private const val FIELD_BIRTH_DAY = "birth_day"
+        private const val FIELD_BIRTH_MONTH = "birth_month"
+        private const val FIELD_BIRTH_YEAR = "birth_year"
+        private const val LEGACY_UNKNOWN_YEAR = 1
+        private val PT_BR = Locale.forLanguageTag("pt-BR")
         private const val FIELD_BAPTISM_DATE = "baptism_date"
         private const val PHOTO_REMOVED = "photo removed"
         private const val TRUE = "true"
@@ -72,6 +88,9 @@ class BuildHistorySentenceUseCase @Inject constructor() {
             "name" to "Nome",
             "first_name" to "Primeiro nome",
             "last_name" to "Sobrenome",
+            FIELD_BIRTH_DAY to "Dia de nascimento",
+            FIELD_BIRTH_MONTH to "Mês de nascimento",
+            FIELD_BIRTH_YEAR to "Ano de nascimento",
             FIELD_BIRTH_DATE to "Nascimento",
             FIELD_GENDER to "Sexo",
             "status" to "Situação",

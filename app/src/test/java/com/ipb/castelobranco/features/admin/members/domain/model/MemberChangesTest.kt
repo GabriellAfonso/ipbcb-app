@@ -12,7 +12,7 @@ class MemberChangesTest {
         name = "Ana Souza",
         firstName = "Ana",
         lastName = "Souza",
-        birthDate = LocalDate.of(1990, 4, 2),
+        birth = BirthDate(day = 2, month = 4, year = 1990),
         gender = Gender.FEMALE,
         statusId = 1,
         roleId = 3,
@@ -53,12 +53,38 @@ class MemberChangesTest {
 
     @Test
     fun `clearing a field sends it as null`() {
-        val changes = existing.copy(roleId = null, birthDate = null).changesFrom(existing)
+        val changes = existing.copy(roleId = null).changesFrom(existing)
 
         assertTrue(changes.values.containsKey(MemberField.ROLE))
-        assertEquals(null, changes.values[MemberField.ROLE])
-        assertEquals(null, changes.values[MemberField.BIRTH_DATE])
-        assertEquals(2, changes.values.size)
+        assertEquals(mapOf(MemberField.ROLE to null), changes.values)
+    }
+
+    @Test
+    fun `clearing the birth year sends only the year, as null`() {
+        val changes = existing.copy(birth = existing.birth.copy(year = null)).changesFrom(existing)
+
+        assertEquals(mapOf(MemberField.BIRTH_YEAR to null), changes.values)
+    }
+
+    @Test
+    fun `changing the birthday sends only the parts that changed`() {
+        val changes = existing.copy(birth = BirthDate(day = 15, month = 4, year = 1990)).changesFrom(existing)
+
+        assertEquals(mapOf(MemberField.BIRTH_DAY to 15), changes.values)
+    }
+
+    @Test
+    fun `clearing the birthday keeps the year out of the body`() {
+        val changes = existing.copy(birth = BirthDate(year = 1990)).changesFrom(existing)
+
+        assertEquals(mapOf(MemberField.BIRTH_DAY to null, MemberField.BIRTH_MONTH to null), changes.values)
+    }
+
+    @Test
+    fun `a new member sends only the known birth parts`() {
+        val changes = MemberDraft(name = "Ana", birth = BirthDate(year = 1990)).changesFrom(null)
+
+        assertEquals(mapOf(MemberField.NAME to "Ana", MemberField.BIRTH_YEAR to 1990), changes.values)
     }
 
     @Test

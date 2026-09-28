@@ -6,6 +6,7 @@ import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.dto.PhotoUrlDto
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberField
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberOptionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
@@ -22,6 +23,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEv
 import com.ipb.castelobranco.features.admin.members.recordDto
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.JsonNull
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -98,11 +100,11 @@ class MemberFormViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        vm.onDraftChanged(vm.uiState.value.draft.copy(name = " ", birthDate = LocalDate.of(2030, 1, 1)))
+        vm.onDraftChanged(vm.uiState.value.draft.copy(name = " ", birth = BirthDate(1, 1, 2030)))
         vm.onSave()
         advanceUntilIdle()
 
-        assertEquals(setOf(MemberField.NAME, MemberField.BIRTH_DATE), vm.uiState.value.fieldErrors.keys)
+        assertEquals(setOf(MemberField.NAME, MemberField.BIRTH_YEAR), vm.uiState.value.fieldErrors.keys)
         assertTrue(api.createdBodies.isEmpty())
     }
 
@@ -132,6 +134,36 @@ class MemberFormViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Cargo 7 não existe.", vm.uiState.value.generalError)
+    }
+
+    @Test
+    fun `a birth date rule refused by the server shows its detail as-is`() = runTest {
+        val detail = "Data de nascimento 29/02/1990 não existe: 1990 não é bissexto."
+        api.onUpdateMember = { _, _ -> apiError(400, "VALIDATION_ERROR", detail) }
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+
+        vm.onDraftChanged(vm.uiState.value.draft.copy(birth = BirthDate(day = 3, month = 4, year = 1990)))
+        vm.onSave()
+        advanceUntilIdle()
+
+        assertEquals(detail, vm.uiState.value.generalError)
+    }
+
+    @Test
+    fun `clearing the year patches only the year, as null`() = runTest {
+        api.onUpdateMember = { id, _ -> ok(recordDto(id = id, birth = BirthDate(day = 2, month = 4))) }
+        val vm = viewModel(memberId = "12")
+        advanceUntilIdle()
+
+        val draft = vm.uiState.value.draft
+        vm.onDraftChanged(draft.copy(birth = draft.birth.copy(year = null)))
+        vm.onSave()
+        advanceUntilIdle()
+
+        val (_, body) = api.updatedBodies.single()
+        assertEquals(setOf("birth_year"), body.keys)
+        assertEquals(JsonNull, body["birth_year"])
     }
 
     @Test

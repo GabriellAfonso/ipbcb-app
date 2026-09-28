@@ -6,7 +6,8 @@ import java.time.LocalDate
  * The fields to send, and nothing else. A present key with a null value means "clear it"; an
  * absent key means "leave it alone" — the difference a PATCH depends on.
  *
- * Value types by field: names are [String]; dates [LocalDate]; [MemberField.GENDER] a [Gender];
+ * Value types by field: names are [String]; birth parts [Int]; [MemberField.BAPTISM_DATE] a [LocalDate];
+ * [MemberField.GENDER] a [Gender];
  * [MemberField.STATUS]/[MemberField.ROLE] an [Int] id; [MemberField.MINISTRIES] a `Set<Int>`;
  * [MemberField.IS_VALID] a [Boolean].
  */
@@ -38,7 +39,10 @@ private fun MemberDraft.fieldValues(): Map<MemberField, Any?> = linkedMapOf(
     MemberField.NAME to name.trim(),
     MemberField.FIRST_NAME to firstName.trim(),
     MemberField.LAST_NAME to lastName.trim(),
-    MemberField.BIRTH_DATE to birthDate,
+    // One entry per part, so a PATCH carries only the parts that changed.
+    MemberField.BIRTH_DAY to birth.day,
+    MemberField.BIRTH_MONTH to birth.month,
+    MemberField.BIRTH_YEAR to birth.year,
     MemberField.GENDER to gender,
     MemberField.STATUS to statusId,
     MemberField.ROLE to roleId,

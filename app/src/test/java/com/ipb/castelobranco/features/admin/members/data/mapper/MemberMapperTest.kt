@@ -4,6 +4,7 @@ import com.ipb.castelobranco.features.admin.members.data.dto.HistoryEntryDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberRecordDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberSummaryDto
 import com.ipb.castelobranco.features.admin.members.data.dto.NamedRefDto
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.Gender
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberChanges
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberField
@@ -11,6 +12,7 @@ import com.ipb.castelobranco.features.admin.members.domain.model.NamedRef
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -38,7 +40,9 @@ class MemberMapperTest {
             name = "Ana Souza",
             firstName = "Ana",
             lastName = "Souza",
-            birthDate = "1990-04-02",
+            birthDay = 2,
+            birthMonth = 4,
+            birthYear = 1990,
             gender = "F",
             status = NamedRefDto(1, "Ativo"),
             role = null,
@@ -51,7 +55,7 @@ class MemberMapperTest {
 
         val record = dto.toDomain()
 
-        assertEquals(LocalDate.of(1990, 4, 2), record.birthDate)
+        assertEquals(BirthDate(day = 2, month = 4, year = 1990), record.birth)
         assertEquals(Gender.FEMALE, record.gender)
         assertEquals(NamedRef(1, "Ativo"), record.status)
         assertNull(record.role)
@@ -68,9 +72,33 @@ class MemberMapperTest {
         ).toDomain()
 
         assertNull(record.gender)
-        assertNull(record.birthDate)
+        assertEquals(BirthDate.NONE, record.birth)
         assertNull(record.baptismDate)
         assertEquals("", record.firstName)
+    }
+
+    @Test
+    fun `the four birth date combinations parse from the wire`() {
+        fun parse(parts: String): BirthDate = appJson.decodeFromString<MemberRecordDto>(
+            """{"id":1,"name":"X","is_active":true,"created_at":"2026-01-01T00:00:00Z",$parts}"""
+        ).toDomain().birth
+
+        assertEquals(
+            BirthDate(12, 3, 1990),
+            parse(""""birth_day":12,"birth_month":3,"birth_year":1990"""),
+        )
+        assertEquals(
+            BirthDate(12, 3, null),
+            parse(""""birth_day":12,"birth_month":3,"birth_year":null"""),
+        )
+        assertEquals(
+            BirthDate(null, null, 1990),
+            parse(""""birth_day":null,"birth_month":null,"birth_year":1990"""),
+        )
+        assertEquals(
+            BirthDate.NONE,
+            parse(""""birth_day":null,"birth_month":null,"birth_year":null"""),
+        )
     }
 
     @Test
@@ -99,7 +127,7 @@ class MemberMapperTest {
         val changes = MemberChanges(
             mapOf(
                 MemberField.ROLE to null,
-                MemberField.BIRTH_DATE to null,
+                MemberField.BIRTH_YEAR to null,
                 MemberField.STATUS to 2,
             )
         )
@@ -108,7 +136,8 @@ class MemberMapperTest {
         val encoded = appJson.decodeFromString<JsonObject>(appJson.encodeToString(JsonObject.serializer(), body))
 
         assertEquals(JsonNull, encoded["role_id"])
-        assertEquals(JsonNull, encoded["birth_date"])
+        assertEquals(JsonNull, encoded["birth_year"])
+        assertFalse(encoded.containsKey("birth_day"))
         assertEquals("2", encoded["status_id"]!!.jsonPrimitive.content)
         assertFalse(encoded.containsKey("name"))
     }
@@ -118,7 +147,9 @@ class MemberMapperTest {
         val body = MemberChanges(
             mapOf(
                 MemberField.NAME to "Ana",
-                MemberField.BIRTH_DATE to LocalDate.of(1, 4, 2),
+                MemberField.BIRTH_DAY to 2,
+                MemberField.BIRTH_MONTH to 4,
+                MemberField.BAPTISM_DATE to LocalDate.of(2005, 6, 12),
                 MemberField.GENDER to Gender.MALE,
                 MemberField.MINISTRIES to setOf(5, 2),
                 MemberField.IS_VALID to false,
@@ -126,7 +157,10 @@ class MemberMapperTest {
         ).toJsonObject()
 
         assertEquals("Ana", body["name"]!!.jsonPrimitive.content)
-        assertEquals("0001-04-02", body["birth_date"]!!.jsonPrimitive.content)
+        assertEquals(2, body["birth_day"]!!.jsonPrimitive.int)
+        assertEquals(4, body["birth_month"]!!.jsonPrimitive.int)
+        assertFalse(body.containsKey("birth_date"))
+        assertEquals("2005-06-12", body["baptism_date"]!!.jsonPrimitive.content)
         assertEquals("M", body["gender"]!!.jsonPrimitive.content)
         assertEquals(listOf("2", "5"), body["ministry_ids"]!!.jsonArray.map { it.jsonPrimitive.content })
         assertEquals("false", body["is_active"]!!.jsonPrimitive.content)

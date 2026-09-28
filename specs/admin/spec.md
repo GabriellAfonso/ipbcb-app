@@ -211,13 +211,14 @@ Dois atributos diferentes que a tela nunca mistura:
 - **Validade** (`is_active`) — se a ficha vale. Ficha inválida some da lista comum de membros e dos
   aniversários. Na tela é sempre "Perfil válido" / "Perfil inválido", nunca "ativo/inativo".
 
-### 7.2 Ano de nascimento desconhecido
+### 7.2 Data de nascimento em partes
 
-A igreja registra "sei o aniversário, não sei o ano" como nascimento no ano **0001**
-(`0001-MM-DD`). O app trata esse ano como "ano não informado": mostra só "dd/MM",
-não calcula idade ("Desconhecida") e o formulário oferece "Não sei o ano" (dia e mês só).
-Datas com ano 0001 nunca contam como futuras e pulam a regra "batismo antes do nascimento". 29/02
-não cabe nessa convenção (0001 não é bissexto). A convenção mora em um único lugar,
+O nascimento são três partes opcionais — `birth_day`, `birth_month`, `birth_year` — com dia e mês
+sempre juntos: data completa, só dia e mês (ano desconhecido), só o ano, ou nada. Exibição:
+"12/03/1990", "12/03", "1990" ou "Não informado"; idade exata, ano atual menos o ano de nascimento (só ano),
+"Desconhecida" (só dia e mês). O formulário tem aniversário (dia + mês) e ano como campos separados;
+limpar um não mexe no outro. 29/02 só sem ano ou em ano bissexto. Batismo antes do nascimento é
+checado contra a data completa ou contra o ano; com só dia e mês, não. O modelo mora em
 `domain/model/BirthDate.kt`.
 
 ### 7.3 Telas

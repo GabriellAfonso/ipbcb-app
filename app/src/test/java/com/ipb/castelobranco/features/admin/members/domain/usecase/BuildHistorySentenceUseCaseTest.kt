@@ -29,12 +29,24 @@ class BuildHistorySentenceUseCaseTest {
     }
 
     @Test
-    fun `raw codes and dates are translated`() {
+    fun `birth parts are labelled one by one`() {
+        assertEquals("alterou Ano de nascimento de 1990 para 1991", text("birth_year", "1990", "1991"))
+        assertEquals("alterou Ano de nascimento de 1990 para vazio", text("birth_year", "1990", null))
+        assertEquals("alterou Dia de nascimento de vazio para 12", text("birth_day", null, "12"))
+        assertEquals("alterou Mês de nascimento de Março para Abril", text("birth_month", "3", "4"))
+    }
+
+    @Test
+    fun `entries from before the split still read as Nascimento`() {
         assertEquals("alterou Nascimento de vazio para 02/04/1990", text("birth_date", null, "1990-04-02"))
         assertEquals(
             "alterou Nascimento de 02/04/1990 para 02/04",
             text("birth_date", "1990-04-02", "0001-04-02"),
         )
+    }
+
+    @Test
+    fun `raw codes and dates are translated`() {
         assertEquals("alterou Sexo de Masculino para Feminino", text("gender", "M", "F"))
         assertEquals("alterou Perfil de Válido para Inválido", text("is_active", "true", "false"))
         assertEquals("alterou Cargo de Diácono para vazio", text("role", "Diácono", null))

@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.members.domain.usecase
 
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.fixedDateProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -12,28 +13,34 @@ class ComputeMemberAgeUseCaseTest {
 
     @Test
     fun `age counts full years`() {
-        assertEquals("36 anos", useCase.ageLabel(LocalDate.of(1990, 4, 2)))
+        assertEquals("36 anos", useCase.ageLabel(BirthDate(2, 4, 1990)))
     }
 
     @Test
     fun `birthday tomorrow is still one year less`() {
-        assertEquals("35 anos", useCase.ageLabel(LocalDate.of(1990, 9, 27)))
+        assertEquals("35 anos", useCase.ageLabel(BirthDate(27, 9, 1990)))
     }
 
     @Test
     fun `one year is singular`() {
-        assertEquals("1 ano", useCase.ageLabel(LocalDate.of(2025, 9, 26)))
+        assertEquals("1 ano", useCase.ageLabel(BirthDate(26, 9, 2025)))
     }
 
     @Test
     fun `missing or future birth date has no age`() {
-        assertNull(useCase.ageLabel(null))
-        assertNull(useCase.ageLabel(LocalDate.of(2030, 1, 1)))
+        assertNull(useCase.ageLabel(BirthDate.NONE))
+        assertNull(useCase.ageLabel(BirthDate(1, 1, 2030)))
     }
 
     @Test
-    fun `birth year 0001 means the year is unknown and gives no age`() {
-        assertNull(useCase.ageLabel(LocalDate.of(1, 4, 2)))
+    fun `day and month only give no age`() {
+        assertNull(useCase.ageLabel(BirthDate(day = 2, month = 4)))
+    }
+
+    @Test
+    fun `year only counts by year`() {
+        assertEquals("36 anos", useCase.ageLabel(BirthDate(year = 1990)))
+        assertEquals("1 ano", useCase.ageLabel(BirthDate(year = 2025)))
     }
 
     @Test

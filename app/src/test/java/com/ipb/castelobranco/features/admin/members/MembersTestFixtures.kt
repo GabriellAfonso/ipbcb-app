@@ -7,6 +7,7 @@ import com.ipb.castelobranco.features.admin.members.data.dto.MemberOptionsDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberRecordDto
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberSummaryDto
 import com.ipb.castelobranco.features.admin.members.data.dto.NamedRefDto
+import com.ipb.castelobranco.features.admin.members.domain.model.BirthDate
 import com.ipb.castelobranco.features.admin.members.domain.model.Gender
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberRecord
 import com.ipb.castelobranco.features.admin.members.domain.model.NamedRef
@@ -37,7 +38,7 @@ fun summaryDto(
 fun recordDto(
     id: Int = 12,
     name: String = "Ana Souza",
-    birthDate: String? = "1990-04-02",
+    birth: BirthDate = BirthDate(day = 2, month = 4, year = 1990),
     baptismDate: String? = "2005-06-12",
     role: NamedRefDto? = NamedRefDto(4, "Diaconisa"),
     ministries: List<NamedRefDto> = listOf(NamedRefDto(2, "Louvor"), NamedRefDto(5, "Recepção")),
@@ -48,7 +49,9 @@ fun recordDto(
     name = name,
     firstName = name.substringBefore(" "),
     lastName = name.substringAfter(" ", ""),
-    birthDate = birthDate,
+    birthDay = birth.day,
+    birthMonth = birth.month,
+    birthYear = birth.year,
     gender = "F",
     status = ATIVO,
     role = role,
@@ -62,7 +65,7 @@ fun recordDto(
 fun record(
     id: Int = 12,
     name: String = "Ana Souza",
-    birthDate: LocalDate? = LocalDate.of(1990, 4, 2),
+    birth: BirthDate = BirthDate(day = 2, month = 4, year = 1990),
     baptismDate: LocalDate? = LocalDate.of(2005, 6, 12),
     role: NamedRef? = NamedRef(4, "Diaconisa"),
     ministries: List<NamedRef> = listOf(NamedRef(2, "Louvor"), NamedRef(5, "Recepção")),
@@ -73,7 +76,7 @@ fun record(
     name = name,
     firstName = name.substringBefore(" "),
     lastName = name.substringAfter(" ", ""),
-    birthDate = birthDate,
+    birth = birth,
     gender = Gender.FEMALE,
     status = NamedRef(1, "Ativo"),
     role = role,

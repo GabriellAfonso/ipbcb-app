@@ -48,7 +48,8 @@ functions, never in logic.
 | 4 | Search "jose" | Only José/Jose matches; clearing restores all |
 | 5 | Open a full profile | Age, "há N anos", ministries |
 | 6 | Open an empty profile | "Não informado", "Sem cargo", "Nenhum ministério", "Sem situação" |
-| 6a | Open a member born 0001-MM-DD; edit with "Não sei o ano" | "dd/MM", no age; saving keeps year 0001 |
+| 6a | Member with day+month only; clear the year of a full date | "dd/MM", age "Desconhecida"; day and month stay |
+| 6b | Member with year only | "yyyy", "N anos" (current year − year) |
 | 7 | Toggle "Perfil válido" off | Saved at once; card in grid shows "Perfil inválido" |
 | 8 | Toggle with airplane mode | Switch reverts, connection message |
 | 9 | Novo membro, blank name → Salvar | Error on Nome, nothing sent |

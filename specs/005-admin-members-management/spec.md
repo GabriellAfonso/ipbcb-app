@@ -67,9 +67,10 @@ status, photo and role, open the list, search, open profiles, and compare every 
    shown with the search term, instead of an empty grid.
 6. **Given** a member born on 02/04/1990, baptised on 12/06/2005, **When** the profile is opened on 26/09/2026,
    **Then** it shows "36 anos" and "há 21 anos" next to the baptism date.
-7. **Given** a member whose birth date is stored with the year 0001 (birthday known, year unknown), e.g.
-   0001-04-02, **When** the profile is opened, **Then** the birth date reads "02/04" and no age
-   is shown ("Desconhecida").
+7. **Given** a member whose birthday is known but the birth year is not (day 2, month 4, no year), **When** the
+   profile is opened, **Then** the birth date reads "02/04" and the age reads "Desconhecida".
+7a. **Given** a member with only a birth year (1990), **When** the profile is opened on 26/09/2026, **Then** the
+   birth date reads "1990" and the age reads "36 anos".
 8. **Given** a member with no birth date, role, ministries or baptism date, **When** the profile is opened, **Then**
    those fields read "Não informado", "Sem cargo", "Nenhum ministério" and "Não informado" — never blank.
 9. **Given** the list fails to load, **When** the error is shown, **Then** it offers "Tentar novamente", and
@@ -213,10 +214,9 @@ confirm, and check the member is gone from the list.
   the form only blocks saving when the leader edits and the result still breaks a rule.
 - **Member without a birth date**: no age is shown ("Não informado"); the header shows only the gender, or nothing
   if that is also empty.
-- **Birthday known, birth year unknown**: the church stores these members with the year 0001 (e.g. 0001-04-02).
-  The app treats year 0001 as "ano não informado": shows day and month only, never computes an age from it, and
-  never offers it as a real year in the form. A birthday on 29 February cannot be recorded this way (0001 has no
-  29 February); the leader needs the real year for it.
+- **Partial birth dates**: the birth date is three independent parts — day, month and year — where day and month
+  always go together. A member can have all three, day and month only (birthday known, year unknown), the year
+  only, or nothing. 29 February is valid with no year or with a leap year.
 - **Very long names**: cards cut them at two lines; the profile shows the full name.
 - **Photo selected while offline**: the upload fails with the connection message and the current photo stays.
 - **Opening the area without connection**: the list shows the connection error with "Tentar novamente"; nothing
@@ -264,8 +264,9 @@ confirm, and check the member is gone from the list.
 
 - **FR-011**: The profile MUST show: photo (or initials), name, age computed from the
   birth date on the current day, gender, and status and role chips.
-  A birth date with year 0001 means the year is unknown: it MUST be shown as "dd/MM" and no
-  age is shown ("Desconhecida").
+  The birth date MUST be shown as "dd/MM/yyyy" (full), "dd/MM" (year unknown), "yyyy" (year only) or "Não
+  informado" (nothing). The age is exact for a full date, "N anos" with N the current year minus the birth year
+  for a year only, "Desconhecida" for day and month only, and "Não informado" with no birth date.
 - **FR-012**: The profile MUST show a "Dados pessoais" section (first name, last name, birth date, age, gender) and
   a "Vida na igreja" section (status, role, baptism date with "há N anos", ministries as chips).
 - **FR-013**: Empty fields MUST read "Não informado", "Sem situação", "Sem cargo" or "Nenhum ministério" as
@@ -280,16 +281,21 @@ confirm, and check the member is gone from the list.
 - **FR-016**: Create and edit MUST use one form with: name (required, up to 255 characters), first name, last name,
   birth date, gender (Masculino / Feminino / Não informado), status, role, ministries (multiple choice), baptism
   date, validity.
-- **FR-016a**: The birth date field MUST offer "Não sei o ano": the leader picks day and month only, and the app
-  saves the date with the year 0001. Editing a member whose birth year is 0001 opens with that option on. Such a
-  date is never "in the future" and the baptism-before-birth rule is skipped for it.
+- **FR-016a**: The birth date MUST be two optional inputs, not a date picker: the birthday (day and month, picked
+  together — both or neither, with a "Limpar" action) and the year (a number). Clearing the year MUST keep day and
+  month; clearing the birthday MUST keep the year. The month's day list follows the year: 29 February is offered
+  with no year or a leap year.
 - **FR-017**: Status, role and ministry choices MUST come from the server; any of them can be left empty.
-- **FR-018**: Before sending, the form MUST reject: blank name; name over 255 characters; birth or baptism date in
-  the future; baptism date before birth date — each shown on its field.
+- **FR-018**: Before sending, the form MUST reject: blank name; name over 255 characters; a year before 1 or after
+  the current year; a day/month that is not a real date for the year (29/02 in a non-leap year); a full birth date
+  after today; a baptism date in the future; a baptism before birth — compared with the full date when there is
+  one, with the birth year when there is only a year, and not checked with day and month only. Each is shown on its
+  field (birthday or year).
 - **FR-019**: When editing, the app MUST send only the fields the leader changed; a save with no changes sends
   nothing and closes the form.
 - **FR-020**: Server validation messages MUST appear on the matching field when the server names one, otherwise
-  as a general form message, keeping everything the leader typed.
+  as a general form message, keeping everything the leader typed. A rule refusal with no `field_errors` shows the
+  server's `detail` exactly as sent (it already names the offending value, in Portuguese).
 - **FR-021**: Leaving the form with unsaved changes MUST ask for confirmation.
 - **FR-022**: A new member's photo is added after creation (profile or edit form), not in the create form.
 - **FR-022a**: The edit form MUST show the member's photo (or initials) at the top with a camera button to pick a
@@ -319,9 +325,11 @@ confirm, and check the member is gone from the list.
   and time (dd/MM/yyyy HH:mm, device local time).
 - **FR-028**: Sentences MUST follow: creation — "X cadastrou o membro"; photo — "X trocou a foto" / "X removeu a
   foto"; other fields — "X alterou <campo> de A para B".
-- **FR-029**: Field names MUST be shown in Portuguese (Nome, Primeiro nome, Sobrenome, Nascimento, Sexo, Situação,
-  Cargo, Ministérios, Batismo, Perfil); dates as dd/MM/yyyy, and dates with year 0001 as "dd/MM (ano não
-  informado)"; gender as Masculino/Feminino; validity as
+- **FR-029**: Field names MUST be shown in Portuguese (Nome, Primeiro nome, Sobrenome, Dia de nascimento, Mês de
+  nascimento, Ano de nascimento, Nascimento, Sexo, Situação, Cargo, Ministérios, Batismo, Perfil); `birth_day` and
+  `birth_year` values as the number, `birth_month` as the month name; dates as dd/MM/yyyy. Entries recorded before
+  the birth date was split keep the field `birth_date` with a `YYYY-MM-DD` value: they read "Nascimento", and a
+  year 0001 there reads "dd/MM". Gender as Masculino/Feminino; validity as
   Válido/Inválido; empty values as "vazio". Unknown field keys MUST still produce a readable sentence using the key.
 - **FR-030**: An entry without an editor MUST show "Usuário removido".
 
@@ -383,8 +391,8 @@ confirm, and check the member is gone from the list.
   version tags on every read; errors as `{error_code, detail}` with Portuguese `detail`.
 - The roll is small (hundreds), so the full list in one request and on-device search are enough.
 - Statuses today are Ativo, Inativo and Visitante, managed in the Django admin; the app only reads them.
-- The church records "birthday known, year unknown" as a birth date in the year 0001. This is a data convention,
-  not a server feature: the server stores and validates it as an ordinary date.
+- The server stores the birth date as three nullable integers (`birth_day`, `birth_month`, `birth_year`) and
+  enforces the rules of FR-018 itself; the app's checks only spare a round trip.
 - Member photos are served by the protected media rules of `specs/004-protected-media-downloads`, which already
   restrict the `members/` area to leaders.
 - Reusing the profile photo picking/cropping flow is acceptable for member photos (square crop).
