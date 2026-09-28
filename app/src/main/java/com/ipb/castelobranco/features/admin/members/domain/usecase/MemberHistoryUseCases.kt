@@ -50,7 +50,7 @@ class BuildHistorySentenceUseCase @Inject constructor() {
 
     private fun formatIsoDate(value: String): String {
         val date = runCatching { LocalDate.parse(value) }.getOrNull() ?: return value
-        return if (date.hasUnknownYear()) "${date.format(DAY_MONTH)} (ano não informado)" else date.format(DATE)
+        return if (date.hasUnknownYear()) date.format(DAY_MONTH) else date.format(DATE)
     }
 
     companion object {

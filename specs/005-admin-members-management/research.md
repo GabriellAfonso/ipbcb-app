@@ -195,7 +195,7 @@ changedAt)`:
 
 Labels: name → Nome, first_name → Primeiro nome, last_name → Sobrenome, birth_date → Nascimento, gender → Sexo,
 status → Situação, role → Cargo, ministries → Ministérios, baptism_date → Batismo, is_active → Perfil.
-Values: `YYYY-MM-DD` → dd/MM/yyyy (`0001-MM-DD` → "dd/MM (ano não informado)", R10); `M`/`F` → Masculino/Feminino (gender field only); `true`/`false` →
+Values: `YYYY-MM-DD` → dd/MM/yyyy (`0001-MM-DD` → "dd/MM", R10); `M`/`F` → Masculino/Feminino (gender field only); `true`/`false` →
 Válido/Inválido (is_active only); `null` → "vazio"; anything else verbatim (status/role/ministry names). Editor
 `null` → "Usuário removido". `changed_at` (UTC ISO) → device local time, dd/MM/yyyy HH:mm, formatted in
 presentation.
@@ -216,8 +216,8 @@ no value (the UI shows "Não informado").
 
 | Where | Rule |
 |---|---|
-| Age | `hasUnknownYear()` → no age ("Idade não informada") |
-| Profile / history display | "dd/MM (ano não informado)" |
+| Age | `hasUnknownYear()` → no age ("Desconhecida") |
+| Profile / history display | "dd/MM" |
 | Form | toggle "Não sei o ano"; on → day/month picker, saved as `LocalDate.of(1, month, day)`; editing a 0001 date opens with the toggle on; turning it off asks for a full date |
 | Validation (R7) | a 0001 date is never "future"; baptism-before-birth is skipped when the birth year is unknown |
 | 29 February | cannot be stored with an unknown year: 0001 is not a leap year, so `0001-02-29` is not a valid date (the server rejects it too). With "Não sei o ano" the February day list stops at 28. Known limit, listed in the spec's edge cases |

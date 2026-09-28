@@ -154,7 +154,7 @@ as a non-leader, confirm there is no entry (quickstart §3 rows 1–6).
   `members/domain/usecase/`
 - [X] T026 [P] [US1] Create `members/presentation/util/MemberFormatting.kt`: `initialsOf(name)`,
   `normalizeForSearch(text)` (NFD, strip marks, lowercase), `formatDate(LocalDate)` dd/MM/yyyy — or
-  "dd/MM (ano não informado)" when `hasUnknownYear()` —,
+  "dd/MM" when `hasUnknownYear()` —,
   `formatDateTime(Instant)` dd/MM/yyyy HH:mm in device zone, status label ("Sem situação" when null)
 - [X] T027 [P] [US1] Create `members/presentation/state/MembersListUiState.kt` (`MembersListUiState`,
   `MemberCardUi`) and `members/presentation/state/MemberProfileUiState.kt` (`MemberProfileUiState`,
@@ -166,7 +166,7 @@ as a non-leader, confirm there is no entry (quickstart §3 rows 1–6).
   query)`, refresh on init and on `retry()`, exposes `@MemberPhotoLoader imageLoader`). T028 green
 - [X] T030 [US1] Write `test/features/admin/members/presentation/viewmodel/MemberProfileViewModelTest.kt` (read
   part): loads record from `SavedStateHandle["memberId"]`, maps every label incl. "Não informado", "Sem cargo",
-  "Nenhum ministério", "há 21 anos", and birth 0001-04-02 → "02/04 (ano não informado)" + "Idade não informada"; 404 → `MemberGone`; 403 → `LeaveArea`; network error → `error`
+  "Nenhum ministério", "há 21 anos", and birth 0001-04-02 → "02/04" + "Desconhecida"; 404 → `MemberGone`; 403 → `LeaveArea`; network error → `error`
 - [X] T031 [US1] Implement `members/presentation/viewmodel/MemberProfileViewModel.kt` (read part: load, map to
   `MemberProfileUi`, retry, `imageLoader`). T030 green
 - [X] T032 [P] [US1] Create `members/presentation/components/MemberAvatar.kt`: `AsyncImage` with the passed
@@ -183,7 +183,7 @@ as a non-leader, confirm there is no entry (quickstart §3 rows 1–6).
   \"<termo>\""
 - [X] T035 [US1] Create `members/presentation/screens/MemberProfileScreen.kt`: `MemberProfileScreen` + pure
   `MemberProfileContent` per design "Perfil A" (green band, 148 dp avatar, name, "<idade> · <sexo>", status and
-  role chips, "Foto visível só para líderes", "Dados pessoais", "Vida na igreja", "Cadastrado em"); edit, photo,
+  role chips, "Dados pessoais", "Vida na igreja", "Cadastrado em"); edit, photo,
   validity, history and delete controls are added by later stories
 - [X] T036 [US1] Register `LIST` and `PROFILE` destinations in `membersGraph` (`MembersNavGraph.kt`) with
   `hiltViewModel()`; `LeaveArea` → `navController.popBackStack(AdminRoutes.ADMIN, inclusive = false)` +
@@ -280,7 +280,7 @@ reads correctly (quickstart §3 row 15).
 
 - [X] T056 [P] [US4] Write `test/features/admin/members/domain/usecase/BuildHistorySentenceUseCaseTest.kt`: one case
   per row of research R9 (created, photo changed/removed, status, birth_date formatted, birth_date "0001-04-02" →
-  "02/04 (ano não informado)", gender M/F, is_active
+  "02/04", gender M/F, is_active
   true/false, ministries, null → "vazio", unknown field, editor null → "Usuário removido")
 - [X] T057 [P] [US4] Implement `BuildHistorySentenceUseCase.kt` and `GetMemberHistoryUseCase.kt` in
   `members/domain/usecase/`. T056 green

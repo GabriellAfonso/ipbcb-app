@@ -12,8 +12,7 @@ const val NOT_INFORMED = "Não informado"
 const val NO_STATUS = "Sem situação"
 const val NO_ROLE = "Sem cargo"
 const val NO_MINISTRY = "Nenhum ministério"
-const val AGE_NOT_INFORMED = "Idade não informada"
-const val YEAR_UNKNOWN_SUFFIX = "(ano não informado)"
+const val AGE_UNKNOWN = "Desconhecida"
 
 private val DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private val DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM")
@@ -32,9 +31,9 @@ fun initialsOf(name: String): String {
 /** Accent-, case- and punctuation-insensitive form used by the name search. */
 fun normalizeForSearch(text: String): String = text.normalize().lowercase().trim()
 
-/** dd/MM/yyyy, or "dd/MM (ano não informado)" for the church's year-0001 convention. */
+/** dd/MM/yyyy, or just dd/MM for the church's year-0001 convention. */
 fun formatDate(date: LocalDate): String =
-    if (date.hasUnknownYear()) "${date.format(DAY_MONTH)} $YEAR_UNKNOWN_SUFFIX" else date.format(DATE)
+    if (date.hasUnknownYear()) date.format(DAY_MONTH) else date.format(DATE)
 
 fun formatDateTime(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String =
     instant.atZone(zone).format(DATE_TIME)

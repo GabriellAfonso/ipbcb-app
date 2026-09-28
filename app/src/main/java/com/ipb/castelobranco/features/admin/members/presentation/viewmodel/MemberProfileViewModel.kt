@@ -18,7 +18,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.navigation.Memb
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
-import com.ipb.castelobranco.features.admin.members.presentation.util.AGE_NOT_INFORMED
+import com.ipb.castelobranco.features.admin.members.presentation.util.AGE_UNKNOWN
 import com.ipb.castelobranco.features.admin.members.presentation.util.NOT_INFORMED
 import com.ipb.castelobranco.features.admin.members.presentation.util.NO_ROLE
 import com.ipb.castelobranco.features.admin.members.presentation.util.formatDate
@@ -217,7 +217,7 @@ class MemberProfileViewModel @Inject constructor(
             firstName = firstName.ifBlank { NOT_INFORMED },
             lastName = lastName.ifBlank { NOT_INFORMED },
             birthDateLabel = birthDate?.let(::formatDate) ?: NOT_INFORMED,
-            ageLabel = age ?: if (birthDate == null) NOT_INFORMED else AGE_NOT_INFORMED,
+            ageLabel = age ?: if (birthDate == null) NOT_INFORMED else AGE_UNKNOWN,
             genderLabel = gender?.label ?: NOT_INFORMED,
             roleText = role?.name ?: NO_ROLE,
             baptismLabel = baptismDate

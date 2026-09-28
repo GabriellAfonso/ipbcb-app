@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -350,15 +349,6 @@ private fun ProfileHeadline(profile: MemberProfileUi) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatusChip(profile.statusLabel, fontSize = 13)
             profile.roleLabel?.let { Tag(it, colors.tertiaryContainer, colors.onTertiaryContainer, fontSize = 13) }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(
-                Icons.Filled.Lock,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier.size(14.dp),
-            )
-            Text("Foto visível só para líderes", fontSize = 12.sp, color = colors.onSurfaceVariant)
         }
     }
 }

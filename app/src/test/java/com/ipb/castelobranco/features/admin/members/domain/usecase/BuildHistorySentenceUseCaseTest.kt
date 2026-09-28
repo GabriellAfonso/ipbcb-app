@@ -32,7 +32,7 @@ class BuildHistorySentenceUseCaseTest {
     fun `raw codes and dates are translated`() {
         assertEquals("alterou Nascimento de vazio para 02/04/1990", text("birth_date", null, "1990-04-02"))
         assertEquals(
-            "alterou Nascimento de 02/04/1990 para 02/04 (ano não informado)",
+            "alterou Nascimento de 02/04/1990 para 02/04",
             text("birth_date", "1990-04-02", "0001-04-02"),
         )
         assertEquals("alterou Sexo de Masculino para Feminino", text("gender", "M", "F"))

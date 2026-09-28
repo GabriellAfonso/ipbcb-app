@@ -214,8 +214,8 @@ Dois atributos diferentes que a tela nunca mistura:
 ### 7.2 Ano de nascimento desconhecido
 
 A igreja registra "sei o aniversário, não sei o ano" como nascimento no ano **0001**
-(`0001-MM-DD`). O app trata esse ano como "ano não informado": mostra "dd/MM (ano não informado)",
-não calcula idade ("Idade não informada") e o formulário oferece "Não sei o ano" (dia e mês só).
+(`0001-MM-DD`). O app trata esse ano como "ano não informado": mostra só "dd/MM",
+não calcula idade ("Desconhecida") e o formulário oferece "Não sei o ano" (dia e mês só).
 Datas com ano 0001 nunca contam como futuras e pulam a regra "batismo antes do nascimento". 29/02
 não cabe nessa convenção (0001 não é bissexto). A convenção mora em um único lugar,
 `domain/model/BirthDate.kt`.
@@ -226,7 +226,7 @@ não cabe nessa convenção (0001 não é bissexto). A convenção mora em um ú
   cartão esmaecido), busca por nome no aparelho (sem acento/maiúscula), sem filtros, botão
   "Novo membro". Estados: carregando, erro com "Tentar novamente", rol vazio, busca sem resultado.
 - **Perfil** — faixa verde, foto grande com botão de câmera, nome, idade · sexo, chips de situação e
-  cargo, aviso "Foto visível só para líderes", seções "Dados pessoais" e "Vida na igreja" (batismo
+  cargo, seções "Dados pessoais" e "Vida na igreja" (batismo
   com "há N anos", ministérios), switch "Perfil válido" que salva na hora e volta se falhar, card da
   última alteração, "Cadastrado em" e "Excluir membro".
 - **Formulário** — um só para criar e editar; opções de situação, cargo e ministérios vêm do

@@ -115,8 +115,8 @@ class MemberProfileViewModelTest {
         advanceUntilIdle()
 
         val profile = vm.uiState.value.profile!!
-        assertEquals("02/04 (ano não informado)", profile.birthDateLabel)
-        assertEquals("Idade não informada", profile.ageLabel)
+        assertEquals("02/04", profile.birthDateLabel)
+        assertEquals("Desconhecida", profile.ageLabel)
         assertEquals("Feminino", profile.headline)
     }
 

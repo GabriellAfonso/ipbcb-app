@@ -46,9 +46,9 @@ functions, never in logic.
 | 2 | Sign in as leader → Painel Admin | "Membros" card is blue and opens the grid |
 | 3 | Grid | All members, invalid ones faded with "Perfil inválido", status chips as the server names them |
 | 4 | Search "jose" | Only José/Jose matches; clearing restores all |
-| 5 | Open a full profile | Age, "há N anos", ministries, "Foto visível só para líderes" |
+| 5 | Open a full profile | Age, "há N anos", ministries |
 | 6 | Open an empty profile | "Não informado", "Sem cargo", "Nenhum ministério", "Sem situação" |
-| 6a | Open a member born 0001-MM-DD; edit with "Não sei o ano" | "dd/MM (ano não informado)", no age; saving keeps year 0001 |
+| 6a | Open a member born 0001-MM-DD; edit with "Não sei o ano" | "dd/MM", no age; saving keeps year 0001 |
 | 7 | Toggle "Perfil válido" off | Saved at once; card in grid shows "Perfil inválido" |
 | 8 | Toggle with airplane mode | Switch reverts, connection message |
 | 9 | Novo membro, blank name → Salvar | Error on Nome, nothing sent |

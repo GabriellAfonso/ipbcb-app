@@ -68,8 +68,8 @@ status, photo and role, open the list, search, open profiles, and compare every 
 6. **Given** a member born on 02/04/1990, baptised on 12/06/2005, **When** the profile is opened on 26/09/2026,
    **Then** it shows "36 anos" and "há 21 anos" next to the baptism date.
 7. **Given** a member whose birth date is stored with the year 0001 (birthday known, year unknown), e.g.
-   0001-04-02, **When** the profile is opened, **Then** the birth date reads "02/04 (ano não informado)" and no age
-   is shown ("Idade não informada").
+   0001-04-02, **When** the profile is opened, **Then** the birth date reads "02/04" and no age
+   is shown ("Desconhecida").
 8. **Given** a member with no birth date, role, ministries or baptism date, **When** the profile is opened, **Then**
    those fields read "Não informado", "Sem cargo", "Nenhum ministério" and "Não informado" — never blank.
 9. **Given** the list fails to load, **When** the error is shown, **Then** it offers "Tentar novamente", and
@@ -133,8 +133,7 @@ profile and the list and confirm what is shown. Try a file over 10 MB and a file
    and the card show the initials.
 4. **Given** a file over 10 MB or not JPEG/PNG/WEBP/GIF, **When** the leader picks it, **Then** the app refuses it
    with a message before any upload, and the current photo stays.
-5. **Given** a member photo, **When** it is shown, **Then** the profile states "Foto visível só para líderes".
-6. **Given** a photo the server refuses or cannot find, **When** the screen shows it, **Then** the initials are
+5. **Given** a photo the server refuses or cannot find, **When** the screen shows it, **Then** the initials are
    shown instead, never a broken image.
 
 ---
@@ -254,9 +253,9 @@ confirm, and check the member is gone from the list.
 **Profile**
 
 - **FR-011**: The profile MUST show: photo (or initials) with a change-photo button, name, age computed from the
-  birth date on the current day, gender, status and role chips, and the notice "Foto visível só para líderes".
-  A birth date with year 0001 means the year is unknown: it MUST be shown as "dd/MM (ano não informado)" and no
-  age is shown ("Idade não informada").
+  birth date on the current day, gender, and status and role chips.
+  A birth date with year 0001 means the year is unknown: it MUST be shown as "dd/MM" and no
+  age is shown ("Desconhecida").
 - **FR-012**: The profile MUST show a "Dados pessoais" section (first name, last name, birth date, age, gender) and
   a "Vida na igreja" section (status, role, baptism date with "há N anos", ministries as chips).
 - **FR-013**: Empty fields MUST read "Não informado", "Sem situação", "Sem cargo" or "Nenhum ministério" as
