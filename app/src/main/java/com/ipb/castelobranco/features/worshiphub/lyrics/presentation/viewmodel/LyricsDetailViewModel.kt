@@ -8,7 +8,9 @@ import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
-import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.worshiphub.lyrics.domain.repository.LyricsRepository
 import com.ipb.castelobranco.features.worshiphub.lyrics.domain.usecase.GetLyricsUseCase
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.parser.LyricsParser
@@ -38,7 +40,7 @@ class LyricsDetailViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val songsRepository: SongsRepository,
     private val themePreferences: ThemePreferences,
-    private val profileSnapshot: ProfileSnapshotRepository,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val lyricsId: Int = checkNotNull(savedStateHandle["lyricsId"])
@@ -48,19 +50,19 @@ class LyricsDetailViewModel @Inject constructor(
     val uiState: StateFlow<LyricsDetailUiState> = combine(
         getLyricsUseCase.observe(),
         songsRepository.observeAllSongs(),
-        profileSnapshot.observe(),
+        observeAccess(),
         _editState,
-    ) { lyricsState, songsState, profileState, editState ->
+    ) { lyricsState, songsState, access, editState ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
 
-        val isAdmin = (profileState as? SnapshotState.Data)?.value?.isAdmin == true
+        val canEdit = access.allows(Scope.SONGS, AccessLevel.MANAGE)
 
         when (lyricsState) {
-            is SnapshotState.Loading -> LyricsDetailUiState(isLoading = true, isAdmin = isAdmin)
+            is SnapshotState.Loading -> LyricsDetailUiState(isLoading = true, canEdit = canEdit)
             is SnapshotState.Error   -> LyricsDetailUiState(
-                error = lyricsState.error.toUserMessage(), isAdmin = isAdmin,
+                error = lyricsState.error.toUserMessage(), canEdit = canEdit,
             )
             is SnapshotState.Data    -> {
                 val lyrics = lyricsState.value.find { it.id == lyricsId }
@@ -70,7 +72,7 @@ class LyricsDetailViewModel @Inject constructor(
                     songName    = songMap[lyrics.songId]?.title ?: "Song #${lyrics.songId}",
                     stanzas     = LyricsParser.parse(lyrics.content),
                     rawContent  = lyrics.content,
-                    isAdmin     = isAdmin,
+                    canEdit     = canEdit,
                     isEditing   = editState.isEditing,
                     editContent = editState.editContent,
                     isSaving    = editState.isSaving,

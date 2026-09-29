@@ -8,7 +8,9 @@ import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
-import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.repository.ChordChartRepository
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetChordChartsUseCase
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.ChordProParser
@@ -38,7 +40,7 @@ class ChordChartDetailViewModel @Inject constructor(
     private val chordChartRepository: ChordChartRepository,
     private val songsRepository: SongsRepository,
     private val themePreferences: ThemePreferences,
-    private val profileSnapshot: ProfileSnapshotRepository,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val chordChartId: Int = checkNotNull(savedStateHandle["chordChartId"])
@@ -48,19 +50,19 @@ class ChordChartDetailViewModel @Inject constructor(
     val uiState: StateFlow<ChordChartDetailUiState> = combine(
         getChordChartsUseCase.observe(),
         songsRepository.observeAllSongs(),
-        profileSnapshot.observe(),
+        observeAccess(),
         _editState,
-    ) { chartsState, songsState, profileState, editState ->
+    ) { chartsState, songsState, access, editState ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
 
-        val isAdmin = (profileState as? SnapshotState.Data)?.value?.isAdmin == true
+        val canEdit = access.allows(Scope.SONGS, AccessLevel.MANAGE)
 
         when (chartsState) {
-            is SnapshotState.Loading -> ChordChartDetailUiState(isLoading = true, isAdmin = isAdmin)
+            is SnapshotState.Loading -> ChordChartDetailUiState(isLoading = true, canEdit = canEdit)
             is SnapshotState.Error   -> ChordChartDetailUiState(
-                error = chartsState.error.toUserMessage(), isAdmin = isAdmin,
+                error = chartsState.error.toUserMessage(), canEdit = canEdit,
             )
             is SnapshotState.Data    -> {
                 val chart = chartsState.value.find { it.id == chordChartId }
@@ -71,7 +73,7 @@ class ChordChartDetailViewModel @Inject constructor(
                     tone        = chart.tone,
                     blocks      = ChordProParser.parse(chart.content),
                     rawContent  = chart.content,
-                    isAdmin     = isAdmin,
+                    canEdit     = canEdit,
                     isEditing   = editState.isEditing,
                     editContent = editState.editContent,
                     isSaving    = editState.isSaving,

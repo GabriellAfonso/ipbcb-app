@@ -9,7 +9,7 @@ data class ChordChartDetailUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val rawContent: String = "",
-    val isAdmin: Boolean = false,
+    val canEdit: Boolean = false,
     val isEditing: Boolean = false,
     val editContent: String = "",
     val isSaving: Boolean = false,

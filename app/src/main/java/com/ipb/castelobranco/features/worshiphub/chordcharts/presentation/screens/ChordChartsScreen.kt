@@ -39,7 +39,7 @@ fun ChordChartsScreen(
         query             = state.query,
         isLoading         = state.isLoading,
         error             = state.error,
-        isAdmin           = state.isAdmin,
+        canEdit           = state.canEdit,
         isRefreshing      = isRefreshing,
         onQueryChange     = viewModel::onQueryChange,
         onItemClick       = onChordChartClick,

@@ -6,7 +6,7 @@ data class ChordChartsUiState(
     val query: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isAdmin: Boolean = false,
+    val canEdit: Boolean = false,
 )
 
 data class ChordChartListItem(

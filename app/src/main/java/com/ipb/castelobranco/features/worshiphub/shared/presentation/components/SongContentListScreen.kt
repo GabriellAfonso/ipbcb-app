@@ -83,7 +83,7 @@ fun SongContentListScreen(
     onRefresh: () -> Unit,
     onBackClick: () -> Unit,
     onTogglePin: ((songId: Int) -> Unit)? = null,
-    isAdmin: Boolean = false,
+    canEdit: Boolean = false,
     addItemLabel: String = "",
     onCreateClick: () -> Unit = {},
 ) {
@@ -93,8 +93,8 @@ fun SongContentListScreen(
         showBackArrow = true,
         onBackClick   = onBackClick,
         extraActions  = {
-            if (isAdmin) {
-                AdminOverflowMenu(addItemLabel = addItemLabel, onCreateClick = onCreateClick)
+            if (canEdit) {
+                EditorOverflowMenu(addItemLabel = addItemLabel, onCreateClick = onCreateClick)
             }
         },
     ) { innerPadding ->
@@ -374,7 +374,7 @@ private fun EmptyState() {
 }
 
 @Composable
-private fun AdminOverflowMenu(addItemLabel: String, onCreateClick: () -> Unit) {
+private fun EditorOverflowMenu(addItemLabel: String, onCreateClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {

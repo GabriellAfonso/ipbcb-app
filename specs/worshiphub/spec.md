@@ -96,7 +96,7 @@ Lista de todas as musicas cadastradas no sistema. Cada item mostra titulo e arti
 **Busca:** campo de busca no topo, filtra por titulo e artista (accent-insensitive via `normalize()`).
 
 **Tela:** mesma `SongContentListScreen` de Cifras e Letras — nao e "mesmo padrao visual", e o
-mesmo componente. Musicas passa `onTogglePin = null` (sem pin) e nao passa `isAdmin`, entao nao
+mesmo componente. Musicas passa `onTogglePin = null` (sem pin) e nao passa `canEdit`, entao nao
 tem nem o marcador de fixado nem o menu de adicionar. O artista vai como chip unico; artista em
 branco nao vira chip. Estados de loading, erro e vazio: identicos aos da secao 4.1.
 
@@ -193,9 +193,9 @@ tela vazia ficaria sem nenhuma forma de recarregar.
 
 Nome da musica vem do cruzamento com `AllSongs` por `song_id`.
 
-### 4.2 Criacao de Cifra (admin)
+### 4.2 Criacao de Cifra (`songs` ≥ `manage`)
 
-Na tela de lista de cifras, usuarios admin veem menu overflow (⋮) na TopBar com item "Nova Cifra". Tap navega para tela `ChordChartCreateScreen`.
+Na tela de lista de cifras, quem tem `manage` ou `owner` no escopo `songs` (Admin, Lideranca) ve menu overflow (⋮) na TopBar com item "Nova Cifra". Tap navega para tela `ChordChartCreateScreen`.
 
 **Tela de criacao:**
 - Campo de busca de musica (filtra `AllSongs` em tempo real, accent-insensitive)
@@ -205,7 +205,7 @@ Na tela de lista de cifras, usuarios admin veem menu overflow (⋮) na TopBar co
 - Botao "Salvar" (desabilitado se musica, tom, instrumento ou cifra vazios)
 - Apos salvar com sucesso, volta automaticamente para a lista
 
-**Envio:** `POST api/chord-charts/` com `{"song_id": int, "content": string, "tone": string, "instrument": string}` via API autenticada (`IsAdminUser`).
+**Envio:** `POST api/chord-charts/` com `{"song_id": int, "content": string, "tone": string, "instrument": string}` via API autenticada (escopo `songs`, nivel `manage`).
 
 ### 4.3 Detalhe da Cifra
 
@@ -215,7 +215,7 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
 
-**Edicao (admin):** usuarios admin veem menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** quem pode editar ve menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada.
 
 ---
 
@@ -243,9 +243,9 @@ Lista de todas as letras cadastradas. Cada item mostra nome da musica.
 
 Nome da musica vem do cruzamento com `AllSongs` por `song_id`.
 
-### 5.2 Criacao de Letra (admin)
+### 5.2 Criacao de Letra (`songs` ≥ `manage`)
 
-Na tela de lista de letras, usuarios admin veem menu overflow (⋮) na TopBar com item "Nova Letra". Tap navega para tela `LyricsCreateScreen`.
+Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve menu overflow (⋮) na TopBar com item "Nova Letra". Tap navega para tela `LyricsCreateScreen`.
 
 **Tela de criacao:**
 - Campo de busca de musica (filtra `AllSongs` em tempo real, accent-insensitive)
@@ -254,13 +254,13 @@ Na tela de lista de letras, usuarios admin veem menu overflow (⋮) na TopBar co
 - Botao "Salvar" (desabilitado se musica ou letra nao selecionada)
 - Apos salvar com sucesso, volta automaticamente para a lista
 
-**Envio:** `POST api/lyrics/` com `{"song_id": int, "content": string}` via API autenticada (`IsAdminUser`).
+**Envio:** `POST api/lyrics/` com `{"song_id": int, "content": string}` via API autenticada (escopo `songs`, nivel `manage`).
 
 ### 5.3 Detalhe da Letra
 
 Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsStanza>`, cada estrofe com suas linhas.
 
-**Edicao (admin):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
 
 ---
 
@@ -343,11 +343,11 @@ worshipHubGraph (AppRoutes.WORSHIP_HUB_GRAPH)
 │   └── SongDetailScreen (detalhe da musica)
 ├── chordChartsGraph (sub-graph existente)
 │   ├── ChordChartsScreen (lista com busca)
-│   ├── ChordChartCreateScreen (criacao de cifra — admin)
+│   ├── ChordChartCreateScreen (criacao de cifra — `songs` ≥ `manage`)
 │   └── ChordChartDetailScreen (detalhe da cifra)
 └── lyricsGraph (sub-graph existente)
     ├── LyricsScreen (lista com busca)
-    ├── LyricsCreateScreen (criacao de letra — admin)
+    ├── LyricsCreateScreen (criacao de letra — `songs` ≥ `manage`)
     └── LyricsDetailScreen (detalhe da letra)
 ```
 
@@ -374,7 +374,9 @@ Publicos (`AllowAny`), sem autenticacao:
 
 Todos suportam `If-None-Match` / ETag para cache (exceto `suggested-songs`).
 
-Autenticados (`IsAdminUser`):
+Autenticados, escopo `songs` com nivel `manage` (backend 012). O app so mostra criar/editar quando
+`canEdit` = `access.allows(Scope.SONGS, AccessLevel.MANAGE)`, lido de `ObserveAccessUseCase` (core §4.2.1) — a
+feature nao importa `features/profile`:
 
 | Metodo | Path | Descricao |
 |--------|------|-----------|
@@ -383,7 +385,7 @@ Autenticados (`IsAdminUser`):
 | POST | `lyrics/` | Cria nova letra |
 | PATCH | `lyrics/{id}/` | Atualiza `content` de uma letra existente |
 
-`PATCH` body: `{"content": "..."}`. `POST chord-charts/` body: `{"song_id": int, "content": string, "tone": string, "instrument": string}`. `POST lyrics/` body: `{"song_id": int, "content": string}`. Retorna o objeto criado/atualizado. 401 se nao autenticado, 403 se nao admin, 404 se nao encontrado.
+`PATCH` body: `{"content": "..."}`. `POST chord-charts/` body: `{"song_id": int, "content": string, "tone": string, "instrument": string}`. `POST lyrics/` body: `{"song_id": int, "content": string}`. Retorna o objeto criado/atualizado. 401 se nao autenticado, 403 `PERMISSION_DENIED` sem `manage` em `songs` (a tela mostra a mensagem e fica), 404 se nao encontrado.
 
 ---
 

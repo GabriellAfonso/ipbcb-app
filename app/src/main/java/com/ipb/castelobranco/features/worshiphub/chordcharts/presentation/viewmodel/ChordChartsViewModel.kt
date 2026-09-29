@@ -6,7 +6,9 @@ import com.ipb.castelobranco.core.data.local.SetlistPreferences
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.util.normalize
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
-import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetChordChartsUseCase
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartListItem
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartsUiState
@@ -28,7 +30,7 @@ class ChordChartsViewModel @Inject constructor(
     private val getChordChartsUseCase: GetChordChartsUseCase,
     private val songsRepository: SongsRepository,
     private val setlistPreferences: SetlistPreferences,
-    private val profileSnapshot: ProfileSnapshotRepository,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -39,10 +41,9 @@ class ChordChartsViewModel @Inject constructor(
     private val pinnedSongs = setlistPreferences.pinnedSongIds
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val profileState = profileSnapshot.observe()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, profileSnapshot.observe().value)
+    private val access = observeAccess()
 
-    private val queryAndAdmin = combine(_query, profileState) { q, p -> q to p }
+    private val queryAndAccess = combine(_query, access) { q, a -> q to a }
 
     fun refresh(minDurationMs: Long = 600L) {
         if (_isRefreshing.value) return
@@ -61,17 +62,17 @@ class ChordChartsViewModel @Inject constructor(
         getChordChartsUseCase.observe(),
         songsRepository.observeAllSongs(),
         pinnedSongs,
-        queryAndAdmin,
-    ) { chartsState, songsState, pinnedSongIds, (query, profileState) ->
+        queryAndAccess,
+    ) { chartsState, songsState, pinnedSongIds, (query, access) ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
 
-        val isAdmin = (profileState as? SnapshotState.Data)?.value?.isAdmin == true
+        val canEdit = access.allows(Scope.SONGS, AccessLevel.MANAGE)
 
         when (chartsState) {
-            is SnapshotState.Loading -> ChordChartsUiState(isLoading = true, isAdmin = isAdmin)
-            is SnapshotState.Error   -> ChordChartsUiState(error = chartsState.error.toUserMessage(), isAdmin = isAdmin)
+            is SnapshotState.Loading -> ChordChartsUiState(isLoading = true, canEdit = canEdit)
+            is SnapshotState.Error   -> ChordChartsUiState(error = chartsState.error.toUserMessage(), canEdit = canEdit)
             is SnapshotState.Data    -> {
                 val pinOrder = pinnedSongIds.withIndex().associate { (index, songId) -> songId to index }
                 val sorted = chartsState.value.map { chart ->
@@ -92,7 +93,7 @@ class ChordChartsViewModel @Inject constructor(
                     charts         = sorted,
                     filteredCharts = filtered,
                     query          = query,
-                    isAdmin        = isAdmin,
+                    canEdit        = canEdit,
                 )
             }
         }

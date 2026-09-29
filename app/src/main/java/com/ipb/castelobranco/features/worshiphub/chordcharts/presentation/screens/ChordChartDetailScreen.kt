@@ -97,7 +97,7 @@ private fun ChordChartDetailContent(
         showBackArrow = true,
         onBackClick   = onBackClick,
         extraActions  = {
-            if (state.isAdmin) {
+            if (state.canEdit) {
                 EditOverflowMenu(
                     isEditing  = state.isEditing,
                     isSaving   = state.isSaving,
