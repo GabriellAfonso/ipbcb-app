@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,6 +41,8 @@ fun AppNavHost(navController: NavHostController) {
     // direto numa rota interna, onde a CoreView nunca chega a ser composta.
     val coreViewModel: CoreViewModel = hiltViewModel()
     LaunchedEffect(Unit) { coreViewModel.initialize() }
+    // Abertura do app e volta do background: a galeria confere o servidor.
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { coreViewModel.onAppForeground() }
 
     val appNavigator = remember(navController) {
         AppNavigator(

@@ -3,9 +3,9 @@ package com.ipb.castelobranco.features.gallery.data.download
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.testing.tempDirContext
 import com.ipb.castelobranco.features.gallery.data.api.FakeGalleryApi
-import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
-import com.ipb.castelobranco.features.gallery.data.local.GalleryPhotoStorage
+import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.data.photoUrl
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -23,7 +23,7 @@ class GalleryPhotoDownloaderTest {
     val folder = TemporaryFolder()
 
     private lateinit var api: FakeGalleryApi
-    private lateinit var storage: GalleryPhotoStorage
+    private lateinit var storage: GalleryMediaStore
     private lateinit var downloader: GalleryPhotoDownloader
 
     private val progress = mutableListOf<Pair<Int, Int>>()
@@ -31,35 +31,34 @@ class GalleryPhotoDownloaderTest {
     @Before
     fun setup() {
         api = FakeGalleryApi()
-        storage = GalleryPhotoStorage(tempDirContext(folder))
+        storage = GalleryMediaStore(tempDirContext(folder))
         downloader = GalleryPhotoDownloader(api, storage)
     }
 
     private fun photos(count: Int, albumId: Long = 1L) = (1L..count).map { galleryPhoto(it, albumId) }
 
-    private suspend fun download(photos: List<GalleryPhotoDto>) =
+    private suspend fun download(photos: List<GalleryPhoto>) =
         downloader.download(photos, onProgress = { done, total -> progress += done to total })
 
-    private fun onDisk(photos: List<GalleryPhotoDto>) =
-        photos.count { storage.exists(it.albumId, it.id) }
+    private fun onDisk(photos: List<GalleryPhoto>) =
+        photos.count { storage.hasOriginal(it.id, "jpg") }
 
     // region US1 — never count a photo that is not on disk
 
     @Test
-    fun `all photos succeed - completed with every photo and its metadata on disk`() = runTest {
+    fun `all photos succeed - completed with every photo on disk`() = runTest {
         val list = photos(5)
 
         val run = download(list)
 
         assertEquals(GalleryDownloadRun.Completed(5, 5, failed = 0, networkFailures = 0), run)
         assertEquals(5, onDisk(list))
-        list.forEach { assertEquals(it, storage.getPhotoMetadata(it.albumId, it.id)) }
     }
 
     @Test
     fun `photo already on disk - counted without a request`() = runTest {
         val list = photos(3)
-        storage.save(1L, 2L, "jpg", ByteArrayInputStream("existing".toByteArray()))
+        storage.saveOriginal(2L, "jpg", ByteArrayInputStream("existing".toByteArray()))
 
         val run = download(list)
 
@@ -75,7 +74,7 @@ class GalleryPhotoDownloaderTest {
         val run = download(list)
 
         assertEquals(GalleryDownloadRun.Completed(3, 4, failed = 1, networkFailures = 0), run)
-        assertFalse(storage.exists(1L, 2L))
+        assertFalse(storage.hasOriginal(2L, "jpg"))
         assertEquals(list.map { it.imageUrl }, api.requestedUrls)
     }
 
@@ -87,7 +86,7 @@ class GalleryPhotoDownloaderTest {
         val run = download(list)
 
         assertEquals(GalleryDownloadRun.Completed(3, 4, failed = 1, networkFailures = 1), run)
-        assertFalse(storage.exists(1L, 3L))
+        assertFalse(storage.hasOriginal(3L, "jpg"))
         assertEquals(4, api.requestedUrls.size)
     }
 
@@ -99,7 +98,7 @@ class GalleryPhotoDownloaderTest {
         val run = download(list)
 
         assertEquals(GalleryDownloadRun.Completed(1, 2, failed = 1, networkFailures = 1), run)
-        assertFalse(storage.exists(1L, 1L))
+        assertFalse(storage.hasOriginal(1L, "jpg"))
     }
 
     @Test

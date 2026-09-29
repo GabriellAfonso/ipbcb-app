@@ -1,24 +1,20 @@
 package com.ipb.castelobranco.features.gallery.data.api
 
-
-import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.GET
-import retrofit2.http.Header
+import retrofit2.http.Query
 import retrofit2.http.Streaming
 import retrofit2.http.Url
-import retrofit2.http.Path
 
 interface GalleryApi {
 
-    @GET(GalleryEndpoints.DOWNLOAD_ALL_PHOTOS)
-    suspend fun getAllPhotos(): Response<List<GalleryPhotoDto>>
-
-    @GET(GalleryEndpoints.DOWNLOAD_ALBUM)
-    suspend fun getAlbumPhotos(
-        @Path("id") albumId: Long
-    ): List<GalleryPhotoDto>
+    /** Without [since], every live album and photo; with it, what changed since shortly before it. */
+    @GET(GalleryEndpoints.CHANGES)
+    suspend fun getChanges(
+        @Query(GalleryEndpoints.SINCE) since: String?,
+    ): Response<GalleryChangesDto>
 
     @Streaming
     @GET

@@ -5,12 +5,8 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.ipb.castelobranco.core.network.error.toAppError
-import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
-import com.ipb.castelobranco.features.gallery.data.download.GalleryPhotoDownloader
+import com.ipb.castelobranco.features.gallery.data.download.GalleryDownloadJob
 import com.ipb.castelobranco.features.gallery.data.download.WorkDecision
-import com.ipb.castelobranco.features.gallery.data.download.toWorkDecision
-import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
@@ -20,38 +16,19 @@ import timber.log.Timber
 class GalleryDownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val api: GalleryApi,
-    private val downloader: GalleryPhotoDownloader,
-    private val repository: GalleryRepository,
+    private val job: GalleryDownloadJob,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         return try {
-            val response = api.getAllPhotos()
-            if (!response.isSuccessful) {
-                val error = response.toAppError()
-                val errorMessage = error.userMessage ?: error.message ?: "HTTP ${response.code()}"
-                val code = response.code()
-                if (code == HTTP_UNAUTHORIZED || code == HTTP_FORBIDDEN) {
-                    return failure(errorMessage, code)
-                }
-                return if (runAttemptCount < MAX_RETRIES) Result.retry() else failure(errorMessage, code)
-            }
-
-            val photos = response.body() ?: return Result.success()
-
-            // Atualiza os flows do repositório após cada álbum — a UI mostra novos álbuns em tempo real
-            val run = downloader.download(
-                photos = photos,
+            val decision = job.run(
+                runAttemptCount = runAttemptCount,
+                maxRetries = MAX_RETRIES,
                 onProgress = { downloaded, total ->
                     setProgress(workDataOf(KEY_DOWNLOADED to downloaded, KEY_TOTAL to total))
                 },
-                onAlbumDone = { repository.preload() },
             )
-            // Em qualquer desfecho, as fotos salvas antes de uma parada aparecem na grid
-            repository.preload()
-
-            when (val decision = run.toWorkDecision(runAttemptCount, MAX_RETRIES)) {
+            when (decision) {
                 WorkDecision.Success -> Result.success()
                 WorkDecision.Retry -> Result.retry()
                 is WorkDecision.Fail -> failure(decision.message, decision.code)
@@ -74,7 +51,5 @@ class GalleryDownloadWorker @AssistedInject constructor(
         const val KEY_ERROR = "error"
         const val KEY_ERROR_CODE = "error_code"
         private const val MAX_RETRIES = 3
-        private const val HTTP_UNAUTHORIZED = 401
-        private const val HTTP_FORBIDDEN = 403
     }
 }

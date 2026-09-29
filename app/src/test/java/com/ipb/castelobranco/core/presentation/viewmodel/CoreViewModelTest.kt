@@ -98,8 +98,8 @@ class CoreViewModelTest {
         coEvery { authSession.isLoggedIn() } returns false
         every { authEventBus.events } returns authEventsFlow
         coEvery { logoutUseCase() } just runs
-        every { galleryAutoDownload.triggerIfNeeded() } just runs
-        every { galleryAutoDownload.onLoginSuccess() } just runs
+        coEvery { galleryAutoDownload.onAppForeground() } just runs
+        coEvery { galleryAutoDownload.onLoginSuccess() } just runs
         coEvery { galleryAutoDownload.clearOnLogout() } just runs
         every { bibleAutoDownload.triggerIfNeeded() } just runs
         coEvery { bibleRepository.preload() } just runs
@@ -174,24 +174,24 @@ class CoreViewModelTest {
     }
 
     @Test
-    fun `initialize calls galleryAutoDownload triggerIfNeeded when logged in`() = runTest {
+    fun `onAppForeground syncs the gallery when logged in`() = runTest {
         coEvery { authSession.isLoggedIn() } returns true
 
-        viewModel.initialize()
+        viewModel.onAppForeground()
         advanceUntilIdle()
 
-        coVerify { galleryAutoDownload.triggerIfNeeded() }
+        coVerify(exactly = 1) { galleryAutoDownload.onAppForeground() }
     }
 
     @Test
-    fun `initialize does not trigger gallery download when not logged in`() = runTest {
+    fun `onAppForeground does not sync the gallery when not logged in`() = runTest {
         coEvery { authSession.isLoggedIn() } returns false
 
-        viewModel.initialize()
+        viewModel.onAppForeground()
         advanceUntilIdle()
 
-        // Sem sessão o download só poderia falhar com 401 e deixar esse erro para a tela
-        coVerify(exactly = 0) { galleryAutoDownload.triggerIfNeeded() }
+        // A galeria é restrita a membros: sem sessão o feed só responderia 401
+        coVerify(exactly = 0) { galleryAutoDownload.onAppForeground() }
     }
 
     @Test

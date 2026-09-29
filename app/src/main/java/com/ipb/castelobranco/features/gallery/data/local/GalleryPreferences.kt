@@ -2,26 +2,21 @@ package com.ipb.castelobranco.features.gallery.data.local
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import com.ipb.castelobranco.core.di.SettingsPrefs
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class GalleryPreferences @Inject constructor(
     @SettingsPrefs private val dataStore: DataStore<Preferences>,
 ) {
-    private val autoDownloadTriggeredKey = booleanPreferencesKey("gallery_auto_download_triggered")
+    private val layoutVersionKey = intPreferencesKey("gallery_layout_version")
 
-    val autoDownloadTriggeredFlow: Flow<Boolean> =
-        dataStore.data.map { prefs -> prefs[autoDownloadTriggeredKey] ?: false }
+    /** Disk layout the gallery files are in; `0` = the per-album folders of the first versions. */
+    suspend fun layoutVersion(): Int = dataStore.data.first()[layoutVersionKey] ?: 0
 
-    suspend fun markAutoDownloadTriggered() {
-        dataStore.edit { prefs -> prefs[autoDownloadTriggeredKey] = true }
-    }
-
-    suspend fun resetAutoDownloadFlag() {
-        dataStore.edit { prefs -> prefs[autoDownloadTriggeredKey] = false }
+    suspend fun setLayoutVersion(version: Int) {
+        dataStore.edit { prefs -> prefs[layoutVersionKey] = version }
     }
 }

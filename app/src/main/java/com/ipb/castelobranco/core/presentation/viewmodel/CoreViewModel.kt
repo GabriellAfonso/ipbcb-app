@@ -98,8 +98,8 @@ class CoreViewModel @Inject constructor(
                 when (event) {
                     AuthEventBus.Event.LoginSuccess -> {
                         refreshProfileOnAppOpen()
-                        // A galeria só é acessível a membros: antes do login não havia o que baixar.
-                        galleryAutoDownload.onLoginSuccess()
+                        // A galeria só é acessível a membros: antes do login não havia o que sincronizar.
+                        launch { galleryAutoDownload.onLoginSuccess() }
                     }
                     // O perfil guardado pode estar desatualizado: um papel removido vale já no servidor.
                     AuthEventBus.Event.PermissionDenied -> launch {
@@ -137,11 +137,6 @@ class CoreViewModel @Inject constructor(
                 .onFailure { Timber.w(it, "Bible preload failed") }
             bibleAutoDownload.triggerIfNeeded()
 
-            // Auto-download da galeria se estiver vazia (somente via WiFi e com sessão ativa)
-            if (authSession.isLoggedIn()) {
-                galleryAutoDownload.triggerIfNeeded()
-            }
-
             // Perfil é um caso à parte pois depende de login
             refreshProfileOnAppOpen()
 
@@ -165,6 +160,18 @@ class CoreViewModel @Inject constructor(
                     }
                 }
             }.onFailure { Timber.w(it, "Profile refresh on app open failed") }
+        }
+    }
+
+    /**
+     * Activity `ON_START`: the app opened or came back to the foreground. The gallery follows the
+     * server from here — only with a session, since the gallery is restricted to members.
+     */
+    fun onAppForeground() {
+        viewModelScope.launch {
+            if (!authSession.isLoggedIn()) return@launch
+            runCatching { galleryAutoDownload.onAppForeground() }
+                .onFailure { Timber.w(it, "Gallery sync on foreground failed") }
         }
     }
 

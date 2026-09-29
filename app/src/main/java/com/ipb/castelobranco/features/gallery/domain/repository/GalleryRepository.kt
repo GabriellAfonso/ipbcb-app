@@ -1,24 +1,19 @@
 package com.ipb.castelobranco.features.gallery.domain.repository
 
-import com.ipb.castelobranco.core.domain.download.DownloadProgress
-import com.ipb.castelobranco.features.gallery.domain.model.Album
-import kotlinx.coroutines.flow.Flow
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
+import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
+import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
 import kotlinx.coroutines.flow.StateFlow
-import java.io.File
 
 interface GalleryRepository {
-    val albumsFlow: StateFlow<List<Album>>
-    val thumbnailsFlow: StateFlow<Map<Long, File?>>
-    val photosFlow: StateFlow<Map<Long, List<File>>> // O novo cache de fotos
+    val localState: StateFlow<GalleryLocalState>
+    val syncStatus: StateFlow<GallerySyncStatus>
 
+    /** Reads the index and files from disk (migrating the legacy layout first). Idempotent. */
     suspend fun preload()
-    fun downloadAlbum(albumId: Long): Flow<DownloadProgress>
-    suspend fun getLocalPhotos(albumId: Long): List<File>
-    suspend fun clearAlbum(albumId: Long)
-    fun downloadAllPhotos(): Flow<DownloadProgress>
-    suspend fun getAllLocalPhotos(): List<File>
-    suspend fun clearAllPhotos()
-    suspend fun getLocalAlbums(): List<Album>
-    suspend fun getThumbnailForAlbum(albumId: Long): File?
-    suspend fun getPhotoName(albumId: Long, photoId: Long): String?
+    suspend fun sync(): GallerySyncResult
+    suspend fun refreshLocalFiles()
+
+    /** Deletes the index, the cursor and every gallery file. */
+    suspend fun clear()
 }

@@ -1,40 +1,46 @@
 package com.ipb.castelobranco.features.gallery.domain.usecase
 
 import com.ipb.castelobranco.features.gallery.domain.download.GalleryDownloadScheduler
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryPreviewCache
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
 import javax.inject.Inject
 
+/** Session-level gallery triggers: app start and foreground, login, download buttons and logout. */
 class GalleryAutoDownloadUseCase @Inject constructor(
-    private val scheduler: GalleryDownloadScheduler,
+    private val downloadScheduler: GalleryDownloadScheduler,
+    private val syncScheduler: GallerySyncScheduler,
+    private val syncGallery: SyncGalleryUseCase,
     private val repository: GalleryRepository,
+    private val previewCache: GalleryPreviewCache,
 ) {
-    /**
-     * Enfileira o download automático (WiFi only) se a galeria estiver vazia localmente.
-     * Deve ser chamado APÓS preloadDataUseCase() para que albumsFlow reflita o disco, e SOMENTE
-     * com sessão ativa — a galeria é restrita a membros, então sem login o trabalho só pode
-     * terminar em 401 e deixar esse erro registrado para a tela.
-     */
-    fun triggerIfNeeded() {
-        if (repository.albumsFlow.value.isEmpty()) {
-            scheduler.enqueueWifiOnly()
-        }
+    /** App start and every return to the foreground — call only with an active session. */
+    suspend fun onAppForeground() {
+        syncScheduler.schedulePeriodic()
+        syncGallery()
     }
 
     /**
-     * Re-enfileira após o login. Usa REPLACE de propósito: substituir o trabalho é o que descarta
-     * um 401 registrado enquanto o usuário ainda estava deslogado.
+     * Replaces the download work on purpose: that discards a 401 recorded while the user was still
+     * signed out, which the screen would otherwise keep showing.
      */
-    fun onLoginSuccess() = scheduler.enqueueWifiOnly(replaceExisting = true)
+    suspend fun onLoginSuccess() {
+        downloadScheduler.enqueueWifiOnly(replaceExisting = true)
+        syncScheduler.schedulePeriodic()
+        syncGallery()
+    }
 
     /** Download manual via botão — WiFi only, mantém se já estiver rodando. */
-    fun enqueueWifiOnly(replaceExisting: Boolean = false) = scheduler.enqueueWifiOnly(replaceExisting)
+    fun enqueueWifiOnly(replaceExisting: Boolean = false) = downloadScheduler.enqueueWifiOnly(replaceExisting)
 
     /** Download forçado com dados móveis — substitui qualquer trabalho pendente. */
-    fun enqueueAnyNetwork() = scheduler.enqueueAnyNetwork()
+    fun enqueueAnyNetwork() = downloadScheduler.enqueueAnyNetwork()
 
-    /** Cancela o trabalho pendente e apaga o acervo — conteúdo de membro não sobrevive à sessão. */
+    /** Cancela todo o trabalho e apaga o acervo — conteúdo de membro não sobrevive à sessão. */
     suspend fun clearOnLogout() {
-        scheduler.cancel()
-        repository.clearAllPhotos()
+        downloadScheduler.cancel()
+        syncScheduler.cancel()
+        repository.clear()
+        previewCache.clear()
     }
 }

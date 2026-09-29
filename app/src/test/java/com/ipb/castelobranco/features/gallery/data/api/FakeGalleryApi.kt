@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.gallery.data.api
 
-import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
+import kotlinx.coroutines.CompletableDeferred
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -19,8 +20,31 @@ import java.io.InputStream
  */
 class FakeGalleryApi : GalleryApi {
 
-    var photosResponse: Response<List<GalleryPhotoDto>> = Response.success(emptyList())
-    var albumPhotos: Map<Long, List<GalleryPhotoDto>> = emptyMap()
+    private val changesQueue = ArrayDeque<suspend () -> Response<GalleryChangesDto>>()
+    private val _sinceReceived = mutableListOf<String?>()
+
+    /** The `since` of every feed request, in order (`null` = full read). */
+    val sinceReceived: List<String?> get() = _sinceReceived
+
+    fun enqueueChanges(body: GalleryChangesDto) {
+        changesQueue += { Response.success(body) }
+    }
+
+    fun enqueueChangesError(code: Int, body: String = """{"error_code":"PERMISSION_DENIED","detail":"HTTP $code"}""") {
+        changesQueue += { Response.error(code, body.toResponseBody(APPLICATION_JSON)) }
+    }
+
+    fun enqueueChangesIOException() {
+        changesQueue += { throw IOException("Simulated network failure on the feed") }
+    }
+
+    /** The next feed request suspends until [gate] completes — to test a sync in flight. */
+    fun enqueueChangesAfter(gate: CompletableDeferred<Unit>, body: GalleryChangesDto) {
+        changesQueue += {
+            gate.await()
+            Response.success(body)
+        }
+    }
 
     private val scripts = mutableMapOf<String, () -> Response<ResponseBody>>()
     private val _requestedUrls = mutableListOf<String>()
@@ -43,10 +67,11 @@ class FakeGalleryApi : GalleryApi {
         scripts[url] = { Response.success(TruncatedBody(bytes)) }
     }
 
-    override suspend fun getAllPhotos(): Response<List<GalleryPhotoDto>> = photosResponse
-
-    override suspend fun getAlbumPhotos(albumId: Long): List<GalleryPhotoDto> =
-        albumPhotos[albumId].orEmpty()
+    override suspend fun getChanges(since: String?): Response<GalleryChangesDto> {
+        _sinceReceived += since
+        val next = changesQueue.removeFirstOrNull() ?: error("Unexpected feed request (since=$since)")
+        return next()
+    }
 
     override suspend fun downloadFile(absoluteUrl: String): Response<ResponseBody> {
         _requestedUrls += absoluteUrl

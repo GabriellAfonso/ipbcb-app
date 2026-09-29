@@ -85,7 +85,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             when (action) {
                 ResetAction.GALLERY -> {
-                    galleryRepository.clearAllPhotos()
+                    galleryRepository.clear()
                     _extra.update { it.copy(galleryCleared = true) }
                 }
                 ResetAction.BIBLE -> {

@@ -4,10 +4,22 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
+import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.features.gallery.data.coverUrl
+import com.ipb.castelobranco.features.gallery.data.galleryAlbum
+import com.ipb.castelobranco.features.gallery.data.galleryPhoto
 import com.ipb.castelobranco.features.gallery.data.work.GalleryDownloadWorker
-import com.ipb.castelobranco.features.gallery.domain.model.Album
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
+import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryAutoDownloadUseCase
+import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
+import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
+import com.ipb.castelobranco.features.gallery.presentation.state.PhotoImage
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -16,9 +28,11 @@ import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -35,29 +49,39 @@ import java.io.File
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val dispatcher = StandardTestDispatcher()
+
+    private val localState = MutableStateFlow(GalleryLocalState.EMPTY)
+    private val syncStatus = MutableStateFlow(GallerySyncStatus())
+    private val workInfos = MutableStateFlow<List<WorkInfo>>(emptyList())
 
     private lateinit var repository: GalleryRepository
+    private lateinit var syncGallery: SyncGalleryUseCase
     private lateinit var autoDownload: GalleryAutoDownloadUseCase
-    private lateinit var connectivityObserver: NetworkConnectivityObserver
-    private lateinit var workManager: WorkManager
     private lateinit var viewModel: GalleryViewModel
 
     @Before
     fun setup() {
-        Dispatchers.setMain(testDispatcher)
-
-        repository = mockk()
+        Dispatchers.setMain(dispatcher)
+        repository = mockk(relaxed = true)
+        every { repository.localState } returns localState
+        every { repository.syncStatus } returns syncStatus
+        syncGallery = mockk()
+        coEvery { syncGallery() } returns GallerySyncResult.Synced(0)
         autoDownload = mockk(relaxed = true)
-        connectivityObserver = mockk()
-        workManager = mockk()
-
-        every { repository.albumsFlow } returns MutableStateFlow(emptyList())
-        every { repository.thumbnailsFlow } returns MutableStateFlow(emptyMap())
-        every { connectivityObserver.isOnWifi } returns flowOf(false)
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
-
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+        val connectivity = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns flowOf(true) }
+        val workManager = mockk<WorkManager> {
+            every { getWorkInfosForUniqueWorkFlow(any()) } returns workInfos
+        }
+        viewModel = GalleryViewModel(
+            repository = repository,
+            syncGallery = syncGallery,
+            autoDownload = autoDownload,
+            connectivityObserver = connectivity,
+            workManager = workManager,
+            previewLoader = mockk(relaxed = true),
+            defaultDispatcher = dispatcher,
+        )
     }
 
     @After
@@ -65,289 +89,262 @@ class GalleryViewModelTest {
         Dispatchers.resetMain()
     }
 
-    // region albums / thumbnails exposure
-
-    @Test
-    fun `albums exposes repository albumsFlow`() = runTest {
-        val albums = listOf(Album(1L, "Conferência 2024"), Album(2L, "Culto Especial"))
-        every { repository.albumsFlow } returns MutableStateFlow(albums)
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-        advanceUntilIdle()
-        assertEquals(albums, viewModel.albums.value)
-    }
-
-    @Test
-    fun `thumbnails exposes repository thumbnailsFlow`() = runTest {
-        val file = mockk<File>()
-        val thumbnails = mapOf(1L to file, 2L to null)
-        every { repository.thumbnailsFlow } returns MutableStateFlow(thumbnails)
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-        advanceUntilIdle()
-        assertEquals(thumbnails, viewModel.thumbnails.value)
-    }
-
-    // endregion
-
-    // region downloadState
-
-    @Test
-    fun `downloadState defaults when no work info is available`() = runTest {
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-        advanceUntilIdle()
-        val state = viewModel.downloadState.value
-        assertFalse(state.isDownloading)
-        assertFalse(state.isPending)
-        assertNull(state.error)
-    }
-
-    @Test
-    fun `downloadState initial value has isResolved false before flow collects`() {
-        assertFalse(viewModel.downloadState.value.isResolved)
-    }
-
-    @Test
-    fun `downloadState maps RUNNING WorkInfo to isDownloading with progress`() = runTest {
-        val progress = workDataOf(
-            GalleryDownloadWorker.KEY_DOWNLOADED to 3,
-            GalleryDownloadWorker.KEY_TOTAL to 10
+    private fun publish(
+        albums: List<GalleryAlbum>,
+        photos: List<GalleryPhoto> = emptyList(),
+        originals: Map<Long, File> = emptyMap(),
+        covers: Map<String, File> = emptyMap(),
+    ) {
+        localState.value = GalleryLocalState(
+            GalleryIndex(albums.associateBy { it.id }, photos.associateBy { it.id }, "c"),
+            originals,
+            covers,
         )
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.RUNNING
-        every { workInfo.progress } returns progress
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+    }
 
-        val job = launch { viewModel.downloadState.collect { } }
+    /** Keeps [flow] collected, as a screen would, and returns its latest value on demand. */
+    private fun <T> TestScope.observe(flow: StateFlow<T>): () -> T {
+        backgroundScope.launch { flow.collect {} }
+        return { advanceUntilIdle(); flow.value }
+    }
+
+    // region root
+
+    @Test
+    fun `opening the gallery syncs`() = runTest(dispatcher) {
         advanceUntilIdle()
-        job.cancel()
 
-        val state = viewModel.downloadState.value
-        assertTrue(state.isDownloading)
-        assertEquals(3, state.downloaded)
-        assertEquals(10, state.total)
-        assertTrue(state.isResolved)
+        coVerify(exactly = 1) { syncGallery() }
     }
 
     @Test
-    fun `downloadState maps ENQUEUED WorkInfo to isPending with isResolved`() = runTest {
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.ENQUEUED
-        every { workInfo.runAttemptCount } returns 0
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+    fun `root is loading until the first sync answers`() = runTest(dispatcher) {
+        val root = observe(viewModel.rootState)
 
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
+        assertTrue(root().isLoading)
 
-        val state = viewModel.downloadState.value
-        assertTrue(state.isPending)
-        assertFalse(state.isDownloading)
-        assertTrue(state.isResolved)
+        syncStatus.value = GallerySyncStatus(hasAnswered = true, lastError = AppError.Network())
+        assertFalse(root().isLoading)
+        assertEquals(GalleryUiMapper.NO_CONNECTION_MESSAGE, root().syncError)
     }
 
     @Test
-    fun `downloadState maps ENQUEUED after a failed attempt to isResuming without error`() = runTest {
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.ENQUEUED
-        every { workInfo.runAttemptCount } returns 2
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        val state = viewModel.downloadState.value
-        assertTrue(state.isResuming)
-        assertFalse(state.isPending)
-        assertNull(state.error)
-        assertTrue(state.isResolved)
-    }
-
-    @Test
-    fun `downloadState maps FAILED WorkInfo with 401 to error state with errorCode`() = runTest {
-        val outputData = workDataOf(
-            GalleryDownloadWorker.KEY_ERROR to "Não autorizado",
-            GalleryDownloadWorker.KEY_ERROR_CODE to 401
+    fun `root shows root albums ordered, with cover file or none`() = runTest(dispatcher) {
+        val cover = File("cover.jpg")
+        publish(
+            albums = listOf(
+                galleryAlbum(1, position = 1, coverUrl = coverUrl("a")),
+                galleryAlbum(2, position = 0),
+                galleryAlbum(3, parentId = 1),
+            ),
+            covers = mapOf(coverUrl("a") to cover),
         )
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.FAILED
-        every { workInfo.outputData } returns outputData
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+        val root = observe(viewModel.rootState)
 
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        val state = viewModel.downloadState.value
-        assertEquals("Não autorizado", state.error)
-        assertEquals(401, state.errorCode)
-        assertTrue(state.isResolved)
+        assertEquals(listOf(2L, 1L), root().albums.map { it.id })
+        assertNull(root().albums[0].cover)
+        assertEquals(cover, root().albums[1].cover)
+        assertFalse(root().isLoading)
     }
 
     @Test
-    fun `downloadState maps FAILED 403 with albums on the device - errorCode kept, albums still exposed`() = runTest {
-        val albums = listOf(Album(1L, "Culto"))
-        every { repository.albumsFlow } returns MutableStateFlow(albums)
-        val outputData = workDataOf(
-            GalleryDownloadWorker.KEY_ERROR to "Disponível apenas para membros.",
-            GalleryDownloadWorker.KEY_ERROR_CODE to 403
-        )
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.FAILED
-        every { workInfo.outputData } returns outputData
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+    fun `403 with a local copy - notice above the grid, no error state`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)))
+        syncStatus.value = GallerySyncStatus(hasAnswered = true, lastError = AppError.Auth(403))
+        val root = observe(viewModel.rootState)
 
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        val state = viewModel.downloadState.value
-        assertEquals(403, state.errorCode)
-        assertEquals("Disponível apenas para membros.", state.error)
-        assertEquals(albums, viewModel.albums.value)
+        assertTrue(root().showMembersOnlyNotice)
+        assertNull(root().syncError)
     }
 
     @Test
-    fun `downloadState maps FAILED WorkInfo with errorCode 0 to null errorCode`() = runTest {
-        val outputData = workDataOf(
-            GalleryDownloadWorker.KEY_ERROR to "Falha genérica",
-            GalleryDownloadWorker.KEY_ERROR_CODE to 0
-        )
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.FAILED
-        every { workInfo.outputData } returns outputData
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+    fun `403 with no local copy - error with code 403`() = runTest(dispatcher) {
+        syncStatus.value = GallerySyncStatus(hasAnswered = true, lastError = AppError.Auth(403))
+        val root = observe(viewModel.rootState)
 
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        assertNull(viewModel.downloadState.value.errorCode)
+        assertEquals(403, root().syncErrorCode)
+        assertEquals(GalleryUiMapper.NO_ACCESS_MESSAGE, root().syncError)
     }
 
     @Test
-    fun `downloadState uses default error message when KEY_ERROR is absent in FAILED state`() = runTest {
-        val outputData = workDataOf(GalleryDownloadWorker.KEY_ERROR_CODE to 500)
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.FAILED
-        every { workInfo.outputData } returns outputData
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
+    fun `download work progress is mapped to the banner state`() = runTest(dispatcher) {
+        val info = mockk<WorkInfo> {
+            every { state } returns WorkInfo.State.RUNNING
+            every { progress } returns workDataOf(
+                GalleryDownloadWorker.KEY_DOWNLOADED to 3,
+                GalleryDownloadWorker.KEY_TOTAL to 10,
+            )
+        }
+        workInfos.value = listOf(info)
+        val root = observe(viewModel.rootState)
 
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        assertEquals("Falha ao baixar galeria", viewModel.downloadState.value.error)
+        assertTrue(root().download.isDownloading)
+        assertEquals(3, root().download.downloaded)
+        assertEquals(10, root().download.total)
     }
 
     @Test
-    fun `downloadState maps other WorkInfo states to resolved with no flags set`() = runTest {
-        val workInfo = mockk<WorkInfo>()
-        every { workInfo.state } returns WorkInfo.State.SUCCEEDED
-        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo))
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-
-        val job = launch { viewModel.downloadState.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        val state = viewModel.downloadState.value
-        assertFalse(state.isDownloading)
-        assertFalse(state.isPending)
-        assertNull(state.error)
-        assertTrue(state.isResolved)
-    }
-
-    // endregion
-
-    // region isOnWifi
-
-    @Test
-    fun `isOnWifi is false when connectivity observer emits false`() = runTest {
-        every { connectivityObserver.isOnWifi } returns flowOf(false)
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-        advanceUntilIdle()
-        assertFalse(viewModel.isOnWifi.value)
-    }
-
-    @Test
-    fun `isOnWifi is true when connectivity observer emits true`() = runTest {
-        every { connectivityObserver.isOnWifi } returns flowOf(true)
-        viewModel = GalleryViewModel(repository, autoDownload, connectivityObserver, workManager)
-
-        val job = launch { viewModel.isOnWifi.collect { } }
-        advanceUntilIdle()
-        job.cancel()
-
-        assertTrue(viewModel.isOnWifi.value)
-    }
-
-    // endregion
-
-    // region downloadAllPhotos / downloadWithMobileData
-
-    @Test
-    fun `downloadAllPhotos delegates to autoDownload enqueueWifiOnly`() = runTest {
-        viewModel.downloadAllPhotos()
-        verify { autoDownload.enqueueWifiOnly() }
-    }
-
-    @Test
-    fun `downloadWithMobileData delegates to autoDownload enqueueAnyNetwork`() = runTest {
+    fun `download actions delegate to the use case`() {
         viewModel.downloadWithMobileData()
-        verify { autoDownload.enqueueAnyNetwork() }
-    }
-
-    @Test
-    fun `retryDownload replaces the existing work`() = runTest {
         viewModel.retryDownload()
-        // REPLACE é o que descarta o WorkInfo com o erro anterior
+
+        verify { autoDownload.enqueueAnyNetwork() }
         verify { autoDownload.enqueueWifiOnly(replaceExisting = true) }
     }
 
     // endregion
 
-    // region clearGallery
+    // region album
 
     @Test
-    fun `clearGallery delegates to repository clearAllPhotos`() = runTest {
-        coEvery { repository.clearAllPhotos() } returns Unit
-        viewModel.clearGallery()
-        advanceUntilIdle()
-        coVerify { repository.clearAllPhotos() }
+    fun `album shows title, parent subtitle, date, description, sub-albums then photos in order`() =
+        runTest(dispatcher) {
+            publish(
+                albums = listOf(
+                    galleryAlbum(1, name = "Eventos"),
+                    galleryAlbum(2, parentId = 1, name = "Retiro", eventDate = "2026-03-14", description = "Serra"),
+                    galleryAlbum(4, parentId = 2, position = 1),
+                    galleryAlbum(3, parentId = 2, position = 0),
+                ),
+                photos = listOf(
+                    galleryPhoto(21, albumId = 2, position = 1),
+                    galleryPhoto(20, albumId = 2, position = 0),
+                ),
+            )
+            val album = observe(viewModel.albumState(2))
+
+            with(album()) {
+                assertEquals("Retiro", title)
+                assertEquals("Eventos", subtitle)
+                assertEquals("14/03/2026", eventDate)
+                assertEquals("Serra", description)
+                assertEquals(listOf(3L, 4L), subAlbums.map { it.id })
+                assertEquals(listOf(20L, 21L), photos.map { it.id })
+                assertFalse(isEmpty)
+            }
+        }
+
+    @Test
+    fun `root album has no subtitle and an empty album says so`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)))
+        val album = observe(viewModel.albumState(1))
+
+        assertNull(album().subtitle)
+        assertTrue(album().isEmpty)
+    }
+
+    @Test
+    fun `photo image - original, else preview, else none`() = runTest(dispatcher) {
+        val file = File("10.jpg")
+        publish(
+            albums = listOf(galleryAlbum(1)),
+            photos = listOf(
+                galleryPhoto(10, position = 0),
+                galleryPhoto(11, position = 1, thumbnailUrl = "https://t/11.jpg"),
+                galleryPhoto(12, position = 2),
+            ),
+            originals = mapOf(10L to file),
+        )
+        val album = observe(viewModel.albumState(1))
+
+        assertEquals(
+            listOf(PhotoImage.Original(file), PhotoImage.Preview("https://t/11.jpg"), PhotoImage.None),
+            album().photos.map { it.image },
+        )
+    }
+
+    @Test
+    fun `album deleted while open - removed flag and message`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1), galleryAlbum(2, parentId = 1)))
+        val album = observe(viewModel.albumState(2))
+        assertFalse(album().isRemoved)
+
+        publish(listOf(galleryAlbum(1)))
+
+        assertTrue(album().isRemoved)
+        assertEquals(GalleryMessage.AlbumRemoved, viewModel.message.value)
+        viewModel.consumeMessage()
+        assertNull(viewModel.message.value)
     }
 
     // endregion
 
-    // region getLocalPhotos / getPhotoName
+    // region viewer
+
+    private val albumPhotos = listOf(
+        galleryPhoto(10, position = 0, name = "a.jpg"),
+        galleryPhoto(11, position = 1, name = "b.png"),
+        galleryPhoto(12, position = 2, name = "c.jpg"),
+    )
 
     @Test
-    fun `getLocalPhotos delegates to repository`() = runTest {
-        val photos = listOf(mockk<File>())
-        coEvery { repository.getLocalPhotos(1L) } returns photos
-        val result = viewModel.getLocalPhotos(1L)
-        assertEquals(photos, result)
+    fun `viewer opens on the tapped photo with names without extension`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos, originals = mapOf(11L to File("11.png")))
+        val viewer = observe(viewModel.viewerState(1, 11))
+
+        assertEquals(1, viewer().currentIndex)
+        assertEquals(listOf("a", "b", "c"), viewer().photos.map { it.title })
+        assertTrue(viewer().photos[1].canSaveOrShare)
+        assertFalse(viewer().photos[0].canSaveOrShare)
     }
 
     @Test
-    fun `getPhotoName returns repository value when found`() = runTest {
-        coEvery { repository.getPhotoName(1L, 42L) } returns "Batismo João"
-        val result = viewModel.getPhotoName(1L, 42L)
-        assertEquals("Batismo João", result)
+    fun `photo on screen deleted - next photo and removed message`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        val viewer = observe(viewModel.viewerState(1, 11))
+        viewer()
+
+        publish(listOf(galleryAlbum(1)), albumPhotos.filter { it.id != 11L })
+
+        assertEquals(12L, viewer().photos[viewer().currentIndex].id)
+        assertEquals(GalleryMessage.PhotoRemoved, viewModel.message.value)
     }
 
     @Test
-    fun `getPhotoName returns Foto when repository returns null`() = runTest {
-        coEvery { repository.getPhotoName(1L, 99L) } returns null
-        val result = viewModel.getPhotoName(1L, 99L)
-        assertEquals("Foto", result)
+    fun `last photo deleted - previous photo`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        val viewer = observe(viewModel.viewerState(1, 12))
+        viewer()
+
+        publish(listOf(galleryAlbum(1)), albumPhotos.filter { it.id != 12L })
+
+        assertEquals(11L, viewer().photos[viewer().currentIndex].id)
+    }
+
+    @Test
+    fun `follows the page the user moved to`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        val viewer = observe(viewModel.viewerState(1, 10))
+        viewer()
+        viewModel.onPageChanged(albumId = 1, openedPhotoId = 10, currentPhotoId = 11)
+
+        publish(listOf(galleryAlbum(1)), albumPhotos.filter { it.id != 11L })
+
+        assertEquals(12L, viewer().photos[viewer().currentIndex].id)
+    }
+
+    @Test
+    fun `only photo deleted - viewer closes`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), listOf(galleryPhoto(10)))
+        val viewer = observe(viewModel.viewerState(1, 10))
+        viewer()
+
+        publish(listOf(galleryAlbum(1)))
+
+        assertTrue(viewer().isClosed)
+    }
+
+    @Test
+    fun `photo moved to another album - moved message`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1), galleryAlbum(2)), albumPhotos)
+        val viewer = observe(viewModel.viewerState(1, 11))
+        viewer()
+
+        val moved = albumPhotos.map { if (it.id == 11L) it.copy(albumId = 2) else it }
+        publish(listOf(galleryAlbum(1), galleryAlbum(2)), moved)
+
+        assertEquals(12L, viewer().photos[viewer().currentIndex].id)
+        assertEquals(GalleryMessage.PhotoMoved, viewModel.message.value)
     }
 
     // endregion

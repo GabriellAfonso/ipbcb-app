@@ -1,8 +1,11 @@
 package com.ipb.castelobranco.features.gallery.presentation.screens
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.ExperimentalFoundationApi
+import android.provider.MediaStore
+import android.view.SoundEffectConstants
+import android.webkit.MimeTypeMap
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -19,18 +22,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarData
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,201 +48,167 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.ImageLoader
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
+import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerPhoto
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
-import java.io.File
-import android.content.ContentValues
-import android.provider.MediaStore
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarData
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.ui.text.style.TextAlign
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
-import java.io.OutputStream
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.OutputStream
+
+private const val LOADING_TITLE = "Carregando..."
+private const val SAVED_MESSAGE = "Baixado com sucesso"
+private const val SAVE_LABEL = "Baixar"
+private const val SHARE_LABEL = "Compartilhar"
+private const val SHARE_CHOOSER_TITLE = "Compartilhar imagem"
+private const val SAVE_FEEDBACK_MS = 1_200L
+private const val MAX_ZOOM = 5f
+private const val SAVE_DIR = "ipb_castelobranco"
+private const val DEFAULT_MIME = "image/jpeg"
 
 @Composable
 fun PhotoScreen(
     albumId: Long,
-    photoIndex: Int,
+    photoId: Long,
     viewModel: GalleryViewModel,
-    nav: GalleryNav
+    nav: GalleryNav,
 ) {
+    val state by viewModel.viewerState(albumId, photoId).collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    GalleryMessageEffect(message, viewModel::consumeMessage)
+
+    // Nenhuma foto sobrou no álbum: volta para ele.
+    LaunchedEffect(state.isClosed) {
+        if (state.isClosed) nav.back()
+    }
+
     PhotoContent(
-        albumId = albumId,
-        initialIndex = photoIndex,
-        viewModel = viewModel,
-        actions = nav
+        state = state,
+        previewLoader = viewModel.previewLoader,
+        onBack = nav.back,
+        onPageChanged = { currentId -> viewModel.onPageChanged(albumId, photoId, currentId) },
+        onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
+        onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PhotoContent(
-    albumId: Long,
-    initialIndex: Int,
-    viewModel: GalleryViewModel,
-    actions: GalleryNav
+    state: PhotoViewerUiState,
+    previewLoader: ImageLoader,
+    onBack: () -> Unit,
+    onPageChanged: (photoId: Long) -> Unit,
+    onSave: (ViewerPhoto) -> Unit,
+    onShare: (ViewerPhoto) -> Unit,
 ) {
-    val view = androidx.compose.ui.platform.LocalView.current
-    var photos by remember { mutableStateOf<List<File>>(emptyList()) }
-    val pagerState = rememberPagerState(initialPage = initialIndex) { photos.size }
-    val context = LocalContext.current
+    val view = LocalView.current
+    val photos = state.photos
+    // Recriado quando as fotos chegam, para abrir já na foto tocada.
+    val pagerState = key(state.isLoading) { rememberPagerState(initialPage = state.currentIndex) { photos.size } }
     var isZoomed by remember { mutableStateOf(false) }
-    var photoName by remember { mutableStateOf("Carregando...") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(albumId) {
-        photos = viewModel.getLocalPhotos(albumId)
-    }
-
-    // 2. Observa a mudança de página para atualizar o nome na TopBar
-    LaunchedEffect(pagerState.currentPage, photos) {
-        if (photos.isNotEmpty()) {
-            val currentFile = photos[pagerState.currentPage]
-            val currentPhotoId = currentFile.nameWithoutExtension.toLongOrNull()
-            if (currentPhotoId != null) {
-                photoName = viewModel.getPhotoName(albumId, currentPhotoId)
-            }
+    // A foto na tela saiu do álbum: o ViewModel aponta a próxima.
+    LaunchedEffect(state.currentIndex, photos.size) {
+        if (photos.isNotEmpty() && pagerState.currentPage != state.currentIndex) {
+            pagerState.scrollToPage(state.currentIndex)
         }
     }
+    LaunchedEffect(pagerState, photos) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page -> photos.getOrNull(page)?.let { onPageChanged(it.id) } }
+    }
+
+    val current = photos.getOrNull(pagerState.currentPage)
 
     BaseScreen(
-        tabName = photoName,
+        tabName = current?.title ?: LOADING_TITLE,
         logoRes = R.drawable.ic_galery,
         showBackArrow = true,
-        onBackClick = actions.back
+        onBackClick = onBack,
     ) { padding ->
         Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            if (state.isLoading || photos.isEmpty()) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+                return@Box
+            }
+            Column(modifier = Modifier.fillMaxSize()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (photos.isNotEmpty()) {
-
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.weight(1f),
-                        userScrollEnabled = !isZoomed
-                    ) { index ->
-                        var scale by remember { mutableFloatStateOf(1f) }
-                        var offset by remember { mutableStateOf(Offset.Zero) }
-
-                        LaunchedEffect(pagerState.currentPage) {
-                            scale = 1f
-                            offset = Offset.Zero
-                            isZoomed = false
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    // Primeiro detector: Apenas para o Double Tap
-                                    detectTapGestures(
-                                        onDoubleTap = {
-                                            scale = 1f
-                                            offset = Offset.Zero
-                                            isZoomed = false
-                                        }
-                                    )
-                                }
-                                .pointerInput(Unit) {
-                                    // Segundo detector: Zoom e Pan
-                                    awaitEachGesture {
-                                        awaitFirstDown(requireUnconsumed = false)
-                                        do {
-                                            val event = awaitPointerEvent()
-                                            val zoom = event.calculateZoom()
-                                            val pan = event.calculatePan()
-
-                                            // Só atualizamos e consumimos se houver mudança real
-                                            // (zoom ou arrasto com zoom)
-                                            if (zoom != 1f || (scale > 1f && pan != Offset.Zero)) {
-                                                scale = (scale * zoom).coerceIn(1f, 5f)
-                                                isZoomed = scale > 1f
-                                                if (isZoomed) {
-                                                    offset += pan
-                                                    // Consome os eventos para o Pager não rodar
-                                                    event.changes.forEach { it.consume() }
-                                                }
-                                            }
-
-                                            // Se resetarmos pro 1.0f manualmente ou na pinça
-                                            if (scale <= 1f) {
-                                                isZoomed = false
-                                                offset = Offset.Zero
-                                            }
-                                        } while (event.changes.any { it.pressed })
-                                    }
-                                }
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationX = offset.x
-                                    translationY = offset.y
-                                }
-                        ) {
-                            AsyncImage(
-                                model = photos[index],
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f),
+                    userScrollEnabled = !isZoomed,
+                    key = { photos[it].id },
+                ) { index ->
+                    ZoomablePage(
+                        resetKey = pagerState.currentPage,
+                        onZoomChanged = { isZoomed = it },
                     ) {
-                        var isDownloadEnabled by remember { mutableStateOf(true) }
-                        Button(
-                            enabled = isDownloadEnabled,
-                            onClick = {
-                                isDownloadEnabled = false
-
-                                view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
-                                saveImageToGallery(context, photos[pagerState.currentPage])
-
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "Baixado com sucesso",
-                                        duration = SnackbarDuration.Indefinite
-                                    )
-                                }
-
-                                scope.launch {
-                                    delay(1_200)
-                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                }
-
-                                scope.launch {
-                                    delay(1_200)
-                                    isDownloadEnabled = true
-                                }
+                        GalleryImage(
+                            image = photos[index].image,
+                            previewLoader = previewLoader,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    var isSaveCoolingDown by remember { mutableStateOf(false) }
+                    Button(
+                        // Sem original no aparelho não há o que salvar ou compartilhar.
+                        enabled = !isSaveCoolingDown && current?.canSaveOrShare == true,
+                        onClick = {
+                            val photo = current ?: return@Button
+                            isSaveCoolingDown = true
+                            view.playSoundEffect(SoundEffectConstants.CLICK)
+                            onSave(photo)
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = SAVED_MESSAGE,
+                                    duration = SnackbarDuration.Indefinite
+                                )
                             }
-                        ) {
-                            Text("Baixar")
+                            scope.launch {
+                                delay(SAVE_FEEDBACK_MS)
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                isSaveCoolingDown = false
+                            }
                         }
-                        Button(onClick = {
-                            view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
-                            sharePhoto(context, photos[pagerState.currentPage])
-                        }) {
-                            Text("Compartilhar")
-                        }
+                    ) {
+                        Text(SAVE_LABEL)
+                    }
+                    Button(
+                        enabled = current?.canSaveOrShare == true,
+                        onClick = {
+                            val photo = current ?: return@Button
+                            view.playSoundEffect(SoundEffectConstants.CLICK)
+                            onShare(photo)
+                        },
+                    ) {
+                        Text(SHARE_LABEL)
                     }
                 }
             }
@@ -256,6 +232,70 @@ fun PhotoContent(
     }
 }
 
+/** Pinch to zoom, pan while zoomed, double tap to reset. Resets when [resetKey] changes. */
+@Composable
+private fun ZoomablePage(
+    resetKey: Any,
+    onZoomChanged: (Boolean) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(resetKey) {
+        scale = 1f
+        offset = Offset.Zero
+        onZoomChanged(false)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        scale = 1f
+                        offset = Offset.Zero
+                        onZoomChanged(false)
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val zoom = event.calculateZoom()
+                        val pan = event.calculatePan()
+
+                        // Só atualiza e consome quando há zoom, ou arrasto com zoom
+                        if (zoom != 1f || (scale > 1f && pan != Offset.Zero)) {
+                            scale = (scale * zoom).coerceIn(1f, MAX_ZOOM)
+                            onZoomChanged(scale > 1f)
+                            if (scale > 1f) {
+                                offset += pan
+                                // Consome os eventos para o Pager não rodar
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
+                        if (scale <= 1f) {
+                            onZoomChanged(false)
+                            offset = Offset.Zero
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationX = offset.x
+                translationY = offset.y
+            }
+    ) {
+        content()
+    }
+}
+
 private fun sharePhoto(context: Context, file: File) {
     val uri = FileProvider.getUriForFile(
         context,
@@ -267,20 +307,19 @@ private fun sharePhoto(context: Context, file: File) {
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(intent, "Compartilhar imagem"))
+    context.startActivity(Intent.createChooser(intent, SHARE_CHOOSER_TITLE))
 }
 
-fun saveImageToGallery(
-    context: Context,
-    sourceFile: File
-) {
+/** Copies the original to the device's Pictures, named after the photo and typed by its extension. */
+private fun saveImageToGallery(context: Context, sourceFile: File, displayName: String) {
+    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(sourceFile.extension.lowercase())
+        ?: DEFAULT_MIME
     val contentValues = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, sourceFile.name)
-        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+        put(MediaStore.Images.Media.MIME_TYPE, mimeType)
         put(
             MediaStore.Images.Media.RELATIVE_PATH,
-            // ou: "${Environment.DIRECTORY_DCIM}/ipb_castelobranco"
-            "${android.os.Environment.DIRECTORY_PICTURES}/ipb_castelobranco"
+            "${android.os.Environment.DIRECTORY_PICTURES}/$SAVE_DIR"
         )
         put(MediaStore.Images.Media.IS_PENDING, 1)
     }

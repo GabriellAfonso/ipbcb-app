@@ -1,88 +1,72 @@
 package com.ipb.castelobranco.features.gallery.domain.usecase
 
 import com.ipb.castelobranco.features.gallery.domain.download.GalleryDownloadScheduler
-import com.ipb.castelobranco.features.gallery.domain.model.Album
+import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryPreviewCache
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
+import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 
 class GalleryAutoDownloadUseCaseTest {
 
-    private lateinit var scheduler: GalleryDownloadScheduler
+    private lateinit var downloadScheduler: GalleryDownloadScheduler
+    private lateinit var syncScheduler: GallerySyncScheduler
+    private lateinit var syncGallery: SyncGalleryUseCase
     private lateinit var repository: GalleryRepository
+    private lateinit var previewCache: GalleryPreviewCache
     private lateinit var useCase: GalleryAutoDownloadUseCase
-
-    private val albumsFlow = MutableStateFlow<List<Album>>(emptyList())
 
     @Before
     fun setup() {
-        scheduler = mockk(relaxed = true)
+        downloadScheduler = mockk(relaxed = true)
+        syncScheduler = mockk(relaxed = true)
+        syncGallery = mockk()
         repository = mockk(relaxed = true)
-        every { repository.albumsFlow } returns albumsFlow
-        useCase = GalleryAutoDownloadUseCase(scheduler, repository)
+        previewCache = mockk(relaxed = true)
+        coEvery { syncGallery() } returns GallerySyncResult.Synced(0)
+        useCase = GalleryAutoDownloadUseCase(downloadScheduler, syncScheduler, syncGallery, repository, previewCache)
     }
 
     @Test
-    fun `triggerIfNeeded enqueues keeping existing work when gallery is empty`() {
-        albumsFlow.value = emptyList()
+    fun `onAppForeground schedules the periodic sync and syncs now`() = runTest {
+        useCase.onAppForeground()
 
-        useCase.triggerIfNeeded()
-
-        verify(exactly = 1) { scheduler.enqueueWifiOnly(replaceExisting = false) }
+        verify(exactly = 1) { syncScheduler.schedulePeriodic() }
+        coVerify(exactly = 1) { syncGallery() }
     }
 
     @Test
-    fun `triggerIfNeeded does not enqueue when gallery is not empty`() {
-        albumsFlow.value = listOf(mockk())
+    fun `onLoginSuccess replaces the download work, schedules the periodic sync and syncs`() = runTest {
+        useCase.onLoginSuccess()
 
-        useCase.triggerIfNeeded()
-
-        verify(exactly = 0) { scheduler.enqueueWifiOnly(any()) }
-    }
-
-    @Test
-    fun `triggerIfNeeded called twice with empty gallery enqueues twice`() {
-        albumsFlow.value = emptyList()
-
-        useCase.triggerIfNeeded()
-        useCase.triggerIfNeeded()
-
-        verify(exactly = 2) { scheduler.enqueueWifiOnly(replaceExisting = false) }
-    }
-
-    @Test
-    fun `enqueueWifiOnly keeps existing work by default`() {
-        useCase.enqueueWifiOnly()
-
-        verify(exactly = 1) { scheduler.enqueueWifiOnly(replaceExisting = false) }
+        verify(exactly = 1) { downloadScheduler.enqueueWifiOnly(replaceExisting = true) }
+        verify(exactly = 1) { syncScheduler.schedulePeriodic() }
+        coVerify(exactly = 1) { syncGallery() }
     }
 
     @Test
     fun `enqueueAnyNetwork delegates to the scheduler`() {
         useCase.enqueueAnyNetwork()
 
-        verify(exactly = 1) { scheduler.enqueueAnyNetwork() }
+        verify(exactly = 1) { downloadScheduler.enqueueAnyNetwork() }
     }
 
     @Test
-    fun `onLoginSuccess replaces existing work`() {
-        useCase.onLoginSuccess()
-
-        // REPLACE é o que descarta um WorkInfo com 401 registrado antes do login
-        verify(exactly = 1) { scheduler.enqueueWifiOnly(replaceExisting = true) }
-    }
-
-    @Test
-    fun `clearOnLogout cancels the work and clears the photos`() = runTest {
+    fun `clearOnLogout cancels both works, then clears the gallery and the preview cache`() = runTest {
         useCase.clearOnLogout()
 
-        verify(exactly = 1) { scheduler.cancel() }
-        coVerify(exactly = 1) { repository.clearAllPhotos() }
+        coVerifyOrder {
+            downloadScheduler.cancel()
+            syncScheduler.cancel()
+            repository.clear()
+            previewCache.clear()
+        }
     }
 }

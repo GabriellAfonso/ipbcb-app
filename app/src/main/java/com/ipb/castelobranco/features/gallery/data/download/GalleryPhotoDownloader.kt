@@ -3,8 +3,8 @@ package com.ipb.castelobranco.features.gallery.data.download
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.network.error.toAppError
 import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
-import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
-import com.ipb.castelobranco.features.gallery.data.local.GalleryPhotoStorage
+import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import java.io.IOException
@@ -19,11 +19,11 @@ import javax.inject.Inject
  */
 class GalleryPhotoDownloader @Inject constructor(
     private val api: GalleryApi,
-    private val storage: GalleryPhotoStorage,
+    private val storage: GalleryMediaStore,
 ) {
 
     suspend fun download(
-        photos: List<GalleryPhotoDto>,
+        photos: List<GalleryPhoto>,
         onProgress: suspend (downloaded: Int, total: Int) -> Unit,
         onAlbumDone: suspend () -> Unit = {},
     ): GalleryDownloadRun {
@@ -61,8 +61,8 @@ class GalleryPhotoDownloader @Inject constructor(
         return GalleryDownloadRun.Completed(downloaded, total, failed, networkFailures)
     }
 
-    private suspend fun downloadOne(photo: GalleryPhotoDto): PhotoOutcome {
-        if (storage.exists(photo.albumId, photo.id)) return PhotoOutcome.Present
+    private suspend fun downloadOne(photo: GalleryPhoto): PhotoOutcome {
+        if (storage.hasOriginal(photo.id, photo.fileExtension())) return PhotoOutcome.Present
 
         return try {
             val response = api.downloadFile(photo.imageUrl)
@@ -78,9 +78,8 @@ class GalleryPhotoDownloader @Inject constructor(
 
                 else -> {
                     body.byteStream().use { input ->
-                        storage.save(photo.albumId, photo.id, photo.fileExtension(), input)
+                        storage.saveOriginal(photo.id, photo.fileExtension(), input)
                     }
-                    storage.savePhotoMetadata(photo.albumId, photo.id, photo)
                     PhotoOutcome.Saved
                 }
             }

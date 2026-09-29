@@ -4,11 +4,13 @@ import android.content.Context
 import com.ipb.castelobranco.core.di.AuthedRetrofit
 import com.ipb.castelobranco.core.domain.startup.Preloadable
 import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
-import com.ipb.castelobranco.features.gallery.data.local.GalleryPhotoStorage
+import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
 import com.ipb.castelobranco.features.gallery.data.repository.GalleryRepositoryImpl
 import com.ipb.castelobranco.features.gallery.data.work.WorkManagerGalleryDownloadScheduler
+import com.ipb.castelobranco.features.gallery.data.work.WorkManagerGallerySyncScheduler
 import com.ipb.castelobranco.features.gallery.domain.download.GalleryDownloadScheduler
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -33,12 +35,18 @@ abstract class GalleryModule {
         impl: WorkManagerGalleryDownloadScheduler
     ): GalleryDownloadScheduler
 
+    @Binds
+    @Singleton
+    abstract fun bindGallerySyncScheduler(
+        impl: WorkManagerGallerySyncScheduler
+    ): GallerySyncScheduler
+
     companion object {
         @Provides
         @Singleton
-        fun provideGalleryPhotoStorage(
+        fun provideGalleryMediaStore(
             @ApplicationContext context: Context
-        ): GalleryPhotoStorage = GalleryPhotoStorage(context)
+        ): GalleryMediaStore = GalleryMediaStore(context)
 
         @Provides
         @Singleton

@@ -1,11 +1,12 @@
 package com.ipb.castelobranco.features.gallery.presentation.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -23,14 +24,21 @@ import kotlinx.coroutines.flow.StateFlow
 @Stable
 data class GalleryNav(
     val back: () -> Unit,
-    val toAlbum: (Long) -> Unit,
-    val toPhoto: (Long, Int) -> Unit,
+    val toAlbum: (albumId: Long) -> Unit,
+    val toPhoto: (albumId: Long, photoId: Long) -> Unit,
 )
 
 object GalleryRoutes {
-    const val Gallery = "GalleryMain"
-    fun Album(albumId: Long) = "Album/$albumId"
-    fun Photo(albumId: Long, photoIndex: Int) = "Photo/$albumId/$photoIndex"
+    const val GALLERY = "GalleryMain"
+    const val ARG_ALBUM_ID = "albumId"
+    const val ARG_PHOTO_ID = "photoId"
+    const val ALBUM = "Album/{$ARG_ALBUM_ID}"
+    const val PHOTO = "Photo/{$ARG_ALBUM_ID}/{$ARG_PHOTO_ID}"
+
+    fun album(albumId: Long) = "Album/$albumId"
+
+    /** [albumId] is the album the viewer pages through — the one it was opened from. */
+    fun photo(albumId: Long, photoId: Long) = "Photo/$albumId/$photoId"
 }
 
 /**
@@ -43,52 +51,56 @@ fun NavGraphBuilder.galleryGraph(
     isLoggedIn: StateFlow<Boolean>,
     onNavigateToAuth: () -> Unit,
 ) {
-    fun nav() = GalleryNav(
-        back    = { navController.safePopBackStack() },
-        toAlbum = { albumId -> navController.navigate(GalleryRoutes.Album(albumId)) },
-        toPhoto = { albumId, idx -> navController.navigate(GalleryRoutes.Photo(albumId, idx)) },
+    val nav = GalleryNav(
+        back = { navController.safePopBackStack() },
+        toAlbum = { albumId -> navController.navigate(GalleryRoutes.album(albumId)) },
+        toPhoto = { albumId, photoId -> navController.navigate(GalleryRoutes.photo(albumId, photoId)) },
     )
 
     navigation(
-        route            = AppRoutes.GALLERY_GRAPH,
-        startDestination = GalleryRoutes.Gallery,
+        route = AppRoutes.GALLERY_GRAPH,
+        startDestination = GalleryRoutes.GALLERY,
     ) {
-        composable(GalleryRoutes.Gallery) { entry ->
-            val graphEntry = remember(entry) { navController.getBackStackEntry(AppRoutes.GALLERY_GRAPH) }
-            val viewModel: GalleryViewModel = hiltViewModel(graphEntry)
-            val albums by viewModel.albums.collectAsState()
+        composable(GalleryRoutes.GALLERY) { entry ->
+            val viewModel = graphViewModel(navController, entry)
             val loggedIn by isLoggedIn.collectAsStateWithLifecycle()
             GalleryScreen(
-                nav = nav(),
                 viewModel = viewModel,
-                albums = albums,
                 isLoggedIn = loggedIn,
-                onNavigateToAuth = onNavigateToAuth
+                nav = nav,
+                onNavigateToAuth = onNavigateToAuth,
             )
         }
 
         composable(
-            route     = "Album/{albumId}",
-            arguments = listOf(navArgument("albumId") { type = NavType.LongType }),
-        ) { backStackEntry ->
-            val albumId    = backStackEntry.arguments?.getLong("albumId") ?: 0L
-            val graphEntry = remember(backStackEntry) { navController.getBackStackEntry(AppRoutes.GALLERY_GRAPH) }
-            val viewModel: GalleryViewModel = hiltViewModel(graphEntry)
-            AlbumScreen(albumId = albumId, viewModel = viewModel, nav = nav())
+            route = GalleryRoutes.ALBUM,
+            arguments = listOf(navArgument(GalleryRoutes.ARG_ALBUM_ID) { type = NavType.LongType }),
+        ) { entry ->
+            val albumId = entry.arguments?.getLong(GalleryRoutes.ARG_ALBUM_ID) ?: 0L
+            AlbumScreen(albumId = albumId, viewModel = graphViewModel(navController, entry), nav = nav)
         }
 
         composable(
-            route     = "Photo/{albumId}/{photoIndex}",
+            route = GalleryRoutes.PHOTO,
             arguments = listOf(
-                navArgument("albumId") { type = NavType.LongType },
-                navArgument("photoIndex") { type = NavType.IntType },
+                navArgument(GalleryRoutes.ARG_ALBUM_ID) { type = NavType.LongType },
+                navArgument(GalleryRoutes.ARG_PHOTO_ID) { type = NavType.LongType },
             ),
-        ) { backStackEntry ->
-            val albumId    = backStackEntry.arguments?.getLong("albumId") ?: 0L
-            val photoIndex = backStackEntry.arguments?.getInt("photoIndex") ?: 0
-            val graphEntry = remember(backStackEntry) { navController.getBackStackEntry(AppRoutes.GALLERY_GRAPH) }
-            val viewModel: GalleryViewModel = hiltViewModel(graphEntry)
-            PhotoScreen(albumId = albumId, photoIndex = photoIndex, viewModel = viewModel, nav = nav())
+        ) { entry ->
+            val albumId = entry.arguments?.getLong(GalleryRoutes.ARG_ALBUM_ID) ?: 0L
+            val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
+            PhotoScreen(
+                albumId = albumId,
+                photoId = photoId,
+                viewModel = graphViewModel(navController, entry),
+                nav = nav,
+            )
         }
     }
+}
+
+@Composable
+private fun graphViewModel(navController: NavHostController, entry: NavBackStackEntry): GalleryViewModel {
+    val graphEntry = remember(entry) { navController.getBackStackEntry(AppRoutes.GALLERY_GRAPH) }
+    return hiltViewModel(graphEntry)
 }
