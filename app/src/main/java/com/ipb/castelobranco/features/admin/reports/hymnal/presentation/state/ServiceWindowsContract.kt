@@ -15,10 +15,15 @@ data class ServiceWindowsUiState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val pendingDelete: ServiceWindow? = null,
     val isSaving: Boolean = false,
+    /** Create, edit, delete and the active switch: `owner` on `reports.hymnal_history`. */
+    val canManage: Boolean = false,
 )
 
 sealed interface ServiceWindowsEvent {
     data class ShowMessage(val message: String) : ServiceWindowsEvent
+
+    /** The list load was refused (403): leave the reports area. */
+    data class LeaveArea(val message: String) : ServiceWindowsEvent
 
     /** Something changed, so the report's slice selector must be refreshed. */
     data object WindowsChanged : ServiceWindowsEvent

@@ -1,6 +1,14 @@
 package com.ipb.castelobranco.features.admin.reports.hymnal.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportEvent
+import app.cash.turbine.test
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.admin.reports.hymnal.FakeHymnCatalogRepository
 import com.ipb.castelobranco.features.admin.reports.hymnal.FakeHymnalHistoryAdminRepository
@@ -105,7 +113,40 @@ class HymnalReportViewModelTest {
         hymnCatalog = catalogRepository,
         dateProvider = fixedDateProvider(),
         defaultDispatcher = testDispatcher,
+        observeAccess = ObserveAccessUseCase(access),
     )
+
+    private val access = FakeAccessRepository()
+
+    // region access (spec 006)
+
+    @Test
+    fun `collection settings are offered only to owner`() = runTest {
+        access.state.value = accessOf(Role.MEDIA, Scope.HYMNAL_HISTORY_REPORT to AccessLevel.VIEW)
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.canOpenSettings)
+
+        access.state.value = accessOf(Role.ADMIN, Scope.HYMNAL_HISTORY_REPORT to AccessLevel.OWNER)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.canOpenSettings)
+    }
+
+    @Test
+    fun `a refused report load leaves the reports area`() = runTest {
+        reportRepository = FakeHymnalReportRepository(
+            occurrencesResult = { Result.failure(AppError.Auth(code = 403, userMessage = "Sem permissão")) },
+            topHymnsResult = Result.success(emptyList()),
+        )
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            assertEquals(HymnalReportEvent.LeaveArea("Sem permissão"), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // endregion
 
     // region loading
 

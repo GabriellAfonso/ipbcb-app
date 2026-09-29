@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.componen
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.ReadingSelector
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.SliceSelector
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.VerticalBarChart
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportEvent
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportUiState
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.util.toFullDate
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.viewmodel.HymnalReportViewModel
@@ -72,8 +74,15 @@ fun HymnalReportScreen(
     onOpenServiceWindows: () -> Unit,
     onOpenCollectionSettings: () -> Unit,
     onOpenHymnCard: (String) -> Unit,
+    onLeaveArea: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            if (event is HymnalReportEvent.LeaveArea) onLeaveArea(event.message)
+        }
+    }
 
     BaseScreen(
         tabName = "Histórico do hinário",
@@ -83,7 +92,8 @@ fun HymnalReportScreen(
         extraActions = {
             ReportOverflowMenu(
                 onOpenServiceWindows = onOpenServiceWindows,
-                onOpenCollectionSettings = onOpenCollectionSettings,
+                // Configuring collection is `owner` on the report; below that the entry does not exist.
+                onOpenCollectionSettings = onOpenCollectionSettings.takeIf { state.canOpenSettings },
             )
         },
     ) { innerPadding ->
@@ -107,7 +117,7 @@ fun HymnalReportScreen(
 @Composable
 private fun ReportOverflowMenu(
     onOpenServiceWindows: () -> Unit,
-    onOpenCollectionSettings: () -> Unit,
+    onOpenCollectionSettings: (() -> Unit)?,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -125,13 +135,15 @@ private fun ReportOverflowMenu(
                 onOpenServiceWindows()
             },
         )
-        DropdownMenuItem(
-            text = { Text("Parâmetros de coleta") },
-            onClick = {
-                expanded = false
-                onOpenCollectionSettings()
-            },
-        )
+        if (onOpenCollectionSettings != null) {
+            DropdownMenuItem(
+                text = { Text("Parâmetros de coleta") },
+                onClick = {
+                    expanded = false
+                    onOpenCollectionSettings()
+                },
+            )
+        }
     }
 }
 

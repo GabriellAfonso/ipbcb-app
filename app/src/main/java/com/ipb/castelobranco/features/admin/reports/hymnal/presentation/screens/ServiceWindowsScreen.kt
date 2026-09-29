@@ -53,6 +53,7 @@ fun ServiceWindowsScreen(
     viewModel: ServiceWindowsViewModel,
     onBack: () -> Unit,
     onWindowsChanged: () -> Unit,
+    onLeaveArea: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -62,6 +63,7 @@ fun ServiceWindowsScreen(
             when (event) {
                 is ServiceWindowsEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
                 ServiceWindowsEvent.WindowsChanged -> onWindowsChanged()
+                is ServiceWindowsEvent.LeaveArea -> onLeaveArea(event.message)
             }
         }
     }
@@ -72,8 +74,10 @@ fun ServiceWindowsScreen(
         showBackArrow = true,
         onBackClick = onBack,
         extraActions = {
-            IconButton(onClick = viewModel::onCreateRequested) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "Novo culto")
+            if (state.canManage) {
+                IconButton(onClick = viewModel::onCreateRequested) {
+                    Icon(imageVector = Icons.Filled.Add, contentDescription = "Novo culto")
+                }
             }
         },
     ) { innerPadding ->
@@ -173,6 +177,7 @@ fun ServiceWindowsContent(
             items(state.windows, key = { it.id }) { window ->
                 ServiceWindowRow(
                     window = window,
+                    editable = state.canManage,
                     onEdit = { onEdit(window) },
                     onToggleActive = { onToggleActive(window) },
                     onDelete = { onDelete(window) },
@@ -215,6 +220,7 @@ private fun ServiceWindowsContentPreview() {
     ServiceWindowsContent(
         state = ServiceWindowsUiState(
             isLoading = false,
+            canManage = true,
             windows = listOf(
                 ServiceWindow(
                     id = 3,

@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.reports.presentation.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
@@ -38,6 +39,12 @@ fun NavGraphBuilder.reportsGraph(navController: NavHostController) {
     fun reportViewModel(): HymnalReportViewModel =
         hiltViewModel(navController.getBackStackEntry(ReportsRoutes.GRAPH))
 
+    /** A refused load (403): say why and leave the whole reports area, back to the panel. */
+    fun leaveArea(message: String) {
+        Toast.makeText(navController.context, message, Toast.LENGTH_LONG).show()
+        navController.popBackStack(ReportsRoutes.GRAPH, inclusive = true)
+    }
+
     navigation(
         route = ReportsRoutes.GRAPH,
         startDestination = ReportsRoutes.HUB,
@@ -58,6 +65,7 @@ fun NavGraphBuilder.reportsGraph(navController: NavHostController) {
                     navController.navigate(ReportsRoutes.COLLECTION_SETTINGS)
                 },
                 onOpenHymnCard = { navController.navigate(ReportsRoutes.HYMN_CARD) },
+                onLeaveArea = ::leaveArea,
             )
         }
 
@@ -75,6 +83,7 @@ fun NavGraphBuilder.reportsGraph(navController: NavHostController) {
                 onBack = { navController.safePopBackStack() },
                 // A created, edited or removed service changes which slices the report offers.
                 onWindowsChanged = reportVm::refreshServiceWindows,
+                onLeaveArea = ::leaveArea,
             )
         }
 

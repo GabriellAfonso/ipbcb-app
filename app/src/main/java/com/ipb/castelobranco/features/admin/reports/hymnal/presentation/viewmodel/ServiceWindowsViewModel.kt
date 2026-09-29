@@ -2,6 +2,9 @@ package com.ipb.castelobranco.features.admin.reports.hymnal.presentation.viewmod
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
@@ -13,12 +16,13 @@ import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.SaveSe
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.ValidateServiceWindowUseCase
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.ServiceWindowsEvent
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.ServiceWindowsUiState
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.util.isPermissionRefusal
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,16 +40,25 @@ class ServiceWindowsViewModel @Inject constructor(
     private val saveServiceWindow: SaveServiceWindowUseCase,
     private val deleteServiceWindow: DeleteServiceWindowUseCase,
     private val validate: ValidateServiceWindowUseCase,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ServiceWindowsUiState())
     val uiState: StateFlow<ServiceWindowsUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<ServiceWindowsEvent>()
-    val events: SharedFlow<ServiceWindowsEvent> = _events.asSharedFlow()
+    // Buffered: a refusal on the first load can arrive before the screen starts collecting.
+    private val _events = Channel<ServiceWindowsEvent>(Channel.BUFFERED)
+    val events: Flow<ServiceWindowsEvent> = _events.receiveAsFlow()
 
     init {
         load()
+        // Configuring windows is `owner`; below that the list is read-only (backend 012).
+        viewModelScope.launch {
+            observeAccess().collect { access ->
+                val isOwner = access.allows(Scope.HYMNAL_HISTORY_REPORT, AccessLevel.OWNER)
+                _uiState.update { it.copy(canManage = isOwner) }
+            }
+        }
     }
 
     fun load() {
@@ -56,8 +69,10 @@ class ServiceWindowsViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, windows = windows) }
                 }
                 .onFailure { throwable ->
-                    _uiState.update {
-                        it.copy(isLoading = false, error = throwable.toAppError().toUserMessage())
+                    val error = throwable.toAppError()
+                    _uiState.update { it.copy(isLoading = false, error = error.toUserMessage()) }
+                    if (error.isPermissionRefusal()) {
+                        _events.send(ServiceWindowsEvent.LeaveArea(error.toUserMessage()))
                     }
                 }
         }
@@ -66,10 +81,12 @@ class ServiceWindowsViewModel @Inject constructor(
     // region editing
 
     fun onCreateRequested() {
+        if (!_uiState.value.canManage) return
         _uiState.update { it.copy(editing = ServiceWindowDraft(), fieldErrors = emptyMap()) }
     }
 
     fun onEditRequested(window: ServiceWindow) {
+        if (!_uiState.value.canManage) return
         _uiState.update {
             it.copy(
                 editing = ServiceWindowDraft(
@@ -107,6 +124,7 @@ class ServiceWindowsViewModel @Inject constructor(
 
     /** Deactivating is a patch of `active` alone, and never touches history. */
     fun onActiveToggled(window: ServiceWindow) {
+        if (!_uiState.value.canManage) return
         persist(
             ServiceWindowDraft(
                 id = window.id,
@@ -126,7 +144,7 @@ class ServiceWindowsViewModel @Inject constructor(
                 .onSuccess {
                     _uiState.update { it.copy(isSaving = false) }
                     onSaved()
-                    _events.emit(ServiceWindowsEvent.WindowsChanged)
+                    _events.send(ServiceWindowsEvent.WindowsChanged)
                     load()
                 }
                 .onFailure { throwable -> handleFailure(throwable) }
@@ -138,6 +156,7 @@ class ServiceWindowsViewModel @Inject constructor(
     // region deletion
 
     fun onDeleteRequested(window: ServiceWindow) {
+        if (!_uiState.value.canManage) return
         _uiState.update { it.copy(pendingDelete = window) }
     }
 
@@ -153,12 +172,12 @@ class ServiceWindowsViewModel @Inject constructor(
             deleteServiceWindow(window.id)
                 .onSuccess {
                     _uiState.update { it.copy(isSaving = false) }
-                    _events.emit(
+                    _events.send(
                         ServiceWindowsEvent.ShowMessage(
                             "Culto apagado. Nenhum registro do histórico foi removido."
                         )
                     )
-                    _events.emit(ServiceWindowsEvent.WindowsChanged)
+                    _events.send(ServiceWindowsEvent.WindowsChanged)
                     load()
                 }
                 .onFailure { throwable -> handleFailure(throwable) }
@@ -181,7 +200,7 @@ class ServiceWindowsViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = false, fieldErrors = serverFieldErrors) }
 
         if (serverFieldErrors.isEmpty()) {
-            _events.emit(ServiceWindowsEvent.ShowMessage(error.toUserMessage()))
+            _events.send(ServiceWindowsEvent.ShowMessage(error.toUserMessage()))
         }
     }
 }

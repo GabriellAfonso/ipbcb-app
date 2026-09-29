@@ -1,6 +1,14 @@
 package com.ipb.castelobranco.features.admin.reports.hymnal.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.ServiceWindowsEvent
+import app.cash.turbine.test
 import com.ipb.castelobranco.features.admin.reports.hymnal.FakeHymnalHistoryAdminRepository
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.DeleteServiceWindowUseCase
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.GetServiceWindowsUseCase
@@ -42,12 +50,55 @@ class ServiceWindowsViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val access = FakeAccessRepository(
+        accessOf(Role.ADMIN, Scope.HYMNAL_HISTORY_REPORT to AccessLevel.OWNER)
+    )
+
     private fun viewModel() = ServiceWindowsViewModel(
         getServiceWindows = GetServiceWindowsUseCase(repository),
         saveServiceWindow = SaveServiceWindowUseCase(repository),
         deleteServiceWindow = DeleteServiceWindowUseCase(repository),
         validate = ValidateServiceWindowUseCase(),
+        observeAccess = ObserveAccessUseCase(access),
     )
+
+    // region access (spec 006)
+
+    @Test
+    fun `below owner the list is read-only`() = runTest {
+        access.state.value = accessOf(Role.LEADER, Scope.HYMNAL_HISTORY_REPORT to AccessLevel.VIEW)
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.onCreateRequested()
+        viewModel.onDeleteRequested(viewModel.uiState.value.windows.single())
+
+        assertEquals(false, viewModel.uiState.value.canManage)
+        assertNull(viewModel.uiState.value.editing)
+        assertNull(viewModel.uiState.value.pendingDelete)
+    }
+
+    @Test
+    fun `owner manages the windows`() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.canManage)
+    }
+
+    @Test
+    fun `a refused load leaves the reports area`() = runTest {
+        repository.windowsResult = Result.failure(AppError.Auth(code = 403, userMessage = "Sem permissão"))
+
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            assertEquals(ServiceWindowsEvent.LeaveArea("Sem permissão"), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // endregion
 
     @Test
     fun `loading lists the services`() = runTest {

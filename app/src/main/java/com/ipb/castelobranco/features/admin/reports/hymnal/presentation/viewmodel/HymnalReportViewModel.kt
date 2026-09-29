@@ -3,6 +3,9 @@ package com.ipb.castelobranco.features.admin.reports.hymnal.presentation.viewmod
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.di.DefaultDispatcher
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.domain.model.HymnCatalogEntry
 import com.ipb.castelobranco.core.domain.repository.HymnCatalogRepository
@@ -31,16 +34,17 @@ import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.Resolv
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.usecase.ResolvedPeriod
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportEvent
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportUiState
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.util.isPermissionRefusal
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.util.toFullDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -71,13 +75,15 @@ class HymnalReportViewModel @Inject constructor(
     private val hymnCatalog: HymnCatalogRepository,
     private val dateProvider: DateProvider,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HymnalReportUiState())
     val uiState: StateFlow<HymnalReportUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableSharedFlow<HymnalReportEvent>()
-    val events: SharedFlow<HymnalReportEvent> = _events.asSharedFlow()
+    // Buffered: a refusal on the first load can arrive before the screen starts collecting.
+    private val _events = Channel<HymnalReportEvent>(Channel.BUFFERED)
+    val events: Flow<HymnalReportEvent> = _events.receiveAsFlow()
 
     /** The loaded period. Every period-bounded reading is derived from this and nothing else. */
     private var bundle: OccurrenceReportBundle? = null
@@ -90,6 +96,12 @@ class HymnalReportViewModel @Inject constructor(
     init {
         load(ReportPeriod.ThisMonth)
         loadServiceWindows()
+        viewModelScope.launch {
+            observeAccess().collect { access ->
+                val isOwner = access.allows(Scope.HYMNAL_HISTORY_REPORT, AccessLevel.OWNER)
+                _uiState.update { it.copy(canOpenSettings = isOwner) }
+            }
+        }
     }
 
     // region selections
@@ -153,8 +165,10 @@ class HymnalReportViewModel @Inject constructor(
                 }
                 .onFailure { throwable ->
                     bundle = null
-                    _uiState.update {
-                        it.copy(isLoading = false, error = throwable.toAppError().toUserMessage())
+                    val error = throwable.toAppError()
+                    _uiState.update { it.copy(isLoading = false, error = error.toUserMessage()) }
+                    if (error.isPermissionRefusal()) {
+                        _events.send(HymnalReportEvent.LeaveArea(error.toUserMessage()))
                     }
                 }
         }

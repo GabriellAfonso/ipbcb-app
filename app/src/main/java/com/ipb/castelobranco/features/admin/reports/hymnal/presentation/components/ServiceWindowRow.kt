@@ -33,10 +33,14 @@ import java.time.LocalTime
  *
  * The weekday shown here is already a `DayOfWeek`; the service's `0 = Monday` convention is
  * converted once, in the mapper, so nothing on screen can rotate the week.
+ *
+ * @param editable false below `owner` on `reports.hymnal_history`: the row is read-only, with no
+ *   switch, edit or delete.
  */
 @Composable
 fun ServiceWindowRow(
     window: ServiceWindow,
+    editable: Boolean,
     onEdit: () -> Unit,
     onToggleActive: () -> Unit,
     onDelete: () -> Unit,
@@ -75,13 +79,15 @@ fun ServiceWindowRow(
             }
         }
 
-        Switch(checked = window.active, onCheckedChange = { onToggleActive() })
+        if (editable) {
+            Switch(checked = window.active, onCheckedChange = { onToggleActive() })
 
-        IconButton(onClick = onEdit) {
-            Icon(imageVector = Icons.Filled.Edit, contentDescription = "Editar culto")
-        }
-        IconButton(onClick = onDelete) {
-            Icon(imageVector = Icons.Filled.Delete, contentDescription = "Apagar culto")
+            IconButton(onClick = onEdit) {
+                Icon(imageVector = Icons.Filled.Edit, contentDescription = "Editar culto")
+            }
+            IconButton(onClick = onDelete) {
+                Icon(imageVector = Icons.Filled.Delete, contentDescription = "Apagar culto")
+            }
         }
     }
 }
@@ -98,6 +104,7 @@ private fun ServiceWindowRowPreview() {
             endTime = LocalTime.of(21, 0),
             active = true,
         ),
+        editable = true,
         onEdit = {},
         onToggleActive = {},
         onDelete = {},

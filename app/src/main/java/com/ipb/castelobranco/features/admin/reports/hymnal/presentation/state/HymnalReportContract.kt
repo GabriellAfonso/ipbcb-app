@@ -55,9 +55,15 @@ data class HymnalReportUiState(
     val hymnProfile: HymnProfile? = null,
     val isHymnProfileLoading: Boolean = false,
     val hymnProfileError: String? = null,
+
+    /** "Parâmetros de coleta" is offered only to `owner` on `reports.hymnal_history`. */
+    val canOpenSettings: Boolean = false,
 )
 
 /** One-shot outcomes, per the project's convention for events that must not survive rotation. */
 sealed interface HymnalReportEvent {
     data class ShowMessage(val message: String) : HymnalReportEvent
+
+    /** The report load was refused (403): leave the reports area. */
+    data class LeaveArea(val message: String) : HymnalReportEvent
 }
