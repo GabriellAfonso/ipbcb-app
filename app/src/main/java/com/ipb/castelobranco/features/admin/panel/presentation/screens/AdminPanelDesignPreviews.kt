@@ -85,7 +85,7 @@ private fun DesignA_AccentBorder() {
                 .statusBarsPadding()
         ) {
             Column {
-                Text("Painel Admin", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Painel de Gestão", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("Gerencie os recursos da igreja", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
             }
@@ -194,7 +194,7 @@ private fun DesignB_GradientGlass() {
                 .statusBarsPadding()
         ) {
             Column {
-                Text("Painel Admin", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Painel de Gestão", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("Gerencie os recursos da igreja", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
             }
@@ -311,7 +311,7 @@ private fun DesignC_Merged() {
                 .statusBarsPadding()
         ) {
             Column {
-                Text("Painel Admin", color = Teal, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("Painel de Gestão", color = Teal, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("Gerencie os recursos da igreja", color = Color(0xFF94A3B8), fontSize = 14.sp)
             }

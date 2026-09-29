@@ -13,7 +13,7 @@ implementação — elas já aparecem no painel como cards inativos.
 
 | Tela                     | Rota                        | Origem                          |
 |--------------------------|-----------------------------|---------------------------------|
-| Painel                   | `AdminMain`                 | `CoreScreen → Painel Admin`     |
+| Painel                   | `AdminMain`                 | `CoreScreen → Painel de Gestão` |
 | Registro de louvor       | `AdminRegister`             | Card "Gestão do Louvor"         |
 | Geração de escala        | `AdminSchedule`             | Card "Gerar Escala"             |
 | Hub de relatórios        | `ReportsHub`                | Card "Relatórios"               |
@@ -38,10 +38,13 @@ também aninhado em `adminGraph`. Ver §7.
 
 ## 2. Painel
 
-`AdminScreen` é uma tela sem ViewModel: monta a lista de `AdminAction` e delega cada clique.
-Não há estado assíncrono, portanto não há loading/erro.
+`AdminScreen` coleta `AdminPanelViewModel`, que cruza o acesso do usuário (core §4.2.1) com o catálogo de cards
+do domínio (`panel/domain/PanelCard.kt`, cada um com seu `CardRequirement`) e entrega só os cards visíveis.
+`AdminPanelContent` recebe esse estado e monta um `AdminAction` por card. Não há chamada de rede, portanto não há
+loading/erro; quando nenhum card é permitido (papel sem nível algum), a grade dá lugar a "Nenhuma funcionalidade
+disponível para o seu perfil.".
 
-Estrutura visual: o título "Painel Admin" fica na própria TopBar (`tabName`), e o subtítulo vem
+Estrutura visual: o título "Painel de Gestão" fica na própria TopBar (`tabName`), e o subtítulo vem
 numa faixa colada logo abaixo, injetada pelo `topBarExtension` do `BaseScreen`. O gradiente da
 faixa parte do `ipbGreen` — a mesma cor de fundo da TopBar — em direção ao teal da marca, para
 que TopBar e faixa leiam como um único bloco de cabeçalho. **Não** existe banner separado no
@@ -67,17 +70,21 @@ remover o `enabled = false` que a cor certa volta a valer sem consulta a histór
 A coluna "Destaque" é a cor definitiva da ação; enquanto o estado for "Sem implementação" ela
 fica guardada no código mas o card aparece cinza.
 
-| Ação               | Destaque | Ícone           | Estado                       |
-|--------------------|----------|-----------------|------------------------------|
-| Gestão do Louvor   | Laranja  | `MusicNote`     | Navega para `AdminRegister`  |
-| Marcar Presença    | Teal     | `Person`        | Sem implementação            |
-| Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`  |
-| Membros            | Azul     | `People`        | Navega para a lista de membros |
-| Avisos             | Rosa     | `Send`          | Sem implementação            |
-| Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`     |
-| Galeria            | Âmbar    | `PhotoLibrary`  | Sem implementação            |
-| Eventos            | Ciano    | `Event`         | Sem implementação            |
-| Notificações       | Pink     | `Notifications` | Sem implementação            |
+| Ação               | Destaque | Ícone           | Estado                         | Requisito para aparecer              |
+|--------------------|----------|-----------------|--------------------------------|--------------------------------------|
+| Gestão do Louvor   | Laranja  | `MusicNote`     | Navega para `AdminRegister`    | `songs` ≥ `manage`                   |
+| Marcar Presença    | Teal     | `Person`        | Sem implementação              | papel Admin                          |
+| Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`    | `schedule` ≥ `manage`                |
+| Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
+| Avisos             | Rosa     | `Send`          | Sem implementação              | `notices` ≥ `manage`                 |
+| Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
+| Galeria            | Âmbar    | `PhotoLibrary`  | Sem implementação              | `gallery` ≥ `manage`                 |
+| Eventos            | Ciano    | `Event`         | Sem implementação              | `events` ≥ `manage`                  |
+| Notificações       | Pink     | `Notifications` | Sem implementação              | papel Admin                          |
+
+O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença e
+Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os nove; Liderança
+todos menos Presença e Notificações; Mídia só Relatórios e os cinzas Galeria, Eventos e Avisos.
 
 Cards sem implementação não navegam e não exibem aviso — o clique é inerte, e o cinza é o que
 comunica isso ao usuário.
@@ -115,15 +122,20 @@ Eventos de uma vez saem por `AdminScheduleEvent`.
 
 ## 5. Regras
 
-- O acesso ao painel é oferecido pelo menu do `CoreScreen` apenas quando
-  `authState.isLoggedIn && authState.isAdmin` (`isAdmin` vem do perfil). É um filtro de UI: quem
-  de fato autoriza cada operação é o backend, nas chamadas das telas internas.
-- `isAdmin` sai do snapshot do perfil carregado do disco no boot, então o item aparece junto com a
-  home, sem esperar o `/me`. Se o papel mudou no servidor, o item se ajusta quando o refresh do
-  perfil chega.
+- O item "Painel de Gestão" aparece no menu do `CoreScreen` quando `authState.isLoggedIn &&
+  authState.canOpenPanel` — o perfil lista pelo menos um papel (Admin, Liderança, Mídia; ver core §4.2.1). É um
+  filtro de UI: quem de fato autoriza cada operação é o backend, nas chamadas das telas internas.
+- `is_member` não abre o painel e papel não abre o conteúdo de membro: são independentes.
+- O acesso sai do snapshot do perfil carregado do disco no boot, então o item aparece junto com a
+  home, sem esperar o `/me`. Se o papel mudou no servidor, o item e os cards se ajustam quando o refresh do
+  perfil chega — inclusive o refresh disparado por um 403 `PERMISSION_DENIED`.
 - O painel não faz chamada de rede — não há o que autorizar nele. As telas internas fazem, e todas
   usam `@AuthedRetrofit`.
 - Ação sem implementação nunca navega para uma tela vazia.
+- O app nunca mostra o papel do usuário.
+
+**Limitação conhecida:** "Gerar Escala" carrega os membros por `GET api/members/`, que exige `is_member`. Uma
+Liderança que não é membro recebe 403 nessa tela e vê o texto de permissão. A correção é no backend.
 
 ---
 
@@ -173,6 +185,12 @@ o app coleta visualização de hino e não tem como saber se o culto aconteceu.
 Alcançadas pelo menu da TopBar do relatório, não pelo hub — o hub lista áreas com relatório, não
 administração.
 
+**Acesso:** relatório e lista de janelas exigem `view` em `reports.hymnal_history`. Configurar exige `owner`
+(backend 012): abaixo disso a tela de janelas fica só leitura — sem criar, editar, apagar nem o switch de ativar —
+e "Parâmetros de coleta" nem aparece no menu. Um 403 ao **carregar** o relatório ou as janelas mostra a
+mensagem e sai da área de relatórios (volta ao painel); um 403 ao **salvar** só mostra a mensagem. A leitura dos
+parâmetros é pública, então só o salvar pode ser recusado.
+
 - **Janelas de culto:** listar, criar, editar, ativar/desativar, apagar. O dia da semana vem do
   backend na convenção `0 = segunda … 6 = domingo`; a conversão acontece uma única vez, em
   `ServiceWindowMapper`. Apagar **nunca apaga histórico** — a confirmação diz isso e apresenta
@@ -199,7 +217,7 @@ Spec completa da feature: [`specs/005-admin-members-management/`](../005-admin-m
 Contrato consumido: `specs/010-members-management` do backend.
 
 Área em que a liderança mantém o rol de membros: lista, perfil, cadastro, edição, foto (visível só
-para líderes), histórico de alterações e exclusão. Vive em `features/admin/members/`.
+para quem tem `view` em `members`), histórico de alterações e exclusão. Vive em `features/admin/members/`.
 
 ### 7.1 Situação × validade
 
@@ -252,8 +270,13 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   em disco é o recorte do UCrop, apagado logo depois de lido.
 - Logout e queda de sessão limpam tudo via `SessionScopedCache` (core §4.4.1).
 - Logs levam só o id do membro.
-- 403 em qualquer chamada: mostra o `detail` e volta ao painel. 404 numa ficha: "Este membro não
-  existe mais" e volta à lista.
+- **Ações por nível** em `members`: lista, perfil e histórico com `view`; "Novo membro", editar, switch de
+  validade e trocar a foto com `manage`; "Excluir membro" e "Remover foto" só com `owner` (na prática, só Admin).
+  O botão que o nível não cobre não aparece; os flags chegam prontos no estado da tela.
+- 403 numa **leitura** (lista, perfil, histórico, carga do formulário): mostra o `detail` e volta ao painel.
+  403 numa **escrita** (salvar, validade, foto, excluir): mostra o `detail` e fica na tela, com o que foi digitado.
+  O critério é de quem chama (`FailureKind.READ` / `WRITE` em `MembersFailure.kt`). 404 numa ficha: "Este membro
+  não existe mais" e volta à lista.
 - PATCH é montado com `buildJsonObject` para que `null` (limpar campo) chegue ao servidor — o `Json`
   compartilhado usa `explicitNulls = false`.
 

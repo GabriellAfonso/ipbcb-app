@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,13 +27,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
+import com.ipb.castelobranco.features.admin.panel.domain.PanelCard
 import com.ipb.castelobranco.features.admin.panel.presentation.navigation.AdminNav
+import com.ipb.castelobranco.features.admin.panel.presentation.state.AdminPanelUiState
+import com.ipb.castelobranco.features.admin.panel.presentation.viewmodel.AdminPanelViewModel
 
 /**
  * Cores de destaque exclusivas dos cards do painel — não fazem parte da identidade visual
@@ -65,93 +72,31 @@ data class AdminAction(
     val onClick: () -> Unit
 )
 
+private const val PANEL_TITLE = "Painel de Gestão"
+private const val EMPTY_PANEL_MESSAGE = "Nenhuma funcionalidade disponível para o seu perfil."
+
 @Composable
 fun AdminScreen(
-    nav: AdminNav
+    nav: AdminNav,
+    viewModel: AdminPanelViewModel = hiltViewModel(),
 ) {
-    AdminPanelContent(nav = nav)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    AdminPanelContent(state = state, nav = nav)
 }
 
+/**
+ * Which cards appear comes from [state] (the user's access); how each card looks and where it goes
+ * stays here.
+ */
 @Composable
 fun AdminPanelContent(
+    state: AdminPanelUiState,
     nav: AdminNav
 ) {
-    val actions = listOf(
-        AdminAction(
-            label = "Gestão do Louvor",
-            description = "Músicas, domingos e cifras",
-            icon = Icons.Filled.MusicNote,
-            accentColor = BrandColors.Orange,
-            onClick = nav.register
-        ),
-        // Ações abaixo com `enabled = false` estão cinzas por falta de implementação. Ao
-        // implementar, apague o `enabled = false` — o `accentColor` de cada uma já é a cor
-        // definitiva do card e volta a valer sozinho.
-        AdminAction(
-            label = "Marcar Presença",
-            description = "Presença dos membros",
-            icon = Icons.Filled.Person,
-            accentColor = BrandColors.Teal,
-            enabled = false,
-            onClick = { /* TODO */ }
-        ),
-        AdminAction(
-            label = "Gerar Escala",
-            description = "Criar escala mensal",
-            icon = Icons.Filled.DateRange,
-            accentColor = BrandColors.Green,
-            onClick = nav.schedule
-        ),
-        AdminAction(
-            label = "Membros",
-            description = "Gerenciar cadastro",
-            icon = Icons.Filled.People,
-            accentColor = Blue,
-            onClick = nav.members
-        ),
-        AdminAction(
-            label = "Avisos",
-            description = "Publicar comunicados",
-            icon = Icons.AutoMirrored.Filled.Send,
-            accentColor = Rose,
-            enabled = false,
-            onClick = { /* TODO */ }
-        ),
-        AdminAction(
-            label = "Relatórios",
-            description = "Estatísticas gerais",
-            icon = Icons.Filled.BarChart,
-            accentColor = Indigo,
-            onClick = nav.reports
-        ),
-        AdminAction(
-            label = "Galeria",
-            description = "Fotos e álbuns",
-            icon = Icons.Filled.PhotoLibrary,
-            accentColor = Amber,
-            enabled = false,
-            onClick = { /* TODO */ }
-        ),
-        AdminAction(
-            label = "Eventos",
-            description = "Criar e editar eventos",
-            icon = Icons.Filled.Event,
-            accentColor = Sky,
-            enabled = false,
-            onClick = { /* TODO */ }
-        ),
-        AdminAction(
-            label = "Notificações",
-            description = "Enviar push notification",
-            icon = Icons.Filled.Notifications,
-            accentColor = Pink,
-            enabled = false,
-            onClick = { /* TODO */ }
-        ),
-    )
+    val actions = state.cards.map { card -> card.toAction(nav) }
 
     BaseScreen(
-        tabName = "Painel Admin",
+        tabName = PANEL_TITLE,
         logoRes = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick = nav.back,
@@ -176,6 +121,18 @@ fun AdminPanelContent(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            if (state.isEmpty) {
+                Text(
+                    text = EMPTY_PANEL_MESSAGE,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 32.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
             actions.chunked(2).forEach { row ->
                 Row(
                     modifier = Modifier
@@ -196,6 +153,79 @@ fun AdminPanelContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+// Cards com `enabled = false` estão cinzas por falta de implementação. Ao implementar, apague o
+// `enabled = false` — o `accentColor` de cada um já é a cor definitiva do card e volta a valer sozinho.
+private fun PanelCard.toAction(nav: AdminNav): AdminAction = when (this) {
+    PanelCard.WORSHIP -> AdminAction(
+        label = "Gestão do Louvor",
+        description = "Músicas, domingos e cifras",
+        icon = Icons.Filled.MusicNote,
+        accentColor = BrandColors.Orange,
+        onClick = nav.register
+    )
+    PanelCard.ATTENDANCE -> AdminAction(
+        label = "Marcar Presença",
+        description = "Presença dos membros",
+        icon = Icons.Filled.Person,
+        accentColor = BrandColors.Teal,
+        enabled = false,
+        onClick = { /* TODO */ }
+    )
+    PanelCard.SCHEDULE -> AdminAction(
+        label = "Gerar Escala",
+        description = "Criar escala mensal",
+        icon = Icons.Filled.DateRange,
+        accentColor = BrandColors.Green,
+        onClick = nav.schedule
+    )
+    PanelCard.MEMBERS -> AdminAction(
+        label = "Membros",
+        description = "Gerenciar cadastro",
+        icon = Icons.Filled.People,
+        accentColor = Blue,
+        onClick = nav.members
+    )
+    PanelCard.NOTICES -> AdminAction(
+        label = "Avisos",
+        description = "Publicar comunicados",
+        icon = Icons.AutoMirrored.Filled.Send,
+        accentColor = Rose,
+        enabled = false,
+        onClick = { /* TODO */ }
+    )
+    PanelCard.REPORTS -> AdminAction(
+        label = "Relatórios",
+        description = "Estatísticas gerais",
+        icon = Icons.Filled.BarChart,
+        accentColor = Indigo,
+        onClick = nav.reports
+    )
+    PanelCard.GALLERY -> AdminAction(
+        label = "Galeria",
+        description = "Fotos e álbuns",
+        icon = Icons.Filled.PhotoLibrary,
+        accentColor = Amber,
+        enabled = false,
+        onClick = { /* TODO */ }
+    )
+    PanelCard.EVENTS -> AdminAction(
+        label = "Eventos",
+        description = "Criar e editar eventos",
+        icon = Icons.Filled.Event,
+        accentColor = Sky,
+        enabled = false,
+        onClick = { /* TODO */ }
+    )
+    PanelCard.NOTIFICATIONS -> AdminAction(
+        label = "Notificações",
+        description = "Enviar push notification",
+        icon = Icons.Filled.Notifications,
+        accentColor = Pink,
+        enabled = false,
+        onClick = { /* TODO */ }
+    )
 }
 
 /**
