@@ -100,16 +100,18 @@ fun MembersListContent(
             else -> MembersGrid(state, imageLoader, onQueryChange, onOpenMember)
         }
 
-        ExtendedFloatingActionButton(
-            onClick = onAddMember,
-            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-            text = { Text("Novo membro") },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-        )
+        if (state.canAdd) {
+            ExtendedFloatingActionButton(
+                onClick = onAddMember,
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("Novo membro") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+            )
+        }
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -184,6 +186,7 @@ private fun MembersListContentPreview() {
         MembersListContent(
             state = MembersListUiState(
                 isLoading = false,
+                canAdd = true,
                 totalCount = 3,
                 members = listOf(
                     MemberCardUi(1, "Ana Souza", "AS", null, "Ativo", isValid = true),

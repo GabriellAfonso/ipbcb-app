@@ -6,7 +6,8 @@ How to prove the feature works. Details live in [data-model.md](data-model.md) a
 ## Prerequisites
 
 - Backend with feature `010-members-management` and the `members/` media rule (`009`) deployed.
-- Two accounts: a leader (`is_admin=true`) and a regular member.
+- Two accounts: a leader (Admin or Liderança role — Admin to exercise delete and photo removal) and a regular
+  member.
 - A roll with valid and invalid members, some with status Ativo / Inativo / Visitante, some without status,
   photo, role or dates.
 
@@ -43,7 +44,7 @@ functions, never in logic.
 | # | Steps | Expected |
 |---|---|---|
 | 1 | Sign in as a regular member | No admin panel, no members entry anywhere |
-| 2 | Sign in as leader → Painel Admin | "Membros" card is blue and opens the grid |
+| 2 | Sign in as leader → Painel de Gestão | "Membros" card is blue and opens the grid |
 | 3 | Grid | All members, invalid ones faded with "Perfil inválido", status chips as the server names them |
 | 4 | Search "jose" | Only José/Jose matches; clearing restores all |
 | 5 | Open a full profile | Age, "há N anos", ministries |

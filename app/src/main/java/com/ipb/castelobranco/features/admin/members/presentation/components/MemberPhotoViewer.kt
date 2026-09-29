@@ -125,6 +125,10 @@ fun MemberPhotoPreview(
 /**
  * The photo (or the initials) full screen, over a dark background. The camera in the top-left
  * corner picks a photo, or removes the current one; the close button and system back leave.
+ *
+ * @param onPickPhoto null when the user may not change the photo (`manage` on `members`).
+ * @param onRemovePhoto null when the user may not remove it (`owner` on `members`). With both null
+ *   there is no camera at all.
  */
 @Composable
 fun MemberPhotoViewer(
@@ -132,10 +136,11 @@ fun MemberPhotoViewer(
     photoUrl: String?,
     imageLoader: ImageLoader?,
     isBusy: Boolean,
-    onPickPhoto: () -> Unit,
-    onRemovePhoto: () -> Unit,
+    onPickPhoto: (() -> Unit)?,
+    onRemovePhoto: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
+    val canRemove = onRemovePhoto != null && photoUrl != null
     var menuOpen by remember { mutableStateOf(false) }
     val buttonColors = IconButtonDefaults.iconButtonColors(
         containerColor = Color.Black.copy(alpha = BUTTON_ALPHA),
@@ -162,7 +167,7 @@ fun MemberPhotoViewer(
                     .align(Alignment.Center),
             )
             if (isBusy) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
-            Box(
+            if (onPickPhoto != null || canRemove) Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .safeDrawingPadding()
@@ -172,14 +177,16 @@ fun MemberPhotoViewer(
                     Icon(Icons.Filled.PhotoCamera, contentDescription = "Trocar foto")
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Escolher foto") },
-                        onClick = { menuOpen = false; onPickPhoto() },
-                    )
-                    if (photoUrl != null) {
+                    if (onPickPhoto != null) {
+                        DropdownMenuItem(
+                            text = { Text("Escolher foto") },
+                            onClick = { menuOpen = false; onPickPhoto() },
+                        )
+                    }
+                    if (canRemove) {
                         DropdownMenuItem(
                             text = { Text("Remover foto") },
-                            onClick = { menuOpen = false; onRemovePhoto() },
+                            onClick = { menuOpen = false; onRemovePhoto?.invoke() },
                         )
                     }
                 }

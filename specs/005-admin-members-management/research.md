@@ -17,8 +17,9 @@ graph `membersGraph` inside `adminGraph`, like `reportsGraph`. `AdminNav` gains 
 `XNavGraph.kt`). Nesting lets the list and the profile share one graph-scoped state holder. `features/admin/*`
 already groups `register`, `schedule`, `reports` this way.
 
-**Leader gate**: the admin panel is only offered when `authState.isAdmin` (`specs/admin/spec.md` §5), so the
-members area inherits the gate — no new check. The server stays the authority (403 handling in R8).
+**Leader gate**: the admin panel is only offered when the profile lists a role, and the "Membros" card only with
+`view` on `members` (`specs/admin/spec.md` §5, `specs/006-role-scoped-permissions`), so the members area inherits
+the gate. The server stays the authority (403 handling in R8).
 
 **Alternatives considered**: a top-level `features/members/` — rejected, the area only exists for administrators
 and `core/` already owns the regular member list (`MembersRepository`, birthdays); a second top-level "members"

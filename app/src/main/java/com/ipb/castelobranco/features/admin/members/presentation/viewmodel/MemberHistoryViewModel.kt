@@ -9,6 +9,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.state.HistoryLi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberHistoryUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.util.formatDateTime
+import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.toMembersEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -55,7 +56,7 @@ class MemberHistoryViewModel @Inject constructor(
                     }
                 }
                 .onFailure { throwable ->
-                    val event = throwable.toMembersEvent()
+                    val event = throwable.toMembersEvent(FailureKind.READ)
                     _uiState.update {
                         it.copy(isLoading = false, error = (event as? MembersEvent.ShowMessage)?.message)
                     }

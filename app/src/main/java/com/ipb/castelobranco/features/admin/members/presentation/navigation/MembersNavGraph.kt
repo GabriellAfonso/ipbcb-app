@@ -39,7 +39,7 @@ object MembersRoutes {
  */
 fun NavGraphBuilder.membersGraph(navController: NavHostController) {
 
-    /** 403 leaves the area; 404 goes back to the list. Both say why. */
+    /** A refused read leaves the area; 404 goes back to the list. Both say why. */
     fun handleNavigation(event: MembersEvent) {
         when (event) {
             is MembersEvent.LeaveArea -> {

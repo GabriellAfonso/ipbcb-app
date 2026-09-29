@@ -4,7 +4,7 @@ package com.ipb.castelobranco.features.admin.members.presentation.state
 sealed interface MembersEvent {
     data class ShowMessage(val message: String) : MembersEvent
 
-    /** The server refused the leader (403): leave the members area. */
+    /** The server refused a read (403): leave the members area. A refused write is a [ShowMessage]. */
     data class LeaveArea(val message: String) : MembersEvent
 
     /** The member no longer exists (404): back to the list. */

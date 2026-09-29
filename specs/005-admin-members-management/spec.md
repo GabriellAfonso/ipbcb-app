@@ -234,8 +234,11 @@ confirm, and check the member is gone from the list.
 
 - **FR-001**: The members area MUST be reachable only from the admin panel's "Membros" card, which becomes active
   (blue accent, people icon) and opens the members list.
-- **FR-002**: The members area MUST be offered only to leaders (users whose profile marks them as administrators).
-  The server remains the authority on every operation.
+- **FR-002**: The members area MUST be offered only to users with at least `view` on the `members` scope (Admin
+  and Liderança roles — see `specs/006-role-scoped-permissions`). The server remains the authority on every
+  operation. Adding, editing and changing the photo need `manage`; deleting a member or removing a photo needs
+  `owner` (Admin only). A refused **write** shows the message and keeps the user on the screen; only a refused read
+  leaves the area (006 supersedes FR-003 for writes).
 - **FR-003**: A "not allowed" answer from the server during any members operation MUST show the server's message
   and leave the members area.
 
@@ -385,7 +388,8 @@ confirm, and check the member is gone from the list.
 
 ## Assumptions
 
-- Leader = the profile's administrator flag, already used to show the admin panel.
+- Leader = a user whose profile grants `view` or more on `members` (Admin or Liderança role, backend 012). The
+  former `is_admin` flag no longer exists.
 - The server contract is the one in the backend's `specs/010-members-management/contracts/admin-members-api.md`:
   full list without pagination, record, create, partial edit, delete, photo upload/removal, history, picker options;
   version tags on every read; errors as `{error_code, detail}` with Portuguese `detail`.
@@ -394,7 +398,7 @@ confirm, and check the member is gone from the list.
 - The server stores the birth date as three nullable integers (`birth_day`, `birth_month`, `birth_year`) and
   enforces the rules of FR-018 itself; the app's checks only spare a round trip.
 - Member photos are served by the protected media rules of `specs/004-protected-media-downloads`, which already
-  restrict the `members/` area to leaders.
+  restrict the `members/` area to `view` on `members`.
 - Reusing the profile photo picking/cropping flow is acceptable for member photos (square crop).
 - Validity changes from the profile switch take effect immediately, without an undo action; the history keeps the
   trace.

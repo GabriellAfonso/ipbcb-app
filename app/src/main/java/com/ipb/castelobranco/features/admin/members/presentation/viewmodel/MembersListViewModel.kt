@@ -3,6 +3,9 @@ package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.ImageLoader
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.members.di.MemberPhotoLoader
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberSummary
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMembersUseCase
@@ -10,6 +13,7 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.RefreshMember
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberCardUi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersListUiState
+import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
 import com.ipb.castelobranco.features.admin.members.presentation.util.normalizeForSearch
 import com.ipb.castelobranco.features.admin.members.presentation.util.statusLabel
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,8 +40,11 @@ import javax.inject.Inject
 class MembersListViewModel @Inject constructor(
     observeMembers: ObserveMembersUseCase,
     private val refreshMembers: RefreshMembersUseCase,
+    observeAccess: ObserveAccessUseCase,
     @MemberPhotoLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
+
+    private val canAdd = observeAccess().map { it.allows(Scope.MEMBERS, AccessLevel.MANAGE) }
 
     private val query = MutableStateFlow("")
     private val isRefreshing = MutableStateFlow(true)
@@ -46,8 +54,8 @@ class MembersListViewModel @Inject constructor(
     val events: SharedFlow<MembersEvent> = _events.asSharedFlow()
 
     val uiState: StateFlow<MembersListUiState> =
-        combine(observeMembers(), query, isRefreshing, loadError) { members, query, refreshing, error ->
-            buildState(members, query, refreshing, error)
+        combine(observeMembers(), query, isRefreshing, loadError, canAdd) { members, query, refreshing, error, add ->
+            buildState(members, query, refreshing, error).copy(canAdd = add)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MembersListUiState())
 
     init {
@@ -59,7 +67,7 @@ class MembersListViewModel @Inject constructor(
         loadError.value = null
         viewModelScope.launch {
             refreshMembers().onFailure { throwable ->
-                val event = throwable.toMembersEvent()
+                val event = throwable.toMembersEvent(FailureKind.READ)
                 if (event is MembersEvent.ShowMessage) loadError.value = event.message
                 _events.emit(event)
             }

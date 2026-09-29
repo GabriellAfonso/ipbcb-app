@@ -22,7 +22,7 @@ If-None-Match: "<etag>"                 # profile photo only, when an ETag is st
 |--------|---------|
 | `gallery/` | member |
 | `profiles/` | member; the owner always for their own photo |
-| `members/` | leader (`is_admin`) — not consumed by the app |
+| `members/` | `view` on the `members` scope (Admin, Liderança; backend 012) — consumed only by the members area (`@MemberPhotoLoader`) |
 
 ## Responses
 

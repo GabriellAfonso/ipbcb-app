@@ -22,6 +22,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.navigation.Memb
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberFormUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
+import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.toMembersEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -115,7 +116,9 @@ class MemberFormViewModel @Inject constructor(
         if (memberId == null) return
         validatePhoto(bytes)
             .onSuccess { _uiState.update { it.copy(pickedPhoto = bytes, hasUnsavedChanges = true) } }
-            .onFailure { throwable -> viewModelScope.launch { _events.emit(throwable.toMembersEvent()) } }
+            .onFailure { throwable ->
+                viewModelScope.launch { _events.emit(throwable.toMembersEvent(FailureKind.WRITE)) }
+            }
     }
 
     fun onSave() {
@@ -155,7 +158,7 @@ class MemberFormViewModel @Inject constructor(
             },
             onFailure = { throwable ->
                 _uiState.update { it.copy(isSaving = false, hasUnsavedChanges = true) }
-                _events.emit(throwable.toMembersEvent())
+                _events.emit(throwable.toMembersEvent(FailureKind.WRITE))
                 false
             },
         )
@@ -169,7 +172,7 @@ class MemberFormViewModel @Inject constructor(
         }.toMap()
         val unplaced = serverFields.filterKeys { MemberField.fromApiKey(it) == null }.values.flatten()
 
-        val event = throwable.toMembersEvent()
+        val event = throwable.toMembersEvent(FailureKind.WRITE)
         if (event !is MembersEvent.ShowMessage) {
             _events.emit(event)
             return
@@ -191,7 +194,7 @@ class MemberFormViewModel @Inject constructor(
     }
 
     private suspend fun failLoading(throwable: Throwable) {
-        val event = throwable.toMembersEvent()
+        val event = throwable.toMembersEvent(FailureKind.READ)
         if (event is MembersEvent.ShowMessage) {
             _uiState.update { it.copy(isLoading = false, loadError = event.message) }
         } else {

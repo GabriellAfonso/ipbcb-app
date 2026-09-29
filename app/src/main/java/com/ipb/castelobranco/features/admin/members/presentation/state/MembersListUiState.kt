@@ -10,6 +10,8 @@ data class MembersListUiState(
     val query: String = "",
     val members: List<MemberCardUi> = emptyList(),
     val totalCount: Int = 0,
+    /** "Novo membro": `manage` on `members`. */
+    val canAdd: Boolean = false,
 )
 
 data class MemberCardUi(

@@ -1,6 +1,12 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
 import app.cash.turbine.test
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
+import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.dto.MemberListDto
@@ -33,6 +39,7 @@ class MembersListViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val api = FakeMembersAdminApi()
     private val repository = MembersAdminRepositoryImpl(api)
+    private val access = FakeAccessRepository()
 
     private val roll = MemberListDto(
         listOf(
@@ -49,7 +56,24 @@ class MembersListViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel() =
-        MembersListViewModel(ObserveMembersUseCase(repository), RefreshMembersUseCase(repository), mockk())
+        MembersListViewModel(
+            ObserveMembersUseCase(repository),
+            RefreshMembersUseCase(repository),
+            ObserveAccessUseCase(access),
+            mockk(),
+        )
+
+    @Test
+    fun `new member is offered only with manage`() = runTest {
+        api.onGetMembers = { ok(roll) }
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.canAdd)
+
+        access.state.value = accessOf(Role.LEADER, Scope.MEMBERS to AccessLevel.MANAGE)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canAdd)
+    }
 
     @Test
     fun `loads the roll into cards`() = runTest {

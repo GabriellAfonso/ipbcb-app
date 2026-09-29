@@ -14,6 +14,12 @@ data class MemberProfileUiState(
     val deleteTyped: String = "",
     val canConfirmDelete: Boolean = false,
     val isDeleting: Boolean = false,
+    /** Edit and the validity switch: `manage` on `members`. */
+    val canEdit: Boolean = false,
+    val canChangePhoto: Boolean = false,
+    /** Delete and photo removal: `owner` on `members` (Admin only). */
+    val canDelete: Boolean = false,
+    val canRemovePhoto: Boolean = false,
 )
 
 /** Every text already formatted; the screen only lays it out. */

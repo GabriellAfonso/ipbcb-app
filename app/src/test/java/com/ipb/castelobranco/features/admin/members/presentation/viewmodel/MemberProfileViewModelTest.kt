@@ -2,6 +2,12 @@ package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
+import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.dto.HistoryDto
@@ -67,6 +73,10 @@ class MemberProfileViewModelTest {
         removePhoto = RemoveMemberPhotoUseCase(repository),
         deleteMember = DeleteMemberUseCase(repository),
         computeAge = ComputeMemberAgeUseCase(fixedDateProvider),
+        // Owner: these tests exercise every action; the level gates live in MemberProfileFlagsTest.
+        observeAccess = ObserveAccessUseCase(
+            FakeAccessRepository(accessOf(Role.ADMIN, Scope.MEMBERS to AccessLevel.OWNER))
+        ),
         imageLoader = mockk(),
     ).also { it.load() }
 

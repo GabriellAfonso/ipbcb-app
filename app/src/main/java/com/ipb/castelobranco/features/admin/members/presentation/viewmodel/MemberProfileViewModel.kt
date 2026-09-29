@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.ImageLoader
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.members.di.MemberPhotoLoader
 import com.ipb.castelobranco.features.admin.members.domain.model.DeleteConfirmation
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberRecord
@@ -19,6 +22,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.state.MemberPro
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.util.AGE_UNKNOWN
+import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.NOT_INFORMED
 import com.ipb.castelobranco.features.admin.members.presentation.util.NO_ROLE
 import com.ipb.castelobranco.features.admin.members.presentation.util.formatBirth
@@ -53,6 +57,7 @@ class MemberProfileViewModel @Inject constructor(
     private val removePhoto: RemoveMemberPhotoUseCase,
     private val deleteMember: DeleteMemberUseCase,
     private val computeAge: ComputeMemberAgeUseCase,
+    observeAccess: ObserveAccessUseCase,
     @MemberPhotoLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
 
@@ -66,13 +71,33 @@ class MemberProfileViewModel @Inject constructor(
 
     private var record: MemberRecord? = null
 
+    init {
+        // A profile refresh after a refusal hides the actions the user lost, in place.
+        viewModelScope.launch {
+            observeAccess().collect { access ->
+                val canManage = access.allows(Scope.MEMBERS, AccessLevel.MANAGE)
+                val isOwner = access.allows(Scope.MEMBERS, AccessLevel.OWNER)
+                _uiState.update {
+                    it.copy(
+                        canEdit = canManage,
+                        canChangePhoto = canManage,
+                        canDelete = isOwner,
+                        canRemovePhoto = isOwner,
+                    )
+                }
+            }
+        }
+    }
+
     /** Called whenever the screen comes back to the front, so an edit shows at once. */
     fun load() {
         _uiState.update { it.copy(isLoading = it.profile == null, error = null) }
         viewModelScope.launch {
             getMember(memberId)
                 .onSuccess { show(it) }
-                .onFailure { throwable -> fail(throwable, inPlace = _uiState.value.profile == null) }
+                .onFailure { throwable ->
+                    fail(throwable, FailureKind.READ, inPlace = _uiState.value.profile == null)
+                }
             _uiState.update { it.copy(isLoading = false) }
             loadLastChange()
         }
@@ -82,6 +107,7 @@ class MemberProfileViewModel @Inject constructor(
 
     fun onValidityChanged(isValid: Boolean) {
         val current = record ?: return
+        if (!_uiState.value.canEdit) return
         if (_uiState.value.isSavingValidity || current.isValid == isValid) return
 
         render(current.copy(isValid = isValid))
@@ -94,7 +120,7 @@ class MemberProfileViewModel @Inject constructor(
                 }
                 .onFailure { throwable ->
                     render(current)
-                    fail(throwable)
+                    fail(throwable, FailureKind.WRITE)
                 }
             _uiState.update { it.copy(isSavingValidity = false) }
         }
@@ -106,6 +132,7 @@ class MemberProfileViewModel @Inject constructor(
 
     fun onPhotoPicked(bytes: ByteArray) {
         val current = record ?: return
+        if (!_uiState.value.canChangePhoto) return
         _uiState.update { it.copy(isPhotoBusy = true) }
         viewModelScope.launch {
             uploadPhoto(memberId, bytes)
@@ -113,12 +140,13 @@ class MemberProfileViewModel @Inject constructor(
                     show(current.copy(photoUrl = url))
                     loadLastChange()
                 }
-                .onFailure { fail(it) }
+                .onFailure { fail(it, FailureKind.WRITE) }
             _uiState.update { it.copy(isPhotoBusy = false) }
         }
     }
 
     fun onRemovePhotoRequested() {
+        if (!_uiState.value.canRemovePhoto) return
         _uiState.update { it.copy(showRemovePhotoDialog = true) }
     }
 
@@ -135,7 +163,7 @@ class MemberProfileViewModel @Inject constructor(
                     show(current.copy(photoUrl = null))
                     loadLastChange()
                 }
-                .onFailure { fail(it) }
+                .onFailure { fail(it, FailureKind.WRITE) }
             _uiState.update { it.copy(isPhotoBusy = false) }
         }
     }
@@ -145,6 +173,7 @@ class MemberProfileViewModel @Inject constructor(
     // region delete
 
     fun onDeleteRequested() {
+        if (!_uiState.value.canDelete) return
         _uiState.update { it.copy(showDeleteDialog = true, deleteTyped = "", canConfirmDelete = false) }
     }
 
@@ -167,7 +196,7 @@ class MemberProfileViewModel @Inject constructor(
                 .onSuccess { _events.emit(MembersEvent.Deleted) }
                 .onFailure { throwable ->
                     _uiState.update { it.copy(showDeleteDialog = false, deleteTyped = "") }
-                    fail(throwable)
+                    fail(throwable, FailureKind.WRITE)
                 }
             _uiState.update { it.copy(isDeleting = false) }
         }
@@ -195,8 +224,8 @@ class MemberProfileViewModel @Inject constructor(
      * @param inPlace nothing is on screen yet, so a plain failure becomes the screen's error state
      *   instead of a passing message.
      */
-    private suspend fun fail(throwable: Throwable, inPlace: Boolean = false) {
-        val event = throwable.toMembersEvent()
+    private suspend fun fail(throwable: Throwable, kind: FailureKind, inPlace: Boolean = false) {
+        val event = throwable.toMembersEvent(kind)
         if (inPlace && event is MembersEvent.ShowMessage) {
             _uiState.update { it.copy(error = event.message) }
         } else {

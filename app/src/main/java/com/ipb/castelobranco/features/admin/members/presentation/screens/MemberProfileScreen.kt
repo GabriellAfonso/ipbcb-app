@@ -123,7 +123,7 @@ fun MemberProfileScreen(
         showBackArrow = true,
         onBackClick = onBack,
         extraActions = {
-            if (memberId != null) {
+            if (memberId != null && state.canEdit) {
                 IconButton(onClick = { onEdit(memberId) }) {
                     Icon(Icons.Filled.Edit, contentDescription = "Editar membro")
                 }
@@ -226,6 +226,8 @@ private fun ProfileBody(
                 profile = profile,
                 imageLoader = imageLoader,
                 isBusy = state.isPhotoBusy,
+                canChangePhoto = state.canChangePhoto,
+                canRemovePhoto = state.canRemovePhoto,
                 actions = actions,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -253,7 +255,7 @@ private fun ProfileBody(
             }
             ValidityCard(
                 isValid = profile.isValid,
-                enabled = !state.isSavingValidity,
+                enabled = state.canEdit && !state.isSavingValidity,
                 onChange = actions.onValidityChanged,
             )
             HistoryCard(
@@ -267,17 +269,19 @@ private fun ProfileBody(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedButton(
-                onClick = actions.onDeleteRequested,
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, colors.error.copy(alpha = 0.4f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-            ) {
-                Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = colors.error)
-                Spacer(Modifier.width(8.dp))
-                Text("Excluir membro", color = colors.error, fontWeight = FontWeight.Bold)
+            if (state.canDelete) {
+                OutlinedButton(
+                    onClick = actions.onDeleteRequested,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, colors.error.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                ) {
+                    Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = colors.error)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Excluir membro", color = colors.error, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -295,6 +299,8 @@ private fun ExpandablePhoto(
     profile: MemberProfileUi,
     imageLoader: ImageLoader?,
     isBusy: Boolean,
+    canChangePhoto: Boolean,
+    canRemovePhoto: Boolean,
     actions: MemberProfileActions,
     modifier: Modifier = Modifier,
 ) {
@@ -336,8 +342,8 @@ private fun ExpandablePhoto(
             photoUrl = profile.photoUrl,
             imageLoader = imageLoader,
             isBusy = isBusy,
-            onPickPhoto = actions.onPickPhoto,
-            onRemovePhoto = actions.onRemovePhotoRequested,
+            onPickPhoto = actions.onPickPhoto.takeIf { canChangePhoto },
+            onRemovePhoto = actions.onRemovePhotoRequested.takeIf { canRemovePhoto },
             onDismiss = { stage = PhotoStage.IN_PLACE },
         )
     }
@@ -380,6 +386,10 @@ private fun MemberProfileContentPreview() {
         MemberProfileContent(
             state = MemberProfileUiState(
                 isLoading = false,
+                canEdit = true,
+                canChangePhoto = true,
+                canDelete = true,
+                canRemovePhoto = true,
                 profile = MemberProfileUi(
                     id = 12, name = "Ana Souza", initials = "AS", photoUrl = null,
                     headline = "36 anos · Feminino", statusLabel = "Ativo", roleLabel = "Diaconisa",

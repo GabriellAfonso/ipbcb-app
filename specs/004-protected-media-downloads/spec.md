@@ -22,7 +22,7 @@ see it:
 |-------------|-----------------------------------------------------------|
 | `gallery/`  | Members                                                   |
 | `profiles/` | Members; the owner can always fetch their own photo       |
-| `members/`  | Leaders (administrators)                                  |
+| `members/`  | `view` on the `members` scope (Admin, Liderança) — backend 012 |
 
 The server now answers media requests with outcomes the app never had to tell apart before:
 
