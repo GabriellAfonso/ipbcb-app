@@ -40,9 +40,19 @@ também aninhado em `adminGraph`. Ver §7.
 
 `AdminScreen` coleta `AdminPanelViewModel`, que cruza o acesso do usuário (core §4.2.1) com o catálogo de cards
 do domínio (`panel/domain/PanelCard.kt`, cada um com seu `CardRequirement`) e entrega só os cards visíveis.
-`AdminPanelContent` recebe esse estado e monta um `AdminAction` por card. Não há chamada de rede, portanto não há
-loading/erro; quando nenhum card é permitido (papel sem nível algum), a grade dá lugar a "Nenhuma funcionalidade
-disponível para o seu perfil.".
+`AdminPanelContent` recebe esse estado e monta um `AdminAction` por card. Quando nenhum card é permitido (papel sem
+nível algum), a grade dá lugar a "Nenhuma funcionalidade disponível para o seu perfil.".
+
+A única chamada de rede do painel é a contagem de membros (§2.2); os cards não dependem dela, então o painel não tem
+loading nem erro próprios.
+
+### 2.2 Contador de membros
+
+Quando o card "Membros" está visível, o painel pede a lista de membros uma vez (o mesmo `refreshMembers` da §7, com
+ETag) e mostra o total de membros num selo no canto superior direito do card, ao lado do ícone, na cor de destaque
+do card. A lista fica no repositório em memória, então o número acompanha as inclusões e exclusões feitas na área de
+membros sem recarregar. Enquanto a lista não chega, ou se o pedido falha, o selo simplesmente não aparece — sem
+mensagem de erro no painel. Sem o card "Membros" visível, nenhum pedido é feito.
 
 Estrutura visual: o título "Painel de Gestão" fica na própria TopBar (`tabName`), e o subtítulo vem
 numa faixa colada logo abaixo, injetada pelo `topBarExtension` do `BaseScreen`. O gradiente da
@@ -54,7 +64,7 @@ cabeçalhos empilhados.
 Abaixo do cabeçalho vêm o título de seção "Funcionalidades" e uma grade de duas colunas de
 cards. Cada card tem barra de destaque vertical à esquerda, fundo em gradiente sutil da cor de
 destaque até `surfaceContainer`, borda fina na mesma cor, ícone em quadrado tonal, rótulo e
-descrição de uma linha.
+descrição de uma linha. Um card pode ter um selo numérico à direita do ícone (hoje só "Membros", §2.2).
 
 As cores de destaque dos cards ficam privadas em `AdminScreen.kt`. Só verde, laranja e teal vêm
 de `BrandColors` — as demais existem apenas para diferenciar áreas administrativas entre si e

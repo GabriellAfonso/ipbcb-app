@@ -62,6 +62,7 @@ private const val ACCENT_BAR_WIDTH_DP = 4
  * @param accentColor cor definitiva do card — continua declarada mesmo nas ações desligadas,
  *   então basta trocar [enabled] para `true` que o card volta sozinho para ela.
  * @param enabled `false` pinta o card de [DisabledGray] e torna o clique inerte.
+ * @param badge selo numérico à direita do ícone; null não mostra nada.
  */
 data class AdminAction(
     val label: String,
@@ -69,6 +70,7 @@ data class AdminAction(
     val icon: ImageVector,
     val accentColor: Color,
     val enabled: Boolean = true,
+    val badge: String? = null,
     val onClick: () -> Unit
 )
 
@@ -93,7 +95,7 @@ fun AdminPanelContent(
     state: AdminPanelUiState,
     nav: AdminNav
 ) {
-    val actions = state.cards.map { card -> card.toAction(nav) }
+    val actions = state.cards.map { card -> card.toAction(nav, state.memberCount) }
 
     BaseScreen(
         tabName = PANEL_TITLE,
@@ -157,7 +159,7 @@ fun AdminPanelContent(
 
 // Cards com `enabled = false` estão cinzas por falta de implementação. Ao implementar, apague o
 // `enabled = false` — o `accentColor` de cada um já é a cor definitiva do card e volta a valer sozinho.
-private fun PanelCard.toAction(nav: AdminNav): AdminAction = when (this) {
+private fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {
     PanelCard.WORSHIP -> AdminAction(
         label = "Gestão do Louvor",
         description = "Músicas, domingos e cifras",
@@ -185,6 +187,7 @@ private fun PanelCard.toAction(nav: AdminNav): AdminAction = when (this) {
         description = "Gerenciar cadastro",
         icon = Icons.Filled.People,
         accentColor = Blue,
+        badge = memberCount?.toString(),
         onClick = nav.members
     )
     PanelCard.NOTICES -> AdminAction(
@@ -282,7 +285,11 @@ private fun AdminActionCard(
     ) {
         // IntrinsicSize.Min dá altura concreta à Row para a barra de destaque poder
         // esticar até o fim do card — sem isso fillMaxHeight resolve para 0 dentro do scroll.
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
             Box(
                 modifier = Modifier
                     .width(ACCENT_BAR_WIDTH_DP.dp)
@@ -293,19 +300,29 @@ private fun AdminActionCard(
                         )
                     )
             )
-            Column(modifier = Modifier.padding(12.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(accent.copy(alpha = 0.18f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = action.icon,
-                        contentDescription = action.label,
-                        tint = accent,
-                        modifier = Modifier.size(20.dp)
-                    )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(accent.copy(alpha = 0.18f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = action.icon,
+                            contentDescription = action.label,
+                            tint = accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (action.badge != null) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        CardBadge(text = action.badge, color = accent)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -327,5 +344,21 @@ private fun AdminActionCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CardBadge(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .background(color.copy(alpha = 0.2f), RoundedCornerShape(7.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
     }
 }
