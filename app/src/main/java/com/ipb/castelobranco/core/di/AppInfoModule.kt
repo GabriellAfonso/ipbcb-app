@@ -6,6 +6,7 @@ import com.ipb.castelobranco.core.data.auth.AuthSessionStatusProvider
 import com.ipb.castelobranco.core.data.local.DataStoreDeviceIdProvider
 import com.ipb.castelobranco.core.data.local.DeviceIdProvider
 import com.ipb.castelobranco.core.domain.auth.AuthStatusProvider
+import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.util.MonotonicClock
 import dagger.Binds
@@ -44,6 +45,10 @@ abstract class AppInfoModule {
     @Binds
     @Singleton
     abstract fun bindAuthStatusProvider(impl: AuthSessionStatusProvider): AuthStatusProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSessionPresenceProvider(impl: AuthSessionStatusProvider): SessionPresenceProvider
 
     companion object {
 
