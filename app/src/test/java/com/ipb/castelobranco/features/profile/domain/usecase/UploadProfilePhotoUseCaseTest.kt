@@ -26,11 +26,11 @@ class UploadProfilePhotoUseCaseTest {
     private val fileName = "photo.jpg"
 
     private val profileWithPhoto = MeProfile(
-        name = "João", isMember = true, isAdmin = false,
+        name = "João", isMember = true,
         photoUrl = "https://example.com/photo.jpg"
     )
     private val profileNoPhoto = MeProfile(
-        name = "João", isMember = true, isAdmin = false,
+        name = "João", isMember = true,
         photoUrl = null
     )
 

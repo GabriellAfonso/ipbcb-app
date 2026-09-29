@@ -40,8 +40,11 @@ private const val GRID_ROW_VERTICAL_PADDING_RATIO = 0.041f
  */
 data class UserAuthState(
     val isLoggedIn: Boolean = false,
-    val isAdmin: Boolean = false,
+    /** The profile lists at least one role (Admin, Liderança, Mídia). */
+    val canOpenPanel: Boolean = false,
 )
+
+private const val MANAGEMENT_PANEL_LABEL = "Painel de Gestão"
 
 @Composable
 fun CoreView(
@@ -63,13 +66,13 @@ fun CoreView(
     LaunchedEffect(Unit) { profileViewModel.initialize() }
 
     val isLoggedIn      by viewModel.isLoggedIn.collectAsStateWithLifecycle()
-    val profileUiState  by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val canOpenPanel    by viewModel.canOpenPanel.collectAsStateWithLifecycle()
     val nextSection     by scheduleViewModel.nextSection.collectAsStateWithLifecycle()
     val birthdays       by viewModel.birthdays.collectAsStateWithLifecycle()
 
     val authState = UserAuthState(
-        isLoggedIn = isLoggedIn,
-        isAdmin    = profileUiState.isAdmin ?: false,
+        isLoggedIn   = isLoggedIn,
+        canOpenPanel = canOpenPanel,
     )
 
     val context = LocalContext.current
@@ -229,10 +232,10 @@ fun DrawerContent(
             }
         }
 
-        if (authState.isLoggedIn && authState.isAdmin) {
+        if (authState.isLoggedIn && authState.canOpenPanel) {
             DrawerMenuItem(
                 iconRes   = R.drawable.ic_admin_panel,
-                label     = "Painel Admin",
+                label     = MANAGEMENT_PANEL_LABEL,
                 textColor = textColor,
             ) {
                 onItemClick { onNavigateToAdmin() }

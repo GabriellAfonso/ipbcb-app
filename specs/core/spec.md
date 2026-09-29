@@ -134,11 +134,39 @@ interface AuthEventBus {
 
     sealed class Event {
         object LoginSuccess : Event()
+        object PermissionDenied : Event()  // um endpoint com escopo recusou o usuario (403)
     }
 }
 ```
 
-Implementacao (`AuthEventBusImpl`): `MutableSharedFlow(extraBufferCapacity = 1)`, usa `tryEmit()`.
+Implementacao (`AuthEventBusImpl`): `MutableSharedFlow(extraBufferCapacity = 1)`, usa `tryEmit()` — eventos
+repetidos em rajada se fundem.
+
+### 4.2.1 Acesso — papeis e niveis por escopo
+
+O backend (feature 012) substituiu `is_admin` por **papeis** que dao um **nivel por escopo**. O app so esconde o
+que a pessoa nao pode usar; quem autoriza e sempre o backend. Spec da adequacao:
+[`specs/006-role-scoped-permissions/`](../006-role-scoped-permissions/spec.md).
+
+Vocabulario em `core/domain/access/` (sem Android):
+
+| Tipo | Conteudo |
+|------|----------|
+| `AccessLevel` | `VIEW` < `MANAGE` < `OWNER` (ordem do enum = hierarquia) |
+| `Scope` | `MEMBERS`, `SCHEDULE`, `SONGS`, `GALLERY`, `EVENTS`, `NOTICES`, `HYMNAL_HISTORY_REPORT` (`reports.hymnal_history`) |
+| `Role` | `ADMIN`, `LEADER`, `MEDIA` |
+| `Access` | `roles`, `hasAnyRole`, `levels`; `allows(scope, minimo)`, `holds(role)`; `Access.NONE` |
+| `AccessRepository` | `access: Flow<Access>`, `refresh()` |
+
+- **Negar na duvida:** nivel, escopo ou papel desconhecido vale como sem acesso. `hasAnyRole` conta todo papel da
+  lista, conhecido ou nao — e o que decide a entrada do painel.
+- `Access.NONE` enquanto o perfil carrega, falha, ou depois do logout.
+- A implementacao (`ProfileAccessRepository`) vive em `features/profile`: o acesso sai do mesmo snapshot do `/me`,
+  entao ja vale desde o boot. Painel, admin e worshiphub usam so `ObserveAccessUseCase` / `RefreshAccessUseCase`.
+- **Perfil desatualizado:** `PermissionDeniedInterceptor` (no `@Client`) ve todo 403 com
+  `error_code: "PERMISSION_DENIED"` e emite `AuthEventBus.Event.PermissionDenied`; o `CoreViewModel` chama
+  `RefreshAccessUseCase`, que refaz o `/me` com uma unica requisicao em voo por vez. As telas recalculam o que
+  mostram.
 
 ### 4.3 Sistema de Snapshot Cache
 
@@ -399,7 +427,7 @@ Orquestra inicializacao e estado global.
 3. Cascata: preload disco -> refresh rede -> auto-download gallery/bible -> fetch profile
 
 O snapshot do perfil (`ProfileSnapshotRepository`) e um `Preloadable` como os demais: o `/me` salvo
-em disco entra na fase de preload, entao `isAdmin`/`isMember` ja valem desde o boot, sem esperar a
+em disco entra na fase de preload, entao o acesso (secao 4.2.1) e `isMember` ja valem desde o boot, sem esperar a
 rede. O refresh de rede do perfil continua no fim da cascata (depende de login) e corrige o valor
 se ele mudou no servidor.
 
@@ -417,7 +445,7 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 | Item | Condicao | Acao |
 |------|----------|------|
 | Login | nao logado | navega para auth |
-| Painel Admin | logado + admin | navega para admin |
+| Painel de Gestão | logado + algum papel no perfil (`canOpenPanel`) | navega para admin |
 | Configuracoes | sempre | navega para settings |
 | Sair | logado | executa logout |
 
@@ -572,14 +600,20 @@ O core depende de interfaces/classes de features auth para funcionar:
 |------------|--------------|------|-------------|
 | `name` | `name` | `String` | sim |
 | `is_member` | `isMember` | `Boolean` | sim |
-| `is_admin` | `isAdmin` | `Boolean` | sim |
+| `roles` | `roles` | `List<RoleDto>` (`id`, `name`) | nao (default vazio) |
+| `permissions` | `permissions` | `Map<String, String?>` | nao (default vazio) |
 | `photo_url` | `photoUrl` | `String?` | nao (default `null`) |
 
 O campo `active` foi removido do DTO, do dominio e do `ProfileUiState`: nenhuma permission
-class do backend o lia (as checagens usam `is_member` / `is_admin`) e nenhuma tela do app o
+class do backend o lia (as checagens usam `is_member` e os papeis) e nenhuma tela do app o
 exibia. O backend ainda envia a chave; `ignoreUnknownKeys = true` no `Json` do
 `SerializationModule` a descarta, e o app segue funcionando quando o backend parar de
 enviar. Regressao coberta por `MeProfileDtoBackwardCompatibilityTest`.
+
+`is_admin` saiu do contrato (backend 012) e do app. `roles` e `permissions` sao lidos como texto cru e so viram
+`Access` no mapper (`AccessMapper`): um valor desconhecido nunca quebra a desserializacao, vira "sem acesso". Um
+`/me` salvo em disco no formato antigo decodifica normalmente — `is_admin` e descartado e os dois campos novos ficam
+vazios — e vale como "sem papel" ate o proximo fetch. `MeProfile.access` carrega o `Access` ja mapeado.
 
 ---
 

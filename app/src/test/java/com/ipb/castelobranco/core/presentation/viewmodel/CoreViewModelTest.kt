@@ -1,6 +1,12 @@
 package com.ipb.castelobranco.core.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.access.Access
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.RefreshAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.usecase.PreloadDataUseCase
@@ -62,11 +68,12 @@ class CoreViewModelTest {
 
     private val authEventsFlow = MutableSharedFlow<AuthEventBus.Event>()
 
+    private val accessRepository = FakeAccessRepository()
+
     private val fakeProfile = MeProfile(
         name = "João",
         isMember = true,
-        isAdmin = false,
-        photoUrl = null
+        photoUrl = null,
     )
 
     @Before
@@ -119,6 +126,8 @@ class CoreViewModelTest {
             getMonthlyBirthdaysUseCase,
             membersRepository,
             setOf(sessionCache),
+            ObserveAccessUseCase(accessRepository),
+            RefreshAccessUseCase(accessRepository),
         )
     }
 
@@ -306,6 +315,60 @@ class CoreViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 0) { fetchProfileUseCase.refresh() }
+    }
+
+    // endregion
+
+    // region access — panel entry and refresh after 403
+
+    @Test
+    fun `canOpenPanel is false without any role`() = runTest {
+        advanceUntilIdle()
+
+        assertFalse(viewModel.canOpenPanel.value)
+    }
+
+    @Test
+    fun `canOpenPanel follows the roles in the profile`() = runTest {
+        advanceUntilIdle()
+
+        accessRepository.state.value = accessOf(Role.MEDIA)
+        advanceUntilIdle()
+        assertTrue(viewModel.canOpenPanel.value)
+
+        accessRepository.state.value = Access.NONE
+        advanceUntilIdle()
+        assertFalse(viewModel.canOpenPanel.value)
+    }
+
+    @Test
+    fun `an unknown role alone still opens the panel`() = runTest {
+        accessRepository.state.value = Access(roles = emptySet(), hasAnyRole = true, levels = emptyMap())
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canOpenPanel.value)
+    }
+
+    @Test
+    fun `PermissionDenied refreshes access`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        authEventsFlow.emit(AuthEventBus.Event.PermissionDenied)
+        advanceUntilIdle()
+
+        assertEquals(1, accessRepository.refreshCalls)
+    }
+
+    @Test
+    fun `LoginSuccess does not go through the access refresh`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        authEventsFlow.emit(AuthEventBus.Event.LoginSuccess)
+        advanceUntilIdle()
+
+        assertEquals(0, accessRepository.refreshCalls)
     }
 
     // endregion

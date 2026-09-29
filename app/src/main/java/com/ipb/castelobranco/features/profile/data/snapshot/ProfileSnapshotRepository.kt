@@ -5,6 +5,7 @@ import com.ipb.castelobranco.core.domain.snapshot.BaseSnapshotRepository
 import com.ipb.castelobranco.core.domain.snapshot.Logger
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotFetcher
+import com.ipb.castelobranco.features.profile.data.access.toAccess
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
 import com.ipb.castelobranco.features.profile.domain.model.MeProfile
 import javax.inject.Inject
@@ -22,8 +23,8 @@ class ProfileSnapshotRepository @Inject constructor(
         MeProfile(
             name = dto.name,
             isMember = dto.isMember,
-            isAdmin = dto.isAdmin,
-            photoUrl = dto.photoUrl
+            photoUrl = dto.photoUrl,
+            access = dto.toAccess(),
         )
     },
     logger = logger,

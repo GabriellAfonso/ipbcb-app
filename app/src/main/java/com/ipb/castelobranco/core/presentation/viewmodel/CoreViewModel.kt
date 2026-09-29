@@ -2,6 +2,8 @@ package com.ipb.castelobranco.core.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.RefreshAccessUseCase
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.domain.repository.MembersRepository
@@ -18,10 +20,13 @@ import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -40,6 +45,8 @@ class CoreViewModel @Inject constructor(
     private val getMonthlyBirthdaysUseCase: GetMonthlyBirthdaysUseCase,
     private val membersRepository: MembersRepository,
     private val sessionScopedCaches: Set<@JvmSuppressWildcards SessionScopedCache>,
+    observeAccess: ObserveAccessUseCase,
+    private val refreshAccess: RefreshAccessUseCase,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -57,6 +64,11 @@ class CoreViewModel @Inject constructor(
 
     private val _birthdays = MutableStateFlow<List<Birthday>>(emptyList())
     val birthdays: StateFlow<List<Birthday>> = _birthdays.asStateFlow()
+
+    /** Any role in the profile opens the management panel; what it shows inside is per level. */
+    val canOpenPanel: StateFlow<Boolean> = observeAccess()
+        .map { it.hasAnyRole }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private var initialized = false
 
@@ -83,10 +95,17 @@ class CoreViewModel @Inject constructor(
         // Reage ao login bem-sucedido para sincronizar dados de perfil
         viewModelScope.launch {
             authEventBus.events.collect { event ->
-                if (event is AuthEventBus.Event.LoginSuccess) {
-                    refreshProfileOnAppOpen()
-                    // A galeria só é acessível a membros: antes do login não havia o que baixar.
-                    galleryAutoDownload.onLoginSuccess()
+                when (event) {
+                    AuthEventBus.Event.LoginSuccess -> {
+                        refreshProfileOnAppOpen()
+                        // A galeria só é acessível a membros: antes do login não havia o que baixar.
+                        galleryAutoDownload.onLoginSuccess()
+                    }
+                    // O perfil guardado pode estar desatualizado: um papel removido vale já no servidor.
+                    AuthEventBus.Event.PermissionDenied -> launch {
+                        runCatching { refreshAccess() }
+                            .onFailure { Timber.w(it, "Access refresh after 403 failed") }
+                    }
                 }
             }
         }

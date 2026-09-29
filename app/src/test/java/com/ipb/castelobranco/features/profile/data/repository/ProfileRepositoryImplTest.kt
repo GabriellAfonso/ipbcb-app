@@ -30,7 +30,6 @@ class ProfileRepositoryImplTest {
     private val fakeProfile = MeProfile(
         name = "João Silva",
         isMember = true,
-        isAdmin = false,
         photoUrl = "https://example.com/photo.jpg"
     )
 

@@ -47,7 +47,6 @@ class ProfileViewModel @Inject constructor(
                             it.copy(
                                 userName = profile.name.trim().ifBlank { "Usuário" },
                                 isMember = profile.isMember,
-                                isAdmin = profile.isAdmin,
                                 photoUrl = profile.photoUrl
                             )
                         }
