@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.core.di
 
 import com.ipb.castelobranco.core.network.AuthInterceptor
+import com.ipb.castelobranco.core.network.PermissionDeniedInterceptor
 import com.ipb.castelobranco.core.network.TokenAuthenticator
 import dagger.Module
 import dagger.Provides
@@ -41,11 +42,13 @@ object HttpClientModule {
     @Client
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
+        permissionDeniedInterceptor: PermissionDeniedInterceptor,
         tokenAuthenticator: TokenAuthenticator,
         logging: HttpLoggingInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(permissionDeniedInterceptor)
             .authenticator(tokenAuthenticator)
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)

@@ -39,6 +39,9 @@ O texto que aparece na tela é decidido em `core/presentation/error/AppErrorMess
 `AppError.toUserMessage()`: usa `userMessage` quando existe, senão devolve um genérico por
 categoria (rede, autenticação, servidor, desconhecido).
 
+Dentro de `AppError.Auth`, o genérico depende do código: 401 é sessão ("Faça login para continuar.") e 403 é
+permissão ("Você não tem permissão para esta ação."). Uma recusa de permissão nunca aparece como problema de login.
+
 Não há variação de texto genérico por tela. Uma tela que precise de texto próprio para um erro deve
 fazer o repositório preencher `userMessage`, não escrever o texto no ViewModel.
 
@@ -52,3 +55,7 @@ resposta HTTP com erro em `AppError`. Nenhuma outra camada reimplementa essa ló
 
 Mapeamento de status: 401 e 403 viram `AppError.Auth(code)`; os demais viram
 `AppError.Server(code)`.
+
+Única exceção de leitura: `core/network/PermissionDeniedInterceptor.kt` espia o corpo de toda resposta 403 do
+client autenticado, com o mesmo `parseApiError`, só para saber se `error_code` é `PERMISSION_DENIED` e disparar a
+atualização do perfil. Ele não produz `AppError` nem texto, e não altera a resposta.

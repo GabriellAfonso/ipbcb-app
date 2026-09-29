@@ -23,6 +23,20 @@ class AppErrorMessagesTest {
     }
 
     @Test
+    fun `toUserMessage returns the permission text for a 403 without body`() {
+        val error = AppError.Auth(code = 403, message = "HTTP 403")
+
+        assertEquals("Você não tem permissão para esta ação.", error.toUserMessage())
+    }
+
+    @Test
+    fun `toUserMessage keeps the backend detail of a structured 403`() {
+        val error = AppError.Auth(code = 403, userMessage = "Você não tem permissão para esta ação (escopo).")
+
+        assertEquals("Você não tem permissão para esta ação (escopo).", error.toUserMessage())
+    }
+
+    @Test
     fun `toUserMessage returns the server text for Server`() {
         val error = AppError.Server(code = 500, message = "<html><body>Server Error (500)</body></html>")
 
