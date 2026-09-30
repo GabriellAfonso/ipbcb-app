@@ -43,6 +43,8 @@ firebaseCrashlyticsPlugin = "3.0.4"
 
 googleServices = "4.5.0"
 timber = "5.0.1"
+reorderable = "3.1.0"
+exifinterface = "1.4.2"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
@@ -102,6 +104,8 @@ firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 
 
 [plugins]

@@ -177,4 +177,8 @@ dependencies {
 
     // Logging
     implementation(libs.timber)
+
+    // Gallery management: drag-to-reorder and EXIF carry-over of uploads
+    implementation(libs.reorderable)
+    implementation(libs.androidx.exifinterface)
 }
