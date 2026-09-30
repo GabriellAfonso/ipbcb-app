@@ -80,7 +80,7 @@ class GalleryViewModelTest {
             repository = repository,
             syncGallery = syncGallery,
             autoDownload = autoDownload,
-            manage = manageUseCases(FakeGalleryManageRepository(), FakeUploadRepository()),
+            manage = manageUseCases(FakeGalleryManageRepository(), FakeUploadRepository(), repository),
             observeAccess = ObserveAccessUseCase(FakeAccessRepository()),
             connectivityObserver = connectivity,
             workManager = workManager,

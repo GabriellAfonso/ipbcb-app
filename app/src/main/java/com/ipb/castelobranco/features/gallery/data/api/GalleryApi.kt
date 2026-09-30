@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.data.api
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryAlbumDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryTrashEntryDto
 import com.ipb.castelobranco.features.gallery.data.dto.PhotoUploadResultDto
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
@@ -89,4 +90,15 @@ interface GalleryApi {
 
     @DELETE(GalleryEndpoints.PHOTO)
     suspend fun deletePhoto(@Path(GalleryEndpoints.ID) photoId: Long): Response<Unit>
+
+    /** `owner` only: one entry per delete action, most recent first. */
+    @GET(GalleryEndpoints.TRASH)
+    suspend fun getTrash(): Response<List<GalleryTrashEntryDto>>
+
+    /** Brings back the album with everything deleted with it. */
+    @POST(GalleryEndpoints.TRASH_ALBUM_RESTORE)
+    suspend fun restoreAlbum(@Path(GalleryEndpoints.ID) albumId: Long): Response<GalleryAlbumDto>
+
+    @POST(GalleryEndpoints.TRASH_PHOTO_RESTORE)
+    suspend fun restorePhoto(@Path(GalleryEndpoints.ID) photoId: Long): Response<GalleryPhotoDto>
 }

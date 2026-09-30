@@ -2,6 +2,8 @@ package com.ipb.castelobranco.features.gallery.domain.manage
 
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 import java.io.File
 
 /**
@@ -29,6 +31,15 @@ interface GalleryManageRepository {
 
     /** The photo's original on the device, downloaded to a temp file when missing. */
     suspend fun originalForCover(photoId: Long): Result<CoverSource>
+
+    /** The server's trash, in its order (`owner` only). Never cached. */
+    suspend fun trash(): Result<List<TrashEntry>>
+
+    /**
+     * Restores a trash entry. The album or photo that comes back is applied to the local copy; the sync
+     * that follows brings what went with an album.
+     */
+    suspend fun restore(key: TrashKey): Result<Unit>
 
     /** One sync for a batch that passed `syncAfter = false`. */
     suspend fun syncAfterWrite()

@@ -12,6 +12,8 @@ import com.ipb.castelobranco.features.gallery.domain.manage.MovePhotosUseCase
 import com.ipb.castelobranco.features.gallery.domain.manage.RemoveCoverUseCase
 import com.ipb.castelobranco.features.gallery.domain.manage.ReorderUseCase
 import com.ipb.castelobranco.features.gallery.domain.manage.SetCoverUseCase
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.trash.RestoreTrashItemUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.DismissUploadUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadRepository
@@ -43,7 +45,11 @@ class FakeUploadRepository : GalleryUploadRepository {
     }
 }
 
-fun manageUseCases(repository: GalleryManageRepository, uploads: GalleryUploadRepository) = GalleryManageUseCases(
+fun manageUseCases(
+    repository: GalleryManageRepository,
+    uploads: GalleryUploadRepository,
+    gallery: GalleryRepository,
+) = GalleryManageUseCases(
     createAlbum = CreateAlbumUseCase(repository),
     editAlbum = EditAlbumUseCase(repository),
     moveAlbum = MoveAlbumUseCase(repository),
@@ -57,4 +63,5 @@ fun manageUseCases(repository: GalleryManageRepository, uploads: GalleryUploadRe
     enqueueUploads = EnqueueUploadsUseCase(uploads),
     dismissUpload = DismissUploadUseCase(uploads),
     observeUploads = ObserveUploadsUseCase(uploads),
+    restore = RestoreTrashItemUseCase(repository, gallery),
 )

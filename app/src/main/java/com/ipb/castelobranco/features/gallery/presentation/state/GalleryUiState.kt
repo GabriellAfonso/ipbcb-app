@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.gallery.presentation.state
 
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 import java.io.File
 
 /** What a photo tile or page shows: the original on disk, else the server preview, else grey. */
@@ -42,7 +43,10 @@ data class GalleryRootUiState(
     /** "Organizar" open on the root: [albums] already follow the draft order. */
     val isOrganizing: Boolean = false,
     val isSavingOrder: Boolean = false,
-)
+) {
+    /** The trash icon: owners only, not while organizing. */
+    val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
+}
 
 data class AlbumUiState(
     val isLoading: Boolean = true,
@@ -114,6 +118,9 @@ data class PhotoViewerUiState(
 sealed interface GalleryMessage {
     val text: String
 
+    /** A button on the message, if any. */
+    val action: MessageAction? get() = null
+
     data object PhotoRemoved : GalleryMessage {
         override val text = "Esta foto foi removida"
     }
@@ -134,12 +141,16 @@ sealed interface GalleryMessage {
         override val text = "Alterações salvas"
     }
 
-    data object AlbumTrashed : GalleryMessage {
+    /** [undo] is offered only after deleting this one album, while the user still has `owner`. */
+    data class AlbumTrashed(val undo: MessageAction.Undo? = null) : GalleryMessage {
         override val text = "Álbum enviado para a lixeira"
+        override val action: MessageAction? get() = undo
     }
 
-    data object PhotoTrashed : GalleryMessage {
+    /** [undo] is offered only after deleting this one photo, while the user still has `owner`. */
+    data class PhotoTrashed(val undo: MessageAction.Undo? = null) : GalleryMessage {
         override val text = "Foto enviada para a lixeira"
+        override val action: MessageAction? get() = undo
     }
 
     data class PhotoMovedTo(val albumName: String) : GalleryMessage {
@@ -158,6 +169,21 @@ sealed interface GalleryMessage {
         override val text = "Capa removida"
     }
 
-    /** A batch result or a refusal, already worded. */
-    data class Text(override val text: String) : GalleryMessage
+    /** A batch result or a refusal, already worded; [action] e.g. "Abrir álbum" after a name conflict. */
+    data class Text(override val text: String, override val action: MessageAction? = null) : GalleryMessage
+}
+
+/** What a message's button does. */
+sealed interface MessageAction {
+    val label: String
+
+    /** Restores what was just sent to the trash. */
+    data class Undo(val key: TrashKey) : MessageAction {
+        override val label = "Desfazer"
+    }
+
+    /** Opens the live album that holds the name a restore needs. */
+    data class OpenAlbum(val albumId: Long) : MessageAction {
+        override val label = "Abrir álbum"
+    }
 }

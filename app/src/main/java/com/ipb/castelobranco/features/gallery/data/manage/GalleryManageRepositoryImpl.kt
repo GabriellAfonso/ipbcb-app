@@ -24,6 +24,9 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -109,6 +112,18 @@ class GalleryManageRepositoryImpl @Inject constructor(
             throw e
         } catch (e: Exception) {
             Result.failure(e.toWriteError())
+        }
+    }
+
+    override suspend fun trash(): Result<List<TrashEntry>> =
+        request { api.getTrash() }.map { entries -> entries.mapNotNull { it.toDomain() } }
+
+    override suspend fun restore(key: TrashKey): Result<Unit> = when (key.kind) {
+        TrashKind.ALBUM -> write({ api.restoreAlbum(key.id) }) { dto ->
+            Unit to GalleryLocalChange.UpsertAlbum(dto.toDomain())
+        }
+        TrashKind.PHOTO -> write({ api.restorePhoto(key.id) }) { dto ->
+            Unit to GalleryLocalChange.UpsertPhoto(dto.toDomain())
         }
     }
 

@@ -96,27 +96,28 @@ fun PhotoScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    GalleryMessageEffect(message, viewModel::consumeMessage)
 
     // Nenhuma foto sobrou no álbum: volta para ele.
     LaunchedEffect(state.isClosed) {
         if (state.isClosed) nav.back()
     }
 
-    PhotoContent(
-        state = state,
-        previewLoader = viewModel.previewLoader,
-        onBack = nav.back,
-        onPageChanged = { currentId -> viewModel.onPageChanged(albumId, photoId, currentId) },
-        onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
-        onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
-        manage = PhotoManageActions(
-            onEdit = viewModel::openEditPhoto,
-            onMove = { id -> viewModel.openMovePhotos(albumId, id) },
-            onUseAsCover = { id -> viewModel.useAsCover(albumId, id) },
-            onDelete = { id -> viewModel.askDeletePhotos(albumId, id) },
-        ),
-    )
+    GalleryMessageHost(message, isLeaving = state.isClosed, viewModel, nav) {
+        PhotoContent(
+            state = state,
+            previewLoader = viewModel.previewLoader,
+            onBack = nav.back,
+            onPageChanged = { currentId -> viewModel.onPageChanged(albumId, photoId, currentId) },
+            onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
+            onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
+            manage = PhotoManageActions(
+                onEdit = viewModel::openEditPhoto,
+                onMove = { id -> viewModel.openMovePhotos(albumId, id) },
+                onUseAsCover = { id -> viewModel.useAsCover(albumId, id) },
+                onDelete = { id -> viewModel.askDeletePhotos(albumId, id) },
+            ),
+        )
+    }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
 

@@ -11,6 +11,8 @@ private const val HTTP_BAD_REQUEST = 400
 private const val HTTP_FORBIDDEN = 403
 private const val HTTP_NOT_FOUND = 404
 private const val EXTRA_CHAIN = "chain"
+private const val EXTRA_TRASHED_PARENT_ID = "trashed_parent_id"
+private const val EXTRA_CONFLICTING_ALBUM_ID = "conflicting_album_id"
 private val ORDER_EXTRAS = setOf("missing", "unexpected", "repeated")
 
 fun AppError.isForbidden(): Boolean = this is AppError.Auth && code == HTTP_FORBIDDEN
@@ -28,3 +30,12 @@ fun AppError.isCycle(): Boolean =
 /** Any other structured 400 of a name write: the name is taken by a sibling. */
 fun AppError.isValidation(): Boolean =
     this is AppError.Server && code == HTTP_BAD_REQUEST && !isOrderMismatch() && !isCycle()
+
+/** A restore refused because the parent album (a photo's album) is in the trash: that album's id. */
+fun AppError.trashedParentId(): Long? = badRequestExtra(EXTRA_TRASHED_PARENT_ID)
+
+/** A restore refused because a live sibling album holds the name: that album's id. */
+fun AppError.conflictingAlbumId(): Long? = badRequestExtra(EXTRA_CONFLICTING_ALBUM_ID)
+
+private fun AppError.badRequestExtra(key: String): Long? =
+    if (this is AppError.Server && code == HTTP_BAD_REQUEST) extras.orEmpty()[key]?.toLongOrNull() else null

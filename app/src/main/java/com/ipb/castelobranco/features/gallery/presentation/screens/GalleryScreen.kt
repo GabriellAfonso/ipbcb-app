@@ -1,6 +1,15 @@
 package com.ipb.castelobranco.features.gallery.presentation.screens
 
-import android.widget.Toast
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.rememberCoroutineScope
+import com.ipb.castelobranco.features.gallery.presentation.state.MessageAction
+import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,6 +76,7 @@ private const val RETRY_LABEL = "Tentar novamente"
 private const val ORGANIZE_TITLE = "Organizar"
 private const val ORGANIZE_LABEL = "Organizar"
 private const val NEW_ALBUM_LABEL = "Novo álbum"
+private const val TRASH_LABEL = "Lixeira"
 
 @Composable
 fun GalleryScreen(
@@ -79,26 +88,28 @@ fun GalleryScreen(
     val state by viewModel.rootState.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
-    GalleryMessageEffect(message, viewModel::consumeMessage)
     BackHandler(enabled = state.isOrganizing) { viewModel.cancelOrganize() }
 
-    GalleryContent(
-        state = state,
-        isLoggedIn = isLoggedIn,
-        onBack = nav.back,
-        onAlbumClick = nav.toAlbum,
-        onNavigateToAuth = onNavigateToAuth,
-        onRetrySync = viewModel::retrySync,
-        onRetryDownload = viewModel::retryDownload,
-        onDownloadWithMobileData = viewModel::downloadWithMobileData,
-        manage = RootManageActions(
-            onNewAlbum = { viewModel.openCreateAlbum(null) },
-            onOrganize = { viewModel.startOrganize(null) },
-            onOrganizeMove = viewModel::moveOrganizeItem,
-            onOrganizeSave = viewModel::saveOrganize,
-            onOrganizeCancel = viewModel::cancelOrganize,
-        ),
-    )
+    GalleryMessageHost(message, isLeaving = false, viewModel, nav) {
+        GalleryContent(
+            state = state,
+            isLoggedIn = isLoggedIn,
+            onBack = nav.back,
+            onAlbumClick = nav.toAlbum,
+            onTrash = nav.toTrash,
+            onNavigateToAuth = onNavigateToAuth,
+            onRetrySync = viewModel::retrySync,
+            onRetryDownload = viewModel::retryDownload,
+            onDownloadWithMobileData = viewModel::downloadWithMobileData,
+            manage = RootManageActions(
+                onNewAlbum = { viewModel.openCreateAlbum(null) },
+                onOrganize = { viewModel.startOrganize(null) },
+                onOrganizeMove = viewModel::moveOrganizeItem,
+                onOrganizeSave = viewModel::saveOrganize,
+                onOrganizeCancel = viewModel::cancelOrganize,
+            ),
+        )
+    }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
 
@@ -125,15 +136,44 @@ internal fun rememberDialogActions(viewModel: GalleryViewModel): GalleryDialogAc
     )
 }
 
-/** Shows a removal notice once, from whichever gallery screen is on top when it arrives. */
+/**
+ * Wraps a gallery screen with the snackbar that shows the graph's message once — from whichever
+ * screen is on top. A screen that is leaving ([isLeaving]) leaves it to the one below. The message is
+ * consumed before the snackbar shows (on a scope that outlives the effect), and its button runs here:
+ * "Desfazer" restores, "Abrir álbum" opens the album.
+ */
 @Composable
-internal fun GalleryMessageEffect(message: GalleryMessage?, onShown: () -> Unit) {
-    val context = LocalContext.current
-    LaunchedEffect(message) {
-        if (message != null) {
-            Toast.makeText(context, message.text, Toast.LENGTH_SHORT).show()
-            onShown()
+internal fun GalleryMessageHost(
+    message: GalleryMessage?,
+    isLeaving: Boolean,
+    viewModel: GalleryViewModel,
+    nav: GalleryNav,
+    content: @Composable () -> Unit,
+) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(message, isLeaving) {
+        if (message == null || isLeaving) return@LaunchedEffect
+        viewModel.consumeMessage()
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val action = message.action
+            val result = snackbarHostState.showSnackbar(
+                message = message.text,
+                actionLabel = action?.label,
+                duration = if (action != null) SnackbarDuration.Long else SnackbarDuration.Short,
+            )
+            if (result != SnackbarResult.ActionPerformed) return@launch
+            when (action) {
+                is MessageAction.Undo -> viewModel.undo(action)
+                is MessageAction.OpenAlbum -> nav.toAlbum(action.albumId)
+                null -> Unit
+            }
         }
+    }
+    Box(Modifier.fillMaxSize()) {
+        content()
+        SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
     }
 }
 
@@ -143,6 +183,7 @@ fun GalleryContent(
     isLoggedIn: Boolean,
     onBack: () -> Unit,
     onAlbumClick: (Long) -> Unit,
+    onTrash: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onRetrySync: () -> Unit,
     onRetryDownload: () -> Unit,
@@ -158,6 +199,11 @@ fun GalleryContent(
         showBackArrow = true,
         onBackClick = if (state.isOrganizing) manage.onOrganizeCancel else onBack,
         extraActions = {
+            if (isLoggedIn && state.showTrash) {
+                IconButton(onClick = onTrash) {
+                    Icon(Icons.Outlined.Delete, contentDescription = TRASH_LABEL)
+                }
+            }
             when {
                 state.isOrganizing ->
                     OrganizeActions(state.isSavingOrder, manage.onOrganizeCancel, manage.onOrganizeSave)

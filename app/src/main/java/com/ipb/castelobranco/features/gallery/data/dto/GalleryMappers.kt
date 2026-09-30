@@ -6,6 +6,8 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryDelta
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 
 fun GalleryAlbumDto.toDomain() = GalleryAlbum(
     id = id,
@@ -76,3 +78,27 @@ fun GalleryIndex.toSnapshot() = GalleryIndexSnapshot(
     photos = photos.values.map { it.toDto() },
     cursor = cursor,
 )
+
+private const val TRASH_KIND_ALBUM = "album"
+private const val TRASH_KIND_PHOTO = "photo"
+
+/** `null` for a kind this app does not know. */
+fun GalleryTrashEntryDto.toDomain(): TrashEntry? {
+    val kind = when (kind) {
+        TRASH_KIND_ALBUM -> TrashKind.ALBUM
+        TRASH_KIND_PHOTO -> TrashKind.PHOTO
+        else -> return null
+    }
+    return TrashEntry(
+        kind = kind,
+        id = id,
+        name = name,
+        deletedAt = deletedAt,
+        deletedBy = deletedBy,
+        uploadedBy = uploadedBy,
+        purgeOn = purgeOn,
+        subAlbumCount = subAlbumCount,
+        photoCount = photoCount,
+        thumbnailUrl = thumbnailUrl,
+    )
+}

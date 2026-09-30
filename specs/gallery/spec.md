@@ -10,8 +10,7 @@ Fonte da verdade no backend: `backend/specs/gallery/spec.md`, `013-gallery-write
 `014-gallery-trash-sync/contracts/gallery-trash-api.md`, `015-gallery-member-tags/contracts/gallery-tags-api.md`,
 `016-photo-upload-idempotency/contracts/photo-upload-api.md`.
 
-Ainda não existem no app (features seguintes): lixeira e restauração, e marcação de membros ("Minhas fotos",
-filtros). O campo `members` das fotos já é guardado, mas não é exibido. O card "Galeria" do painel de gestão abre a
+Ainda não existe no app (feature seguinte): marcação de membros ("Minhas fotos", filtros). O campo `members` das fotos já é guardado, mas não é exibido. O card "Galeria" do painel de gestão abre a
 galeria (seção 8.1).
 
 ---
@@ -23,9 +22,11 @@ galeria (seção 8.1).
 | Galeria | `GalleryMain`                 | `CoreScreen → botão Galeria`; painel de gestão → card "Galeria" |
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
+| Lixeira | `GalleryTrash`                | Ícone de lixeira na raiz (`owner`, seção 9) |
 
-As três vivem em `galleryGraph` (`GalleryNavGraph.kt`), com um `GalleryViewModel` escopado ao grafo via
-`hiltViewModel(graphEntry)`. Cada tela coleta um `StateFlow` de UiState (`GalleryRootUiState`, `AlbumUiState`,
+As quatro vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
+ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel`, preso à sua entrada (a lista é
+lida de novo a cada visita). Cada tela coleta um `StateFlow` de UiState (`GalleryRootUiState`, `AlbumUiState`,
 `PhotoViewerUiState`) e passa dados puros ao composable de conteúdo. O estado de cada álbum e de cada visualizador é
 memoizado por chave no ViewModel.
 
@@ -65,8 +66,10 @@ aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabili
 Quando quem removeu foi o próprio usuário (seção 8), o efeito é o mesmo e o aviso é o da ação: "Álbum enviado para a
 lixeira", "Foto enviada para a lixeira", "Foto movida para '{álbum}'".
 
-O aviso é um `StateFlow<GalleryMessage?>` consumível no ViewModel, mostrado (Toast) pela tela que está no topo e
-consumido uma vez — não um `SharedFlow`, porque durante o desempilhamento pode não haver tela coletando.
+O aviso é um `StateFlow<GalleryMessage?>` consumível no ViewModel, mostrado (snackbar, `GalleryMessageHost`) pela
+tela que está no topo e consumido uma vez — não um `SharedFlow`, porque durante o desempilhamento pode não haver tela
+coletando. Uma tela que está saindo (álbum removido, visualizador fechado) não consome: a de baixo mostra. O aviso pode
+ter um botão (`MessageAction`): "Desfazer" (seção 9.4) ou "Abrir álbum" (seção 9.3).
 
 ---
 
@@ -313,6 +316,7 @@ está em todo UiState. Sem nível, nenhum controle é composto — as telas são
 | Tela | Controle | Nível |
 |------|----------|-------|
 | Raiz | FAB "Novo álbum"; menu "Organizar" (com 2+ álbuns) | `manage` |
+| Raiz | ícone "Lixeira" na barra (fora do "Organizar") | `owner` |
 | Álbum | FAB "+" → "Adicionar fotos" / "Novo álbum" (sub-álbum) | `manage` |
 | Álbum | menu: "Editar álbum", "Mover álbum", "Trocar capa", "Organizar" (com 2+ sub-álbuns ou 2+ fotos) | `manage` |
 | Álbum | menu: "Remover capa" (só se a capa é própria: `cover_source_album_id == id`), "Apagar álbum" | `owner` |
@@ -430,3 +434,59 @@ Um sync no fim de cada rodada que enviou algo. Notificação (canal `gallery_upl
 rodada e, se algo falhou, "{n} fotos não foram enviadas". Sem permissão de notificação (o app já pede na abertura) o
 envio segue e o progresso aparece no álbum. As falhas ficam listadas no álbum e cada uma pode ser dispensada (o
 arquivo é apagado).
+
+---
+
+## 9. Lixeira
+
+Quem tem `owner` em `gallery` vê o que foi apagado nos últimos 30 dias e restaura. Só online: nada é guardado no
+aparelho. Não há "apagar para sempre" nem "esvaziar": o purge diário do servidor é o único apagamento definitivo.
+
+### 9.1 Chamadas (`@AuthedRetrofit`, `GalleryApi`)
+
+| Ação | Pedido | Resposta |
+|------|--------|----------|
+| Listar | `GET api/gallery/trash/` | uma entrada por ação de apagar, mais recente primeiro; `[]` vazia |
+| Restaurar álbum | `POST api/gallery/trash/albums/{id}/restore/` | `200` Album (volta com tudo o que foi apagado junto) |
+| Restaurar foto | `POST api/gallery/trash/photos/{id}/restore/` | `200` Photo |
+
+Entrada: `kind` (`album`/`photo`; outro valor é ignorado), `id`, `name`, `deleted_at`, `deleted_by`, `uploaded_by`,
+`purge_on`, `sub_album_count`, `photo_count`, `thumbnail_url`. O que foi apagado junto com um álbum não aparece nem
+se restaura sozinho.
+
+### 9.2 Tela
+
+Abre lendo a lista (carregando / erro com "Tentar novamente" — sem rede: "Sem conexão. A lixeira precisa de
+internet." / vazia: "A lixeira está vazia." / lista) e tem pull-to-refresh. No topo: "Os itens ficam 30 dias na
+lixeira e depois são apagados para sempre. Restaurar um álbum traz de volta tudo o que foi apagado com ele."
+
+Cada linha, na ordem do servidor: preview pelo `@GalleryThumbnailLoader` (cinza sem preview ou em erro; sem tela
+cheia), nome, "Álbum"/"Foto", "Apagado por {nome} em {dd/MM/yyyy HH:mm}" (hora local; "usuário desconhecido" sem
+nome), para álbuns "{n} subálbuns · {m} fotos" (singular "1 subálbum", "1 foto"; partes zero omitidas), para fotos
+"Enviada por {nome}" quando conhecido, e "Some em {dd/MM/yyyy}". Botão "Restaurar", sem confirmação.
+
+Um restauro por vez: a linha mostra progresso, os outros botões e o pull-to-refresh ficam desativados. Perder
+`owner` com a tela aberta fecha a tela: "Você não tem mais acesso à lixeira.". Sair da tela durante um restauro para
+de esperar a resposta; o que o servidor fez chega no próximo sync.
+
+### 9.3 Depois de restaurar
+
+| Resposta | Efeito |
+|----------|--------|
+| `200` | o item volta ao índice na hora (`applyLocal`, cursor intacto), `syncAfterWrite` traz o resto do lote e enfileira originais faltando no WiFi; a linha sai; "Álbum restaurado" / "Foto restaurada" |
+| `404` | a lista é relida; "Este item não está mais na lixeira." |
+| `400` com `trashed_parent_id` | mensagem do servidor; se o pai é uma linha, a lista rola até ele e o destaca (até o próximo restauro, recarga ou saída) |
+| `400` com `conflicting_album_id` | mensagem do servidor com "Abrir álbum" (abre `Album/{id}`); se o álbum não está no índice, sincroniza antes; se continua faltando, só a mensagem |
+| sem rede / `403` / outro | "Sem conexão" / mensagem do servidor; a lista não muda |
+
+A classificação (`RestoreTrashItemUseCase` → `RestoreResult`) lê os extras de `AppError.Server.extras`; os textos
+ficam em `TrashTexts`, os mesmos para a lixeira e para "Desfazer".
+
+### 9.4 Desfazer
+
+Depois de apagar **um** álbum (menu do álbum) ou **uma** foto (visualizador, ou seleção de uma só), o aviso "Álbum
+enviado para a lixeira" / "Foto enviada para a lixeira" vem com "Desfazer", se o usuário tem `owner` naquele momento.
+Tocar restaura com o mesmo tratamento da seção 9.3 ("Álbum restaurado", "Este item não está mais na lixeira.", "Abrir
+álbum" num conflito de nome); é ignorado se o `owner` foi perdido. Apagar duas ou mais fotos não oferece "Desfazer":
+cada foto é uma entrada da lixeira.
+

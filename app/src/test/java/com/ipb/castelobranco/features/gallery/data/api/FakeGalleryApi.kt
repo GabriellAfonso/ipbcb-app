@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.data.api
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryAlbumDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryTrashEntryDto
 import com.ipb.castelobranco.features.gallery.data.dto.PhotoUploadResultDto
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MultipartBody
@@ -157,6 +158,14 @@ class FakeGalleryApi : GalleryApi {
         answer(WriteCall("orderPhotos", albumId, body))
 
     override suspend fun deletePhoto(photoId: Long): Response<Unit> = answer(WriteCall("deletePhoto", photoId))
+
+    override suspend fun getTrash(): Response<List<GalleryTrashEntryDto>> = answer(WriteCall("getTrash"))
+
+    override suspend fun restoreAlbum(albumId: Long): Response<GalleryAlbumDto> =
+        answer(WriteCall("restoreAlbum", albumId))
+
+    override suspend fun restorePhoto(photoId: Long): Response<GalleryPhotoDto> =
+        answer(WriteCall("restorePhoto", photoId))
 
     private fun RequestBody.text(): String = Buffer().also { writeTo(it) }.readUtf8()
 

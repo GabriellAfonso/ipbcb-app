@@ -4,6 +4,9 @@ import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
+import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 
 /** Records every call; answers from [failures] (id → error) or success. */
@@ -61,6 +64,29 @@ class FakeGalleryManageRepository : GalleryManageRepository {
 
     override suspend fun originalForCover(photoId: Long): Result<CoverSource> =
         answer(photoId, "original:$photoId") { CoverSource(File("$photoId.jpg"), isTemp = false) }
+
+    /** What [trash] answers next; each read is counted in [trashReads]. */
+    var trashResult: Result<List<TrashEntry>> = Result.success(emptyList())
+    var trashReads = 0
+        private set
+
+    /** Trash key → the error its next restore fails with. */
+    val restoreFailures = mutableMapOf<TrashKey, Throwable>()
+
+    /** Suspends every restore until completed, when set — to test a restore in flight. */
+    var restoreGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun trash(): Result<List<TrashEntry>> {
+        trashReads++
+        return trashResult
+    }
+
+    override suspend fun restore(key: TrashKey): Result<Unit> {
+        calls += "restore:${key.kind}:${key.id}"
+        restoreGate?.await()
+        restoreFailures[key]?.let { return Result.failure(it) }
+        return Result.success(Unit).also { onSuccess("restore") }
+    }
 
     override suspend fun syncAfterWrite() {
         syncs++

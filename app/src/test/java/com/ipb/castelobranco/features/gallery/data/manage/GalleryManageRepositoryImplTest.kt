@@ -9,7 +9,11 @@ import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
 import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
 import com.ipb.castelobranco.features.gallery.data.photoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryTrashEntryDto
 import com.ipb.castelobranco.features.gallery.data.photoUrl
+import com.ipb.castelobranco.features.gallery.domain.manage.trashedParentId
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import com.ipb.castelobranco.features.gallery.domain.manage.AlbumDraft
 import com.ipb.castelobranco.features.gallery.domain.manage.AlbumEdit
 import com.ipb.castelobranco.features.gallery.domain.manage.Field
@@ -318,6 +322,83 @@ class GalleryManageRepositoryImplTest {
 
         assertTrue(repository.createAlbum(AlbumDraft("X", "", null, null)).isFailure)
         assertTrue(applied.isEmpty())
+    }
+
+    // endregion
+
+    // region trash
+
+    @Test
+    fun `trash maps entries in the server order and drops unknown kinds`() = runTest(dispatcher) {
+        api.respondSuccess(
+            "getTrash",
+            listOf(
+                GalleryTrashEntryDto(
+                    kind = "album", id = 7, name = "Retiro", deletedAt = "2026-09-29T14:03:11Z",
+                    deletedBy = null, purgeOn = "2026-10-29", subAlbumCount = 2, photoCount = 41,
+                ),
+                GalleryTrashEntryDto(kind = "video", id = 8, name = "x", deletedAt = "", purgeOn = ""),
+                GalleryTrashEntryDto(
+                    kind = "photo", id = 301, name = "IMG.jpg", deletedAt = "2026-09-28T09:12:00Z",
+                    deletedBy = "João", uploadedBy = "Ana", purgeOn = "2026-10-28", thumbnailUrl = "t",
+                ),
+            ),
+        )
+
+        val entries = repository.trash().getOrThrow()
+
+        assertEquals(listOf(TrashKey(TrashKind.ALBUM, 7), TrashKey(TrashKind.PHOTO, 301)), entries.map { it.key })
+        assertEquals(null, entries[0].deletedBy)
+        assertEquals(41, entries[0].photoCount)
+        assertEquals("Ana", entries[1].uploadedBy)
+        assertTrue(applied.isEmpty())
+        syncs(0)
+    }
+
+    @Test
+    fun `empty trash is an empty list`() = runTest(dispatcher) {
+        api.respondSuccess("getTrash", emptyList<GalleryTrashEntryDto>())
+
+        assertTrue(repository.trash().getOrThrow().isEmpty())
+    }
+
+    @Test
+    fun `restoring an album applies it without touching the cursor and syncs`() = runTest(dispatcher) {
+        localState.value = GalleryLocalState(GalleryIndex(emptyMap(), emptyMap(), "cursor-1"), emptyMap(), emptyMap())
+        api.respondSuccess("restoreAlbum", albumDto(7, name = "Retiro"))
+
+        repository.restore(TrashKey(TrashKind.ALBUM, 7)).getOrThrow()
+
+        assertEquals(GalleryLocalChange.UpsertAlbum(galleryAlbum(7, name = "Retiro")), applied.single())
+        assertEquals("cursor-1", localState.value.index?.cursor)
+        syncs(1)
+    }
+
+    @Test
+    fun `restoring a photo applies the returned photo and syncs`() = runTest(dispatcher) {
+        api.respondSuccess("restorePhoto", photoDto(301, albumId = 7))
+
+        repository.restore(TrashKey(TrashKind.PHOTO, 301)).getOrThrow()
+
+        assertEquals(GalleryLocalChange.UpsertPhoto(galleryPhoto(301, albumId = 7)), applied.single())
+        syncs(1)
+    }
+
+    @Test
+    fun `a trashed parent refusal keeps its extras and applies nothing`() = runTest(dispatcher) {
+        api.respondWriteError(
+            "restoreAlbum",
+            400,
+            apiError("VALIDATION_ERROR", "Restaure o álbum 7 primeiro.", "kind" to "\"album\"", "id" to "9",
+                "trashed_parent_id" to "7"),
+        )
+
+        val error = repository.restore(TrashKey(TrashKind.ALBUM, 9)).exceptionOrNull() as AppError
+
+        assertEquals(7L, error.trashedParentId())
+        assertEquals("Restaure o álbum 7 primeiro.", error.userMessage)
+        assertTrue(applied.isEmpty())
+        syncs(0)
     }
 
     // endregion

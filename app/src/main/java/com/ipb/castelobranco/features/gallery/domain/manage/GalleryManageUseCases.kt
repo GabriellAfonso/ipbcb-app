@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.gallery.domain.manage
 
+import com.ipb.castelobranco.features.gallery.domain.trash.RestoreTrashItemUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.DismissUploadUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.ObserveUploadsUseCase
@@ -20,4 +21,5 @@ class GalleryManageUseCases @Inject constructor(
     val enqueueUploads: EnqueueUploadsUseCase,
     val dismissUpload: DismissUploadUseCase,
     val observeUploads: ObserveUploadsUseCase,
+    val restore: RestoreTrashItemUseCase,
 )

@@ -22,6 +22,8 @@ import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadState
 import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
@@ -32,6 +34,7 @@ import com.ipb.castelobranco.features.gallery.presentation.state.FormTarget
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDialogState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryPermissions
+import com.ipb.castelobranco.features.gallery.presentation.state.MessageAction
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -98,7 +101,7 @@ class GalleryViewModelManageTest {
             repository = repository,
             syncGallery = syncGallery,
             autoDownload = mockk(relaxed = true),
-            manage = manageUseCases(manage, uploads),
+            manage = manageUseCases(manage, uploads, repository),
             observeAccess = ObserveAccessUseCase(access),
             connectivityObserver = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns flowOf(true) },
             workManager = mockk<WorkManager> {
@@ -292,7 +295,7 @@ class GalleryViewModelManageTest {
         viewModel.confirm()
 
         assertTrue(album().isRemoved)
-        assertEquals(GalleryMessage.AlbumTrashed, message())
+        assertEquals(GalleryMessage.AlbumTrashed(undo = null), message())
     }
 
     @Test
@@ -306,7 +309,7 @@ class GalleryViewModelManageTest {
         viewModel.confirm()
 
         assertEquals(listOf(11L, 12L), viewer().photos.map { it.id })
-        assertEquals(GalleryMessage.PhotoTrashed, message())
+        assertEquals(GalleryMessage.PhotoTrashed(undo = null), message())
     }
 
     @Test
@@ -325,6 +328,121 @@ class GalleryViewModelManageTest {
 
         assertEquals(GalleryMessage.Text("1 de 2 fotos apagadas. 1: Erro no servidor."), message())
         assertTrue(album().selection.isEmpty())
+    }
+
+    // endregion
+
+    // region trash entry point and undo
+
+    @Test
+    fun `trash icon only with owner, live, and never while organizing`() = runTest(dispatcher) {
+        val root = observe(viewModel.rootState)
+        assertFalse(root().showTrash)
+
+        access.state.value = manager
+        assertFalse(root().showTrash)
+
+        access.state.value = owner
+        assertTrue(root().showTrash)
+
+        viewModel.startOrganize(null)
+        assertFalse(root().showTrash)
+        viewModel.cancelOrganize()
+
+        access.state.value = accessOf(null)
+        assertFalse(root().showTrash)
+    }
+
+    @Test
+    fun `deleting one album as owner offers undo, which restores it`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+
+        viewModel.askDeleteAlbum(3)
+        viewModel.confirm()
+        val undo = MessageAction.Undo(TrashKey(TrashKind.ALBUM, 3))
+        assertEquals(GalleryMessage.AlbumTrashed(undo), message())
+
+        viewModel.consumeMessage()
+        viewModel.undo(undo)
+
+        assertEquals(GalleryMessage.Text("Álbum restaurado"), message())
+        assertEquals("restore:ALBUM:3", manage.calls.last())
+    }
+
+    @Test
+    fun `a single photo deleted from the selection offers undo`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+        observe(viewModel.albumState(1))()
+        viewModel.onPhotoLongPress(1, 11)
+
+        viewModel.askDeletePhotos(1)
+        viewModel.confirm()
+
+        assertEquals(GalleryMessage.PhotoTrashed(MessageAction.Undo(TrashKey(TrashKind.PHOTO, 11))), message())
+    }
+
+    @Test
+    fun `a batch delete offers no undo`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+        observe(viewModel.albumState(1))()
+        viewModel.onPhotoLongPress(1, 10)
+        viewModel.togglePhotoSelection(1, 11)
+
+        viewModel.askDeletePhotos(1)
+        viewModel.confirm()
+
+        assertNull(message()!!.action)
+    }
+
+    @Test
+    fun `undo is ignored once owner is lost`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+        viewModel.askDeletePhotos(1, photoId = 10)
+        viewModel.confirm()
+        val undo = message()!!.action as MessageAction.Undo
+        viewModel.consumeMessage()
+
+        access.state.value = manager
+        advanceUntilIdle()
+        viewModel.undo(undo)
+
+        assertNull(message())
+        assertFalse(manage.calls.any { it.startsWith("restore") })
+    }
+
+    @Test
+    fun `undo refused by a name conflict offers the conflicting album`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+        val key = TrashKey(TrashKind.ALBUM, 9)
+        manage.restoreFailures[key] = AppError.Server(
+            code = 400,
+            userMessage = "O álbum 3 já usa esse nome no mesmo lugar.",
+            extras = mapOf("album_id" to "9", "name" to "Culto", "conflicting_album_id" to "3"),
+        )
+
+        viewModel.undo(MessageAction.Undo(key))
+
+        assertEquals(
+            GalleryMessage.Text("O álbum 3 já usa esse nome no mesmo lugar.", MessageAction.OpenAlbum(3)),
+            message(),
+        )
+    }
+
+    @Test
+    fun `undo of an item no longer in the trash says so`() = runTest(dispatcher) {
+        access.state.value = owner
+        advanceUntilIdle()
+        val key = TrashKey(TrashKind.PHOTO, 10)
+        manage.restoreFailures[key] = AppError.Server(code = 404)
+
+        viewModel.undo(MessageAction.Undo(key))
+
+        assertEquals(GalleryMessage.Text("Este item não está mais na lixeira."), message())
     }
 
     // endregion

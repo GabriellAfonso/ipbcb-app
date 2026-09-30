@@ -22,6 +22,9 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.trash.RestoreResult
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
+import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadState
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryAutoDownloadUseCase
@@ -39,6 +42,7 @@ import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryPermissions
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryRootUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.ItemFormState
+import com.ipb.castelobranco.features.gallery.presentation.state.MessageAction
 import com.ipb.castelobranco.features.gallery.presentation.state.MovePickerState
 import com.ipb.castelobranco.features.gallery.presentation.state.MoveSubject
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoTile
@@ -398,7 +402,7 @@ class GalleryViewModel @Inject constructor(
                 is ConfirmAction.DeleteAlbum -> {
                     selfRemovedAlbums += action.albumId
                     manage.deleteAlbum(action.albumId).fold(
-                        onSuccess = { GalleryMessage.AlbumTrashed },
+                        onSuccess = { GalleryMessage.AlbumTrashed(undoFor(TrashKey(TrashKind.ALBUM, action.albumId))) },
                         onFailure = {
                             selfRemovedAlbums -= action.albumId
                             failure(it)
@@ -409,8 +413,10 @@ class GalleryViewModel @Inject constructor(
                     selfRemovedPhotos += action.photoIds
                     val result = manage.deletePhotos(action.photoIds)
                     selection.value = null
-                    if (action.fromViewer && result.failures.isEmpty()) {
-                        GalleryMessage.PhotoTrashed
+                    // One photo = one trash entry, so it can be undone; a batch goes through the trash.
+                    val single = action.photoIds.singleOrNull()
+                    if (single != null && result.failures.isEmpty()) {
+                        GalleryMessage.PhotoTrashed(undoFor(TrashKey(TrashKind.PHOTO, single)))
                     } else {
                         GalleryMessage.Text(GalleryManageTexts.deleted(result))
                     }
@@ -433,6 +439,34 @@ class GalleryViewModel @Inject constructor(
         }
         if (!busy) _dialog.value = null
     }
+
+    // endregion
+
+    // region undo
+
+    /**
+     * "Desfazer" on a "sent to the trash" message: restores it, with the trash's texts. Ignored when the
+     * user lost `owner` meanwhile.
+     */
+    fun undo(action: MessageAction.Undo) {
+        if (!permissions.value.canDelete) return
+        viewModelScope.launch {
+            val result = manage.restore(action.key)
+            if (result == RestoreResult.Restored) {
+                when (action.key.kind) {
+                    TrashKind.ALBUM -> selfRemovedAlbums -= action.key.id
+                    TrashKind.PHOTO -> selfRemovedPhotos -= action.key.id
+                }
+            }
+            val open = (result as? RestoreResult.NameConflict)
+                ?.takeIf { it.isOnDevice }
+                ?.let { MessageAction.OpenAlbum(it.conflictingAlbumId) }
+            post(GalleryMessage.Text(TrashTexts.result(result, action.key.kind), open))
+        }
+    }
+
+    private fun undoFor(key: TrashKey): MessageAction.Undo? =
+        MessageAction.Undo(key).takeIf { permissions.value.canDelete }
 
     // endregion
 

@@ -113,7 +113,6 @@ fun AlbumScreen(
     val state by viewModel.albumState(albumId).collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
-    GalleryMessageEffect(message, viewModel::consumeMessage)
 
     // Álbum apagado (no servidor ou aqui): sobe um nível. Se o de baixo também saiu, ele faz o mesmo.
     LaunchedEffect(state.isRemoved) {
@@ -131,34 +130,36 @@ fun AlbumScreen(
     BackHandler(enabled = state.isSelecting) { viewModel.clearSelection() }
     BackHandler(enabled = state.isOrganizing) { viewModel.cancelOrganize() }
 
-    AlbumContent(
-        state = state,
-        previewLoader = viewModel.previewLoader,
-        actions = AlbumActions(
-            onBack = nav.back,
-            onAlbumClick = nav.toAlbum,
-            onPhotoClick = { photoId ->
-                if (state.isSelecting) viewModel.togglePhotoSelection(albumId, photoId)
-                else nav.toPhoto(albumId, photoId)
-            },
-            onPhotoLongPress = { photoId -> viewModel.onPhotoLongPress(albumId, photoId) },
-            onAddPhotos = { pickPhotos.launch(imagesOnly) },
-            onNewAlbum = { viewModel.openCreateAlbum(albumId) },
-            onEditAlbum = { viewModel.openEditAlbum(albumId) },
-            onMoveAlbum = { viewModel.openMoveAlbum(albumId) },
-            onChangeCover = { pickCover.launch(imagesOnly) },
-            onRemoveCover = { viewModel.askRemoveCover(albumId) },
-            onDeleteAlbum = { viewModel.askDeleteAlbum(albumId) },
-            onOrganize = { viewModel.startOrganize(albumId) },
-            onOrganizeMove = viewModel::moveOrganizeItem,
-            onOrganizeSave = viewModel::saveOrganize,
-            onOrganizeCancel = viewModel::cancelOrganize,
-            onSelectionMove = { viewModel.openMovePhotos(albumId) },
-            onSelectionDelete = { viewModel.askDeletePhotos(albumId) },
-            onSelectionClose = viewModel::clearSelection,
-            onDismissUpload = viewModel::dismissUpload,
-        ),
-    )
+    GalleryMessageHost(message, isLeaving = state.isRemoved, viewModel, nav) {
+        AlbumContent(
+            state = state,
+            previewLoader = viewModel.previewLoader,
+            actions = AlbumActions(
+                onBack = nav.back,
+                onAlbumClick = nav.toAlbum,
+                onPhotoClick = { photoId ->
+                    if (state.isSelecting) viewModel.togglePhotoSelection(albumId, photoId)
+                    else nav.toPhoto(albumId, photoId)
+                },
+                onPhotoLongPress = { photoId -> viewModel.onPhotoLongPress(albumId, photoId) },
+                onAddPhotos = { pickPhotos.launch(imagesOnly) },
+                onNewAlbum = { viewModel.openCreateAlbum(albumId) },
+                onEditAlbum = { viewModel.openEditAlbum(albumId) },
+                onMoveAlbum = { viewModel.openMoveAlbum(albumId) },
+                onChangeCover = { pickCover.launch(imagesOnly) },
+                onRemoveCover = { viewModel.askRemoveCover(albumId) },
+                onDeleteAlbum = { viewModel.askDeleteAlbum(albumId) },
+                onOrganize = { viewModel.startOrganize(albumId) },
+                onOrganizeMove = viewModel::moveOrganizeItem,
+                onOrganizeSave = viewModel::saveOrganize,
+                onOrganizeCancel = viewModel::cancelOrganize,
+                onSelectionMove = { viewModel.openMovePhotos(albumId) },
+                onSelectionDelete = { viewModel.askDeletePhotos(albumId) },
+                onSelectionClose = viewModel::clearSelection,
+                onDismissUpload = viewModel::dismissUpload,
+            ),
+        )
+    }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
 

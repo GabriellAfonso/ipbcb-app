@@ -18,7 +18,9 @@ import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.gallery.presentation.screens.AlbumScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.GalleryScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.PhotoScreen
+import com.ipb.castelobranco.features.gallery.presentation.screens.TrashScreen
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.TrashViewModel
 import kotlinx.coroutines.flow.StateFlow
 
 @Stable
@@ -26,6 +28,7 @@ data class GalleryNav(
     val back: () -> Unit,
     val toAlbum: (albumId: Long) -> Unit,
     val toPhoto: (albumId: Long, photoId: Long) -> Unit,
+    val toTrash: () -> Unit,
 )
 
 object GalleryRoutes {
@@ -34,6 +37,7 @@ object GalleryRoutes {
     const val ARG_PHOTO_ID = "photoId"
     const val ALBUM = "Album/{$ARG_ALBUM_ID}"
     const val PHOTO = "Photo/{$ARG_ALBUM_ID}/{$ARG_PHOTO_ID}"
+    const val TRASH = "GalleryTrash"
 
     fun album(albumId: Long) = "Album/$albumId"
 
@@ -55,6 +59,7 @@ fun NavGraphBuilder.galleryGraph(
         back = { navController.safePopBackStack() },
         toAlbum = { albumId -> navController.navigate(GalleryRoutes.album(albumId)) },
         toPhoto = { albumId, photoId -> navController.navigate(GalleryRoutes.photo(albumId, photoId)) },
+        toTrash = { navController.navigate(GalleryRoutes.TRASH) },
     )
 
     navigation(
@@ -95,6 +100,11 @@ fun NavGraphBuilder.galleryGraph(
                 viewModel = graphViewModel(navController, entry),
                 nav = nav,
             )
+        }
+
+        // Its own ViewModel, tied to this entry: the list is read again on every visit.
+        composable(GalleryRoutes.TRASH) {
+            TrashScreen(viewModel = hiltViewModel<TrashViewModel>(), nav = nav)
         }
     }
 }
