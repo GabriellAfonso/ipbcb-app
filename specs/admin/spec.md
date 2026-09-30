@@ -88,13 +88,13 @@ fica guardada no código mas o card aparece cinza.
 | Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
 | Avisos             | Rosa     | `Send`          | Sem implementação              | `notices` ≥ `manage`                 |
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
-| Galeria            | Âmbar    | `PhotoLibrary`  | Sem implementação              | `gallery` ≥ `manage`                 |
+| Galeria            | Âmbar    | `PhotoLibrary`  | Abre a galeria (gestão nas telas dela, por nível) | `gallery` ≥ `manage`                 |
 | Eventos            | Ciano    | `Event`         | Sem implementação              | `events` ≥ `manage`                  |
 | Notificações       | Pink     | `Notifications` | Sem implementação              | papel Admin                          |
 
 O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença e
 Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os nove; Liderança
-todos menos Presença e Notificações; Mídia só Relatórios e os cinzas Galeria, Eventos e Avisos.
+todos menos Presença e Notificações; Mídia Relatórios, Galeria e os cinzas Eventos e Avisos.
 
 Cards sem implementação não navegam e não exibem aviso — o clique é inerte, e o cinza é o que
 comunica isso ao usuário.

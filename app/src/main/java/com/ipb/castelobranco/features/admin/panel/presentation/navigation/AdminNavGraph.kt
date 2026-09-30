@@ -23,6 +23,7 @@ data class AdminNav(
     val schedule: () -> Unit,
     val reports: () -> Unit,
     val members: () -> Unit,
+    val gallery: () -> Unit,
 )
 
 object AdminRoutes {
@@ -38,6 +39,8 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         schedule = { navController.navigate(AdminRoutes.SCHEDULE) },
         reports  = { navController.navigate(ReportsRoutes.GRAPH) },
         members  = { navController.navigate(MembersRoutes.GRAPH) },
+        // O gerenciamento da galeria vive nas próprias telas da galeria, filtrado pelo nível.
+        gallery  = { navController.navigate(AppRoutes.GALLERY_GRAPH) },
     )
 
     navigation(

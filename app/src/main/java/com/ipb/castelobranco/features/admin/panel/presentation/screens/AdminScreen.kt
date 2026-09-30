@@ -159,7 +159,7 @@ fun AdminPanelContent(
 
 // Cards com `enabled = false` estão cinzas por falta de implementação. Ao implementar, apague o
 // `enabled = false` — o `accentColor` de cada um já é a cor definitiva do card e volta a valer sozinho.
-private fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {
+internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {
     PanelCard.WORSHIP -> AdminAction(
         label = "Gestão do Louvor",
         description = "Músicas, domingos e cifras",
@@ -210,8 +210,7 @@ private fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = 
         description = "Fotos e álbuns",
         icon = Icons.Filled.PhotoLibrary,
         accentColor = Amber,
-        enabled = false,
-        onClick = { /* TODO */ }
+        onClick = nav.gallery
     )
     PanelCard.EVENTS -> AdminAction(
         label = "Eventos",
