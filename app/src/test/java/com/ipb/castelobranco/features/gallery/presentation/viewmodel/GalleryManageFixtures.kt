@@ -13,6 +13,9 @@ import com.ipb.castelobranco.features.gallery.domain.manage.RemoveCoverUseCase
 import com.ipb.castelobranco.features.gallery.domain.manage.ReorderUseCase
 import com.ipb.castelobranco.features.gallery.domain.manage.SetCoverUseCase
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.tags.ChangePhotoMembersUseCase
+import com.ipb.castelobranco.features.gallery.domain.tags.LoadTaggableMembersUseCase
+import com.ipb.castelobranco.features.gallery.domain.tags.SetPhotoMembersUseCase
 import com.ipb.castelobranco.features.gallery.domain.trash.RestoreTrashItemUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.DismissUploadUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCase
@@ -64,4 +67,7 @@ fun manageUseCases(
     dismissUpload = DismissUploadUseCase(uploads),
     observeUploads = ObserveUploadsUseCase(uploads),
     restore = RestoreTrashItemUseCase(repository, gallery),
+    loadTaggableMembers = LoadTaggableMembersUseCase(repository),
+    setPhotoMembers = SetPhotoMembersUseCase(repository),
+    changePhotoMembers = ChangePhotoMembersUseCase(repository),
 )

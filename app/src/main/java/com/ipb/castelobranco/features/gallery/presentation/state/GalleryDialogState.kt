@@ -1,12 +1,15 @@
 package com.ipb.castelobranco.features.gallery.presentation.state
 
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
+import com.ipb.castelobranco.features.gallery.domain.tags.NameSearch
 
 /** The one dialog or sheet open over a gallery screen. */
 sealed interface GalleryDialogState {
     data class Form(val form: ItemFormState) : GalleryDialogState
     data class MovePicker(val picker: MovePickerState) : GalleryDialogState
     data class Confirm(val confirm: ConfirmState) : GalleryDialogState
+    data class PeoplePicker(val picker: PeoplePickerState) : GalleryDialogState
 }
 
 /** What a form edits: a new album (under [parentId], `null` = root), an album, or a photo. */
@@ -66,3 +69,54 @@ data class ConfirmState(
     val confirmLabel: String,
     val isRunning: Boolean = false,
 )
+
+/** Whose people the picker edits: one photo (the full set), or a selection (people to add or remove). */
+sealed interface PickerMode {
+    data class Photo(val photoId: Long) : PickerMode
+    data class Add(val albumId: Long, val photoIds: List<Long>) : PickerMode
+    data class Remove(val albumId: Long, val photoIds: List<Long>) : PickerMode
+}
+
+/**
+ * The people picker. [people] is the list to choose from, in display order: for a photo its current
+ * people first, then everyone else by name; for "Remover pessoas" only the people of the selection.
+ * Never stored — read again every time it opens.
+ */
+data class PeoplePickerState(
+    val mode: PickerMode,
+    val people: List<GalleryMember> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val query: String = "",
+    val checked: Set<Long> = emptySet(),
+    val isSaving: Boolean = false,
+) {
+    val visiblePeople: List<GalleryMember> get() = people.filter { NameSearch.matches(it.name, query) }
+
+    val title: String
+        get() = when (mode) {
+            is PickerMode.Photo -> "Marcar pessoas"
+            is PickerMode.Add -> "Adicionar pessoas"
+            is PickerMode.Remove -> "Remover pessoas"
+        }
+
+    val confirmLabel: String
+        get() = when (mode) {
+            is PickerMode.Photo -> "Salvar"
+            is PickerMode.Add -> "Adicionar"
+            is PickerMode.Remove -> "Remover"
+        }
+
+    /** A photo may be saved with nobody (clears it); a selection needs someone to add or remove. */
+    val canConfirm: Boolean
+        get() = !isSaving && !isLoading && error == null && (mode is PickerMode.Photo || checked.isNotEmpty())
+
+    /** The text in place of the list, when it is empty. */
+    val emptyText: String?
+        get() = when {
+            isLoading || error != null -> null
+            people.isEmpty() -> "Nenhuma pessoa cadastrada."
+            visiblePeople.isEmpty() -> "Nenhuma pessoa encontrada."
+            else -> null
+        }
+}

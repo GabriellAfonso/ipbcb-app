@@ -10,8 +10,9 @@ Fonte da verdade no backend: `backend/specs/gallery/spec.md`, `013-gallery-write
 `014-gallery-trash-sync/contracts/gallery-trash-api.md`, `015-gallery-member-tags/contracts/gallery-tags-api.md`,
 `016-photo-upload-idempotency/contracts/photo-upload-api.md`.
 
-Ainda não existe no app (feature seguinte): marcação de membros ("Minhas fotos", filtros). O campo `members` das fotos já é guardado, mas não é exibido. O card "Galeria" do painel de gestão abre a
-galeria (seção 8.1).
+Cada foto diz quem está nela (membros marcados); todo membro vê as pessoas de uma foto, filtra a galeria por pessoas
+e abre "Minhas fotos", e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). O card "Galeria" do painel
+de gestão abre a galeria (seção 8.1).
 
 ---
 
@@ -22,11 +23,14 @@ galeria (seção 8.1).
 | Galeria | `GalleryMain`                 | `CoreScreen → botão Galeria`; painel de gestão → card "Galeria" |
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
+| Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro ou de "Minhas fotos" (seção 10.6) |
+| Pessoas / Minhas fotos | `GalleryPeople?mine={mine}` | Ícone "Pessoas" / entrada "Minhas fotos" na raiz (seção 10) |
 | Lixeira | `GalleryTrash`                | Ícone de lixeira na raiz (`owner`, seção 9) |
 
-As quatro vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
-ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel`, preso à sua entrada (a lista é
-lida de novo a cada visita). Cada tela coleta um `StateFlow` de UiState (`GalleryRootUiState`, `AlbumUiState`,
+Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
+ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel` e Pessoas o próprio
+`PeopleViewModel`, presos às suas entradas (a lista da lixeira é lida de novo a cada visita; a seleção de pessoas dura
+a visita). Cada tela coleta um `StateFlow` de UiState (`GalleryRootUiState`, `AlbumUiState`,
 `PhotoViewerUiState`) e passa dados puros ao composable de conteúdo. O estado de cada álbum e de cada visualizador é
 memoizado por chave no ViewModel.
 
@@ -39,7 +43,9 @@ Toda lista é ordenada por `position`, depois `id` — nunca por nome de arquivo
 ### 1.1 Galeria (raiz)
 
 Grid de 2 colunas com os álbuns raiz (`parent_id` nulo): capa quadrada (preta quando não há) e nome. Acima da grid,
-um banner não-bloqueante (seção 5). Abrir a galeria dispara um sync.
+um banner não-bloqueante (seção 5) e, para perfil vinculado a um membro, a entrada "Minhas fotos" (seção 10.7). Na
+barra, o ícone "Pessoas" abre o filtro (seção 10.6); os dois somem durante o "Organizar". Abrir a galeria dispara um
+sync.
 
 ### 1.2 Álbum
 
@@ -49,8 +55,9 @@ sem sub-álbuns: "Nenhuma foto neste álbum.". Cada álbum aberto é uma entrada
 
 ### 1.3 Foto
 
-Pager horizontal pelas fotos **do álbum de onde foi aberto** (o `albumId` da rota), na ordem da grid, abrindo na foto
-tocada. Top bar = nome da foto sem extensão. Zoom por pinça, duplo toque volta ao normal, "Baixar" (salva em
+Pager horizontal pelas fotos **de onde foi aberto** (`ViewerSource`): o álbum (o `albumId` da rota), na ordem da
+grid, ou o resultado de um filtro de pessoas (os `memberIds` da rota, seção 10.6); abre na foto tocada. Top bar = nome
+da foto sem extensão, "ⓘ" (detalhes, seção 10.2) e o menu de gestão. Zoom por pinça, duplo toque volta ao normal, "Baixar" (salva em
 `Pictures/ipb_castelobranco` com o nome da foto e o MIME pela extensão) e "Compartilhar". Foto ainda sem original no
 aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.
 
@@ -62,9 +69,10 @@ aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabili
 | Foto na tela movida para outro álbum | idem | "Esta foto foi movida para outro álbum" |
 | Última foto do álbum apagada | o visualizador fecha | "Esta foto foi removida" |
 | Álbum aberto apagado | a tela sobe um nível; se o de baixo também saiu (subárvore apagada), ele faz o mesmo | "Este álbum foi removido" |
+| Foto na tela sai do resultado do filtro (alguém desmarcou uma das pessoas) | idem à foto apagada | "Esta foto não está mais no resultado" |
 
 Quando quem removeu foi o próprio usuário (seção 8), o efeito é o mesmo e o aviso é o da ação: "Álbum enviado para a
-lixeira", "Foto enviada para a lixeira", "Foto movida para '{álbum}'".
+lixeira", "Foto enviada para a lixeira", "Foto movida para '{álbum}'", "Marcações salvas".
 
 O aviso é um `StateFlow<GalleryMessage?>` consumível no ViewModel, mostrado (snackbar, `GalleryMessageHost`) pela
 tela que está no topo e consumido uma vez — não um `SharedFlow`, porque durante o desempilhamento pode não haver tela
@@ -298,7 +306,8 @@ de novo.
 Cancela a fila de envio (antes de tudo: nada pode ser enviado como o próximo usuário), cancela o download e o sync
 periódico, cancela um sync em andamento e apaga a fila, índice, cursor, originais, capas e o cache de previews
 (`GalleryAutoDownloadUseCase.clearOnLogout()`). O acervo é restrito a membros e não sobrevive ao fim da
-sessão. "Resetar galeria" nas configurações apaga índice e arquivos; o próximo sync reconstrói tudo.
+sessão. "Resetar galeria" nas configurações apaga índice e arquivos; o próximo sync reconstrói tudo. As marcações
+moram no índice (apagado junto); a lista do seletor de pessoas só existe em memória.
 
 ---
 
@@ -320,9 +329,9 @@ está em todo UiState. Sem nível, nenhum controle é composto — as telas são
 | Álbum | FAB "+" → "Adicionar fotos" / "Novo álbum" (sub-álbum) | `manage` |
 | Álbum | menu: "Editar álbum", "Mover álbum", "Trocar capa", "Organizar" (com 2+ sub-álbuns ou 2+ fotos) | `manage` |
 | Álbum | menu: "Remover capa" (só se a capa é própria: `cover_source_album_id == id`), "Apagar álbum" | `owner` |
-| Álbum | toque longo numa foto → seleção; barra: "Mover" (`manage`), "Apagar" (`owner`) | `manage` |
+| Álbum | toque longo numa foto → seleção; barra: "Pessoas" e "Mover" (`manage`), "Apagar" (`owner`) | `manage` |
 | Álbum | faixa de envio ("Enviando X de N", "Preparando fotos…") e lista "Não enviadas" | — (itens da fila) |
-| Foto | menu: "Editar foto", "Mover", "Usar como capa" | `manage` |
+| Foto | menu: "Editar foto", "Marcar pessoas", "Mover", "Usar como capa"; "Marcar pessoas" também nos detalhes | `manage` |
 | Foto | menu: "Apagar" | `owner` |
 | Painel de gestão | card "Galeria" → `AppRoutes.GALLERY_GRAPH` | `manage` (filtro do `PanelCard`) |
 
@@ -344,6 +353,8 @@ acesso novo chega. A galeria só mostra a mensagem do servidor.
 | Editar / mover foto | `PATCH api/photos/{id}/` só com os campos alterados (`date_taken: null` limpa) | upsert |
 | Organizar fotos | `PUT api/albums/{id}/photos/order/` `{ids}` | `position` = índice na lista |
 | Apagar foto | `DELETE api/photos/{id}/` | remove a foto |
+| Marcar pessoas numa foto | `PUT api/photos/{id}/members/` `{member_ids}` (o conjunto inteiro; `[]` limpa) | upsert da foto |
+| Pessoas em várias fotos | `POST api/photos/members/` `{photo_ids, add_member_ids, remove_member_ids}` (até 200 fotos) | upsert de cada foto devolvida |
 
 Os corpos JSON são `JsonObject` montados à mão: o `Json` do projeto tem `explicitNulls = false`, e um data class
 perderia o `null` de "mover para a raiz" ou "limpar a data".
@@ -490,3 +501,78 @@ Tocar restaura com o mesmo tratamento da seção 9.3 ("Álbum restaurado", "Este
 álbum" num conflito de nome); é ignorado se o `owner` foi perdido. Apagar duas ou mais fotos não oferece "Desfazer":
 cada foto é uma entrada da lixeira.
 
+---
+
+## 10. Pessoas nas fotos
+
+Cada foto traz `members` (`[{id, name}]`, por nome, depois id; `[]` sem marcação), guardado no índice. Membros
+inativos aparecem como qualquer outro. O feed devolve a foto quando as marcações mudam ou quando um membro marcado nela
+é renomeado ou apagado (também pelo Django admin), então tudo abaixo segue o índice sem nada extra. O app **não** usa
+`GET api/gallery/tagged-members/` nem o filtro `member_id` do servidor: o índice já tem todas as marcações, e o filtro
+funciona offline.
+
+### 10.1 Membro do perfil
+
+`GET accounts/api/me/profile/` traz `member_id` (inteiro ou `null`; só leitura; ligado pelo Django admin).
+`MeProfileDto.memberId` tem default `null` (um perfil em cache antigo decodifica). A galeria lê o valor pela porta de
+core `CurrentMemberRepository` / `ObserveOwnMemberIdUseCase` (`core/domain/member`), implementada pelo perfil
+(`ProfileCurrentMemberRepository`) a partir do mesmo snapshot do `/me`: segue toda releitura do perfil. Fica fora do
+`Access` — não é permissão.
+
+### 10.2 Detalhes da foto (todo membro)
+
+"ⓘ" na barra do visualizador abre um bottom sheet da página atual: descrição (se houver), "Tirada em {dd/MM/yyyy}"
+(se houver) e "Nesta foto" com os nomes na ordem da foto, ou "Ninguém marcado". Os nomes são texto; tocar não faz
+nada. O sheet segue o pager e o índice (um sync que muda as marcações atualiza na hora). Com `manage`, tem o botão
+"Marcar pessoas"; o sheet se recolhe enquanto o seletor está aberto.
+
+### 10.3 Marcar pessoas numa foto (`manage`)
+
+"Marcar pessoas" (menu do visualizador ou detalhes) abre o seletor: lê `GET api/gallery/taggable-members/` a cada
+abertura (online; carregando, erro com "Tentar novamente", "Nenhuma pessoa cadastrada."; nunca em disco — o servidor
+manda `no-store`). Busca local por nome sem diferenciar maiúsculas nem acentos (`NameSearch`, `java.text.Normalizer`);
+sem resultado: "Nenhuma pessoa encontrada.". Seleção múltipla; as pessoas atuais da foto vêm marcadas e primeiro, as
+outras por nome. "Salvar" manda um `PUT` com o conjunto inteiro; conjunto igual ao atual = nada é enviado e o seletor
+fecha. Sucesso: a foto devolvida vai para o índice (sem mexer no cursor), sync, "Marcações salvas". Perder `manage`
+fecha o seletor; a foto sair do visualizador também.
+
+### 10.4 Pessoas em várias fotos (`manage`)
+
+Na seleção do álbum, "Pessoas" → "Adicionar pessoas" (o mesmo seletor, ninguém marcado; manda `add_member_ids`) ou
+"Remover pessoas" (lista só quem está marcado em alguma foto selecionada, calculada do índice, sem rede; desabilitado
+quando ninguém está; manda `remove_member_ids`). Confirmar exige ao menos uma pessoa. Mais de 200 fotos: pedidos de até
+200, em sequência, **todos tentados** (um `403` interrompe); as fotos devolvidas vão para o índice a cada pedido e um
+sync roda no fim. Resultado: "Marcações atualizadas em {n} fotos" ("1 foto") e a seleção termina; com falha,
+"Marcações atualizadas em {ok} de {total} fotos: {motivo}" (só o motivo quando nada passou), e a seleção fica.
+
+### 10.5 Erros nas marcações
+
+| Resposta | Efeito |
+|----------|--------|
+| `404` (`missing_photo_ids` / `missing_member_ids`) | nada mudou no servidor; sync, o seletor recarrega, "Algumas fotos ou pessoas não existem mais. Confira e tente de novo." — as listas extras não são lidas |
+| `400` e outros | mensagem do servidor (ou o texto genérico); uma foto: o seletor fica aberto; várias: fecha e a seleção fica |
+| sem rede | "Sem conexão" |
+| `403` | tratamento global (seção 8.1); o seletor fecha e os controles somem |
+
+### 10.6 Filtro por pessoas (todo membro, offline)
+
+"Pessoas" na raiz abre `GalleryPeople`. A lista vem do índice (`GalleryPeople.taggedPeople`): toda pessoa marcada em ao
+menos uma foto alcançável, com "{n} fotos" ("1 foto"), por nome (sem acentos), com busca local. Ninguém marcado:
+"Ninguém foi marcado nas fotos ainda.". Seleção múltipla; as escolhidas ficam como chips no topo. Com alguém escolhido
+e a busca vazia, a tela mostra o resultado **E**: as fotos em que todas as pessoas escolhidas estão marcadas
+(`photosWithAll`), numa grid de 3 colunas na ordem da árvore (pré-ordem; dentro do álbum por `position`, depois `id`),
+com "Fotos com todas as pessoas selecionadas" a partir de duas pessoas e "Nenhuma foto com todas essas pessoas." quando
+vazio. Escolher na lista limpa a busca. Seleção e índice atualizam o resultado ao vivo; uma pessoa que deixou de estar
+marcada em qualquer foto sai da lista e da seleção. A seleção dura a visita (volta do visualizador intacta).
+
+Tocar numa foto abre o visualizador pela rota `PeoplePhoto/{ids separados por vírgula}/{photoId}`, que pagina pelo
+resultado, não pelo álbum. Detalhes, menu de gestão e tratamento de remoção funcionam como no álbum; as ações do menu
+usam o álbum da própria foto. Uma foto que sai do resultado (apagada, ou desmarcada) conta como removida (seção 1.4);
+quando foi o próprio usuário que desmarcou, o aviso é "Marcações salvas".
+
+### 10.7 Minhas fotos
+
+Com `member_id` no perfil, a raiz mostra "Minhas fotos" (sem vínculo, não aparece e não há convite para vincular);
+aparece e some ao vivo quando o perfil muda. Abre `GalleryPeople?mine=true`: a mesma grid filtrada por esse membro,
+título "Minhas fotos", vazio "Você ainda não foi marcado em nenhuma foto.". Se o vínculo sumir com a tela aberta, ela
+fecha.

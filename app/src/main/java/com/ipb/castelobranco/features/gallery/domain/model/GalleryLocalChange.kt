@@ -8,6 +8,9 @@ sealed interface GalleryLocalChange {
     data class UpsertAlbum(val album: GalleryAlbum) : GalleryLocalChange
     data class UpsertPhoto(val photo: GalleryPhoto) : GalleryLocalChange
 
+    /** Several photos at once — the answer of a bulk tag write. */
+    data class UpsertPhotos(val photos: List<GalleryPhoto>) : GalleryLocalChange
+
     /** The album, every album below it and every photo in any of them. */
     data class RemoveAlbumTree(val albumId: Long) : GalleryLocalChange
     data class RemovePhotos(val ids: Set<Long>) : GalleryLocalChange

@@ -11,7 +11,7 @@ data class GalleryPhoto(
     val dateTaken: String?,
     val uploadedAt: String?,
     val position: Int,
-    /** Stored for the member tags feature; not shown yet. */
+    /** The people tagged in the photo, by name then id; empty when untagged. */
     val members: List<GalleryMember>,
 ) {
     /** Extension of the original on disk, derived from [imageUrl]; `jpg` when unknown. */

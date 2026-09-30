@@ -17,6 +17,9 @@ object GalleryEndpoints {
     const val TRASH = "${ApiConstants.BASE_PATH}gallery/trash/"
     const val TRASH_ALBUM_RESTORE = "${TRASH}albums/{$ID}/restore/"
     const val TRASH_PHOTO_RESTORE = "${TRASH}photos/{$ID}/restore/"
+    const val TAGGABLE_MEMBERS = "${ApiConstants.BASE_PATH}gallery/taggable-members/"
+    const val PHOTO_MEMBERS = "${PHOTOS}{$ID}/members/"
+    const val PHOTOS_MEMBERS = "${PHOTOS}members/"
 
     const val PART_ALBUM_ID = "album_id"
     const val PART_IMAGE = "image"

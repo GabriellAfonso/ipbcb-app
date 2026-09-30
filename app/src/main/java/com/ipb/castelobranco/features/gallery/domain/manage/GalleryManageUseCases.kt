@@ -1,5 +1,8 @@
 package com.ipb.castelobranco.features.gallery.domain.manage
 
+import com.ipb.castelobranco.features.gallery.domain.tags.ChangePhotoMembersUseCase
+import com.ipb.castelobranco.features.gallery.domain.tags.LoadTaggableMembersUseCase
+import com.ipb.castelobranco.features.gallery.domain.tags.SetPhotoMembersUseCase
 import com.ipb.castelobranco.features.gallery.domain.trash.RestoreTrashItemUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.DismissUploadUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCase
@@ -22,4 +25,7 @@ class GalleryManageUseCases @Inject constructor(
     val dismissUpload: DismissUploadUseCase,
     val observeUploads: ObserveUploadsUseCase,
     val restore: RestoreTrashItemUseCase,
+    val loadTaggableMembers: LoadTaggableMembersUseCase,
+    val setPhotoMembers: SetPhotoMembersUseCase,
+    val changePhotoMembers: ChangePhotoMembersUseCase,
 )

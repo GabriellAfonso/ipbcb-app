@@ -36,6 +36,7 @@ data class GalleryIndex(
     fun apply(change: GalleryLocalChange): GalleryIndex = when (change) {
         is GalleryLocalChange.UpsertAlbum -> copy(albums = albums + (change.album.id to change.album))
         is GalleryLocalChange.UpsertPhoto -> copy(photos = photos + (change.photo.id to change.photo))
+        is GalleryLocalChange.UpsertPhotos -> copy(photos = photos + change.photos.associateBy { it.id })
         is GalleryLocalChange.RemoveAlbumTree -> {
             val removed = subtreeIds(change.albumId)
             copy(albums = albums - removed, photos = photos.filterValues { it.albumId !in removed })

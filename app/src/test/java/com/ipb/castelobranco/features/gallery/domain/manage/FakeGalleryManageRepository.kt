@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.domain.manage
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
@@ -86,6 +87,39 @@ class FakeGalleryManageRepository : GalleryManageRepository {
         restoreGate?.await()
         restoreFailures[key]?.let { return Result.failure(it) }
         return Result.success(Unit).also { onSuccess("restore") }
+    }
+
+    /** What [taggableMembers] answers next; each read is counted in [taggableReads]. */
+    var taggableResult: Result<List<GalleryMember>> = Result.success(emptyList())
+    var taggableReads = 0
+        private set
+
+    /** The error the next tag writes fail with, one per call in order; empty = success. */
+    val tagFailures = ArrayDeque<Throwable?>()
+
+    /** Every `changePhotoMembers` call: photo ids, added and removed member ids. */
+    val memberChanges = mutableListOf<Triple<List<Long>, List<Long>, List<Long>>>()
+
+    override suspend fun taggableMembers(): Result<List<GalleryMember>> {
+        taggableReads++
+        return taggableResult
+    }
+
+    override suspend fun setPhotoMembers(photoId: Long, memberIds: List<Long>): Result<GalleryPhoto> {
+        calls += "setMembers:$photoId:$memberIds"
+        tagFailures.removeFirstOrNull()?.let { return Result.failure(it) }
+        return Result.success(galleryPhoto(photoId)).also { onSuccess("setMembers") }
+    }
+
+    override suspend fun changePhotoMembers(
+        photoIds: List<Long>,
+        addMemberIds: List<Long>,
+        removeMemberIds: List<Long>,
+    ): Result<List<GalleryPhoto>> {
+        calls += "changeMembers:${photoIds.size}:$addMemberIds:$removeMemberIds"
+        memberChanges += Triple(photoIds, addMemberIds, removeMemberIds)
+        tagFailures.removeFirstOrNull()?.let { return Result.failure(it) }
+        return Result.success(photoIds.map { galleryPhoto(it) }).also { onSuccess("changeMembers") }
     }
 
     override suspend fun syncAfterWrite() {

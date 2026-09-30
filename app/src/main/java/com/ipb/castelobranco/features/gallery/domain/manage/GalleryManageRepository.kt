@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.gallery.domain.manage
 
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
@@ -40,6 +41,22 @@ interface GalleryManageRepository {
      * that follows brings what went with an album.
      */
     suspend fun restore(key: TrashKey): Result<Unit>
+
+    /** Every member record that can be tagged (`manage` only), by name. Read on demand, never cached. */
+    suspend fun taggableMembers(): Result<List<GalleryMember>>
+
+    /** Replaces the photo's people with exactly [memberIds]; the answer is applied, then a sync runs. */
+    suspend fun setPhotoMembers(photoId: Long, memberIds: List<Long>): Result<GalleryPhoto>
+
+    /**
+     * Adds and removes people in up to 200 photos, keeping every other tag. Atomic on the server. The
+     * photos that come back are applied; no sync (the caller syncs once), except after a not-found.
+     */
+    suspend fun changePhotoMembers(
+        photoIds: List<Long>,
+        addMemberIds: List<Long>,
+        removeMemberIds: List<Long>,
+    ): Result<List<GalleryPhoto>>
 
     /** One sync for a batch that passed `syncAfter = false`. */
     suspend fun syncAfterWrite()

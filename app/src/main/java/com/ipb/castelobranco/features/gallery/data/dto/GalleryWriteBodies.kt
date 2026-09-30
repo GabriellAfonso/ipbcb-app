@@ -26,6 +26,10 @@ private const val PARENT_ID = "parent_id"
 private const val DATE_TAKEN = "date_taken"
 private const val ALBUM_ID = "album_id"
 private const val IDS = "ids"
+private const val MEMBER_IDS = "member_ids"
+private const val PHOTO_IDS = "photo_ids"
+private const val ADD_MEMBER_IDS = "add_member_ids"
+private const val REMOVE_MEMBER_IDS = "remove_member_ids"
 
 fun AlbumDraft.toCreateBody(): JsonObject = buildJsonObject {
     put(NAME, name)
@@ -57,6 +61,19 @@ fun albumOrderBody(parentId: Long?, ids: List<Long>): JsonObject = buildJsonObje
 fun photoOrderBody(ids: List<Long>): JsonObject = buildJsonObject {
     put(IDS, ids.toJsonArray())
 }
+
+/** The photo's people, exactly: `[]` clears them. */
+fun photoMembersBody(memberIds: List<Long>): JsonObject = buildJsonObject {
+    put(MEMBER_IDS, memberIds.toJsonArray())
+}
+
+/** Pairs to add and to remove in every photo; both lists are always sent. */
+fun changeMembersBody(photoIds: List<Long>, addMemberIds: List<Long>, removeMemberIds: List<Long>): JsonObject =
+    buildJsonObject {
+        put(PHOTO_IDS, photoIds.toJsonArray())
+        put(ADD_MEMBER_IDS, addMemberIds.toJsonArray())
+        put(REMOVE_MEMBER_IDS, removeMemberIds.toJsonArray())
+    }
 
 private fun <T> JsonObjectBuilder.putField(
     key: String,

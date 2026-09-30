@@ -38,6 +38,7 @@ class GalleryIndexApplyTest {
         GalleryLocalChange.RemovePhotos(setOf(14)),
         GalleryLocalChange.ReorderAlbums(parentId = 1, ids = listOf(4, 2)),
         GalleryLocalChange.ReorderPhotos(albumId = 1, ids = listOf(10)),
+        GalleryLocalChange.UpsertPhotos(listOf(galleryPhoto(10, albumId = 1), galleryPhoto(16, albumId = 4))),
     )
 
     @Test
@@ -122,5 +123,16 @@ class GalleryIndexApplyTest {
         )
 
         assertEquals(local, fed)
+    }
+
+    @Test
+    fun `upserting several photos replaces each by id and keeps the others`() {
+        val tagged = galleryPhoto(11, albumId = 2).copy(members = listOf(GalleryMember(12, "Maria")))
+
+        val result = index.apply(GalleryLocalChange.UpsertPhotos(listOf(tagged, galleryPhoto(16, albumId = 4))))
+
+        assertEquals(listOf(GalleryMember(12, "Maria")), result.photos.getValue(11).members)
+        assertEquals(index.photos.size + 1, result.photos.size)
+        assertEquals("c7", result.cursor)
     }
 }

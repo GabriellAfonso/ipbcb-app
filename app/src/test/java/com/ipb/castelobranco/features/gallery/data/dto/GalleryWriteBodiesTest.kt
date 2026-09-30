@@ -59,4 +59,18 @@ class GalleryWriteBodiesTest {
         )
         assertEquals("""{"album_id":9}""", PhotoEdit(photoId = 1, albumId = Field.Set(9)).toPatchBody().toString())
     }
+
+    @Test
+    fun `photo members body lists the full set, empty to clear`() {
+        assertEquals("""{"member_ids":[12,40]}""", photoMembersBody(listOf(12, 40)).toString())
+        assertEquals("""{"member_ids":[]}""", photoMembersBody(emptyList()).toString())
+    }
+
+    @Test
+    fun `change members body always sends both lists`() {
+        assertEquals(
+            """{"photo_ids":[301,302],"add_member_ids":[12],"remove_member_ids":[]}""",
+            changeMembersBody(listOf(301, 302), listOf(12), emptyList()).toString(),
+        )
+    }
 }

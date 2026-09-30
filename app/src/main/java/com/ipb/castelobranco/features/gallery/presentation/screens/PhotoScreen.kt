@@ -23,8 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
@@ -39,6 +43,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -60,10 +65,13 @@ import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDia
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
+import com.ipb.castelobranco.features.gallery.presentation.components.PhotoDetailsSheet
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
+import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDialogState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryPermissions
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerPhoto
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -84,15 +92,17 @@ private const val EDIT_LABEL = "Editar foto"
 private const val MOVE_LABEL = "Mover"
 private const val USE_AS_COVER_LABEL = "Usar como capa"
 private const val DELETE_LABEL = "Apagar"
+private const val TAG_PEOPLE_LABEL = "Marcar pessoas"
+private const val DETAILS_LABEL = "Detalhes"
 
 @Composable
 fun PhotoScreen(
-    albumId: Long,
+    source: ViewerSource,
     photoId: Long,
     viewModel: GalleryViewModel,
     nav: GalleryNav,
 ) {
-    val state by viewModel.viewerState(albumId, photoId).collectAsStateWithLifecycle()
+    val state by viewModel.viewerState(source, photoId).collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -107,26 +117,30 @@ fun PhotoScreen(
             state = state,
             previewLoader = viewModel.previewLoader,
             onBack = nav.back,
-            onPageChanged = { currentId -> viewModel.onPageChanged(albumId, photoId, currentId) },
+            onPageChanged = { currentId -> viewModel.onPageChanged(source, photoId, currentId) },
             onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
             onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
+            // Cada ação usa o álbum da própria foto: num resultado de filtro, as fotos vêm de vários.
             manage = PhotoManageActions(
-                onEdit = viewModel::openEditPhoto,
-                onMove = { id -> viewModel.openMovePhotos(albumId, id) },
-                onUseAsCover = { id -> viewModel.useAsCover(albumId, id) },
-                onDelete = { id -> viewModel.askDeletePhotos(albumId, id) },
+                onEdit = { photo -> viewModel.openEditPhoto(photo.id) },
+                onMove = { photo -> viewModel.openMovePhotos(photo.albumId, photo.id) },
+                onUseAsCover = { photo -> viewModel.useAsCover(photo.albumId, photo.id) },
+                onDelete = { photo -> viewModel.askDeletePhotos(photo.albumId, photo.id) },
+                onTagPeople = { photo -> viewModel.openTagPhoto(photo.id) },
             ),
+            isPickerOpen = dialog is GalleryDialogState.PeoplePicker,
         )
     }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
 
-/** Management of the photo on screen, each by its id. */
+/** Management of the photo on screen. */
 data class PhotoManageActions(
-    val onEdit: (Long) -> Unit,
-    val onMove: (Long) -> Unit,
-    val onUseAsCover: (Long) -> Unit,
-    val onDelete: (Long) -> Unit,
+    val onEdit: (ViewerPhoto) -> Unit,
+    val onMove: (ViewerPhoto) -> Unit,
+    val onUseAsCover: (ViewerPhoto) -> Unit,
+    val onDelete: (ViewerPhoto) -> Unit,
+    val onTagPeople: (ViewerPhoto) -> Unit,
 )
 
 @Composable
@@ -138,8 +152,11 @@ fun PhotoContent(
     onSave: (ViewerPhoto) -> Unit,
     onShare: (ViewerPhoto) -> Unit,
     manage: PhotoManageActions,
+    /** The people picker is open: the details sheet steps aside for it. */
+    isPickerOpen: Boolean = false,
 ) {
     val view = LocalView.current
+    var showDetails by rememberSaveable { mutableStateOf(false) }
     val photos = state.photos
     // Recriado quando as fotos chegam, para abrir já na foto tocada.
     val pagerState = key(state.isLoading) { rememberPagerState(initialPage = state.currentIndex) { photos.size } }
@@ -166,7 +183,14 @@ fun PhotoContent(
         logoRes = R.drawable.ic_galery,
         showBackArrow = true,
         onBackClick = onBack,
-        extraActions = { current?.let { ManageOverflowMenu(photoMenu(it.id, state.permissions, manage)) } },
+        extraActions = {
+            current?.let { photo ->
+                IconButton(onClick = { showDetails = true }) {
+                    Icon(Icons.Outlined.Info, contentDescription = DETAILS_LABEL)
+                }
+                ManageOverflowMenu(photoMenu(photo, state.permissions, manage))
+            }
+        },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -239,6 +263,14 @@ fun PhotoContent(
                     }
                 }
             }
+            if (showDetails && !isPickerOpen && current != null) {
+                PhotoDetailsSheet(
+                    photo = current,
+                    canTag = state.permissions.canManage,
+                    onTag = { manage.onTagPeople(current) },
+                    onDismiss = { showDetails = false },
+                )
+            }
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.Center),
@@ -259,14 +291,15 @@ fun PhotoContent(
     }
 }
 
-private fun photoMenu(photoId: Long, permissions: GalleryPermissions, manage: PhotoManageActions): List<ManageAction> =
+private fun photoMenu(photo: ViewerPhoto, permissions: GalleryPermissions, manage: PhotoManageActions) =
     buildList {
         if (permissions.canManage) {
-            add(ManageAction(EDIT_LABEL) { manage.onEdit(photoId) })
-            add(ManageAction(MOVE_LABEL) { manage.onMove(photoId) })
-            add(ManageAction(USE_AS_COVER_LABEL) { manage.onUseAsCover(photoId) })
+            add(ManageAction(EDIT_LABEL) { manage.onEdit(photo) })
+            add(ManageAction(TAG_PEOPLE_LABEL) { manage.onTagPeople(photo) })
+            add(ManageAction(MOVE_LABEL) { manage.onMove(photo) })
+            add(ManageAction(USE_AS_COVER_LABEL) { manage.onUseAsCover(photo) })
         }
-        if (permissions.canDelete) add(ManageAction(DELETE_LABEL) { manage.onDelete(photoId) })
+        if (permissions.canDelete) add(ManageAction(DELETE_LABEL) { manage.onDelete(photo) })
     }
 
 /** Pinch to zoom, pan while zoomed, double tap to reset. Resets when [resetKey] changes. */

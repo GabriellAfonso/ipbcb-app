@@ -53,6 +53,10 @@ internal object GalleryUiMapper {
         title = photo.name.substringBeforeLast('.'),
         fileName = photo.name,
         image = photoImage(photo, local),
+        albumId = photo.albumId,
+        description = photo.description.takeIf { it.isNotBlank() },
+        dateTaken = photo.dateTaken?.let(::formatDate),
+        people = photo.members.map { it.name },
     )
 
     /** `yyyy-MM-dd` → `dd/MM/yyyy`; anything else is shown as it came. */

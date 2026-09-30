@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -72,6 +73,9 @@ private const val MORE_LABEL = "Mais opções"
 private const val MOVE_LABEL = "Mover"
 private const val DELETE_LABEL = "Apagar"
 private const val CLOSE_LABEL = "Fechar"
+private const val PEOPLE_LABEL = "Pessoas"
+private const val ADD_PEOPLE_LABEL = "Adicionar pessoas"
+private const val REMOVE_PEOPLE_LABEL = "Remover pessoas"
 private const val PREPARING_TEXT = "Preparando fotos…"
 private const val DISMISS_LABEL = "Dispensar"
 private const val FAILED_TITLE = "Não enviadas"
@@ -88,6 +92,7 @@ fun GalleryDialogHost(dialog: GalleryDialogState?, actions: GalleryDialogActions
         is GalleryDialogState.Form -> ItemFormDialog(dialog.form, actions)
         is GalleryDialogState.MovePicker -> MoveTargetSheet(dialog.picker, actions.onChooseTarget, actions.onDismiss)
         is GalleryDialogState.Confirm -> ConfirmDialog(dialog.confirm, actions.onConfirm, actions.onDismiss)
+        is GalleryDialogState.PeoplePicker -> PeoplePickerSheet(dialog.picker, actions.picker)
         null -> Unit
     }
 }
@@ -101,6 +106,7 @@ data class GalleryDialogActions(
     val onChooseTarget: (TreeTarget) -> Unit,
     val onConfirm: () -> Unit,
     val onDismiss: () -> Unit,
+    val picker: PeoplePickerActions = PeoplePickerActions({}, {}, {}, {}, onDismiss),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -247,14 +253,47 @@ fun ManageOverflowMenu(actions: List<ManageAction>) {
     }
 }
 
-/** Top-bar actions while photos are selected: move, delete (owner) and close. */
+/** "Pessoas" on the selection bar: add people to, or remove people from, the selected photos. */
+data class SelectionPeopleActions(
+    /** Someone is tagged in a selected photo. */
+    val canRemove: Boolean,
+    val onAdd: () -> Unit,
+    val onRemove: () -> Unit,
+)
+
+/** Top-bar actions while photos are selected: people, move, delete (owner) and close. */
 @Composable
-fun SelectionActions(canDelete: Boolean, onMove: () -> Unit, onDelete: () -> Unit, onClose: () -> Unit) {
+fun SelectionActions(
+    canDelete: Boolean,
+    onMove: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit,
+    people: SelectionPeopleActions? = null,
+) {
+    people?.let { SelectionPeopleMenu(it) }
     IconButton(onClick = onMove) { Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = MOVE_LABEL) }
     if (canDelete) {
         IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = DELETE_LABEL) }
     }
     IconButton(onClick = onClose) { Icon(Icons.Filled.Close, contentDescription = CLOSE_LABEL) }
+}
+
+@Composable
+private fun SelectionPeopleMenu(people: SelectionPeopleActions) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) { Icon(Icons.Filled.People, contentDescription = PEOPLE_LABEL) }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(ADD_PEOPLE_LABEL) }, onClick = {
+                expanded = false
+                people.onAdd()
+            })
+            DropdownMenuItem(text = { Text(REMOVE_PEOPLE_LABEL) }, enabled = people.canRemove, onClick = {
+                expanded = false
+                people.onRemove()
+            })
+        }
+    }
 }
 
 /** Top-bar actions in "Organizar": cancel and save. */

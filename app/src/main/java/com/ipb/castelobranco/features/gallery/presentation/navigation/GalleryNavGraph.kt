@@ -17,9 +17,12 @@ import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.gallery.presentation.screens.AlbumScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.GalleryScreen
+import com.ipb.castelobranco.features.gallery.presentation.screens.PeopleScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.PhotoScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.TrashScreen
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.PeopleViewModel
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.TrashViewModel
 import kotlinx.coroutines.flow.StateFlow
 
@@ -29,6 +32,10 @@ data class GalleryNav(
     val toAlbum: (albumId: Long) -> Unit,
     val toPhoto: (albumId: Long, photoId: Long) -> Unit,
     val toTrash: () -> Unit,
+    val toPeople: () -> Unit = {},
+    val toMyPhotos: () -> Unit = {},
+    /** The viewer over the photos with every one of [memberIds]. */
+    val toPeoplePhoto: (memberIds: Set<Long>, photoId: Long) -> Unit = { _, _ -> },
 )
 
 object GalleryRoutes {
@@ -38,6 +45,20 @@ object GalleryRoutes {
     const val ALBUM = "Album/{$ARG_ALBUM_ID}"
     const val PHOTO = "Photo/{$ARG_ALBUM_ID}/{$ARG_PHOTO_ID}"
     const val TRASH = "GalleryTrash"
+    const val ARG_MEMBER_IDS = "memberIds"
+    const val ARG_MINE = PeopleViewModel.ARG_MINE
+    const val PEOPLE = "GalleryPeople?$ARG_MINE={$ARG_MINE}"
+    const val PEOPLE_PHOTO = "PeoplePhoto/{$ARG_MEMBER_IDS}/{$ARG_PHOTO_ID}"
+    private const val ID_SEPARATOR = ","
+
+    fun people(mine: Boolean) = "GalleryPeople?$ARG_MINE=$mine"
+
+    /** [memberIds] travel comma-separated: the viewer pages through the photos with all of them. */
+    fun peoplePhoto(memberIds: Set<Long>, photoId: Long) =
+        "PeoplePhoto/${memberIds.sorted().joinToString(ID_SEPARATOR)}/$photoId"
+
+    fun memberIdsOf(raw: String?): Set<Long> =
+        raw.orEmpty().split(ID_SEPARATOR).mapNotNull { it.trim().toLongOrNull() }.toSet()
 
     fun album(albumId: Long) = "Album/$albumId"
 
@@ -60,6 +81,11 @@ fun NavGraphBuilder.galleryGraph(
         toAlbum = { albumId -> navController.navigate(GalleryRoutes.album(albumId)) },
         toPhoto = { albumId, photoId -> navController.navigate(GalleryRoutes.photo(albumId, photoId)) },
         toTrash = { navController.navigate(GalleryRoutes.TRASH) },
+        toPeople = { navController.navigate(GalleryRoutes.people(mine = false)) },
+        toMyPhotos = { navController.navigate(GalleryRoutes.people(mine = true)) },
+        toPeoplePhoto = { memberIds, photoId ->
+            navController.navigate(GalleryRoutes.peoplePhoto(memberIds, photoId))
+        },
     )
 
     navigation(
@@ -95,9 +121,43 @@ fun NavGraphBuilder.galleryGraph(
             val albumId = entry.arguments?.getLong(GalleryRoutes.ARG_ALBUM_ID) ?: 0L
             val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
             PhotoScreen(
-                albumId = albumId,
+                source = ViewerSource.Album(albumId),
                 photoId = photoId,
                 viewModel = graphViewModel(navController, entry),
+                nav = nav,
+            )
+        }
+
+        composable(
+            route = GalleryRoutes.PEOPLE_PHOTO,
+            arguments = listOf(
+                navArgument(GalleryRoutes.ARG_MEMBER_IDS) { type = NavType.StringType },
+                navArgument(GalleryRoutes.ARG_PHOTO_ID) { type = NavType.LongType },
+            ),
+        ) { entry ->
+            val memberIds = GalleryRoutes.memberIdsOf(entry.arguments?.getString(GalleryRoutes.ARG_MEMBER_IDS))
+            val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
+            PhotoScreen(
+                source = ViewerSource.People(memberIds),
+                photoId = photoId,
+                viewModel = graphViewModel(navController, entry),
+                nav = nav,
+            )
+        }
+
+        // The filter and "Minhas fotos": its own ViewModel, so the selection lasts only this visit.
+        composable(
+            route = GalleryRoutes.PEOPLE,
+            arguments = listOf(
+                navArgument(GalleryRoutes.ARG_MINE) {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { entry ->
+            PeopleScreen(
+                viewModel = hiltViewModel<PeopleViewModel>(),
+                galleryViewModel = graphViewModel(navController, entry),
                 nav = nav,
             )
         }

@@ -21,7 +21,7 @@ data class GalleryPhotoDto(
     @SerialName("uploaded_at")
     val uploadedAt: String? = null,
     val position: Int = 0,
-    /** Stored for the member tags feature; not shown yet. */
+    /** The people tagged in the photo, by name then id; `[]` when untagged. */
     val members: List<GalleryPhotoMemberDto> = emptyList(),
 )
 

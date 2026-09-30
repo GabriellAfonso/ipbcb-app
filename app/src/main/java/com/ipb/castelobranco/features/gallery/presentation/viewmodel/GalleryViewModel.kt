@@ -8,7 +8,9 @@ import coil.ImageLoader
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.core.di.DefaultDispatcher
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.error.toAppError
+import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.features.gallery.data.work.GalleryDownloadWorker
 import com.ipb.castelobranco.features.gallery.data.work.GalleryUploadWorker
 import com.ipb.castelobranco.features.gallery.di.GalleryThumbnailLoader
@@ -18,10 +20,16 @@ import com.ipb.castelobranco.features.gallery.domain.manage.GalleryNames
 import com.ipb.castelobranco.features.gallery.domain.manage.GalleryWriteError
 import com.ipb.castelobranco.features.gallery.domain.manage.NameCheck
 import com.ipb.castelobranco.features.gallery.domain.manage.ReorderResult
+import com.ipb.castelobranco.features.gallery.domain.manage.isForbidden
+import com.ipb.castelobranco.features.gallery.domain.manage.isNotFound
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.tags.GalleryPeople
+import com.ipb.castelobranco.features.gallery.domain.tags.TagSaveResult
 import com.ipb.castelobranco.features.gallery.domain.trash.RestoreResult
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
@@ -45,11 +53,15 @@ import com.ipb.castelobranco.features.gallery.presentation.state.ItemFormState
 import com.ipb.castelobranco.features.gallery.presentation.state.MessageAction
 import com.ipb.castelobranco.features.gallery.presentation.state.MovePickerState
 import com.ipb.castelobranco.features.gallery.presentation.state.MoveSubject
+import com.ipb.castelobranco.features.gallery.presentation.state.PeoplePickerState
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoTile
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
+import com.ipb.castelobranco.features.gallery.presentation.state.PickerMode
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.state.toGalleryPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -78,6 +90,7 @@ class GalleryViewModel @Inject constructor(
     private val autoDownload: GalleryAutoDownloadUseCase,
     private val manage: GalleryManageUseCases,
     observeAccess: ObserveAccessUseCase,
+    observeOwnMemberId: ObserveOwnMemberIdUseCase,
     connectivityObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
     @param:GalleryThumbnailLoader val previewLoader: ImageLoader,
@@ -97,6 +110,14 @@ class GalleryViewModel @Inject constructor(
         val uploads: List<UploadItem>,
         val copying: Set<Long>,
         val uploadProgress: Pair<Int, Int>,
+        val ownMemberId: Long? = null,
+    )
+
+    private data class ManageFlags(
+        val permissions: GalleryPermissions,
+        val organize: OrganizeSession?,
+        val selection: Selection?,
+        val ownMemberId: Long?,
     )
 
     /** The local copy with its tree, built once per change off the main thread. */
@@ -119,6 +140,9 @@ class GalleryViewModel @Inject constructor(
         .map { it.toGalleryPermissions() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, GalleryPermissions.NONE)
 
+    private val ownMemberId: StateFlow<Long?> = observeOwnMemberId()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val organize = MutableStateFlow<OrganizeSession?>(null)
     private val selection = MutableStateFlow<Selection?>(null)
     private val copying = MutableStateFlow<Set<Long>>(emptySet())
@@ -126,6 +150,11 @@ class GalleryViewModel @Inject constructor(
     /** Albums and photos this ViewModel itself removed: their screens say why, not "foi removido". */
     private val selfRemovedAlbums = mutableSetOf<Long>()
     private val selfRemovedPhotos = mutableSetOf<Long>()
+
+    /** Photos whose people this ViewModel changed: leaving a filter's result is their own doing. */
+    private val selfRetaggedPhotos = mutableSetOf<Long>()
+
+    private var pickerLoad: Job? = null
 
     private val isOnWifi: StateFlow<Boolean> = connectivityObserver.isOnWifi
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
@@ -141,12 +170,12 @@ class GalleryViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0 to 0)
 
     private val manageView: StateFlow<ManageView> = combine(
-        combine(permissions, organize, selection) { p, o, s -> Triple(p, o, s) },
+        combine(permissions, organize, selection, ownMemberId, ::ManageFlags),
         manage.observeUploads(),
         copying,
         uploadProgress,
-    ) { (permissions, organize, selection), uploads, copying, progress ->
-        ManageView(permissions, organize, selection, uploads, copying, progress)
+    ) { flags, uploads, copying, progress ->
+        ManageView(flags.permissions, flags.organize, flags.selection, uploads, copying, progress, flags.ownMemberId)
     }.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,
@@ -177,11 +206,12 @@ class GalleryViewModel @Inject constructor(
             permissions = manageView.permissions,
             isOrganizing = session != null,
             isSavingOrder = session?.isSaving == true,
+            ownMemberId = manageView.ownMemberId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryRootUiState())
 
     private val albumStates = mutableMapOf<Long, StateFlow<AlbumUiState>>()
-    private val viewers = mutableMapOf<Pair<Long, Long>, Viewer>()
+    private val viewers = mutableMapOf<Pair<ViewerSource, Long>, Viewer>()
 
     init {
         // Abrir a galeria é um dos gatilhos do sync.
@@ -200,6 +230,14 @@ class GalleryViewModel @Inject constructor(
                 }
             }
         }
+        // Sem `manage`, o seletor de pessoas fecha junto com os outros controles.
+        viewModelScope.launch {
+            permissions.collect { permissions ->
+                if (!permissions.canManage) {
+                    _dialog.update { if (it is GalleryDialogState.PeoplePicker) null else it }
+                }
+            }
+        }
     }
 
     fun albumState(albumId: Long): StateFlow<AlbumUiState> = albumStates.getOrPut(albumId) {
@@ -208,17 +246,23 @@ class GalleryViewModel @Inject constructor(
             val base = GalleryUiMapper.albumState(albumId, view.local, view.tree)
             if (base.isRemoved && wasPresent && albumId !in selfRemovedAlbums) post(GalleryMessage.AlbumRemoved)
             if (!base.isLoading && !base.isRemoved) wasPresent = true
-            decorate(albumId, base, manageView)
+            decorate(albumId, base, manageView, view.local.index?.photos.orEmpty())
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AlbumUiState())
     }
 
+    fun viewerState(source: ViewerSource, photoId: Long): StateFlow<PhotoViewerUiState> =
+        viewers.getOrPut(source to photoId) { Viewer(source, photoId) }.state
+
     fun viewerState(albumId: Long, photoId: Long): StateFlow<PhotoViewerUiState> =
-        viewers.getOrPut(albumId to photoId) { Viewer(albumId, photoId) }.state
+        viewerState(ViewerSource.Album(albumId), photoId)
 
     /** The pager settled on [currentPhotoId]; used to pick the next photo if this one leaves. */
-    fun onPageChanged(albumId: Long, openedPhotoId: Long, currentPhotoId: Long) {
-        viewers[albumId to openedPhotoId]?.current?.value = currentPhotoId
+    fun onPageChanged(source: ViewerSource, openedPhotoId: Long, currentPhotoId: Long) {
+        viewers[source to openedPhotoId]?.current?.value = currentPhotoId
     }
+
+    fun onPageChanged(albumId: Long, openedPhotoId: Long, currentPhotoId: Long) =
+        onPageChanged(ViewerSource.Album(albumId), openedPhotoId, currentPhotoId)
 
     fun consumeMessage() {
         _message.value = null
@@ -435,6 +479,7 @@ class GalleryViewModel @Inject constructor(
             is GalleryDialogState.Form -> current.form.isSaving
             is GalleryDialogState.MovePicker -> current.picker.isSaving
             is GalleryDialogState.Confirm -> current.confirm.isRunning
+            is GalleryDialogState.PeoplePicker -> current.picker.isSaving
             null -> false
         }
         if (!busy) _dialog.value = null
@@ -467,6 +512,172 @@ class GalleryViewModel @Inject constructor(
 
     private fun undoFor(key: TrashKey): MessageAction.Undo? =
         MessageAction.Undo(key).takeIf { permissions.value.canDelete }
+
+    // endregion
+
+    // region tags
+
+    /** "Marcar pessoas" on one photo: its people checked and listed first; the list is read from the server. */
+    fun openTagPhoto(photoId: Long) {
+        if (!permissions.value.canManage) return
+        val photo = photo(photoId) ?: return
+        _dialog.value = GalleryDialogState.PeoplePicker(
+            PeoplePickerState(
+                mode = PickerMode.Photo(photoId),
+                people = photo.members,
+                checked = photo.members.map { it.id }.toSet(),
+                isLoading = true,
+            )
+        )
+        loadPicker()
+    }
+
+    /**
+     * "Pessoas" on the album selection: [remove] `false` adds people (the list read from the server,
+     * nobody checked); `true` removes people, listing only those tagged in a selected photo.
+     */
+    fun openBulkTag(albumId: Long, remove: Boolean) {
+        if (!permissions.value.canManage) return
+        val ids = selectedIds(albumId)
+        if (ids.isEmpty()) return
+        if (remove) {
+            val people = peopleOf(ids)
+            if (people.isEmpty()) return
+            _dialog.value = GalleryDialogState.PeoplePicker(
+                PeoplePickerState(mode = PickerMode.Remove(albumId, ids), people = people)
+            )
+        } else {
+            _dialog.value = GalleryDialogState.PeoplePicker(
+                PeoplePickerState(mode = PickerMode.Add(albumId, ids), isLoading = true)
+            )
+            loadPicker()
+        }
+    }
+
+    fun onPickerQueryChange(query: String) = updatePicker { it.copy(query = query) }
+
+    fun togglePickerPerson(memberId: Long) = updatePicker { picker ->
+        if (picker.isSaving) return@updatePicker picker
+        val checked = if (memberId in picker.checked) picker.checked - memberId else picker.checked + memberId
+        picker.copy(checked = checked)
+    }
+
+    fun retryPickerLoad() = loadPicker()
+
+    fun savePicker() {
+        val picker = (_dialog.value as? GalleryDialogState.PeoplePicker)?.picker ?: return
+        if (!picker.canConfirm) return
+        updatePicker { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            when (val mode = picker.mode) {
+                is PickerMode.Photo -> savePhotoPeople(mode.photoId, picker.checked)
+                is PickerMode.Add -> savePeopleOfMany(mode.photoIds, picker.checked, remove = false)
+                is PickerMode.Remove -> savePeopleOfMany(mode.photoIds, picker.checked, remove = true)
+            }
+        }
+    }
+
+    private suspend fun savePhotoPeople(photoId: Long, checked: Set<Long>) {
+        val current = photo(photoId)?.members?.map { it.id }
+        if (current == null) {
+            _dialog.value = null
+            return
+        }
+        selfRetaggedPhotos += photoId
+        when (val result = manage.setPhotoMembers(photoId, current, checked)) {
+            TagSaveResult.Unchanged -> {
+                selfRetaggedPhotos -= photoId
+                _dialog.value = null
+            }
+            TagSaveResult.Saved -> {
+                _dialog.value = null
+                post(GalleryMessage.Text(TagTexts.SAVED))
+            }
+            is TagSaveResult.Failed -> {
+                selfRetaggedPhotos -= photoId
+                onTagFailure(result.error, closeOnOther = false)
+            }
+        }
+    }
+
+    private suspend fun savePeopleOfMany(photoIds: List<Long>, checked: Set<Long>, remove: Boolean) {
+        val present = photoIds.filter { photo(it) != null }
+        selfRetaggedPhotos += present
+        val result = manage.changePhotoMembers(present, checked.sorted(), remove)
+        val failure = result.failure
+        if (failure == null) {
+            _dialog.value = null
+            selection.value = null
+            post(GalleryMessage.Text(TagTexts.updated(result)))
+            return
+        }
+        onTagFailure(failure, closeOnOther = true, text = TagTexts.updated(result))
+    }
+
+    /**
+     * A tag write refused. A photo or person gone (the repository already synced): the picker stays and
+     * reloads. Access lost: it closes. Anything else: a single photo keeps it open, a selection closes it.
+     */
+    private fun onTagFailure(error: AppError, closeOnOther: Boolean, text: String = TagTexts.failure(error)) {
+        when {
+            error.isNotFound() -> {
+                updatePicker { it.copy(isSaving = false) }
+                loadPicker()
+            }
+            error.isForbidden() || closeOnOther -> _dialog.value = null
+            else -> updatePicker { it.copy(isSaving = false) }
+        }
+        post(GalleryMessage.Text(text))
+    }
+
+    /** (Re)loads the picker's list: from the server, or — to remove people — from the selection. */
+    private fun loadPicker() {
+        val picker = (_dialog.value as? GalleryDialogState.PeoplePicker)?.picker ?: return
+        val mode = picker.mode
+        if (mode is PickerMode.Remove) {
+            val people = peopleOf(mode.photoIds)
+            val ids = people.map { it.id }.toSet()
+            updatePicker { it.copy(people = people, checked = it.checked intersect ids) }
+            return
+        }
+        updatePicker { it.copy(isLoading = true, error = null) }
+        pickerLoad?.cancel()
+        pickerLoad = viewModelScope.launch {
+            manage.loadTaggableMembers().fold(
+                onSuccess = { members -> updatePicker { it.withLoaded(members) } },
+                onFailure = { error ->
+                    val text = error.toAppError().toGalleryWriteError().message
+                    updatePicker { it.copy(isLoading = false, error = text) }
+                },
+            )
+        }
+    }
+
+    /** A photo's current people first, in its order; then everyone else as the server sent them. */
+    private fun PeoplePickerState.withLoaded(members: List<GalleryMember>): PeoplePickerState {
+        val ids = members.map { it.id }.toSet()
+        val first = (mode as? PickerMode.Photo)?.let { photo(it.photoId)?.members }.orEmpty().filter { it.id in ids }
+        val firstIds = first.map { it.id }.toSet()
+        return copy(
+            people = first + members.filterNot { it.id in firstIds },
+            checked = checked intersect ids,
+            isLoading = false,
+            error = null,
+        )
+    }
+
+    private fun peopleOf(photoIds: List<Long>): List<GalleryMember> =
+        GalleryPeople.peopleIn(photoIds.mapNotNull(::photo))
+
+    private fun updatePicker(transform: (PeoplePickerState) -> PeoplePickerState) {
+        _dialog.update { current ->
+            if (current is GalleryDialogState.PeoplePicker) {
+                GalleryDialogState.PeoplePicker(transform(current.picker))
+            } else {
+                current
+            }
+        }
+    }
 
     // endregion
 
@@ -574,10 +785,16 @@ class GalleryViewModel @Inject constructor(
 
     // endregion
 
-    private fun decorate(albumId: Long, base: AlbumUiState, manageView: ManageView): AlbumUiState {
+    private fun decorate(
+        albumId: Long,
+        base: AlbumUiState,
+        manageView: ManageView,
+        photosById: Map<Long, GalleryPhoto>,
+    ): AlbumUiState {
         if (base.isLoading || base.isRemoved) return base.copy(permissions = manageView.permissions)
         val session = manageView.organize?.takeIf { it.albumId == albumId }
         val photoIds = base.photos.map { it.id }.toSet()
+        val selected = manageView.selection?.takeIf { it.albumId == albumId }?.ids.orEmpty().intersect(photoIds)
         val items = manageView.uploads.filter { it.albumId == albumId }
         val pending = items.count { it.state != UploadState.Failed }
         return base.copy(
@@ -586,7 +803,8 @@ class GalleryViewModel @Inject constructor(
             permissions = manageView.permissions,
             isOrganizing = session != null,
             isSavingOrder = session?.isSaving == true,
-            selection = manageView.selection?.takeIf { it.albumId == albumId }?.ids.orEmpty().intersect(photoIds),
+            selection = selected,
+            canRemovePeople = selected.any { photosById[it]?.members?.isNotEmpty() == true },
             uploads = AlbumUploadsUiState(
                 isCopying = albumId in manageView.copying,
                 pending = pending,
@@ -606,6 +824,8 @@ class GalleryViewModel @Inject constructor(
     }
 
     private fun tree(): GalleryTree? = view.value?.tree
+
+    private fun photo(photoId: Long): GalleryPhoto? = view.value?.local?.index?.photos?.get(photoId)
 
     private fun confirm(action: ConfirmAction, text: String, label: String) {
         _dialog.value = GalleryDialogState.Confirm(ConfirmState(action, text, label))
@@ -636,11 +856,11 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * One open viewer. It follows the photo on screen; when that photo leaves the album it moves to
-     * the next one (the previous one when it was the last) and posts why — unless this ViewModel
-     * moved or deleted it, which posts its own message.
+     * One open viewer, over an album or a people filter's result. It follows the photo on screen; when
+     * that photo leaves its list it moves to the next one (the previous one when it was the last) and
+     * posts why — unless this ViewModel moved, deleted or retagged it, which posts its own message.
      */
-    private inner class Viewer(private val albumId: Long, openedPhotoId: Long) {
+    private inner class Viewer(private val source: ViewerSource, openedPhotoId: Long) {
         val current = MutableStateFlow(openedPhotoId)
         private var lastIds: List<Long> = emptyList()
 
@@ -650,15 +870,25 @@ class GalleryViewModel @Inject constructor(
             permissions,
         ) { view, currentId, permissions ->
             val tree = view.tree ?: return@combine PhotoViewerUiState(isLoading = true)
-            val photos = tree.photosOf(albumId)
+            val photos = when (source) {
+                is ViewerSource.Album -> tree.photosOf(source.albumId)
+                is ViewerSource.People -> GalleryPeople.photosWithAll(tree, source.memberIds)
+            }
             val ids = photos.map { it.id }
             var index = ids.indexOf(currentId)
 
             if (index < 0) {
                 val left = lastIds.isNotEmpty() && currentId in lastIds
-                if (left && currentId !in selfRemovedPhotos) {
+                if (left) closePickerOf(currentId)
+                if (left && currentId !in selfRemovedPhotos && !selfRetaggedPhotos.remove(currentId)) {
                     val stillThere = view.local.index?.photos?.containsKey(currentId) == true
-                    post(if (stillThere) GalleryMessage.PhotoMoved else GalleryMessage.PhotoRemoved)
+                    post(
+                        when {
+                            !stillThere -> GalleryMessage.PhotoRemoved
+                            source is ViewerSource.People -> GalleryMessage.PhotoLeftResult
+                            else -> GalleryMessage.PhotoMoved
+                        }
+                    )
                 }
                 if (ids.isEmpty()) {
                     lastIds = ids
@@ -679,6 +909,14 @@ class GalleryViewModel @Inject constructor(
                 permissions = permissions,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PhotoViewerUiState())
+    }
+
+    /** The photo being tagged left the viewer: its picker has nothing left to edit. */
+    private fun closePickerOf(photoId: Long) {
+        _dialog.update { current ->
+            val mode = (current as? GalleryDialogState.PeoplePicker)?.picker?.mode
+            if (mode is PickerMode.Photo && mode.photoId == photoId) null else current
+        }
     }
 
     private fun WorkInfo?.toDownloadState(): GalleryDownloadState = when (this?.state) {

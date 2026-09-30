@@ -43,9 +43,17 @@ data class GalleryRootUiState(
     /** "Organizar" open on the root: [albums] already follow the draft order. */
     val isOrganizing: Boolean = false,
     val isSavingOrder: Boolean = false,
+    /** The member record linked to the user's profile; `null` = not linked. */
+    val ownMemberId: Long? = null,
 ) {
     /** The trash icon: owners only, not while organizing. */
     val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
+
+    /** The people filter: everyone, once the gallery is on the device, not while organizing. */
+    val showPeople: Boolean get() = hasIndex && !isOrganizing
+
+    /** "Minhas fotos": only for a profile linked to a member. */
+    val showMyPhotos: Boolean get() = ownMemberId != null && showPeople
 }
 
 data class AlbumUiState(
@@ -67,6 +75,8 @@ data class AlbumUiState(
     /** Photos picked in selection mode; empty = not selecting. */
     val selection: Set<Long> = emptySet(),
     val uploads: AlbumUploadsUiState = AlbumUploadsUiState(),
+    /** Someone is tagged in a selected photo: "Remover pessoas" has something to remove. */
+    val canRemovePeople: Boolean = false,
 ) {
     val isEmpty: Boolean get() = !isLoading && !isRemoved && subAlbums.isEmpty() && photos.isEmpty()
     val isSelecting: Boolean get() = selection.isNotEmpty()
@@ -96,9 +106,25 @@ data class ViewerPhoto(
     /** File name used when saving to the device. */
     val fileName: String,
     val image: PhotoImage,
+    /** The album the photo is in — not always the one the viewer pages through. */
+    val albumId: Long = 0L,
+    /** `null` when empty. */
+    val description: String? = null,
+    /** `dd/MM/yyyy`, `null` when unknown. */
+    val dateTaken: String? = null,
+    /** The names of the people tagged, in the photo's order. */
+    val people: List<String> = emptyList(),
 ) {
     val original: File? get() = (image as? PhotoImage.Original)?.file
     val canSaveOrShare: Boolean get() = original != null
+}
+
+/** What a viewer pages through: the album it was opened from, or a people filter's result. */
+sealed interface ViewerSource {
+    data class Album(val albumId: Long) : ViewerSource
+
+    /** The photos in which every one of [memberIds] is tagged, in tree order. */
+    data class People(val memberIds: Set<Long>) : ViewerSource
 }
 
 data class PhotoViewerUiState(
@@ -127,6 +153,11 @@ sealed interface GalleryMessage {
 
     data object PhotoMoved : GalleryMessage {
         override val text = "Esta foto foi movida para outro álbum"
+    }
+
+    /** The photo on screen no longer has every person of the filter it was opened from. */
+    data object PhotoLeftResult : GalleryMessage {
+        override val text = "Esta foto não está mais no resultado"
     }
 
     data object AlbumRemoved : GalleryMessage {

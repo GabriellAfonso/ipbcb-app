@@ -56,6 +56,7 @@ import com.ipb.castelobranco.features.gallery.presentation.components.ManageActi
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
 import com.ipb.castelobranco.features.gallery.presentation.components.SelectionActions
+import com.ipb.castelobranco.features.gallery.presentation.components.SelectionPeopleActions
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.AlbumUiState
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
@@ -101,6 +102,8 @@ data class AlbumActions(
     val onSelectionMove: () -> Unit,
     val onSelectionDelete: () -> Unit,
     val onSelectionClose: () -> Unit,
+    val onSelectionAddPeople: () -> Unit,
+    val onSelectionRemovePeople: () -> Unit,
     val onDismissUpload: (String) -> Unit,
 )
 
@@ -156,6 +159,8 @@ fun AlbumScreen(
                 onSelectionMove = { viewModel.openMovePhotos(albumId) },
                 onSelectionDelete = { viewModel.askDeletePhotos(albumId) },
                 onSelectionClose = viewModel::clearSelection,
+                onSelectionAddPeople = { viewModel.openBulkTag(albumId, remove = false) },
+                onSelectionRemovePeople = { viewModel.openBulkTag(albumId, remove = true) },
                 onDismissUpload = viewModel::dismissUpload,
             ),
         )
@@ -213,6 +218,15 @@ private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions) {
             onMove = actions.onSelectionMove,
             onDelete = actions.onSelectionDelete,
             onClose = actions.onSelectionClose,
+            people = if (state.permissions.canManage) {
+                SelectionPeopleActions(
+                    canRemove = state.canRemovePeople,
+                    onAdd = actions.onSelectionAddPeople,
+                    onRemove = actions.onSelectionRemovePeople,
+                )
+            } else {
+                null
+            },
         )
         else -> ManageOverflowMenu(albumMenu(state, actions))
     }

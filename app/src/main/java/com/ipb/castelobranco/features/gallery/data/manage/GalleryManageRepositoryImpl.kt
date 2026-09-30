@@ -7,6 +7,8 @@ import com.ipb.castelobranco.core.network.error.toAppError
 import com.ipb.castelobranco.features.gallery.data.api.GalleryApi
 import com.ipb.castelobranco.features.gallery.data.api.GalleryEndpoints
 import com.ipb.castelobranco.features.gallery.data.dto.albumOrderBody
+import com.ipb.castelobranco.features.gallery.data.dto.changeMembersBody
+import com.ipb.castelobranco.features.gallery.data.dto.photoMembersBody
 import com.ipb.castelobranco.features.gallery.data.dto.photoOrderBody
 import com.ipb.castelobranco.features.gallery.data.dto.toCreateBody
 import com.ipb.castelobranco.features.gallery.data.dto.toDomain
@@ -22,6 +24,7 @@ import com.ipb.castelobranco.features.gallery.domain.manage.isNotFound
 import com.ipb.castelobranco.features.gallery.domain.manage.isOrderMismatch
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
@@ -126,6 +129,26 @@ class GalleryManageRepositoryImpl @Inject constructor(
             Unit to GalleryLocalChange.UpsertPhoto(dto.toDomain())
         }
     }
+
+    override suspend fun taggableMembers(): Result<List<GalleryMember>> =
+        request { api.getTaggableMembers() }.map { members -> members.map { GalleryMember(it.id, it.name) } }
+
+    override suspend fun setPhotoMembers(photoId: Long, memberIds: List<Long>): Result<GalleryPhoto> =
+        write({ api.putPhotoMembers(photoId, photoMembersBody(memberIds)) }) { dto ->
+            dto.toDomain().let { it to GalleryLocalChange.UpsertPhoto(it) }
+        }
+
+    override suspend fun changePhotoMembers(
+        photoIds: List<Long>,
+        addMemberIds: List<Long>,
+        removeMemberIds: List<Long>,
+    ): Result<List<GalleryPhoto>> =
+        write(
+            { api.changePhotoMembers(changeMembersBody(photoIds, addMemberIds, removeMemberIds)) },
+            syncAfter = false,
+        ) { dtos ->
+            dtos.map { it.toDomain() }.let { it to GalleryLocalChange.UpsertPhotos(it) }
+        }
 
     override suspend fun syncAfterWrite() {
         syncGallery.afterWrite()

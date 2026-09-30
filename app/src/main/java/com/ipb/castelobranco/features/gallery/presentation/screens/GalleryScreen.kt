@@ -1,7 +1,11 @@
 package com.ipb.castelobranco.features.gallery.presentation.screens
 
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -56,6 +60,7 @@ import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGri
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
+import com.ipb.castelobranco.features.gallery.presentation.components.PeoplePickerActions
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDownloadState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
@@ -77,6 +82,8 @@ private const val ORGANIZE_TITLE = "Organizar"
 private const val ORGANIZE_LABEL = "Organizar"
 private const val NEW_ALBUM_LABEL = "Novo álbum"
 private const val TRASH_LABEL = "Lixeira"
+private const val PEOPLE_LABEL = "Pessoas"
+private const val MY_PHOTOS_LABEL = "Minhas fotos"
 
 @Composable
 fun GalleryScreen(
@@ -97,6 +104,8 @@ fun GalleryScreen(
             onBack = nav.back,
             onAlbumClick = nav.toAlbum,
             onTrash = nav.toTrash,
+            onPeople = nav.toPeople,
+            onMyPhotos = nav.toMyPhotos,
             onNavigateToAuth = onNavigateToAuth,
             onRetrySync = viewModel::retrySync,
             onRetryDownload = viewModel::retryDownload,
@@ -133,6 +142,13 @@ internal fun rememberDialogActions(viewModel: GalleryViewModel): GalleryDialogAc
         onChooseTarget = viewModel::chooseMoveTarget,
         onConfirm = viewModel::confirm,
         onDismiss = viewModel::dismissDialog,
+        picker = PeoplePickerActions(
+            onQueryChange = viewModel::onPickerQueryChange,
+            onToggle = viewModel::togglePickerPerson,
+            onRetry = viewModel::retryPickerLoad,
+            onConfirm = viewModel::savePicker,
+            onDismiss = viewModel::dismissDialog,
+        ),
     )
 }
 
@@ -184,6 +200,8 @@ fun GalleryContent(
     onBack: () -> Unit,
     onAlbumClick: (Long) -> Unit,
     onTrash: () -> Unit,
+    onPeople: () -> Unit,
+    onMyPhotos: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onRetrySync: () -> Unit,
     onRetryDownload: () -> Unit,
@@ -199,6 +217,11 @@ fun GalleryContent(
         showBackArrow = true,
         onBackClick = if (state.isOrganizing) manage.onOrganizeCancel else onBack,
         extraActions = {
+            if (isLoggedIn && state.showPeople) {
+                IconButton(onClick = onPeople) {
+                    Icon(Icons.Outlined.People, contentDescription = PEOPLE_LABEL)
+                }
+            }
             if (isLoggedIn && state.showTrash) {
                 IconButton(onClick = onTrash) {
                     Icon(Icons.Outlined.Delete, contentDescription = TRASH_LABEL)
@@ -239,6 +262,8 @@ fun GalleryContent(
                     download.isPending && !state.isOnWifi -> WaitingForWifiBanner(onDownloadWithMobileData)
                     download.isPending -> MessageBanner(PENDING_WIFI_MESSAGE)
                 }
+
+                if (state.showMyPhotos) MyPhotosEntry(onMyPhotos)
 
                 when {
                     state.albums.isNotEmpty() -> RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove)
@@ -325,6 +350,29 @@ private fun RootAlbumGrid(
                     modifier = Modifier.longPressDraggableHandle(enabled = state.isOrganizing),
                 )
             }
+        }
+    }
+}
+
+/** "Minhas fotos": the photos the user is tagged in, for a profile linked to a member. */
+@Composable
+private fun MyPhotosEntry(onClick: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(Icons.Outlined.AccountCircle, contentDescription = null)
+            Text(MY_PHOTOS_LABEL, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }

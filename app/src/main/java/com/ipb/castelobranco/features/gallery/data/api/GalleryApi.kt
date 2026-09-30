@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.data.api
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryAlbumDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoMemberDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryTrashEntryDto
 import com.ipb.castelobranco.features.gallery.data.dto.PhotoUploadResultDto
 import kotlinx.serialization.json.JsonObject
@@ -101,4 +102,19 @@ interface GalleryApi {
 
     @POST(GalleryEndpoints.TRASH_PHOTO_RESTORE)
     suspend fun restorePhoto(@Path(GalleryEndpoints.ID) photoId: Long): Response<GalleryPhotoDto>
+
+    /** `manage` only: every member record, active or not, by name. `no-store`: never cached. */
+    @GET(GalleryEndpoints.TAGGABLE_MEMBERS)
+    suspend fun getTaggableMembers(): Response<List<GalleryPhotoMemberDto>>
+
+    /** Replaces the photo's people with exactly `member_ids`. */
+    @PUT(GalleryEndpoints.PHOTO_MEMBERS)
+    suspend fun putPhotoMembers(
+        @Path(GalleryEndpoints.ID) photoId: Long,
+        @Body body: JsonObject,
+    ): Response<GalleryPhotoDto>
+
+    /** Adds and removes (photo, member) pairs in up to 200 photos at once; atomic. */
+    @POST(GalleryEndpoints.PHOTOS_MEMBERS)
+    suspend fun changePhotoMembers(@Body body: JsonObject): Response<List<GalleryPhotoDto>>
 }
