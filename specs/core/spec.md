@@ -168,6 +168,13 @@ Vocabulario em `core/domain/access/` (sem Android):
   `RefreshAccessUseCase`, que refaz o `/me` com uma unica requisicao em voo por vez. As telas recalculam o que
   mostram.
 
+### 4.2.2 Membro do usuario
+
+`core/domain/member/`: `CurrentMemberRepository` (`memberId: Flow<Long?>`) e `ObserveOwnMemberIdUseCase` — o registro
+de membro que um admin ligou ao usuario (`member_id` do `/me`), `null` sem vinculo ou sem perfil. Implementado em
+`features/profile` (`ProfileCurrentMemberRepository`) pelo mesmo snapshot do `/me`, entao segue toda releitura. Fica
+fora do `Access`: nao e permissao. Hoje so a galeria usa ("Minhas fotos", `specs/gallery/spec.md` §10).
+
 ### 4.3 Sistema de Snapshot Cache
 
 Pattern para features offline. Tres camadas:

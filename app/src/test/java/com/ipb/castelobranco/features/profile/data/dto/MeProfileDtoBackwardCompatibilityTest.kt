@@ -104,4 +104,20 @@ class MeProfileDtoBackwardCompatibilityTest {
         assertEquals("superowner", dto.permissions["songs"])
         assertEquals("treasurer", dto.roles.single().id)
     }
+
+    @Test
+    fun `member_id absent or null means not linked`() {
+        val absent = json.decodeFromString<MeProfileDto>("""{"name":"Ana","is_member":true}""")
+        val nulled = json.decodeFromString<MeProfileDto>("""{"name":"Ana","is_member":true,"member_id":null}""")
+
+        assertNull(absent.memberId)
+        assertNull(nulled.memberId)
+    }
+
+    @Test
+    fun `decodes the linked member id`() {
+        val dto = json.decodeFromString<MeProfileDto>("""{"name":"Ana","is_member":true,"member_id":12}""")
+
+        assertEquals(12L, dto.memberId)
+    }
 }

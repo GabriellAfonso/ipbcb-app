@@ -7,4 +7,6 @@ data class MeProfile(
     val isMember: Boolean,
     val photoUrl: String?,
     val access: Access = Access.NONE,
+    /** The member record linked to the user, `null` when not linked. */
+    val memberId: Long? = null,
 )

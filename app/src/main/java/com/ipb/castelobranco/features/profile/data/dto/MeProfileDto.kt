@@ -16,6 +16,8 @@ data class MeProfileDto(
     @SerialName("photo_url") val photoUrl: String? = null,
     @SerialName("roles") val roles: List<RoleDto> = emptyList(),
     @SerialName("permissions") val permissions: Map<String, String?> = emptyMap(),
+    /** The member record an admin linked to the user; `null` when not linked or cached before backend 015. */
+    @SerialName("member_id") val memberId: Long? = null,
 )
 
 @Serializable

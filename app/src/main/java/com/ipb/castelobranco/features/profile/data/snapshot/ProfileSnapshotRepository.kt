@@ -25,6 +25,7 @@ class ProfileSnapshotRepository @Inject constructor(
             isMember = dto.isMember,
             photoUrl = dto.photoUrl,
             access = dto.toAccess(),
+            memberId = dto.memberId,
         )
     },
     logger = logger,
