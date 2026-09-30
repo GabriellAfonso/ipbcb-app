@@ -34,6 +34,7 @@ fun Response<*>.toAppError(): AppError {
             message = message,
             errorCode = parsed?.errorCode,
             fieldErrors = parsed?.fieldErrors,
+            extras = parsed?.extras?.ifEmpty { null },
             userMessage = structuredDetail,
         )
     }

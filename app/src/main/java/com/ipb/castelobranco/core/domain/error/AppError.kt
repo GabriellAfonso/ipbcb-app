@@ -48,6 +48,11 @@ sealed class AppError(
          */
         val fieldErrors: Map<String, List<String>>? = null,
         userMessage: String? = null,
+        /**
+         * The other top-level fields of a structured error body (`rejected`, `missing`, `chain`…),
+         * as JSON text. Filled only in `core/network/error/ResponseExt.kt`.
+         */
+        val extras: Map<String, String>? = null,
     ) : AppError(message, cause, userMessage)
 
     /** An unexpected error that does not fit the categories above. */

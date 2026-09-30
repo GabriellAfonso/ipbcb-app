@@ -21,9 +21,18 @@ fun parseApiError(errorBody: String?): ApiErrorBody? {
             }
             map.ifEmpty { null }
         }
-        ApiErrorBody(errorCode = errorCode, detail = detail, fieldErrors = fieldErrors)
+        val extras = buildMap {
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (key !in STANDARD_KEYS) put(key, json.get(key).toString())
+            }
+        }
+        ApiErrorBody(errorCode = errorCode, detail = detail, fieldErrors = fieldErrors, extras = extras)
     } catch (e: Exception) {
         Timber.w(e, "Failed to parse API error body")
         null
     }
 }
+
+private val STANDARD_KEYS = setOf("error_code", "detail", "field_errors")

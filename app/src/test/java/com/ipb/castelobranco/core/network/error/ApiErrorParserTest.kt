@@ -81,4 +81,42 @@ class ApiErrorParserTest {
         assertNotNull(result)
         assertNull(result!!.fieldErrors)
     }
+
+    // region extras
+
+    @Test
+    fun `extras carry every non-standard top-level key as JSON text, strings unquoted`() {
+        val body = """{"error_code":"VALIDATION_ERROR","detail":"Nenhuma imagem foi aceita.",""" +
+            """"rejected":[{"filename":"a.jpg","reason":"Grande demais."}],"missing":[4],"unexpected":[8],""" +
+            """"repeated":[],"chain":[9,5,3],"client_upload_id":"abc"}"""
+
+        val extras = parseApiError(body)!!.extras
+
+        val rejected = org.json.JSONArray(extras["rejected"]).getJSONObject(0)
+        assertEquals("a.jpg", rejected.getString("filename"))
+        assertEquals("Grande demais.", rejected.getString("reason"))
+        assertEquals("[4]", extras["missing"])
+        assertEquals("[8]", extras["unexpected"])
+        assertEquals("[]", extras["repeated"])
+        assertEquals("[9,5,3]", extras["chain"])
+        assertEquals("abc", extras["client_upload_id"])
+    }
+
+    @Test
+    fun `extras never repeat error_code, detail or field_errors`() {
+        val body = """{"error_code":"VALIDATION_ERROR","detail":"x","field_errors":{"name":["y"]},"chain":[1]}"""
+
+        val extras = parseApiError(body)!!.extras
+
+        assertEquals(setOf("chain"), extras.keys)
+    }
+
+    @Test
+    fun `a body without extras yields an empty map`() {
+        val body = """{"error_code":"NOT_FOUND","detail":"Recurso não encontrado"}"""
+
+        assertEquals(emptyMap<String, String>(), parseApiError(body)!!.extras)
+    }
+
+    // endregion
 }

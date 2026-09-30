@@ -144,4 +144,41 @@ class ResponseExtTest {
     }
 
     // endregion
+
+    // region extras
+
+    @Test
+    fun `toAppError carries the structured extras of a 400`() {
+        val body = """{"error_code":"VALIDATION_ERROR","detail":"Order must list every sibling exactly once.",""" +
+            """"missing":[4],"unexpected":[],"repeated":[]}"""
+
+        val error = errorResponse(code = 400, body = body).toAppError() as AppError.Server
+
+        assertEquals("[4]", error.extras?.get("missing"))
+        assertEquals(setOf("missing", "unexpected", "repeated"), error.extras?.keys)
+    }
+
+    @Test
+    fun `toAppError carries the extras of a 409 and keeps its detail as userMessage`() {
+        val body = """{"error_code":"CONFLICT",""" +
+            """"detail":"Esta foto já foi enviada e depois apagada; ela está na lixeira.",""" +
+            """"client_upload_id":"abc"}"""
+
+        val error = errorResponse(code = 409, body = body).toAppError() as AppError.Server
+
+        assertEquals("CONFLICT", error.errorCode)
+        assertEquals("abc", error.extras?.get("client_upload_id"))
+        assertEquals("Esta foto já foi enviada e depois apagada; ela está na lixeira.", error.userMessage)
+    }
+
+    @Test
+    fun `toAppError leaves extras null when the body has none`() {
+        val body = """{"error_code":"NOT_FOUND","detail":"Não encontrado"}"""
+
+        val error = errorResponse(code = 404, body = body).toAppError() as AppError.Server
+
+        assertNull(error.extras)
+    }
+
+    // endregion
 }
