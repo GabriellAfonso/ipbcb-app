@@ -4,11 +4,14 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
 import com.ipb.castelobranco.features.gallery.data.coverUrl
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
 import com.ipb.castelobranco.features.gallery.data.work.GalleryDownloadWorker
+import com.ipb.castelobranco.features.gallery.domain.manage.FakeGalleryManageRepository
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
@@ -77,6 +80,8 @@ class GalleryViewModelTest {
             repository = repository,
             syncGallery = syncGallery,
             autoDownload = autoDownload,
+            manage = manageUseCases(FakeGalleryManageRepository(), FakeUploadRepository()),
+            observeAccess = ObserveAccessUseCase(FakeAccessRepository()),
             connectivityObserver = connectivity,
             workManager = workManager,
             previewLoader = mockk(relaxed = true),

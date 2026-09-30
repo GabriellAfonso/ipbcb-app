@@ -44,6 +44,7 @@ internal object GalleryUiMapper {
             description = album.description.takeIf { it.isNotBlank() },
             subAlbums = tree.children(albumId).map { albumTile(it, local) },
             photos = tree.photosOf(albumId).map { PhotoTile(it.id, photoImage(it, local)) },
+            hasOwnCover = album.coverUrl != null && album.coverSourceAlbumId == album.id,
         )
     }
 

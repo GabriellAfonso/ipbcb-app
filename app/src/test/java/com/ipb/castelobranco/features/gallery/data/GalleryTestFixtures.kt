@@ -84,3 +84,11 @@ fun changes(
 fun photoUrl(id: Long): String = "https://example.com/ipbcb/media/gallery/$id.jpg"
 
 fun coverUrl(name: String): String = "https://example.com/ipbcb/media/gallery/covers/$name.jpg"
+
+/** A structured error body, as the backend sends it. [extras] are raw JSON fragments. */
+fun apiError(errorCode: String, detail: String, vararg extras: Pair<String, String>): String =
+    buildString {
+        append("""{"error_code":"$errorCode","detail":"$detail"""")
+        extras.forEach { (key, json) -> append(""","$key":$json""") }
+        append("}")
+    }

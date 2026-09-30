@@ -5,6 +5,8 @@ import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryPreviewCache
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
+import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadRepository
+import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadScheduler
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
@@ -21,6 +23,8 @@ class GalleryAutoDownloadUseCaseTest {
     private lateinit var syncGallery: SyncGalleryUseCase
     private lateinit var repository: GalleryRepository
     private lateinit var previewCache: GalleryPreviewCache
+    private lateinit var uploadScheduler: GalleryUploadScheduler
+    private lateinit var uploads: GalleryUploadRepository
     private lateinit var useCase: GalleryAutoDownloadUseCase
 
     @Before
@@ -30,8 +34,18 @@ class GalleryAutoDownloadUseCaseTest {
         syncGallery = mockk()
         repository = mockk(relaxed = true)
         previewCache = mockk(relaxed = true)
+        uploadScheduler = mockk(relaxed = true)
+        uploads = mockk(relaxed = true)
         coEvery { syncGallery() } returns GallerySyncResult.Synced(0)
-        useCase = GalleryAutoDownloadUseCase(downloadScheduler, syncScheduler, syncGallery, repository, previewCache)
+        useCase = GalleryAutoDownloadUseCase(
+            downloadScheduler,
+            syncScheduler,
+            syncGallery,
+            repository,
+            previewCache,
+            uploadScheduler,
+            uploads,
+        )
     }
 
     @Test
@@ -59,10 +73,12 @@ class GalleryAutoDownloadUseCaseTest {
     }
 
     @Test
-    fun `clearOnLogout cancels both works, then clears the gallery and the preview cache`() = runTest {
+    fun `clearOnLogout stops the upload queue first, then the other works, the gallery and the previews`() = runTest {
         useCase.clearOnLogout()
 
         coVerifyOrder {
+            uploadScheduler.cancel()
+            uploads.clear()
             downloadScheduler.cancel()
             syncScheduler.cancel()
             repository.clear()

@@ -38,6 +38,10 @@ data class GalleryRootUiState(
     val syncErrorCode: Int? = null,
     /** The feed answered 403 while the device still holds the gallery: shown above the grid. */
     val showMembersOnlyNotice: Boolean = false,
+    val permissions: GalleryPermissions = GalleryPermissions.NONE,
+    /** "Organizar" open on the root: [albums] already follow the draft order. */
+    val isOrganizing: Boolean = false,
+    val isSavingOrder: Boolean = false,
 )
 
 data class AlbumUiState(
@@ -50,9 +54,36 @@ data class AlbumUiState(
     val description: String? = null,
     val subAlbums: List<AlbumTile> = emptyList(),
     val photos: List<PhotoTile> = emptyList(),
+    val permissions: GalleryPermissions = GalleryPermissions.NONE,
+    /** The album's cover is its own (not inherited, not absent): an owner may remove it. */
+    val hasOwnCover: Boolean = false,
+    /** "Organizar" open here: [subAlbums] and [photos] already follow the draft order. */
+    val isOrganizing: Boolean = false,
+    val isSavingOrder: Boolean = false,
+    /** Photos picked in selection mode; empty = not selecting. */
+    val selection: Set<Long> = emptySet(),
+    val uploads: AlbumUploadsUiState = AlbumUploadsUiState(),
 ) {
     val isEmpty: Boolean get() = !isLoading && !isRemoved && subAlbums.isEmpty() && photos.isEmpty()
+    val isSelecting: Boolean get() = selection.isNotEmpty()
+    val canRemoveCover: Boolean get() = permissions.canDelete && hasOwnCover
 }
+
+/** The upload queue as seen from one album. */
+data class AlbumUploadsUiState(
+    /** Picked photos still being copied into the app. */
+    val isCopying: Boolean = false,
+    /** Photos of this album still to be sent. */
+    val pending: Int = 0,
+    /** The queue's progress (all albums): the photo being sent and the batch size; 0 when idle. */
+    val current: Int = 0,
+    val total: Int = 0,
+    val failed: List<FailedUpload> = emptyList(),
+) {
+    val isVisible: Boolean get() = isCopying || pending > 0 || failed.isNotEmpty()
+}
+
+data class FailedUpload(val uploadId: String, val name: String, val reason: String)
 
 data class ViewerPhoto(
     val id: Long,
@@ -73,11 +104,60 @@ data class PhotoViewerUiState(
     val currentIndex: Int = 0,
     /** No photo left in the album: the viewer closes. */
     val isClosed: Boolean = false,
+    val permissions: GalleryPermissions = GalleryPermissions.NONE,
 )
 
-/** A one-shot notice about an item that left the gallery while it was on screen. */
-enum class GalleryMessage(val text: String) {
-    PhotoRemoved("Esta foto foi removida"),
-    PhotoMoved("Esta foto foi movida para outro álbum"),
-    AlbumRemoved("Este álbum foi removido"),
+/**
+ * A one-shot notice, shown once by whichever gallery screen is on top: an item that left the gallery
+ * while it was on screen, or the outcome of a management action.
+ */
+sealed interface GalleryMessage {
+    val text: String
+
+    data object PhotoRemoved : GalleryMessage {
+        override val text = "Esta foto foi removida"
+    }
+
+    data object PhotoMoved : GalleryMessage {
+        override val text = "Esta foto foi movida para outro álbum"
+    }
+
+    data object AlbumRemoved : GalleryMessage {
+        override val text = "Este álbum foi removido"
+    }
+
+    data object AlbumCreated : GalleryMessage {
+        override val text = "Álbum criado"
+    }
+
+    data object Saved : GalleryMessage {
+        override val text = "Alterações salvas"
+    }
+
+    data object AlbumTrashed : GalleryMessage {
+        override val text = "Álbum enviado para a lixeira"
+    }
+
+    data object PhotoTrashed : GalleryMessage {
+        override val text = "Foto enviada para a lixeira"
+    }
+
+    data class PhotoMovedTo(val albumName: String) : GalleryMessage {
+        override val text = "Foto movida para '$albumName'"
+    }
+
+    data object OrderChanged : GalleryMessage {
+        override val text = "A ordem mudou enquanto você editava. Confira e salve de novo."
+    }
+
+    data object CoverUpdated : GalleryMessage {
+        override val text = "Capa atualizada"
+    }
+
+    data object CoverRemoved : GalleryMessage {
+        override val text = "Capa removida"
+    }
+
+    /** A batch result or a refusal, already worded. */
+    data class Text(override val text: String) : GalleryMessage
 }

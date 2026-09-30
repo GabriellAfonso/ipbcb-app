@@ -15,6 +15,7 @@ import com.ipb.castelobranco.features.gallery.data.local.GalleryLegacyMigration
 import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
 import com.ipb.castelobranco.features.gallery.data.snapshot.GalleryIndexSnapshot
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
@@ -33,6 +34,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,6 +61,7 @@ class GallerySyncer @Inject constructor(
 
     private val mutex = Mutex()
     private var running: Deferred<GallerySyncResult>? = null
+    private val rerunRequested = AtomicBoolean(false)
     private var loaded = false
 
     private val _state = MutableStateFlow(GalleryLocalState.EMPTY)
@@ -74,23 +77,73 @@ class GallerySyncer @Inject constructor(
 
     suspend fun sync(): GallerySyncResult {
         if (!mutex.tryLock()) return GallerySyncResult.Skipped
-        _status.update { it.copy(isRunning = true) }
-        return try {
-            coroutineScope {
-                val job = async(ioDispatcher) { syncLocked() }
-                running = job
-                try {
-                    job.await()
-                } catch (e: CancellationException) {
-                    // Cancelled by clear(), not by our caller: the caller just gets "nothing done".
-                    currentCoroutineContext().ensureActive()
-                    GallerySyncResult.Skipped
-                }
+        return runLocked()
+    }
+
+    /**
+     * A sync that must see a write the server just accepted. Unlike [sync] it is never lost: when a
+     * sync is already running (it may have read the feed before the write), that sync runs once more
+     * before releasing the lock. Several writes in a row collapse into one extra sync.
+     */
+    suspend fun syncAfterWrite(): GallerySyncResult {
+        rerunRequested.set(true)
+        if (!mutex.tryLock()) return GallerySyncResult.Skipped
+        return runLocked()
+    }
+
+    /**
+     * Applies a write's result to the index and the disk, keeping the cursor. Waits for a running
+     * sync instead of racing it: that sync read the index before this write, and saving after it
+     * would drop the change. [afterApply] runs under the same lock, after the index is saved and
+     * before files are pruned — the upload queue uses it to place an original the index now lists.
+     *
+     * @return `false` when nothing was applied: no index yet (the next sync brings everything) or no
+     * session.
+     */
+    suspend fun applyLocal(change: GalleryLocalChange, afterApply: suspend () -> Unit = {}): Boolean =
+        mutex.withLock {
+            withContext(ioDispatcher) {
+                ensureLoaded()
+                val current = _state.value.index
+                if (current == null || !session.isLoggedIn()) return@withContext false
+                val next = current.apply(change)
+                snapshotCache.save(next.toSnapshot(), null)
+                afterApply()
+                prune(next)
+                _state.value = withFiles(next)
+                true
             }
+        }
+
+    /** Runs syncs under the lock the caller took, as long as writes keep asking for one more. */
+    private suspend fun runLocked(): GallerySyncResult {
+        _status.update { it.copy(isRunning = true) }
+        val result = try {
+            var last: GallerySyncResult
+            do {
+                rerunRequested.set(false)
+                last = syncOnce()
+            } while (rerunRequested.get() && last !is GallerySyncResult.Skipped)
+            last
         } finally {
             running = null
             mutex.unlock()
             _status.update { it.copy(isRunning = false) }
+        }
+        // A write that asked between the last check and the unlock: nobody else will serve it.
+        if (rerunRequested.get() && mutex.tryLock()) return runLocked()
+        return result
+    }
+
+    private suspend fun syncOnce(): GallerySyncResult = coroutineScope {
+        val job = async(ioDispatcher) { syncLocked() }
+        running = job
+        try {
+            job.await()
+        } catch (e: CancellationException) {
+            // Cancelled by clear(), not by our caller: the caller just gets "nothing done".
+            currentCoroutineContext().ensureActive()
+            GallerySyncResult.Skipped
         }
     }
 
@@ -101,6 +154,7 @@ class GallerySyncer @Inject constructor(
 
     /** Sign-out: cancels the running sync, then deletes the index, the cursor and every file. */
     suspend fun clear() {
+        rerunRequested.set(false)
         running?.cancel()
         mutex.withLock {
             withContext(ioDispatcher) {
@@ -155,18 +209,25 @@ class GallerySyncer @Inject constructor(
 
     /** disk ⊆ index: drops what the index no longer has, then fetches the covers it lacks. */
     private suspend fun reconcile(index: GalleryIndex) {
+        prune(index)
+        index.albums.values
+            .mapNotNull { it.coverUrl }
+            .toSet()
+            .filterNot { mediaStore.coverFile(it).exists() }
+            .forEach { url -> downloadCover(url) }
+    }
+
+    /** Deletes the originals and covers the index no longer uses. No network. */
+    private fun prune(index: GalleryIndex) {
         mediaStore.originalFiles()
             .filterKeys { it !in index.photos }
             .values
             .forEach(mediaStore::delete)
 
-        val coverUrls = index.albums.values.mapNotNull { it.coverUrl }.toSet()
-        val wantedNames = coverUrls.map(mediaStore::coverName).toSet()
+        val wantedNames = index.albums.values.mapNotNull { it.coverUrl }.map(mediaStore::coverName).toSet()
         mediaStore.coverFiles()
             .filter { it.name !in wantedNames }
             .forEach(mediaStore::delete)
-
-        coverUrls.filterNot { mediaStore.coverFile(it).exists() }.forEach { url -> downloadCover(url) }
     }
 
     /** A cover that fails is skipped: its tile stays black until a later sync gets it. */

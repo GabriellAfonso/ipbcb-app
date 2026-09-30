@@ -29,6 +29,43 @@ data class GalleryIndex(
         cursor = delta.cursor,
     )
 
+    /**
+     * Applies a write's result. The cursor is kept on purpose: the next feed still carries the write
+     * and what the server derived from it. Idempotent, like [applyDelta].
+     */
+    fun apply(change: GalleryLocalChange): GalleryIndex = when (change) {
+        is GalleryLocalChange.UpsertAlbum -> copy(albums = albums + (change.album.id to change.album))
+        is GalleryLocalChange.UpsertPhoto -> copy(photos = photos + (change.photo.id to change.photo))
+        is GalleryLocalChange.RemoveAlbumTree -> {
+            val removed = subtreeIds(change.albumId)
+            copy(albums = albums - removed, photos = photos.filterValues { it.albumId !in removed })
+        }
+        is GalleryLocalChange.RemovePhotos -> copy(photos = photos - change.ids)
+        is GalleryLocalChange.ReorderAlbums -> copy(
+            albums = albums + change.ids.withIndex().mapNotNull { (position, id) ->
+                albums[id]?.let { id to it.copy(position = position) }
+            }
+        )
+        is GalleryLocalChange.ReorderPhotos -> copy(
+            photos = photos + change.ids.withIndex().mapNotNull { (position, id) ->
+                photos[id]?.let { id to it.copy(position = position) }
+            }
+        )
+    }
+
+    /** [albumId] and every album below it; empty when [albumId] is not in the index. */
+    private fun subtreeIds(albumId: Long): Set<Long> {
+        if (albumId !in albums) return emptySet()
+        val childrenByParent = albums.values.groupBy({ it.parentId }, { it.id })
+        val result = mutableSetOf<Long>()
+        val pending = ArrayDeque(listOf(albumId))
+        while (pending.isNotEmpty()) {
+            val id = pending.removeFirst()
+            if (result.add(id)) pending += childrenByParent[id].orEmpty()
+        }
+        return result
+    }
+
     companion object {
         /** A full read (feed without cursor) replaces the index: every id missing from it is dropped. */
         fun fromFullRead(full: GalleryDelta): GalleryIndex =

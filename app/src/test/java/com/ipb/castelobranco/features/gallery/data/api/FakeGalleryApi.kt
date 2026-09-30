@@ -1,6 +1,13 @@
 package com.ipb.castelobranco.features.gallery.data.api
 
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryAlbumDto
 import com.ipb.castelobranco.features.gallery.data.dto.GalleryChangesDto
+import com.ipb.castelobranco.features.gallery.data.dto.GalleryPhotoDto
+import com.ipb.castelobranco.features.gallery.data.dto.PhotoUploadResultDto
+import kotlinx.serialization.json.JsonObject
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okio.Buffer
 import kotlinx.coroutines.CompletableDeferred
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
@@ -78,6 +85,85 @@ class FakeGalleryApi : GalleryApi {
         val script = scripts[absoluteUrl] ?: return Response.success(DEFAULT_BYTES.toResponseBody(IMAGE_JPEG))
         return script()
     }
+
+    // region writes
+
+    /** One recorded write: which call, the path id (if any), and its JSON body or multipart fields. */
+    data class WriteCall(
+        val name: String,
+        val id: Long? = null,
+        val body: JsonObject? = null,
+        val parts: Map<String, String> = emptyMap(),
+        val fileName: String? = null,
+    )
+
+    private val writeScripts = mutableMapOf<String, ArrayDeque<suspend () -> Response<*>>>()
+    private val _writes = mutableListOf<WriteCall>()
+    val writes: List<WriteCall> get() = _writes
+
+    /** Scripts the next answer of [call] (e.g. `"createAlbum"`); unscripted calls fail the test. */
+    fun <T> respond(call: String, answer: suspend () -> Response<T>) {
+        writeScripts.getOrPut(call) { ArrayDeque() } += answer
+    }
+
+    fun <T> respondSuccess(call: String, body: T) = respond(call) { Response.success(body) }
+
+    fun respondNoContent(call: String) = respond(call) { Response.success(204, Unit) }
+
+    fun respondWriteError(call: String, code: Int, body: String) =
+        respond<Any>(call) { Response.error(code, body.toResponseBody(APPLICATION_JSON)) }
+
+    fun respondWriteIOException(call: String) =
+        respond<Any>(call) { throw IOException("Simulated network failure on $call") }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <T> answer(call: WriteCall): Response<T> {
+        _writes += call
+        val next = writeScripts[call.name]?.removeFirstOrNull() ?: error("Unexpected write: $call")
+        return next() as Response<T>
+    }
+
+    override suspend fun createAlbum(body: JsonObject): Response<GalleryAlbumDto> =
+        answer(WriteCall("createAlbum", body = body))
+
+    override suspend fun patchAlbum(albumId: Long, body: JsonObject): Response<GalleryAlbumDto> =
+        answer(WriteCall("patchAlbum", albumId, body))
+
+    override suspend fun orderAlbums(body: JsonObject): Response<Unit> = answer(WriteCall("orderAlbums", body = body))
+
+    override suspend fun putCover(albumId: Long, image: MultipartBody.Part): Response<GalleryAlbumDto> =
+        answer(WriteCall("putCover", albumId, fileName = image.fileName()))
+
+    override suspend fun deleteCover(albumId: Long): Response<Unit> = answer(WriteCall("deleteCover", albumId))
+
+    override suspend fun deleteAlbum(albumId: Long): Response<Unit> = answer(WriteCall("deleteAlbum", albumId))
+
+    override suspend fun uploadPhoto(
+        albumId: RequestBody,
+        clientUploadId: RequestBody,
+        image: MultipartBody.Part,
+    ): Response<PhotoUploadResultDto> = answer(
+        WriteCall(
+            "uploadPhoto",
+            parts = mapOf("album_id" to albumId.text(), "client_upload_id" to clientUploadId.text()),
+            fileName = image.fileName(),
+        )
+    )
+
+    override suspend fun patchPhoto(photoId: Long, body: JsonObject): Response<GalleryPhotoDto> =
+        answer(WriteCall("patchPhoto", photoId, body))
+
+    override suspend fun orderPhotos(albumId: Long, body: JsonObject): Response<Unit> =
+        answer(WriteCall("orderPhotos", albumId, body))
+
+    override suspend fun deletePhoto(photoId: Long): Response<Unit> = answer(WriteCall("deletePhoto", photoId))
+
+    private fun RequestBody.text(): String = Buffer().also { writeTo(it) }.readUtf8()
+
+    private fun MultipartBody.Part.fileName(): String? =
+        headers?.get("Content-Disposition")?.substringAfter("filename=\"", "")?.substringBefore('"')
+
+    // endregion
 
     private class TruncatedBody(private val bytes: ByteArray) : ResponseBody() {
         override fun contentType(): MediaType = IMAGE_JPEG

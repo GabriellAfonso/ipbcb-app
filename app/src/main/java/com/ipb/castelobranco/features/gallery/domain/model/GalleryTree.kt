@@ -40,6 +40,55 @@ class GalleryTree(private val index: GalleryIndex) {
         return result
     }
 
+    /**
+     * Where [albumId] may be moved: "Raiz" first, then every reachable album in pre-order, except the
+     * album itself and everything below it — a cycle can never be picked. The current parent is
+     * listed but not selectable.
+     */
+    fun moveTargetsForAlbum(albumId: Long): List<TreeTarget> {
+        val currentParent = album(albumId)?.parentId
+        val root = TreeTarget(albumId = null, name = ROOT_NAME, depth = 0, selectable = currentParent != null)
+        return listOf(root) + walk(skip = albumId).map { (album, depth) ->
+            TreeTarget(album.id, album.name, depth + 1, selectable = album.id != currentParent)
+        }
+    }
+
+    /** Where photos of [currentAlbumId] may be moved: every album, the current one not selectable. */
+    fun moveTargetsForPhotos(currentAlbumId: Long): List<TreeTarget> =
+        walk(skip = null).map { (album, depth) ->
+            TreeTarget(album.id, album.name, depth, selectable = album.id != currentAlbumId)
+        }
+
+    /** Sub-albums and photos below [albumId], at every level; the album itself is not counted. */
+    fun subtreeCounts(albumId: Long): SubtreeCounts {
+        if (album(albumId) == null) return SubtreeCounts(0, 0)
+        var subAlbums = 0
+        var photos = photosByAlbum[albumId].orEmpty().size
+        val pending = ArrayDeque(childrenByParent[albumId].orEmpty())
+        val seen = mutableSetOf(albumId)
+        while (pending.isNotEmpty()) {
+            val child = pending.removeFirst()
+            if (!seen.add(child.id)) continue
+            subAlbums++
+            photos += photosByAlbum[child.id].orEmpty().size
+            pending += childrenByParent[child.id].orEmpty()
+        }
+        return SubtreeCounts(subAlbums, photos)
+    }
+
+    /** Pre-order walk with depth (roots at 0), leaving out the subtree of [skip]. */
+    private fun walk(skip: Long?): List<Pair<GalleryAlbum, Int>> {
+        val result = mutableListOf<Pair<GalleryAlbum, Int>>()
+        val visited = mutableSetOf<Long>()
+        fun visit(album: GalleryAlbum, depth: Int) {
+            if (album.id == skip || !visited.add(album.id)) return
+            result += album to depth
+            childrenByParent[album.id].orEmpty().forEach { visit(it, depth + 1) }
+        }
+        roots().forEach { visit(it, 0) }
+        return result
+    }
+
     private fun isReachable(album: GalleryAlbum): Boolean {
         var current: GalleryAlbum = album
         val seen = mutableSetOf(current.id)
@@ -51,7 +100,13 @@ class GalleryTree(private val index: GalleryIndex) {
     }
 
     private companion object {
+        const val ROOT_NAME = "Raiz"
         val ALBUM_ORDER = compareBy<GalleryAlbum>({ it.position }, { it.id })
         val PHOTO_ORDER = compareBy<GalleryPhoto>({ it.position }, { it.id })
     }
 }
+
+/** A destination in the move picker. [albumId] `null` = the root. */
+data class TreeTarget(val albumId: Long?, val name: String, val depth: Int, val selectable: Boolean)
+
+data class SubtreeCounts(val subAlbums: Int, val photos: Int)

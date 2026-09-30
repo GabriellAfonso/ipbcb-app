@@ -56,8 +56,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
+import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
+import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
+import com.ipb.castelobranco.features.gallery.presentation.state.GalleryPermissions
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerPhoto
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
@@ -76,6 +80,10 @@ private const val SAVE_FEEDBACK_MS = 1_200L
 private const val MAX_ZOOM = 5f
 private const val SAVE_DIR = "ipb_castelobranco"
 private const val DEFAULT_MIME = "image/jpeg"
+private const val EDIT_LABEL = "Editar foto"
+private const val MOVE_LABEL = "Mover"
+private const val USE_AS_COVER_LABEL = "Usar como capa"
+private const val DELETE_LABEL = "Apagar"
 
 @Composable
 fun PhotoScreen(
@@ -86,6 +94,7 @@ fun PhotoScreen(
 ) {
     val state by viewModel.viewerState(albumId, photoId).collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
     GalleryMessageEffect(message, viewModel::consumeMessage)
 
@@ -101,8 +110,23 @@ fun PhotoScreen(
         onPageChanged = { currentId -> viewModel.onPageChanged(albumId, photoId, currentId) },
         onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
         onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
+        manage = PhotoManageActions(
+            onEdit = viewModel::openEditPhoto,
+            onMove = { id -> viewModel.openMovePhotos(albumId, id) },
+            onUseAsCover = { id -> viewModel.useAsCover(albumId, id) },
+            onDelete = { id -> viewModel.askDeletePhotos(albumId, id) },
+        ),
     )
+    GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
+
+/** Management of the photo on screen, each by its id. */
+data class PhotoManageActions(
+    val onEdit: (Long) -> Unit,
+    val onMove: (Long) -> Unit,
+    val onUseAsCover: (Long) -> Unit,
+    val onDelete: (Long) -> Unit,
+)
 
 @Composable
 fun PhotoContent(
@@ -112,6 +136,7 @@ fun PhotoContent(
     onPageChanged: (photoId: Long) -> Unit,
     onSave: (ViewerPhoto) -> Unit,
     onShare: (ViewerPhoto) -> Unit,
+    manage: PhotoManageActions,
 ) {
     val view = LocalView.current
     val photos = state.photos
@@ -140,6 +165,7 @@ fun PhotoContent(
         logoRes = R.drawable.ic_galery,
         showBackArrow = true,
         onBackClick = onBack,
+        extraActions = { current?.let { ManageOverflowMenu(photoMenu(it.id, state.permissions, manage)) } },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -231,6 +257,16 @@ fun PhotoContent(
         }
     }
 }
+
+private fun photoMenu(photoId: Long, permissions: GalleryPermissions, manage: PhotoManageActions): List<ManageAction> =
+    buildList {
+        if (permissions.canManage) {
+            add(ManageAction(EDIT_LABEL) { manage.onEdit(photoId) })
+            add(ManageAction(MOVE_LABEL) { manage.onMove(photoId) })
+            add(ManageAction(USE_AS_COVER_LABEL) { manage.onUseAsCover(photoId) })
+        }
+        if (permissions.canDelete) add(ManageAction(DELETE_LABEL) { manage.onDelete(photoId) })
+    }
 
 /** Pinch to zoom, pan while zoomed, double tap to reset. Resets when [resetKey] changes. */
 @Composable

@@ -14,6 +14,9 @@ import com.ipb.castelobranco.features.gallery.data.local.GalleryPreferences
 import com.ipb.castelobranco.features.gallery.data.photoDto
 import com.ipb.castelobranco.features.gallery.data.photoUrl
 import com.ipb.castelobranco.features.gallery.data.snapshot.GalleryIndexSnapshot
+import com.ipb.castelobranco.features.gallery.data.galleryAlbum
+import com.ipb.castelobranco.features.gallery.data.galleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -426,6 +429,112 @@ class GallerySyncerTest {
         assertFalse(File(galleryDir, "3").exists())
         assertTrue(api.requestedUrls.isEmpty())
         assertEquals(GalleryLegacyMigration.FLAT_LAYOUT_VERSION, layoutVersion)
+    }
+
+    // endregion
+
+    // region writes
+
+    @Test
+    fun `applyLocal saves the change with the previous cursor and publishes it`() = test {
+        firstSync(10)
+
+        val applied = syncer.applyLocal(GalleryLocalChange.UpsertAlbum(galleryAlbum(2, name = "Novo")))
+
+        assertTrue(applied)
+        assertEquals("c1", snapshot.value?.cursor)
+        assertEquals("Novo", syncer.state.value.index?.albums?.get(2L)?.name)
+        assertTrue(snapshot.value!!.albums.any { it.id == 2L })
+    }
+
+    @Test
+    fun `applyLocal waits for a running sync and applies after it`() = test {
+        firstSync(10)
+        val gate = CompletableDeferred<Unit>()
+        api.enqueueChangesAfter(gate, changes("c2", photos = listOf(photoDto(11))))
+
+        val running = async { syncer.sync() }
+        runCurrent()
+        val apply = async { syncer.applyLocal(GalleryLocalChange.UpsertAlbum(galleryAlbum(2))) }
+        runCurrent()
+        assertFalse(apply.isCompleted)
+
+        gate.complete(Unit)
+        running.await()
+        assertTrue(apply.await())
+
+        // The sync's photo and the write's album both survive: the write saw the synced index.
+        val index = syncer.state.value.index!!
+        assertTrue(11L in index.photos)
+        assertTrue(2L in index.albums)
+        assertEquals("c2", index.cursor)
+    }
+
+    @Test
+    fun `applyLocal of an album tree deletes the originals of its photos`() = test {
+        api.enqueueChanges(
+            changes(
+                "c1",
+                albums = listOf(albumDto(1), albumDto(2, parentId = 1), albumDto(3)),
+                photos = listOf(photoDto(10, albumId = 2), photoDto(11, albumId = 3)),
+            )
+        )
+        syncer.sync()
+        original(10)
+        original(11)
+
+        syncer.applyLocal(GalleryLocalChange.RemoveAlbumTree(1))
+
+        assertFalse(File(galleryDir, "photos/10.jpg").exists())
+        assertTrue(File(galleryDir, "photos/11.jpg").exists())
+        assertEquals(setOf(3L), syncer.state.value.index?.albums?.keys)
+    }
+
+    @Test
+    fun `applyLocal runs afterApply before pruning, so a file the index now lists is kept`() = test {
+        firstSync(10)
+
+        syncer.applyLocal(GalleryLocalChange.UpsertPhoto(galleryPhoto(12))) { original(12) }
+
+        assertTrue(File(galleryDir, "photos/12.jpg").exists())
+        assertTrue(12L in syncer.state.value.originals)
+    }
+
+    @Test
+    fun `applyLocal without an index or a session applies nothing`() = test {
+        assertFalse(syncer.applyLocal(GalleryLocalChange.UpsertAlbum(galleryAlbum(2))))
+
+        firstSync(10)
+        loggedIn = false
+        assertFalse(syncer.applyLocal(GalleryLocalChange.UpsertAlbum(galleryAlbum(2))))
+        assertFalse(2L in syncer.state.value.index!!.albums)
+    }
+
+    @Test
+    fun `syncAfterWrite while a sync runs makes it run exactly once more`() = test {
+        firstSync(10)
+        val gate = CompletableDeferred<Unit>()
+        api.enqueueChangesAfter(gate, changes("c2"))
+        api.enqueueChanges(changes("c3", photos = listOf(photoDto(12))))
+
+        val running = async { syncer.sync() }
+        runCurrent()
+        assertEquals(GallerySyncResult.Skipped, syncer.syncAfterWrite())
+        assertEquals(GallerySyncResult.Skipped, syncer.syncAfterWrite())
+        gate.complete(Unit)
+        running.await()
+
+        assertEquals(listOf(null, "c1", "c2"), api.sinceReceived)
+        assertEquals("c3", syncer.state.value.index?.cursor)
+    }
+
+    @Test
+    fun `syncAfterWrite with nothing running syncs at once`() = test {
+        firstSync(10)
+        api.enqueueChanges(changes("c2"))
+
+        assertTrue(syncer.syncAfterWrite() is GallerySyncResult.Synced)
+        assertEquals(listOf(null, "c1"), api.sinceReceived)
     }
 
     // endregion
