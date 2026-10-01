@@ -8,7 +8,6 @@ import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.ATTENDANCE
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.EVENTS
-import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.GALLERY
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.MEMBERS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTICES
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTIFICATIONS
@@ -57,14 +56,14 @@ class VisiblePanelCardsUseCaseTest {
     @Test
     fun `leader sees everything but the admin-only placeholders`() {
         assertEquals(
-            listOf(WORSHIP, SCHEDULE, MEMBERS, NOTICES, REPORTS, GALLERY, EVENTS),
+            listOf(WORSHIP, SCHEDULE, MEMBERS, NOTICES, REPORTS, EVENTS),
             visibleCards(leader),
         )
     }
 
     @Test
-    fun `media sees only reports and the gallery, events and notices placeholders`() {
-        assertEquals(listOf(NOTICES, REPORTS, GALLERY, EVENTS), visibleCards(media))
+    fun `media sees only reports and the events and notices placeholders`() {
+        assertEquals(listOf(NOTICES, REPORTS, EVENTS), visibleCards(media))
     }
 
     @Test

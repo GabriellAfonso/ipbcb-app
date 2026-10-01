@@ -11,8 +11,8 @@ Fonte da verdade no backend: `backend/specs/gallery/spec.md`, `013-gallery-write
 `016-photo-upload-idempotency/contracts/photo-upload-api.md`.
 
 Cada foto diz quem está nela (membros marcados); todo membro vê as pessoas de uma foto, filtra a galeria por pessoas
-e abre "Minhas fotos", e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). O card "Galeria" do painel
-de gestão abre a galeria (seção 8.1).
+e abre "Minhas fotos", e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). A gestão vive
+nas próprias telas da galeria — o painel de gestão não tem card dela (seção 8.1).
 
 ---
 
@@ -20,7 +20,7 @@ de gestão abre a galeria (seção 8.1).
 
 | Tela    | Rota                          | Origem                      |
 |---------|-------------------------------|-----------------------------|
-| Galeria | `GalleryMain`                 | `CoreScreen → botão Galeria`; painel de gestão → card "Galeria" |
+| Galeria | `GalleryMain`                 | `CoreScreen → botão Galeria` |
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
 | Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro ou de "Minhas fotos" (seção 10.6) |
@@ -334,7 +334,6 @@ está em todo UiState. Sem nível, nenhum controle é composto — as telas são
 | Álbum | faixa de envio ("Enviando X de N", "Preparando fotos…") e lista "Não enviadas" | — (itens da fila) |
 | Foto | menu: "Editar foto", "Marcar pessoas", "Mover", "Usar como capa"; "Marcar pessoas" também nos detalhes | `manage` |
 | Foto | menu: "Apagar" | `owner` |
-| Painel de gestão | card "Galeria" → `AppRoutes.GALLERY_GRAPH` | `manage` (filtro do `PanelCard`) |
 
 O nível muda ao vivo (a tela não precisa ser reaberta). Um `403` numa escrita não precisa de refresh pela galeria: o
 `PermissionDeniedInterceptor` avisa o `AuthEventBus` e o `CoreViewModel` relê o perfil; os controles somem quando o

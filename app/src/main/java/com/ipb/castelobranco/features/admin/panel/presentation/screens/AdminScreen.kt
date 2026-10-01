@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,7 +47,6 @@ import com.ipb.castelobranco.features.admin.panel.presentation.viewmodel.AdminPa
 private val Blue = Color(0xFF2563EB)
 private val Rose = Color(0xFFE11D48)
 private val Indigo = Color(0xFF4F46E5)
-private val Amber = Color(0xFFD97706)
 private val Sky = Color(0xFF0EA5E9)
 private val Pink = Color(0xFFDB2777)
 
@@ -204,13 +202,6 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
         icon = Icons.Filled.BarChart,
         accentColor = Indigo,
         onClick = nav.reports
-    )
-    PanelCard.GALLERY -> AdminAction(
-        label = "Galeria",
-        description = "Fotos e álbuns",
-        icon = Icons.Filled.PhotoLibrary,
-        accentColor = Amber,
-        onClick = nav.gallery
     )
     PanelCard.EVENTS -> AdminAction(
         label = "Eventos",
