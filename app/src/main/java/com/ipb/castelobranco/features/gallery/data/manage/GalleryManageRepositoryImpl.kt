@@ -63,12 +63,12 @@ class GalleryManageRepositoryImpl @Inject constructor(
         }
 
     override suspend fun reorderAlbums(parentId: Long?, ids: List<Long>): Result<Unit> =
-        write({ api.orderAlbums(albumOrderBody(parentId, ids)) }) {
+        write({ api.orderAlbums(albumOrderBody(parentId, ids)).orUnit() }) {
             Unit to GalleryLocalChange.ReorderAlbums(parentId, ids)
         }
 
     override suspend fun reorderPhotos(albumId: Long, ids: List<Long>): Result<Unit> =
-        write({ api.orderPhotos(albumId, photoOrderBody(ids)) }) {
+        write({ api.orderPhotos(albumId, photoOrderBody(ids)).orUnit() }) {
             Unit to GalleryLocalChange.ReorderPhotos(albumId, ids)
         }
 
@@ -83,7 +83,7 @@ class GalleryManageRepositoryImpl @Inject constructor(
 
     // No album comes back: the resolved cover (from a sub-album, or none) arrives with the sync.
     override suspend fun removeCover(albumId: Long): Result<Unit> =
-        write({ api.deleteCover(albumId) }) { Unit to null }
+        write({ api.deleteCover(albumId).orUnit() }) { Unit to null }
 
     override suspend fun deleteAlbum(albumId: Long): Result<Unit> =
         delete({ api.deleteAlbum(albumId) }, GalleryLocalChange.RemoveAlbumTree(albumId), syncAfter = true)
@@ -178,7 +178,7 @@ class GalleryManageRepositoryImpl @Inject constructor(
         removal: GalleryLocalChange,
         syncAfter: Boolean,
     ): Result<Unit> {
-        val outcome = request(call)
+        val outcome = request { call().orUnit() }
             .recoverCatching { error -> if ((error as? AppError)?.isNotFound() == true) Unit else throw error }
             .map { repository.applyLocal(removal); Unit }
         afterRequest(outcome, syncAfter)
@@ -199,6 +199,10 @@ class GalleryManageRepositoryImpl @Inject constructor(
     } catch (e: Exception) {
         Result.failure(e.toWriteError())
     }
+
+    /** Retrofit hands a 204 over with a null body; to a call that reads no body, that is the `Unit` it expects. */
+    private fun Response<Unit>.orUnit(): Response<Unit> =
+        if (isSuccessful && body() == null) Response.success(code(), Unit) else this
 
     /** Syncs after a success, and after a refusal that means the tree changed under the user. */
     private suspend fun afterRequest(outcome: Result<*>, syncAfter: Boolean) {

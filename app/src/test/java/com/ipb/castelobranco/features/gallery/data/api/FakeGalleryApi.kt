@@ -110,7 +110,8 @@ class FakeGalleryApi : GalleryApi {
 
     fun <T> respondSuccess(call: String, body: T) = respond(call) { Response.success(body) }
 
-    fun respondNoContent(call: String) = respond(call) { Response.success(204, Unit) }
+    /** Like Retrofit, a 204 comes with a null body, even for a `Response<Unit>`. */
+    fun respondNoContent(call: String) = respond(call) { Response.success<Unit>(HTTP_NO_CONTENT, null) }
 
     fun respondWriteError(call: String, code: Int, body: String) =
         respond<Any>(call) { Response.error(code, body.toResponseBody(APPLICATION_JSON)) }
@@ -196,6 +197,7 @@ class FakeGalleryApi : GalleryApi {
 
     companion object {
         val DEFAULT_BYTES: ByteArray = "fake-image-bytes".toByteArray()
+        private const val HTTP_NO_CONTENT = 204
         private val IMAGE_JPEG = "image/jpeg".toMediaType()
         private val APPLICATION_JSON = "application/json".toMediaType()
     }
