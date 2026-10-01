@@ -24,8 +24,8 @@ de gestão abre a galeria (seção 8.1).
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
 | Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro ou de "Minhas fotos" (seção 10.6) |
-| Pessoas / Minhas fotos | `GalleryPeople?mine={mine}` | Ícone "Pessoas" / entrada "Minhas fotos" na raiz (seção 10) |
-| Lixeira | `GalleryTrash`                | Ícone de lixeira na raiz (`owner`, seção 9) |
+| Pessoas / Minhas fotos | `GalleryPeople?mine={mine}` | "Pessoas" no menu ⋮ / entrada "Minhas fotos" na raiz (seção 10) |
+| Lixeira | `GalleryTrash`                | "Lixeira" no menu ⋮ da raiz (`owner`, seção 9) |
 
 Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
 ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel` e Pessoas o próprio
@@ -44,7 +44,8 @@ Toda lista é ordenada por `position`, depois `id` — nunca por nome de arquivo
 
 Grid de 2 colunas com os álbuns raiz (`parent_id` nulo): capa quadrada (preta quando não há) e nome. Acima da grid,
 um banner não-bloqueante (seção 5) e, para perfil vinculado a um membro, a entrada "Minhas fotos" (seção 10.7). Na
-barra, o ícone "Pessoas" abre o filtro (seção 10.6); os dois somem durante o "Organizar". Abrir a galeria dispara um
+barra, um único menu ⋮ reúne "Pessoas" (abre o filtro, seção 10.6), "Lixeira" (`owner`) e "Organizar" (`manage`, com
+2+ álbuns) — sem ícones soltos, para não poluir a barra; o menu some durante o "Organizar". Abrir a galeria dispara um
 sync.
 
 ### 1.2 Álbum
@@ -324,8 +325,8 @@ está em todo UiState. Sem nível, nenhum controle é composto — as telas são
 
 | Tela | Controle | Nível |
 |------|----------|-------|
-| Raiz | FAB "Novo álbum"; menu "Organizar" (com 2+ álbuns) | `manage` |
-| Raiz | ícone "Lixeira" na barra (fora do "Organizar") | `owner` |
+| Raiz | FAB "Novo álbum"; menu ⋮ "Organizar" (com 2+ álbuns) | `manage` |
+| Raiz | menu ⋮ "Lixeira" (fora do "Organizar") | `owner` |
 | Álbum | FAB "+" → "Adicionar fotos" / "Novo álbum" (sub-álbum) | `manage` |
 | Álbum | menu: "Editar álbum", "Mover álbum", "Trocar capa", "Organizar" (com 2+ sub-álbuns ou 2+ fotos) | `manage` |
 | Álbum | menu: "Remover capa" (só se a capa é própria: `cover_source_album_id == id`), "Apagar álbum" | `owner` |

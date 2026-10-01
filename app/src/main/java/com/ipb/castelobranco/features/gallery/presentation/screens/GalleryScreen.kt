@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -217,21 +214,16 @@ fun GalleryContent(
         showBackArrow = true,
         onBackClick = if (state.isOrganizing) manage.onOrganizeCancel else onBack,
         extraActions = {
-            if (isLoggedIn && state.showPeople) {
-                IconButton(onClick = onPeople) {
-                    Icon(Icons.Outlined.People, contentDescription = PEOPLE_LABEL)
-                }
-            }
-            if (isLoggedIn && state.showTrash) {
-                IconButton(onClick = onTrash) {
-                    Icon(Icons.Outlined.Delete, contentDescription = TRASH_LABEL)
-                }
-            }
-            when {
-                state.isOrganizing ->
-                    OrganizeActions(state.isSavingOrder, manage.onOrganizeCancel, manage.onOrganizeSave)
-                canManage && state.albums.size > 1 ->
-                    ManageOverflowMenu(listOf(ManageAction(ORGANIZE_LABEL, manage.onOrganize)))
+            if (state.isOrganizing) {
+                OrganizeActions(state.isSavingOrder, manage.onOrganizeCancel, manage.onOrganizeSave)
+            } else {
+                ManageOverflowMenu(
+                    buildList {
+                        if (isLoggedIn && state.showPeople) add(ManageAction(PEOPLE_LABEL, onPeople))
+                        if (isLoggedIn && state.showTrash) add(ManageAction(TRASH_LABEL, onTrash))
+                        if (canManage && state.albums.size > 1) add(ManageAction(ORGANIZE_LABEL, manage.onOrganize))
+                    },
+                )
             }
         },
     ) { padding ->
