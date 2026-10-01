@@ -35,11 +35,11 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         val enabled = themePreferences.birthdayNotificationsFlow.first()
         if (!enabled) return Result.success()
 
-        val today = LocalDate.now().dayOfMonth
+        val today = LocalDate.now()
         val snapshot = membersRepository.getCurrentSnapshot()
 
         val birthdays = when (snapshot) {
-            is SnapshotState.Data -> snapshot.value.filter { it.day == today }
+            is SnapshotState.Data -> snapshot.value.filter { it.month == today.monthValue && it.day == today.dayOfMonth }
             else -> emptyList()
         }
 

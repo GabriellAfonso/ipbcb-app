@@ -12,6 +12,8 @@ data class BirthdaysResponseDto(
 data class BirthdayDto(
     val name: String,
     val gender: String? = null,
+    @SerialName("birth_month")
+    val birthMonth: Int,
     @SerialName("birth_day")
     val birthDay: Int,
 )

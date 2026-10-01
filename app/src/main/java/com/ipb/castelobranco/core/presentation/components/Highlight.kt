@@ -379,10 +379,10 @@ private fun HighlightBirthdaysPreview() {
     Highlight(pages = listOf {
         HighlightBirthdays(
             birthdays = listOf(
-                Birthday(name = "Ana Silva", day = 3, gender = Gender.FEMALE),
-                Birthday(name = "Carlos Oliveira", day = 10, gender = Gender.MALE),
-                Birthday(name = "Maria Santos", day = 15, gender = Gender.FEMALE),
-                Birthday(name = "Pedro Almeida", day = 22, gender = Gender.MALE),
+                Birthday(name = "Ana Silva", month = 3, day = 3, gender = Gender.FEMALE),
+                Birthday(name = "Carlos Oliveira", month = 3, day = 10, gender = Gender.MALE),
+                Birthday(name = "Maria Santos", month = 3, day = 15, gender = Gender.FEMALE),
+                Birthday(name = "Pedro Almeida", month = 3, day = 22, gender = Gender.MALE),
             )
         )
     })
@@ -400,12 +400,12 @@ private fun HighlightBirthdays6Preview() {
     Highlight(pages = listOf {
         HighlightBirthdays(
             birthdays = listOf(
-                Birthday(name = "Ana Silva", day = 1, gender = Gender.FEMALE),
-                Birthday(name = "Carlos Oliveira", day = 5, gender = Gender.MALE),
-                Birthday(name = "Maria Santos", day = 8, gender = Gender.FEMALE),
-                Birthday(name = "Pedro Almeida", day = 14, gender = Gender.MALE),
-                Birthday(name = "Juliana Costa", day = 20, gender = Gender.FEMALE),
-                Birthday(name = "Fernando Souza", day = 27, gender = Gender.MALE),
+                Birthday(name = "Ana Silva", month = 3, day = 1, gender = Gender.FEMALE),
+                Birthday(name = "Carlos Oliveira", month = 3, day = 5, gender = Gender.MALE),
+                Birthday(name = "Maria Santos", month = 3, day = 8, gender = Gender.FEMALE),
+                Birthday(name = "Pedro Almeida", month = 3, day = 14, gender = Gender.MALE),
+                Birthday(name = "Juliana Costa", month = 3, day = 20, gender = Gender.FEMALE),
+                Birthday(name = "Fernando Souza", month = 3, day = 27, gender = Gender.MALE),
             )
         )
     })
@@ -417,16 +417,16 @@ private fun HighlightBirthdays10Preview() {
     Highlight(pages = listOf {
         HighlightBirthdays(
             birthdays = listOf(
-                Birthday(name = "Ana Silva", day = 1, gender = Gender.FEMALE),
-                Birthday(name = "Carlos Oliveira", day = 3, gender = Gender.MALE),
-                Birthday(name = "Dinalva Souza", day = 3, gender = Gender.FEMALE),
-                Birthday(name = "Maria Santos", day = 5, gender = Gender.FEMALE),
-                Birthday(name = "Pedro Almeida", day = 8, gender = Gender.MALE),
-                Birthday(name = "Juliana Costa", day = 10, gender = Gender.FEMALE),
-                Birthday(name = "Fernando Souza", day = 10, gender = Gender.MALE),
-                Birthday(name = "Beatriz Ferreira", day = 17, gender = Gender.FEMALE),
-                Birthday(name = "Gabriela Martins de Albuquerque", day = 25, gender = Gender.FEMALE),
-                Birthday(name = "Rafael Pereira", day = 29, gender = Gender.MALE),
+                Birthday(name = "Ana Silva", month = 3, day = 1, gender = Gender.FEMALE),
+                Birthday(name = "Carlos Oliveira", month = 3, day = 3, gender = Gender.MALE),
+                Birthday(name = "Dinalva Souza", month = 3, day = 3, gender = Gender.FEMALE),
+                Birthday(name = "Maria Santos", month = 3, day = 5, gender = Gender.FEMALE),
+                Birthday(name = "Pedro Almeida", month = 3, day = 8, gender = Gender.MALE),
+                Birthday(name = "Juliana Costa", month = 3, day = 10, gender = Gender.FEMALE),
+                Birthday(name = "Fernando Souza", month = 3, day = 10, gender = Gender.MALE),
+                Birthday(name = "Beatriz Ferreira", month = 3, day = 17, gender = Gender.FEMALE),
+                Birthday(name = "Gabriela Martins de Albuquerque", month = 3, day = 25, gender = Gender.FEMALE),
+                Birthday(name = "Rafael Pereira", month = 3, day = 29, gender = Gender.MALE),
             )
         )
     })
@@ -438,19 +438,19 @@ private fun HighlightBirthdays13Preview() {
     Highlight(pages = listOf {
         HighlightBirthdays(
             birthdays = listOf(
-                Birthday(name = "Ana paula", day = 1, gender = Gender.FEMALE),
-                Birthday(name = "Bruno perico arruda", day = 2, gender = Gender.MALE),
-                Birthday(name = "Carla", day = 3, gender = Gender.FEMALE),
-                Birthday(name = "Diego", day = 5, gender = Gender.MALE),
-                Birthday(name = "Elena", day = 7, gender = Gender.FEMALE),
-                Birthday(name = "Fabio", day = 9, gender = Gender.MALE),
-                Birthday(name = "Gisele", day = 11, gender = Gender.FEMALE),
-                Birthday(name = "Hugo", day = 13, gender = Gender.MALE),
-                Birthday(name = "Iris", day = 15, gender = Gender.FEMALE),
-                Birthday(name = "Jorge", day = 18, gender = Gender.MALE),
-                Birthday(name = "Karen", day = 21, gender = Gender.FEMALE),
-                Birthday(name = "Leo", day = 24, gender = Gender.MALE),
-                Birthday(name = "Marta", day = 28, gender = Gender.FEMALE),
+                Birthday(name = "Ana paula", month = 3, day = 1, gender = Gender.FEMALE),
+                Birthday(name = "Bruno perico arruda", month = 3, day = 2, gender = Gender.MALE),
+                Birthday(name = "Carla", month = 3, day = 3, gender = Gender.FEMALE),
+                Birthday(name = "Diego", month = 3, day = 5, gender = Gender.MALE),
+                Birthday(name = "Elena", month = 3, day = 7, gender = Gender.FEMALE),
+                Birthday(name = "Fabio", month = 3, day = 9, gender = Gender.MALE),
+                Birthday(name = "Gisele", month = 3, day = 11, gender = Gender.FEMALE),
+                Birthday(name = "Hugo", month = 3, day = 13, gender = Gender.MALE),
+                Birthday(name = "Iris", month = 3, day = 15, gender = Gender.FEMALE),
+                Birthday(name = "Jorge", month = 3, day = 18, gender = Gender.MALE),
+                Birthday(name = "Karen", month = 3, day = 21, gender = Gender.FEMALE),
+                Birthday(name = "Leo", month = 3, day = 24, gender = Gender.MALE),
+                Birthday(name = "Marta", month = 3, day = 28, gender = Gender.FEMALE),
             )
         )
     })
