@@ -67,6 +67,8 @@ import sh.calvin.reorderable.rememberReorderableLazyGridState
 private const val GRID_COLUMNS = 6
 private const val ALBUM_SPAN = 3
 private const val PHOTO_SPAN = 2
+private const val ALBUMS_SECTION = "Álbuns"
+private const val PHOTOS_SECTION = "Fotos"
 private const val DEFAULT_TITLE = "Álbum"
 private const val EMPTY_MESSAGE = "Nenhuma foto neste álbum."
 private const val ORGANIZE_TITLE = "Organizar"
@@ -265,6 +267,13 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         item(key = GalleryGridKeys.HEADER, span = { GridItemSpan(maxLineSpan) }) {
             AlbumHeader(state)
         }
+        // With both kinds, a full-line title per group keeps the first photo off a sub-album's row.
+        val showSections = state.subAlbums.isNotEmpty() && state.photos.isNotEmpty()
+        if (showSections) {
+            item(key = GalleryGridKeys.ALBUMS_SECTION, span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(ALBUMS_SECTION, state.subAlbums.size)
+            }
+        }
         items(
             state.subAlbums,
             key = { GalleryGridKeys.album(it.id) },
@@ -276,6 +285,11 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
                     onClick = { if (!state.isOrganizing) actions.onAlbumClick(album.id) },
                     modifier = Modifier.longPressDraggableHandle(enabled = state.isOrganizing),
                 )
+            }
+        }
+        if (showSections) {
+            item(key = GalleryGridKeys.PHOTOS_SECTION, span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(PHOTOS_SECTION, state.photos.size, Modifier.padding(top = 8.dp))
             }
         }
         items(
@@ -310,6 +324,15 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
             }
         }
     }
+}
+
+@Composable
+private fun SectionTitle(label: String, count: Int, modifier: Modifier = Modifier) {
+    Text(
+        text = "$label · $count",
+        style = MaterialTheme.typography.titleSmall,
+        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
+    )
 }
 
 @Composable

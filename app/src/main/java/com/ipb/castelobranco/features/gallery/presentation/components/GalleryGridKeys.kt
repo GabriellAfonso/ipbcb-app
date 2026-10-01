@@ -3,6 +3,8 @@ package com.ipb.castelobranco.features.gallery.presentation.components
 /** Lazy-grid keys of the gallery grids, shared by the screens and the "Organizar" drag. */
 object GalleryGridKeys {
     const val HEADER = "header"
+    const val ALBUMS_SECTION = "section-albums"
+    const val PHOTOS_SECTION = "section-photos"
     private const val ALBUM_PREFIX = "album-"
     private const val PHOTO_PREFIX = "photo-"
 

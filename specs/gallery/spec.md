@@ -50,7 +50,9 @@ sync.
 
 ### 1.2 Álbum
 
-Uma rolagem: sub-álbuns primeiro (2 por linha, com capa), depois as fotos (3 por linha). Título = nome do álbum;
+Uma rolagem: sub-álbuns primeiro (2 por linha, com capa), depois as fotos (3 por linha). Com os dois, cada grupo
+abre com um título de linha inteira — "Álbuns · {n}" e "Fotos · {n}" —, e as fotos sempre começam numa linha nova,
+nunca ao lado de um sub-álbum; com um só dos dois, não há título. Título = nome do álbum;
 subtítulo = nome do álbum pai (raiz não tem). Data do evento (`dd/MM/yyyy`) e descrição quando existem. Sem fotos e
 sem sub-álbuns: "Nenhuma foto neste álbum.". Cada álbum aberto é uma entrada do back stack — voltar sobe um nível.
 
