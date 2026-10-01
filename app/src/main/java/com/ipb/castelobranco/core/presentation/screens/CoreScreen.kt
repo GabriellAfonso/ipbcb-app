@@ -57,6 +57,7 @@ fun CoreView(
     onNavigateToStudies: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
+    onNavigateToBirthdays: () -> Unit,
     onLogoutSuccess: () -> Unit,
     viewModel: CoreViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
@@ -98,6 +99,7 @@ fun CoreView(
         onNavigateToStudies    = onNavigateToStudies,
         onNavigateToSettings   = onNavigateToSettings,
         onNavigateToAdmin      = onNavigateToAdmin,
+        onNavigateToBirthdays  = onNavigateToBirthdays,
         authState              = authState,
         nextSection            = nextSection,
         birthdays              = birthdays,
@@ -116,6 +118,7 @@ fun CoreScreen(
     onNavigateToStudies: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
+    onNavigateToBirthdays: () -> Unit,
     authState: UserAuthState,
     nextSection: ScheduleSectionUi?,
     birthdays: List<Birthday>,
@@ -142,7 +145,7 @@ fun CoreScreen(
             ) {
                 Spacer(modifier = Modifier.height(60.dp))
 
-                Highlight(pages = buildHighlightPages(nextSection, birthdays))
+                Highlight(pages = buildHighlightPages(nextSection, birthdays, onNavigateToBirthdays))
 
                 Spacer(modifier = Modifier.height(60.dp))
                 ButtonGrid(
@@ -161,8 +164,9 @@ fun CoreScreen(
 private fun buildHighlightPages(
     nextSection: ScheduleSectionUi?,
     birthdays: List<Birthday> = emptyList(),
+    onBirthdaysClick: () -> Unit = {},
 ): List<@Composable () -> Unit> = buildList {
-    add { HighlightBirthdays(birthdays) }
+    add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
 
     if (nextSection != null) {
         add { HighlightSundaySchedule(section = nextSection) }

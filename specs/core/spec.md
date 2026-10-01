@@ -471,12 +471,21 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 
 | Pagina | Conteudo |
 |--------|----------|
-| 1 | Aniversariantes |
+| 1 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
 | 2 | Escala do Domingo (tabela dia x membro) |
 | 3 | Eventos |
 | Fallback | "Agenda indisponivel" (se dados nao carregaram) |
 
 HorizontalPager com auto-scroll (tween 600ms), cards com rounded corners (16dp) e shadow (6dp).
+
+#### BirthdaysScreen (aniversariantes do ano)
+
+Tela unica (`composable` inline), aberta pela pagina de aniversariantes do carousel. Grade de 2 colunas
+com um card por mes, janeiro a dezembro; abre rolada no mes atual. Cada card repete o layout do
+highlight (`BirthdayEntry`: badge do dia + nome). Mes atual com cabecalho destacado; aniversario de hoje
+com badge destacado. Mes vazio: "Nenhum aniversariante". Pull-to-refresh; erro sem cache mostra
+`PermissionErrorPlaceholder`. `BirthdaysViewModel` le `GetYearBirthdaysUseCase` — mesmo cache do
+card, sem request extra. Regras de dominio em `specs/001-monthly-birthdays-card/spec.md`.
 
 ### 6.4 BaseScreen
 
@@ -515,7 +524,7 @@ tokens ja foram apagados e `isLoggedInFlow` leva o app ao estado deslogado.
 #### AppRoutes
 
 Telas individuais:
-- `CORE`, `SCHEDULE`, `SETTINGS`, `PROFILE`
+- `CORE`, `SCHEDULE`, `SETTINGS`, `PROFILE`, `BIRTHDAYS`
 
 Grafos de features:
 - `AUTH_GRAPH`, `ADMIN_GRAPH`, `WORSHIP_HUB_GRAPH`, `GALLERY_GRAPH`, `HYMNAL_GRAPH`, `BIBLE_GRAPH`, `STUDIES_GRAPH`
@@ -567,6 +576,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `TopBar` | Logo + tab name + back/menu + account image. Fundo ipbGreen, icones brancos |
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
 | `Highlight` | Carousel com auto-scroll, HorizontalPager, cards 250dp com shadow |
+| `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight e pela `BirthdaysScreen` |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |
 | `ElasticPullToRefresh` | Wrapper para Material 3 PullToRefreshBox |

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -199,12 +200,13 @@ fun HighlightScheduleUnavailable() {
 }
 
 @Composable
-fun HighlightBirthdays(birthdays: List<Birthday>) {
+fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
     if (birthdays.isEmpty()) {
         HighlightPlaceholder(
             icon = "\uD83C\uDF82",
             title = "Aniversariantes do M\u00EAs",
-            message = "Nenhum aniversariante esse m\u00EAs"
+            message = "Nenhum aniversariante esse m\u00EAs",
+            modifier = Modifier.clickable(onClick = onClick)
         )
         return
     }
@@ -246,7 +248,11 @@ fun HighlightBirthdays(birthdays: List<Birthday>) {
         birthdays.drop(col * chunkSize).take(chunkSize)
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(onClick = onClick)
+    ) {
         // Header
         Row(
             modifier = Modifier
@@ -277,39 +283,14 @@ fun HighlightBirthdays(birthdays: List<Birthday>) {
             columnItems.forEach { colItems ->
                 Column(modifier = Modifier.weight(1f)) {
                     colItems.forEach { birthday ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = verticalPad),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(badgeSize)
-                                    .clip(RoundedCornerShape(badgeRadius))
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = String.format(
-                                        java.util.Locale.getDefault(), "%02d", birthday.day
-                                    ),
-                                    style = badgeTextStyle,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = birthday.name,
-                                style = nameStyle,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                        BirthdayEntry(
+                            birthday = birthday,
+                            modifier = Modifier.padding(vertical = verticalPad),
+                            badgeSize = badgeSize,
+                            badgeRadius = badgeRadius,
+                            badgeTextStyle = badgeTextStyle,
+                            nameStyle = nameStyle,
+                        )
                     }
                 }
             }
@@ -331,10 +312,11 @@ fun HighlightEvents() {
 private fun HighlightPlaceholder(
     icon: String,
     title: String,
-    message: String
+    message: String,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
