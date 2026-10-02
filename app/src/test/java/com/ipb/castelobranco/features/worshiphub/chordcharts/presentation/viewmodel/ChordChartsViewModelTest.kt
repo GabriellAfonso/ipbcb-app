@@ -9,8 +9,13 @@ import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
-import com.ipb.castelobranco.core.testing.accessOf
+import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
+import com.ipb.castelobranco.core.testing.setlistOf
+import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.model.ChordChart
+import java.time.LocalDate
+import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetChordChartsUseCase
 import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
@@ -47,6 +52,7 @@ class ChordChartsViewModelTest {
     private lateinit var songsRepository: SongsRepository
     private lateinit var setlistPreferences: SetlistPreferences
     private val accessRepository = FakeAccessRepository()
+    private val sundaySetlist = FakeSundaySetlistRepository()
     private lateinit var viewModel: ChordChartsViewModel
 
     private val fakeSongs = listOf(
@@ -84,6 +90,7 @@ class ChordChartsViewModelTest {
         songsRepository,
         setlistPreferences,
         ObserveAccessUseCase(accessRepository),
+        ObserveSundaySetlistUseCase(sundaySetlist, DateProvider { TODAY }),
     )
 
     // region uiState — edit buttons follow `songs` (spec 006)
@@ -329,4 +336,30 @@ class ChordChartsViewModelTest {
     }
 
     // endregion
+
+    // region Sunday section
+
+    @Test
+    fun `charts of the Sunday setlist show in the section with the setlist key`() = runTest {
+        val charts = listOf(
+            ChordChart(id = 20, songId = 1, content = "", tone = "D", instrument = "Violão"),
+            ChordChart(id = 21, songId = 2, content = "", tone = "E", instrument = "Violão"),
+        )
+        every { getChordChartsUseCase.observe() } returns flowOf(SnapshotState.Data(charts))
+        sundaySetlist.state.value = setlistOf(TODAY, 2)
+        viewModel = newViewModel()
+
+        subscribeAndAdvance()
+
+        val section = viewModel.uiState.value.sundaySection!!
+        assertEquals(listOf(21), section.entries.map { it.contentId })
+        assertEquals("G", section.entries.single().tone)
+        assertEquals(listOf(20), viewModel.uiState.value.filteredCharts.map { it.id })
+    }
+
+    // endregion
+
+    private companion object {
+        val TODAY: LocalDate = LocalDate.of(2026, 10, 4)
+    }
 }

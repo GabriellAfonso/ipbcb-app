@@ -13,6 +13,8 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetC
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartListItem
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartsUiState
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
+import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
+import com.ipb.castelobranco.features.worshiphub.shared.domain.buildSundaySection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +33,7 @@ class ChordChartsViewModel @Inject constructor(
     private val songsRepository: SongsRepository,
     private val setlistPreferences: SetlistPreferences,
     observeAccess: ObserveAccessUseCase,
+    observeSundaySetlist: ObserveSundaySetlistUseCase,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -63,7 +66,8 @@ class ChordChartsViewModel @Inject constructor(
         songsRepository.observeAllSongs(),
         pinnedSongs,
         queryAndAccess,
-    ) { chartsState, songsState, pinnedSongIds, (query, access) ->
+        observeSundaySetlist(),
+    ) { chartsState, songsState, pinnedSongIds, (query, access), sundaySetlist ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
@@ -86,7 +90,17 @@ class ChordChartsViewModel @Inject constructor(
                     )
                 }.sortedBy { pinOrder[it.songId] ?: Int.MAX_VALUE }
 
-                val filtered = if (query.isBlank()) sorted
+                // The Sunday section only shows without a search; its songs are not repeated below it.
+                val section = if (query.isBlank()) {
+                    buildSundaySection(
+                        setlist = sundaySetlist,
+                        contentBySongId = chartsState.value.reversed().associate { it.songId to it.id },
+                    )
+                } else {
+                    null
+                }
+
+                val filtered = if (query.isBlank()) sorted.filterNot { section?.songIds?.contains(it.songId) == true }
                 else sorted.filter { it.songName.normalize().contains(query.normalize(), ignoreCase = true) }
 
                 ChordChartsUiState(
@@ -94,6 +108,7 @@ class ChordChartsViewModel @Inject constructor(
                     filteredCharts = filtered,
                     query          = query,
                     canEdit        = canEdit,
+                    sundaySection  = section,
                 )
             }
         }

@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.worshiphub.lyrics.presentation.screens
 
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.toUi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ fun LyricsScreen(
         onRefresh         = viewModel::refresh,
         onCreateClick     = onCreateClick,
         onBackClick       = onBackClick,
+        sundaySection     = state.sundaySection?.toUi(),
     )
 }
 

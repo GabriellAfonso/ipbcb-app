@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state
 
+import com.ipb.castelobranco.features.worshiphub.shared.domain.SundaySection
+
 data class ChordChartsUiState(
     val charts: List<ChordChartListItem> = emptyList(),
     val filteredCharts: List<ChordChartListItem> = emptyList(),
@@ -7,6 +9,8 @@ data class ChordChartsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val canEdit: Boolean = false,
+    /** "Repertório de domingo" above the list; `null` when there is none or while searching. */
+    val sundaySection: SundaySection? = null,
 )
 
 data class ChordChartListItem(

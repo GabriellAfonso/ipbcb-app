@@ -6,6 +6,11 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
+import com.ipb.castelobranco.core.testing.setlistOf
+import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.util.DateProvider
+import java.time.LocalDate
 import com.ipb.castelobranco.features.worshiphub.lyrics.domain.model.Lyrics
 import com.ipb.castelobranco.features.worshiphub.lyrics.domain.usecase.GetLyricsUseCase
 import com.ipb.castelobranco.core.domain.model.Song
@@ -43,6 +48,8 @@ class LyricsViewModelTest {
     private lateinit var songsRepository: SongsRepository
     private lateinit var setlistPreferences: SetlistPreferences
     private val accessRepository = FakeAccessRepository()
+    private val sundaySetlist = FakeSundaySetlistRepository()
+    private val observeSundaySetlist = ObserveSundaySetlistUseCase(sundaySetlist, DateProvider { TODAY })
     private lateinit var viewModel: LyricsViewModel
 
     private val fakeSongs = listOf(
@@ -69,6 +76,7 @@ class LyricsViewModelTest {
 
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
     }
 
@@ -107,6 +115,7 @@ class LyricsViewModelTest {
             flowOf(SnapshotState.Error(AppError.Network(message = "fetch failed")))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         subscribeAndAdvance()
@@ -133,6 +142,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         subscribeAndAdvance()
@@ -150,6 +160,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         subscribeAndAdvance()
@@ -164,6 +175,7 @@ class LyricsViewModelTest {
         every { setlistPreferences.pinnedSongIds } returns flowOf(listOf(2))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         subscribeAndAdvance()
@@ -185,6 +197,7 @@ class LyricsViewModelTest {
         every { setlistPreferences.pinnedSongIds } returns flowOf(listOf(1, 2))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         subscribeAndAdvance()
@@ -204,6 +217,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         val job = launch { viewModel.uiState.collect { } }
@@ -222,6 +236,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         val job = launch { viewModel.uiState.collect { } }
@@ -246,6 +261,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(accentedSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         val job = launch { viewModel.uiState.collect { } }
@@ -266,6 +282,7 @@ class LyricsViewModelTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         viewModel = LyricsViewModel(
             getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
         )
 
         val job = launch { viewModel.uiState.collect { } }
@@ -320,4 +337,63 @@ class LyricsViewModelTest {
     }
 
     // endregion
+
+    // region Sunday section
+
+    @Test
+    fun `the Sunday setlist shows above the list, in order, and is not repeated below`() = runTest {
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeLyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        sundaySetlist.state.value = setlistOf(TODAY, 2, 99, 1)
+        viewModel = LyricsViewModel(
+            getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
+        )
+
+        subscribeAndAdvance()
+
+        val section = viewModel.uiState.value.sundaySection!!
+        assertEquals(listOf(11, 10), section.entries.map { it.contentId })
+        assertEquals("G", section.entries.first().tone)
+        assertTrue(viewModel.uiState.value.filteredLyrics.isEmpty())
+    }
+
+    @Test
+    fun `a search hides the section and finds its songs in the list`() = runTest {
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeLyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        sundaySetlist.state.value = setlistOf(TODAY, 1)
+        viewModel = LyricsViewModel(
+            getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
+        )
+
+        viewModel.onQueryChange("oce")
+        subscribeAndAdvance()
+
+        assertNull(viewModel.uiState.value.sundaySection)
+        assertEquals(listOf(10), viewModel.uiState.value.filteredLyrics.map { it.id })
+    }
+
+    @Test
+    fun `a setlist of a past Sunday is not shown`() = runTest {
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeLyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        sundaySetlist.state.value = setlistOf(TODAY.minusDays(1), 1)
+        viewModel = LyricsViewModel(
+            getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist,
+        )
+
+        subscribeAndAdvance()
+
+        assertNull(viewModel.uiState.value.sundaySection)
+        assertEquals(2, viewModel.uiState.value.filteredLyrics.size)
+    }
+
+    // endregion
+
+    private companion object {
+        val TODAY: LocalDate = LocalDate.of(2026, 10, 4)
+    }
 }

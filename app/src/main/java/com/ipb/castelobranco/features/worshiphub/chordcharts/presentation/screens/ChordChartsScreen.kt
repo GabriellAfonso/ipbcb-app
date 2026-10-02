@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.screens
 
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.toUi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +48,7 @@ fun ChordChartsScreen(
         onRefresh         = viewModel::refresh,
         onCreateClick     = onCreateClick,
         onBackClick       = onBackClick,
+        sundaySection     = state.sundaySection?.toUi(),
     )
 }
 

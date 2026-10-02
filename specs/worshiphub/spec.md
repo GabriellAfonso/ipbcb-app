@@ -67,6 +67,26 @@ Gera sugestao de 4 musicas para o proximo domingo, priorizando musicas nao tocad
 
 **Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
 
+**Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada) ficam salvas no aparelho a cada mudanca
+(escolha a mao, tom, fixar/desafixar, "Gerar") e voltam ao reabrir a tela ou o app. Expiram 1h depois da
+ultima mudanca (TTL deslizante); a expiracao so e checada ao restaurar, nunca esvazia uma tela aberta, e
+restaurar nao conta como mudanca. Musica que saiu do catalogo volta como linha vazia; a restauracao espera o
+catalogo carregar. "Limpar repertorio" zera as linhas e o rascunho. O rascunho e so do aparelho: nao vai ao
+servidor, nao e preenchido a partir do repertorio salvo e continua depois do logout. Guardado no DataStore
+`@SetlistPrefs` (chaves `repertoire_draft_v1` e `repertoire_draft_updated_at`) por `RepertoireDraftStorage`;
+regras em `DraftExpiry` e `RestoreRepertoireDraftUseCase`, tempo via `WallClock` (core).
+
+**Botoes:** "Gerar" | "Salvar" | "Compartilhar". "Compartilhar" (texto via Intent) e sempre disponivel,
+com ou sem salvar. "Salvar" so aparece com `can_save_setlist` do perfil (`ObserveWorshipAccessUseCase`, core) e
+fica desabilitado sem linha preenchida, com linha preenchida sem tom ou com tom acima de 3 caracteres
+(`RepertoireValidation`), ou durante o envio. Ao tocar, um dialogo confirma "Salvar repertorio de domingo
+dd/MM?" — a data e hoje se for domingo, senao o proximo domingo (`setlistDateFor`, core). Envia so as linhas
+preenchidas, cada uma na sua posicao. Salvar de novo na mesma data substitui. Resultado em snackbar
+(`RepertoireEvent`): "Repertorio de domingo dd/MM salvo." ou o texto do erro (`RepertoireTexts`: sem
+permissao, `detail` do servidor no 400, N musicas nao encontradas no 404, sem conexao, generico). No sucesso,
+o repertorio devolvido vira na hora o "Repertorio de domingo" do aparelho (secao 4.1), sem esperar o push.
+Falha nunca altera o rascunho.
+
 **Dados:** `GET suggested-songs/?fixed=1:12,3:45`
 ```
 [{
@@ -179,6 +199,15 @@ tela vazia ficaria sem nenhuma forma de recarregar.
 
 **Pinned:** musicas podem ser fixadas no topo da lista via `SetlistPreferences`. Ordem de exibicao: pinned primeiro (na ordem de pin), depois o resto.
 
+**Repertorio de domingo (spec 011):** so para membros do Louvor (`is_worship_member`). Acima da lista vem a
+secao "Repertorio de domingo dd/MM" com as musicas do repertorio guardado no aparelho (core
+`SundaySetlistRepository`), na ordem das posicoes e com o tom do repertorio como chip. Musicas sem cifra
+(ou, em Letras, sem letra) nao aparecem. Uma musica da secao nao se repete nos fixados nem no resto da lista.
+Com busca ativa a secao some e as musicas dela voltam para a lista filtrada. A secao aparece desde que o
+repertorio chega ate o fim do domingo dele (`ObserveSundaySetlistUseCase`), e funciona offline. Tap abre o
+detalhe como qualquer item. Montada por `buildSundaySection` (`worshiphub/shared/domain`) e desenhada por
+`SongContentListScreen(sundaySection = ...)`. Os fixados manuais continuam como antes, separados.
+
 **Dados:** `GET chord-charts/`
 ```
 [{
@@ -228,6 +257,8 @@ Lista de todas as letras cadastradas. Cada item mostra nome da musica.
 **Busca:** campo no topo, filtra por nome da musica (accent-insensitive).
 
 **Pinned:** mesmo mecanismo de `SetlistPreferences` das cifras.
+
+**Repertorio de domingo:** mesma secao das cifras (4.1), com as musicas que tem letra.
 
 **Estados:** identicos aos da lista de cifras (secao 4.1) — mesma `SongContentListScreen`.
 
@@ -384,6 +415,9 @@ feature nao importa `features/profile`:
 | PATCH | `chord-charts/{id}/` | Atualiza `content` de uma cifra |
 | POST | `lyrics/` | Cria nova letra |
 | PATCH | `lyrics/{id}/` | Atualiza `content` de uma letra existente |
+| PUT | `api/setlists/{date}/` | Salva o repertorio do domingo (`manage` em `songs` + membro do Louvor; spec 011) |
+
+O contrato do repertorio e do backend: `backend/specs/017-sunday-setlist-push/contracts/setlist-api.md`.
 
 `PATCH` body: `{"content": "..."}`. `POST chord-charts/` body: `{"song_id": int, "content": string, "tone": string, "instrument": string}`. `POST lyrics/` body: `{"song_id": int, "content": string}`. Retorna o objeto criado/atualizado. 401 se nao autenticado, 403 `PERMISSION_DENIED` sem `manage` em `songs` (a tela mostra a mensagem e fica), 404 se nao encontrado.
 

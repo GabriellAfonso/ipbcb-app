@@ -86,6 +86,7 @@ fun SongContentListScreen(
     canEdit: Boolean = false,
     addItemLabel: String = "",
     onCreateClick: () -> Unit = {},
+    sundaySection: SundaySectionUi? = null,
 ) {
     BaseScreen(
         tabName       = tabName,
@@ -118,7 +119,7 @@ fun SongContentListScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (rows.isEmpty()) {
+                if (rows.isEmpty() && sundaySection == null) {
                     // Sempre scrollavel: o PullToRefreshBox so recebe o gesto se o filho
                     // despachar nested scroll, senao a tela vazia fica sem como recarregar.
                     ScrollableFullSizeBox {
@@ -133,6 +134,19 @@ fun SongContentListScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
+                        if (sundaySection != null) {
+                            item(key = "sunday_header") { SundaySectionHeader(title = sundaySection.title) }
+                            items(sundaySection.rows, key = { "sunday_${it.id}" }) { item ->
+                                SongContentCard(
+                                    item        = item,
+                                    accentColor = accentColor,
+                                    leadingIcon = leadingIcon,
+                                    onClick     = { onItemClick(item.id) },
+                                    onTogglePin = null,
+                                )
+                            }
+                            if (rows.isNotEmpty()) item(key = "others_header") { OtherSongsHeader() }
+                        }
                         items(rows) { item ->
                             SongContentCard(
                                 item        = item,
