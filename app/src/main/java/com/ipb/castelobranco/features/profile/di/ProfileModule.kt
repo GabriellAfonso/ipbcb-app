@@ -4,8 +4,10 @@ import com.ipb.castelobranco.core.di.AuthedRetrofit
 import com.ipb.castelobranco.core.domain.access.AccessRepository
 import com.ipb.castelobranco.core.domain.member.CurrentMemberRepository
 import com.ipb.castelobranco.core.domain.startup.Preloadable
+import com.ipb.castelobranco.core.domain.worship.WorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileCurrentMemberRepository
+import com.ipb.castelobranco.features.profile.data.access.ProfileWorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
 import com.ipb.castelobranco.features.profile.data.repository.ProfileRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
@@ -34,6 +36,10 @@ abstract class ProfileModule {
     @Binds
     @Singleton
     abstract fun bindCurrentMemberRepository(impl: ProfileCurrentMemberRepository): CurrentMemberRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWorshipAccessRepository(impl: ProfileWorshipAccessRepository): WorshipAccessRepository
 
     companion object {
         @Provides

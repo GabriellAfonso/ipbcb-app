@@ -18,6 +18,10 @@ data class MeProfileDto(
     @SerialName("permissions") val permissions: Map<String, String?> = emptyMap(),
     /** The member record an admin linked to the user; `null` when not linked or cached before backend 015. */
     @SerialName("member_id") val memberId: Long? = null,
+    /** Linked member belongs to the "Louvor" ministry; `false` when absent (cached before backend 017). */
+    @SerialName("is_worship_member") val isWorshipMember: Boolean = false,
+    /** Worship member with `manage` on `songs`; `false` when absent (cached before backend 017). */
+    @SerialName("can_save_setlist") val canSaveSetlist: Boolean = false,
 )
 
 @Serializable

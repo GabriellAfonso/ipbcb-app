@@ -120,4 +120,24 @@ class MeProfileDtoBackwardCompatibilityTest {
 
         assertEquals(12L, dto.memberId)
     }
+
+    @Test
+    fun `worship flags absent decode as false`() {
+        val raw = """{"name":"Ana","is_member":true}"""
+
+        val dto = json.decodeFromString<MeProfileDto>(raw)
+
+        assertEquals(false, dto.isWorshipMember)
+        assertEquals(false, dto.canSaveSetlist)
+    }
+
+    @Test
+    fun `worship flags present are read`() {
+        val raw = """{"name":"Ana","is_member":true,"is_worship_member":true,"can_save_setlist":true}"""
+
+        val dto = json.decodeFromString<MeProfileDto>(raw)
+
+        assertEquals(true, dto.isWorshipMember)
+        assertEquals(true, dto.canSaveSetlist)
+    }
 }

@@ -9,4 +9,6 @@ data class MeProfile(
     val access: Access = Access.NONE,
     /** The member record linked to the user, `null` when not linked. */
     val memberId: Long? = null,
+    val isWorshipMember: Boolean = false,
+    val canSaveSetlist: Boolean = false,
 )

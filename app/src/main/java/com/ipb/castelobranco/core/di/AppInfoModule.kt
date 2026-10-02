@@ -9,6 +9,7 @@ import com.ipb.castelobranco.core.domain.auth.AuthStatusProvider
 import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.util.MonotonicClock
+import com.ipb.castelobranco.core.domain.util.WallClock
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -66,6 +67,11 @@ abstract class AppInfoModule {
         @Singleton
         fun provideMonotonicClock(): MonotonicClock =
             MonotonicClock { SystemClock.elapsedRealtime() }
+
+        @Provides
+        @Singleton
+        fun provideWallClock(): WallClock =
+            WallClock { System.currentTimeMillis() }
 
         /**
          * Today in the church's zone, not the device's. A leader travelling must not see the
