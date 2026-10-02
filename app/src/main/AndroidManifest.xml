@@ -49,6 +49,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Firebase Cloud Messaging: Sunday setlist and play-confirmation data messages. -->
+        <service
+            android:name=".core.data.push.IpbMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
@@ -57,6 +66,7 @@
         <activity
             android:name=".core.presentation.CoreActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.IPBCasteloBranco">
             <intent-filter>

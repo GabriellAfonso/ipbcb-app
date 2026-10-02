@@ -7,6 +7,22 @@ import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
 import com.ipb.castelobranco.core.testing.accessOf
+import com.ipb.castelobranco.core.testing.FakeDevicesRepository
+import com.ipb.castelobranco.core.testing.FakePushRegistrationScheduler
+import com.ipb.castelobranco.core.testing.FakeRegisteredTokenStore
+import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.domain.push.UnregisterDeviceUseCase
+import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
+import com.ipb.castelobranco.core.testing.FakeWorshipAccessRepository
+import com.ipb.castelobranco.core.testing.WORSHIP_MEMBER
+import com.ipb.castelobranco.core.testing.setlistOf
+import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
+import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
+import com.ipb.castelobranco.core.domain.worship.WorshipAccess
+import org.junit.Assert.assertNull
+import java.time.LocalDate
 import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.usecase.PreloadDataUseCase
@@ -69,6 +85,12 @@ class CoreViewModelTest {
     private val authEventsFlow = MutableSharedFlow<AuthEventBus.Event>()
 
     private val accessRepository = FakeAccessRepository()
+    private val sundaySetlist = FakeSundaySetlistRepository()
+    private val worshipAccess = FakeWorshipAccessRepository()
+    private var loggedIn = false
+    private val pushScheduler = FakePushRegistrationScheduler()
+    private val devices = FakeDevicesRepository()
+    private val tokenStore = FakeRegisteredTokenStore("token-1")
 
     private val fakeProfile = MeProfile(
         name = "João",
@@ -92,7 +114,7 @@ class CoreViewModelTest {
         getMonthlyBirthdaysUseCase = mockk()
         membersRepository = mockk()
 
-        coEvery { preloadDataUseCase() } just runs
+        coEvery { preloadDataUseCase(any()) } just runs
         coEvery { scheduleRepository.clearScheduleCache() } just runs
         every { authSession.isLoggedInFlow } returns emptyFlow()
         coEvery { authSession.isLoggedIn() } returns false
@@ -128,6 +150,11 @@ class CoreViewModelTest {
             setOf(sessionCache),
             ObserveAccessUseCase(accessRepository),
             RefreshAccessUseCase(accessRepository),
+            SyncSundaySetlistUseCase(sundaySetlist, SessionPresenceProvider { loggedIn }, worshipAccess),
+            ObserveWorshipAccessUseCase(worshipAccess),
+            pushScheduler,
+            UnregisterDeviceUseCase(pushScheduler, devices, tokenStore),
+            AppForegroundState(),
         )
     }
 
@@ -161,7 +188,7 @@ class CoreViewModelTest {
         viewModel.initialize()
         advanceUntilIdle()
 
-        coVerify { preloadDataUseCase() }
+        coVerify { preloadDataUseCase(any()) }
     }
 
     @Test
@@ -170,7 +197,7 @@ class CoreViewModelTest {
         viewModel.initialize()
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { preloadDataUseCase() }
+        coVerify(exactly = 1) { preloadDataUseCase(any()) }
     }
 
     @Test
@@ -490,6 +517,108 @@ class CoreViewModelTest {
         advanceUntilIdle()
 
         assertEquals(0, sessionCacheClears)
+    }
+
+    // endregion
+
+    // region Sunday setlist
+
+    @Test
+    fun `boot reads the current setlist for a worship member`() = runTest {
+        loggedIn = true
+        coEvery { authSession.isLoggedIn() } returns true
+        worshipAccess.state.value = WORSHIP_MEMBER
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(1, sundaySetlist.refreshCalls)
+    }
+
+    @Test
+    fun `returning to the app reads it again`() = runTest {
+        loggedIn = true
+        coEvery { authSession.isLoggedIn() } returns true
+        worshipAccess.state.value = WORSHIP_MEMBER
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        viewModel.onAppForeground()
+        advanceUntilIdle()
+
+        assertEquals(2, sundaySetlist.refreshCalls)
+    }
+
+    @Test
+    fun `leaving the worship ministry clears the stored setlist`() = runTest {
+        loggedIn = true
+        coEvery { authSession.isLoggedIn() } returns true
+        worshipAccess.state.value = WORSHIP_MEMBER
+        sundaySetlist.state.value = setlistOf(LocalDate.of(2026, 10, 4), 12)
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        worshipAccess.state.value = WorshipAccess.NONE
+        advanceUntilIdle()
+
+        assertNull(sundaySetlist.state.value)
+    }
+
+    // endregion
+
+    // region push
+
+    @Test
+    fun `boot schedules the device registration when logged in`() = runTest {
+        coEvery { authSession.isLoggedIn() } returns true
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(1, pushScheduler.scheduleCalls)
+    }
+
+    @Test
+    fun `boot does not register a logged-out device`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(0, pushScheduler.scheduleCalls)
+    }
+
+    @Test
+    fun `login schedules the device registration`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        authEventsFlow.emit(AuthEventBus.Event.LoginSuccess)
+        advanceUntilIdle()
+
+        assertEquals(1, pushScheduler.scheduleCalls)
+    }
+
+    @Test
+    fun `logout unregisters the device before clearing the session`() = runTest {
+        var unregisteredBeforeLogout = false
+        coEvery { logoutUseCase() } answers { unregisteredBeforeLogout = devices.unregistered.isNotEmpty() }
+
+        viewModel.logout()
+        advanceUntilIdle()
+
+        assertEquals(listOf("token-1"), devices.unregistered)
+        assertTrue(unregisteredBeforeLogout)
+    }
+
+    @Test
+    fun `logout completes when unregistering fails`() = runTest {
+        devices.unregisterResult = Result.failure(AppError.Network())
+
+        viewModel.events.test {
+            viewModel.logout()
+            advanceUntilIdle()
+            assertEquals(CoreViewModel.CoreEvent.LogoutSuccess, awaitItem())
+        }
+        coVerify { logoutUseCase() }
     }
 
     // endregion

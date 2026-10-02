@@ -16,8 +16,10 @@ class PreloadDataUseCase @Inject constructor(
     private val refreshables: Set<@JvmSuppressWildcards Refreshable>,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
-    suspend operator fun invoke() {
+    /** @param onDiskLoaded runs between the two phases: every cache is in memory, the network has not been asked. */
+    suspend operator fun invoke(onDiskLoaded: () -> Unit = {}) {
         preloadCachesFromDisk()
+        onDiskLoaded()
         refreshDataFromNetwork()
     }
 

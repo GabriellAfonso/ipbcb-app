@@ -6,7 +6,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ipb.castelobranco.features.admin.panel.presentation.navigation.navigateToSundayConfirmation
+import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.navigation.navigateToLyrics
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -35,7 +41,11 @@ import com.ipb.castelobranco.features.studies.presentation.navigation.studiesGra
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation.worshipHubGraph
 
 @Composable
-fun AppNavHost(navController: NavHostController) {
+fun AppNavHost(
+    navController: NavHostController,
+    notificationTarget: StateFlow<NotificationTarget?> = MutableStateFlow(null),
+    onNotificationTargetHandled: () -> Unit = {},
+) {
     val context = LocalContext.current
 
     // Escopo da Activity (fora do NavHost): o boot roda mesmo quando o processo e recriado
@@ -44,6 +54,25 @@ fun AppNavHost(navController: NavHostController) {
     LaunchedEffect(Unit) { coreViewModel.initialize() }
     // Abertura do app e volta do background: a galeria confere o servidor.
     LifecycleEventEffect(Lifecycle.Event.ON_START) { coreViewModel.onAppForeground() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { coreViewModel.onAppBackground() }
+
+    // Toque numa notificação: só depois do cache do disco, quando o acesso do perfil já é conhecido.
+    val target by notificationTarget.collectAsStateWithLifecycle()
+    val isBootReady by coreViewModel.isBootReady.collectAsStateWithLifecycle()
+    LaunchedEffect(target, isBootReady) {
+        val pending = target ?: return@LaunchedEffect
+        if (!isBootReady) return@LaunchedEffect
+        when (pending) {
+            NotificationTarget.SundaySetlist -> navController.navigateToLyrics()
+            is NotificationTarget.ConfirmPlays ->
+                if (coreViewModel.canOpenSundayConfirmation()) {
+                    navController.navigateToSundayConfirmation(pending.date)
+                } else {
+                    Toast.makeText(context, NO_REGISTER_ACCESS_MESSAGE, Toast.LENGTH_LONG).show()
+                }
+        }
+        onNotificationTargetHandled()
+    }
 
     val appNavigator = remember(navController) {
         AppNavigator(
@@ -149,3 +178,5 @@ fun AppNavHost(navController: NavHostController) {
         }
     }
 }
+
+private const val NO_REGISTER_ACCESS_MESSAGE = "Você não tem mais acesso ao registro de músicas."

@@ -27,6 +27,10 @@ annotation class SettingsPrefs
 @Retention(AnnotationRetention.BINARY)
 annotation class SetlistPrefs
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class PushPrefs
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DataStoreModule {
@@ -59,5 +63,15 @@ object DataStoreModule {
     ): DataStore<Preferences> =
         PreferenceDataStoreFactory.create(
             produceFile = { context.preferencesDataStoreFile("setlist_prefs") }
+        )
+
+    @Provides
+    @Singleton
+    @PushPrefs
+    fun providePushPreferencesDataStore(
+        @ApplicationContext context: Context,
+    ): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("push_prefs") }
         )
 }

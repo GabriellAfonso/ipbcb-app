@@ -17,6 +17,13 @@ import com.ipb.castelobranco.features.schedule.domain.repository.ScheduleReposit
 import com.ipb.castelobranco.features.bible.domain.usecase.BibleAutoDownloadUseCase
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryAutoDownloadUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
+import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
+import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.core.domain.push.PushRegistrationScheduler
+import com.ipb.castelobranco.core.domain.push.UnregisterDeviceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +54,11 @@ class CoreViewModel @Inject constructor(
     private val sessionScopedCaches: Set<@JvmSuppressWildcards SessionScopedCache>,
     observeAccess: ObserveAccessUseCase,
     private val refreshAccess: RefreshAccessUseCase,
+    private val syncSundaySetlist: SyncSundaySetlistUseCase,
+    private val observeWorshipAccess: ObserveWorshipAccessUseCase,
+    private val pushRegistration: PushRegistrationScheduler,
+    private val unregisterDevice: UnregisterDeviceUseCase,
+    private val appForeground: AppForegroundState,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -59,6 +71,10 @@ class CoreViewModel @Inject constructor(
     private val _isPreloading = MutableStateFlow(false)
     val isPreloading: StateFlow<Boolean> = _isPreloading.asStateFlow()
 
+    /** The disk caches (profile and access included) are in memory: notification taps can be routed. */
+    private val _isBootReady = MutableStateFlow(false)
+    val isBootReady: StateFlow<Boolean> = _isBootReady.asStateFlow()
+
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
@@ -68,6 +84,11 @@ class CoreViewModel @Inject constructor(
     /** Any role in the profile opens the management panel; what it shows inside is per level. */
     val canOpenPanel: StateFlow<Boolean> = observeAccess()
         .map { it.hasAnyRole }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Opens the register screen from a "Confirmar músicas de domingo" notification. */
+    val canManageSongs: StateFlow<Boolean> = observeAccess()
+        .map { it.allows(Scope.SONGS, AccessLevel.MANAGE) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private var initialized = false
@@ -97,6 +118,7 @@ class CoreViewModel @Inject constructor(
             authEventBus.events.collect { event ->
                 when (event) {
                     AuthEventBus.Event.LoginSuccess -> {
+                        pushRegistration.schedule()
                         refreshProfileOnAppOpen()
                         // A galeria só é acessível a membros: antes do login não havia o que sincronizar.
                         launch { galleryAutoDownload.onLoginSuccess() }
@@ -107,6 +129,15 @@ class CoreViewModel @Inject constructor(
                             .onFailure { Timber.w(it, "Access refresh after 403 failed") }
                     }
                 }
+            }
+        }
+
+        // Quem sai do Louvor perde o repertório guardado (só a transição: no boot o perfil ainda carrega).
+        viewModelScope.launch {
+            var wasWorshipMember = false
+            observeWorshipAccess().collect { access ->
+                if (wasWorshipMember && !access.isWorshipMember) syncSetlist()
+                wasWorshipMember = access.isWorshipMember
             }
         }
 
@@ -130,7 +161,7 @@ class CoreViewModel @Inject constructor(
             _isPreloading.value = true
 
             // 1 & 2. PRELOAD (disk) + REFRESH (network) delegated to use case
-            preloadDataUseCase()
+            preloadDataUseCase(onDiskLoaded = { _isBootReady.value = true })
 
             // Bíblia: preload do cache + auto-download se faltar tradução (WiFi only)
             runCatching { bibleRepository.preload() }
@@ -138,14 +169,24 @@ class CoreViewModel @Inject constructor(
             bibleAutoDownload.triggerIfNeeded()
 
             // Perfil é um caso à parte pois depende de login
-            refreshProfileOnAppOpen()
+            val profileRefresh = refreshProfileOnAppOpen()
+
+            // Idempotente no servidor: registra também quem fez login antes desta versão.
+            if (authSession.isLoggedIn()) pushRegistration.schedule()
+
+            // Repertório de domingo: depende do perfil (só membros do Louvor) e é o fallback do push.
+            // Roda depois do perfil sem segurar o fim do boot.
+            launch {
+                profileRefresh.join()
+                syncSetlist()
+            }
 
             _isPreloading.value = false
             Timber.d("App initialization completed")
         }
     }
 
-    private fun refreshProfileOnAppOpen() {
+    private fun refreshProfileOnAppOpen() =
         viewModelScope.launch {
             if (!authSession.isLoggedIn()) return@launch
 
@@ -161,18 +202,35 @@ class CoreViewModel @Inject constructor(
                 }
             }.onFailure { Timber.w(it, "Profile refresh on app open failed") }
         }
-    }
 
     /**
      * Activity `ON_START`: the app opened or came back to the foreground. The gallery follows the
      * server from here — only with a session, since the gallery is restricted to members.
      */
     fun onAppForeground() {
+        appForeground.isForeground = true
         viewModelScope.launch {
             if (!authSession.isLoggedIn()) return@launch
             runCatching { galleryAutoDownload.onAppForeground() }
                 .onFailure { Timber.w(it, "Gallery sync on foreground failed") }
         }
+        // O boot já sincroniza; a volta do background é o fallback de um push perdido.
+        if (initialized && !_isPreloading.value) viewModelScope.launch { syncSetlist() }
+    }
+
+    private suspend fun syncSetlist() {
+        runCatching { syncSundaySetlist() }
+            .onFailure { Timber.w(it, "Sunday setlist sync failed") }
+            .getOrNull()
+            ?.onFailure { Timber.w(it, "Sunday setlist read failed") }
+    }
+
+    /** Whether a "Confirmar músicas de domingo" tap may open the register screen. */
+    suspend fun canOpenSundayConfirmation(): Boolean = authSession.isLoggedIn() && canManageSongs.value
+
+    /** Activity `ON_STOP`: notifications are shown again for messages that arrive now. */
+    fun onAppBackground() {
+        appForeground.isForeground = false
     }
 
     fun refreshLoginState() {
@@ -184,6 +242,8 @@ class CoreViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             Timber.d("Logout started")
+            // Antes de tudo: a chamada ainda precisa do token de acesso. Nunca impede o logout.
+            unregisterDevice()
             fetchProfileUseCase.clearLocalPhoto()
             fetchProfileUseCase.clearSnapshot()
             scheduleRepository.clearScheduleCache()

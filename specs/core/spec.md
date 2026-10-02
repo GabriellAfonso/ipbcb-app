@@ -175,6 +175,51 @@ de membro que um admin ligou ao usuario (`member_id` do `/me`), `null` sem vincu
 `features/profile` (`ProfileCurrentMemberRepository`) pelo mesmo snapshot do `/me`, entao segue toda releitura. Fica
 fora do `Access`: nao e permissao. Hoje so a galeria usa ("Minhas fotos", `specs/gallery/spec.md` §10).
 
+### 4.2.3 Ministerio de Louvor
+
+`core/domain/worship/`: `WorshipAccess(isWorshipMember, canSaveSetlist)` (`NONE` sem perfil), `WorshipAccessRepository`
+e `ObserveWorshipAccessUseCase` — as flags `is_worship_member` e `can_save_setlist` do `/me` (spec 011). Implementado
+em `features/profile` (`ProfileWorshipAccessRepository`) pelo mesmo snapshot do `/me`. Nao e nivel de escopo (vem do
+ministerio do membro), por isso fica fora do `Access`. `current()` carrega o perfil do disco quando ainda nao esta em
+memoria: um processo aberto por um push ou por um worker nunca passou pelo preload do boot.
+
+### 4.2.4 Repertorio de domingo
+
+`core/domain/setlist/` (spec 011): `SundaySetlist`/`SetlistItem`, `SundaySetlistRepository` (copia do repertorio
+atual no aparelho), `setlistDateFor(today)` (hoje se domingo, senao o proximo domingo),
+`ObserveSundaySetlistUseCase` (o guardado ate o fim do domingo dele, `null` depois) e `SyncSundaySetlistUseCase`
+(sem sessao ou fora do Louvor limpa; senao `GET api/setlists/current/`). A implementacao
+(`core/data/setlist/SundaySetlistRepositoryImpl`) guarda o JSON do servidor em `JsonSnapshotStorage` (chave
+`sunday_setlist`), sem ETag (o endpoint e `no-store`); e `Preloadable` (offline desde o boot) e
+`SessionScopedCache` (some no logout). `{"setlist": null}` e 403 limpam; outra falha mantem o guardado. Escrita
+tambem pelo salvar do repertorio (worshiphub §2.4). `SetlistDto` e o mapper sao compartilhados com worshiphub e
+admin.
+
+Sincroniza: no boot (depois do refresh do perfil, sem segurar o fim do boot), em `onAppForeground()` e no push
+`setlist_saved` (secao 4.2.5). Quando `isWorshipMember` passa de `true` para `false`, limpa.
+
+### 4.2.5 Push (FCM)
+
+`firebase-messaging` (BOM do Firebase). Mensagens so de dados (`type` + `date`,
+`backend/specs/017-sunday-setlist-push/contracts/push-messages.md`).
+
+- **Token:** `RegisterDeviceUseCase` (`POST api/me/devices/`) roda em `PushTokenSyncWorker` (unico
+  `push_token_sync`, `REPLACE`, com rede, backoff exponencial), agendado por `PushRegistrationScheduler` em todo
+  boot logado (pega quem logou antes desta versao), no `LoginSuccess` e no `onNewToken`. Sem sessao ou sem token
+  nao faz nada. O token aceito fica em `@PushPrefs` (`registered_push_token`).
+- **Logout:** `UnregisterDeviceUseCase` e a primeira coisa do `logout()`: cancela o registro pendente, chama
+  `POST api/me/devices/unregister/` com o token guardado (limite de 5 s) e apaga o token guardado. Qualquer falha
+  e engolida — nunca impede o logout.
+- **Recebimento:** `IpbMessagingService` (`@AndroidEntryPoint`, a unica excecao alem do `CoreActivity`) so repassa:
+  `onNewToken` agenda o registro, `onMessageReceived` chama `PushMessageHandler`. O handler descarta tipo
+  desconhecido ou data invalida (`PushMessage.parse`) e tudo quando nao ha sessao (o token de uma sessao que caiu
+  por refresh falho nunca foi removido). `setlist_saved` (so membro do Louvor): agenda `SetlistRefreshWorker` e,
+  fora do primeiro plano (`AppForegroundState`), notifica "Repertorio de domingo dd/MM disponivel".
+  `confirm_plays`: notifica "Confirmar musicas de domingo" sempre; o acesso e decidido no toque.
+- **Notificacoes:** `SetlistNotifications`, canal `sunday_setlist` ("Repertorio"), id fixo por tipo (a nova
+  substitui a anterior), so com permissao (Android 13+ ja pedida no launch). O toque abre o `CoreActivity` com
+  `NotificationTarget` nos extras (secao 6.1).
+
 ### 4.3 Sistema de Snapshot Cache
 
 Pattern para features offline. Tres camadas:
@@ -273,8 +318,8 @@ inofensiva.
 fun interface SessionScopedCache { suspend fun clear() }
 ```
 
-Dado que vive **so em memoria** e so vale para a sessao atual (ex.: fichas de membros vistas por um
-lider). Features registram implementacoes via `@IntoSet`; o set vazio e declarado em
+Dado que so vale para a sessao atual, em memoria ou em disco (ex.: fichas de membros vistas por um
+lider; o repertorio de domingo guardado, secao 4.2.4). Features registram implementacoes via `@IntoSet`; o set vazio e declarado em
 `core/di/SessionModule.kt` (`@Multibinds`).
 
 `CoreViewModel` chama `clear()` de todos:
@@ -407,23 +452,31 @@ object StorageDirConstants {
 
 ### 6.1 CoreActivity
 
-Unica Activity do app (`@AndroidEntryPoint`).
+Unica Activity do app (`@AndroidEntryPoint`), `launchMode="singleTop"`.
 
 - `enableEdgeToEdge()`
 - Aplica `IPBCasteloBrancoTheme`
 - Cria `NavController` + `AppNavHost`
 - In-app updates: enforces Play Store immediate update no launch. Cancelamento = `finish()`.
 - Extension: `Activity.restartApp(message?)` — reinicia app via Intent para CoreActivity.
+- Toque em notificacao: os extras viram `NotificationTarget` (`SundaySetlist` | `ConfirmPlays(date)`) em
+  `onCreate` (sem estado salvo) e `onNewIntent` (app ja aberto, gracas ao `singleTop`). O `AppNavHost` navega quando
+  `isBootReady` (caches do disco carregados): `SundaySetlist` -> lista de Letras (`navigateToLyrics()`);
+  `ConfirmPlays` -> registro pre-preenchido (`navigateToSundayConfirmation(date)`, admin §3) se ha sessao e `songs`
+  >= `manage`, senao fica na home com "Voce nao tem mais acesso ao registro de musicas.". Depois limpa o alvo.
 
 ### 6.2 CoreViewModel
 
 Orquestra inicializacao e estado global.
 
-**Injecoes:** `PreloadDataUseCase`, `AuthSession`, `FetchProfileUseCase`, `AuthEventBus`, `LogoutUseCase`, `GalleryAutoDownload`, `BibleAutoDownload`, `BibleRepository`, `ScheduleRepository`.
+**Injecoes:** `PreloadDataUseCase`, `AuthSession`, `FetchProfileUseCase`, `AuthEventBus`, `LogoutUseCase`, `GalleryAutoDownload`, `BibleAutoDownload`, `BibleRepository`, `ScheduleRepository`, `SyncSundaySetlistUseCase`, `ObserveWorshipAccessUseCase`, `PushRegistrationScheduler`, `UnregisterDeviceUseCase`, `AppForegroundState`.
 
 **State:**
 - `isPreloading: StateFlow<Boolean>` — app inicializando
 - `isLoggedIn: StateFlow<Boolean>` — estado de autenticacao
+- `isBootReady: StateFlow<Boolean>` — caches do disco ja em memoria (o `PreloadDataUseCase` avisa entre a fase de
+  disco e a de rede); libera a navegacao de um toque em notificacao
+- `canManageSongs: StateFlow<Boolean>` — `songs` >= `manage`, para o toque em "Confirmar musicas de domingo"
 
 **Events (SharedFlow):**
 - `LogoutSuccess`
@@ -441,7 +494,11 @@ se ele mudou no servidor.
 **Metodos:**
 - `initialize()` — setup de observables e trigger startup. Idempotente; chamado pelo `AppNavHost`
   (escopo da Activity) para garantir o boot em qualquer rota restaurada — ver secao 4.4.
-- `logout()` — limpa todos os caches (incluindo todo `SessionScopedCache`, secao 4.4.1) + tokens
+- `logout()` — remove o token de push no servidor (secao 4.2.5, nunca bloqueia), limpa todos os caches (incluindo
+  todo `SessionScopedCache`, secao 4.4.1) + tokens
+- `onAppForeground()` / `onAppBackground()` — `ON_START`/`ON_STOP` do `AppNavHost`: marcam `AppForegroundState`;
+  o primeiro tambem sincroniza a galeria e o repertorio de domingo
+- No boot logado e no `LoginSuccess`, agenda o registro do token de push
 
 ### 6.3 CoreScreen (Tela Principal)
 
@@ -620,6 +677,9 @@ O core depende de interfaces/classes de features auth para funcionar:
 | `roles` | `roles` | `List<RoleDto>` (`id`, `name`) | nao (default vazio) |
 | `permissions` | `permissions` | `Map<String, String?>` | nao (default vazio) |
 | `photo_url` | `photoUrl` | `String?` | nao (default `null`) |
+| `member_id` | `memberId` | `Long?` | nao (default `null`) |
+| `is_worship_member` | `isWorshipMember` | `Boolean` | nao (default `false`) |
+| `can_save_setlist` | `canSaveSetlist` | `Boolean` | nao (default `false`) |
 
 O campo `active` foi removido do DTO, do dominio e do `ProfileUiState`: nenhuma permission
 class do backend o lia (as checagens usam `is_member` e os papeis) e nenhuma tela do app o

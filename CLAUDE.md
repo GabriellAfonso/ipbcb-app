@@ -8,7 +8,8 @@
 
 ## Architecture — Feature-Based MVVM + Clean
 
-**Single Activity:** `CoreActivity` is the ONLY `@AndroidEntryPoint`. UI 100% Compose.
+**Single Activity:** `CoreActivity` is the ONLY `@AndroidEntryPoint` Activity. UI 100% Compose. The one other
+`@AndroidEntryPoint` is `IpbMessagingService` (FCM needs a service; Hilt needs the annotation to inject it).
 
 Flow: `UI → ViewModel → UseCase → Repository (interface) → Repository (impl)`
 
@@ -184,5 +185,5 @@ specs/                          # project root, outside server/
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/010-gallery-member-tags/plan.md`
+at `specs/011-sunday-setlist-push/plan.md`
 <!-- SPECKIT END -->

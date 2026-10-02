@@ -14,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.ipb.castelobranco.core.presentation.navigation.AppNavHost
+import com.ipb.castelobranco.core.presentation.navigation.NotificationTarget
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -29,6 +31,9 @@ import timber.log.Timber
 class CoreActivity : ComponentActivity() {
 
     private lateinit var appUpdateManager: AppUpdateManager
+
+    /** A tapped notification's destination, until `AppNavHost` has navigated to it. */
+    private val notificationTarget = MutableStateFlow<NotificationTarget?>(null)
 
     @Suppress("unused")
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -54,15 +59,37 @@ class CoreActivity : ComponentActivity() {
 
         appUpdateManager = AppUpdateManagerFactory.create(this)
 
+        // A recreated activity already handled the intent that launched it.
+        if (savedInstanceState == null) readNotificationTarget(intent)
+
         setContent {
             IPBCasteloBrancoTheme(dynamicColor = false) {
                 val navController = rememberNavController()
-                AppNavHost(navController)
+                AppNavHost(
+                    navController = navController,
+                    notificationTarget = notificationTarget,
+                    onNotificationTargetHandled = { notificationTarget.value = null },
+                )
             }
         }
 
         checkForImmediateUpdate()
         requestNotificationPermissionIfNeeded()
+    }
+
+    /** `singleTop`: a notification tapped while the app is open arrives here instead of a new activity. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readNotificationTarget(intent)
+    }
+
+    private fun readNotificationTarget(intent: Intent?) {
+        val target = NotificationTarget.fromExtras(
+            target = intent?.getStringExtra(NotificationTarget.EXTRA_TARGET),
+            date = intent?.getStringExtra(NotificationTarget.EXTRA_DATE),
+        ) ?: return
+        notificationTarget.value = target
     }
 
     private fun requestNotificationPermissionIfNeeded() {
