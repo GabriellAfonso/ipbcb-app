@@ -25,6 +25,15 @@ data class MusicSongFormState(
     val artist: String = "",
 )
 
+/** Reading the setlist that pre-fills a Sunday opened from a notification or the pending card. */
+sealed interface PrefillState {
+    data object None : PrefillState
+    data object Loading : PrefillState
+    data object Loaded : PrefillState
+    data object NotFound : PrefillState
+    data class Failed(val message: String) : PrefillState
+}
+
 @Immutable
 data class MusicRegistrationUiState(
     val registrationType: RegistrationType = RegistrationType.SUNDAY,
@@ -41,7 +50,11 @@ data class MusicRegistrationUiState(
     val musicForm: MusicSongFormState = MusicSongFormState(),
 
     val isSubmitting: Boolean = false,
-    val snackbarMessage: String? = null
+    val snackbarMessage: String? = null,
+
+    /** The Sunday being confirmed; fixes the date. `null` for a register opened from the panel. */
+    val prefillDate: LocalDate? = null,
+    val prefill: PrefillState = PrefillState.None,
 ) {
     val dateBr: String
         get() = if (registrationType == RegistrationType.SUNDAY) selectedDate?.format(BR_DATE).orEmpty() else ""
@@ -90,4 +103,5 @@ sealed interface MusicRegistrationEvent {
 
     data object Submit : MusicRegistrationEvent
     data object SnackbarShown : MusicRegistrationEvent
+    data object RetryPrefill : MusicRegistrationEvent
 }

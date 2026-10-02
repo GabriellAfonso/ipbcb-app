@@ -2,6 +2,9 @@ package com.ipb.castelobranco.features.admin.register.presentation.viewmodel
 
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
+import androidx.lifecycle.SavedStateHandle
+import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.features.admin.register.domain.usecase.GetSetlistForDateUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.ObserveSongsUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.SubmitSundayPlaysUseCase
 import com.ipb.castelobranco.features.admin.register.presentation.state.MusicRegistrationEvent
@@ -59,7 +62,12 @@ class MusicRegistrationViewModelTest {
     }
 
     private fun createViewModel(): MusicRegistrationViewModel {
-        return MusicRegistrationViewModel(observeSongsUseCase, submitSundayPlaysUseCase).also {
+        return MusicRegistrationViewModel(
+            observeSongsUseCase,
+            submitSundayPlaysUseCase,
+            GetSetlistForDateUseCase(FakeSetlistConfirmationRepository()),
+            SavedStateHandle(),
+        ).also {
             viewModel = it
         }
     }

@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.panel.presentation.screens
 
+import java.time.LocalDate
+import com.ipb.castelobranco.features.admin.panel.presentation.state.PendingConfirmationsUi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -410,4 +412,14 @@ private fun DesignC_Merged() {
         }
         Spacer(Modifier.height(24.dp))
     }
+}
+
+@Preview(showBackground = true, widthDp = 390, name = "Admin - Pending Sundays")
+@Composable
+private fun PendingConfirmationsCardPreview() {
+    PendingConfirmationsCard(
+        pending = PendingConfirmationsUi.Dates(listOf(LocalDate.of(2026, 10, 4), LocalDate.of(2026, 9, 27))),
+        onDateClick = {},
+        onRetry = {},
+    )
 }

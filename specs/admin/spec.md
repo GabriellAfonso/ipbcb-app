@@ -101,6 +101,13 @@ ação aparece conforme o nível em `gallery` (gallery spec §8.1).
 Cards sem implementação não navegam e não exibem aviso — o clique é inerte, e o cinza é o que
 comunica isso ao usuário.
 
+**Confirmar músicas de domingo (spec 011):** acima da grade, para quem tem `songs` ≥ `manage`, um card lista os
+domingos com repertório salvo cujas músicas tocadas ainda não foram registradas (`GET api/setlists/pending-confirmation/`,
+mais recente primeiro), como "Domingo dd/MM". Tocar num domingo abre o registro pré-preenchido (seção 3). Lista vazia,
+sem acesso ou recusa 403 escondem o card; carregando mostra uma barra de progresso; falha mostra o texto do erro e
+"Tentar novamente". A lista é lida de novo sempre que o painel volta à tela (`ON_RESUME`), então um domingo recém
+registrado some sozinho. Não é um `PanelCard`: é dado do servidor, não uma área. Não é guardado no aparelho.
+
 Nenhum card mostra badge com contador. Contadores só entram quando houver dado real por trás;
 número fixo no código seria informação falsa para a liderança.
 
@@ -123,6 +130,16 @@ escolhe entre os dois tipos de `RegistrationType`:
 Cadastro de cifra e de letra ainda não existe: falta o endpoint no backend.
 
 Eventos de uma vez (sucesso, erro de envio) saem por `MusicRegistrationEvent`.
+
+**Domingo pré-preenchido (spec 011):** a rota aceita `AdminRegister?date=YYYY-MM-DD`. Com data, a tela abre em
+`SUNDAY` com a data fixa (o seletor de data não abre) e lê o repertório desse domingo
+(`GET api/setlists/{date}/`, `SetlistConfirmationRepository`): uma linha por item na ordem das posições (no mínimo
+as 4 de sempre), com música e tom, todas editáveis — o que é registrado é o que a tela mostra. 404 deixa as linhas
+vazias com o aviso "Repertório de dd/MM não encontrado. Preencha as músicas."; outra falha mostra o erro com
+"Tentar novamente" sem bloquear o preenchimento manual. Sem data, a tela é a de sempre. Entradas: o card de
+pendentes (seção 2.1) e a notificação "Confirmar músicas de domingo", que passa pelo `CoreActivity` e chama
+`navigateToSundayConfirmation(date)` (painel e depois o registro, então voltar cai no painel). Sem `songs` ≥
+`manage` ou sem sessão, a notificação deixa o app na home com "Você não tem mais acesso ao registro de músicas.".
 
 ## 4. Geração de escala
 

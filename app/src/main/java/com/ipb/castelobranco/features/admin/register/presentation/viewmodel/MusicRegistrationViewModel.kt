@@ -15,7 +15,18 @@ import com.ipb.castelobranco.features.admin.register.presentation.util.removeRow
 import com.ipb.castelobranco.features.admin.register.presentation.util.selectSong
 import com.ipb.castelobranco.features.admin.register.presentation.util.updateTone
 import com.ipb.castelobranco.core.domain.model.Song
+import androidx.lifecycle.SavedStateHandle
+import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.domain.error.toAppError
+import com.ipb.castelobranco.core.domain.setlist.SundaySetlist
+import com.ipb.castelobranco.core.presentation.error.toUserMessage
+import com.ipb.castelobranco.features.admin.panel.presentation.navigation.AdminRoutes
+import com.ipb.castelobranco.features.admin.register.domain.usecase.GetSetlistForDateUseCase
+import com.ipb.castelobranco.features.admin.register.presentation.state.PrefillState
+import com.ipb.castelobranco.features.admin.register.presentation.state.SundaySongRowState
+import com.ipb.castelobranco.features.admin.register.presentation.util.SongLabelFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,11 +38,75 @@ import javax.inject.Inject
 @HiltViewModel
 class MusicRegistrationViewModel @Inject constructor(
     private val observeSongsUseCase: ObserveSongsUseCase,
-    private val submitSundayPlaysUseCase: SubmitSundayPlaysUseCase
+    private val submitSundayPlaysUseCase: SubmitSundayPlaysUseCase,
+    private val getSetlistForDate: GetSetlistForDateUseCase,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MusicRegistrationUiState())
+    /** Set when opened to confirm a Sunday (notification or pending card): its setlist pre-fills the rows. */
+    private val prefillDate: LocalDate? = savedStateHandle.get<String>(AdminRoutes.ARG_DATE)
+        ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+
+    private val _uiState = MutableStateFlow(
+        MusicRegistrationUiState(
+            registrationType = RegistrationType.SUNDAY,
+            selectedDate = prefillDate ?: LocalDate.now(),
+            prefillDate = prefillDate,
+        )
+    )
     val uiState: StateFlow<MusicRegistrationUiState> = _uiState.asStateFlow()
+
+    init {
+        if (prefillDate != null) loadPrefill(prefillDate)
+    }
+
+    private fun loadPrefill(date: LocalDate) {
+        _uiState.update { it.copy(prefill = PrefillState.Loading) }
+        viewModelScope.launch {
+            getSetlistForDate(date).fold(
+                onSuccess = { setlist ->
+                    _uiState.update { state ->
+                        state.copy(sundayRows = rowsFrom(setlist), prefill = PrefillState.Loaded)
+                            .recomputeSundayErrors()
+                    }
+                },
+                onFailure = { error ->
+                    val appError = error.toAppError()
+                    _uiState.update { state ->
+                        if (appError is AppError.Server && appError.code == HTTP_NOT_FOUND) {
+                            state.copy(
+                                prefill = PrefillState.NotFound,
+                                snackbarMessage = "Repertório de ${date.format(DAY_MONTH)} não encontrado. " +
+                                    "Preencha as músicas.",
+                            )
+                        } else {
+                            state.copy(prefill = PrefillState.Failed(appError.toUserMessage()))
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    /** One row per setlist item, in order, never fewer than the screen's default rows. */
+    private fun rowsFrom(setlist: SundaySetlist): List<SundaySongRowState> {
+        val items = setlist.items.sortedBy { it.position }
+        val count = maxOf(MusicRegistrationUiState.defaultSundayRows().size, items.size)
+        return (1..count).map { position ->
+            val item = items.getOrNull(position - 1)
+            if (item == null) {
+                SundaySongRowState(position = position)
+            } else {
+                val song = Song(id = item.songId, title = item.title, artist = item.artist, categoryName = "")
+                SundaySongRowState(
+                    position = position,
+                    songQuery = SongLabelFormatter.format(song),
+                    selectedSongId = item.songId,
+                    tone = item.tone,
+                )
+            }
+        }
+    }
 
     fun onEvent(event: MusicRegistrationEvent) {
         when (event) {
@@ -50,6 +125,7 @@ class MusicRegistrationViewModel @Inject constructor(
 
             MusicRegistrationEvent.Submit -> submit()
             MusicRegistrationEvent.SnackbarShown -> consumeSnackbar()
+            MusicRegistrationEvent.RetryPrefill -> prefillDate?.let { loadPrefill(it) }
             is MusicRegistrationEvent.MusicTitleChanged -> _uiState.update {
                 it.copy(musicForm = it.musicForm.copy(title = event.title))
             }
@@ -114,13 +190,19 @@ class MusicRegistrationViewModel @Inject constructor(
                     sundayRowErrors = emptyMap()
                 )
             } else {
-                state.copy(registrationType = type, snackbarMessage = null)
+                state.copy(
+                    registrationType = type,
+                    selectedDate = state.selectedDate ?: prefillDate,
+                    snackbarMessage = null,
+                )
             }
             updated.recomputeSundayErrors()
         }
     }
 
     private fun openDatePicker() {
+        // Confirming a Sunday: the date belongs to the setlist and cannot change.
+        if (prefillDate != null) return
         _uiState.update { state ->
             if (state.registrationType == RegistrationType.SUNDAY) state.copy(showDatePicker = true) else state
         }
@@ -208,5 +290,10 @@ class MusicRegistrationViewModel @Inject constructor(
         if (registrationType != RegistrationType.SUNDAY) return copy(sundayRowErrors = emptyMap())
         val validation = MusicRegistrationValidator.validateSundayRows(sundayRows, availableSongs)
         return copy(sundayRowErrors = validation.errorsByPosition)
+    }
+
+    private companion object {
+        const val HTTP_NOT_FOUND = 404
+        val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")
     }
 }

@@ -15,6 +15,8 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.RefreshMember
 import com.ipb.castelobranco.features.admin.members.ok
 import com.ipb.castelobranco.features.admin.members.summaryDto
 import com.ipb.castelobranco.features.admin.panel.domain.VisiblePanelCardsUseCase
+import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.features.admin.register.domain.usecase.GetPendingConfirmationsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -51,6 +53,7 @@ class AdminPanelViewModelTest {
             VisiblePanelCardsUseCase(),
             ObserveMembersUseCase(repository),
             RefreshMembersUseCase(repository),
+            GetPendingConfirmationsUseCase(FakeSetlistConfirmationRepository()),
         )
 
     @Test

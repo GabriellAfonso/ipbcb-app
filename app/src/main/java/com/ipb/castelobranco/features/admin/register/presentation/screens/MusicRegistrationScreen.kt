@@ -19,6 +19,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import com.ipb.castelobranco.features.admin.register.presentation.state.PrefillState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +57,7 @@ private val Orange = BrandColors.Orange
 data class MusicRegistrationScreenActions(
     val onRegistrationTypeChange: (RegistrationType) -> Unit,
     val onSubmit: () -> Unit,
+    val onRetryPrefill: () -> Unit = {},
 )
 
 data class SundayRegistrationActions(
@@ -97,6 +102,7 @@ fun MusicRegistrationScreen(
     val screenActions = MusicRegistrationScreenActions(
         onRegistrationTypeChange = { viewModel.onEvent(MusicRegistrationEvent.RegistrationTypeChanged(it)) },
         onSubmit = { viewModel.onEvent(MusicRegistrationEvent.Submit) },
+        onRetryPrefill = { viewModel.onEvent(MusicRegistrationEvent.RetryPrefill) },
     )
 
     val sundayActions = SundayRegistrationActions(
@@ -170,6 +176,7 @@ fun MusicRegistrationContent(
                         onOpenPicker = sundayActions.onOpenDatePicker,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    PrefillStatus(prefill = state.prefill, onRetry = screenActions.onRetryPrefill)
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -223,6 +230,35 @@ fun MusicRegistrationContent(
                     .padding(top = 8.dp)
             )
         }
+    }
+}
+
+/** Reading the setlist of the Sunday being confirmed; the rows stay editable meanwhile. */
+@Composable
+private fun PrefillStatus(prefill: PrefillState, onRetry: () -> Unit) {
+    when (prefill) {
+        PrefillState.Loading -> Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Text(
+                text = "Carregando o repertório do domingo...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        is PrefillState.Failed -> Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = prefill.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onRetry) { Text("Tentar novamente") }
+        }
+        PrefillState.None, PrefillState.Loaded, PrefillState.NotFound -> Unit
     }
 }
 

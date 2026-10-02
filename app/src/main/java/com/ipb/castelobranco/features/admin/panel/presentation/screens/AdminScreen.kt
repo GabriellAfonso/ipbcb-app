@@ -1,5 +1,16 @@
 package com.ipb.castelobranco.features.admin.panel.presentation.screens
 
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
+import com.ipb.castelobranco.features.admin.panel.presentation.state.PendingConfirmationsUi
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Card
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,7 +92,9 @@ fun AdminScreen(
     viewModel: AdminPanelViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    AdminPanelContent(state = state, nav = nav)
+    // Also on return from the register screen: a Sunday just registered leaves the card.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPending() }
+    AdminPanelContent(state = state, nav = nav, onRetryPending = viewModel::refreshPending)
 }
 
 /**
@@ -91,7 +104,8 @@ fun AdminScreen(
 @Composable
 fun AdminPanelContent(
     state: AdminPanelUiState,
-    nav: AdminNav
+    nav: AdminNav,
+    onRetryPending: () -> Unit = {},
 ) {
     val actions = state.cards.map { card -> card.toAction(nav, state.memberCount) }
 
@@ -110,6 +124,16 @@ fun AdminPanelContent(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(20.dp))
+
+            if (state.pending != PendingConfirmationsUi.Hidden) {
+                PendingConfirmationsCard(
+                    pending = state.pending,
+                    onDateClick = nav.confirmSunday,
+                    onRetry = onRetryPending,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
             Text(
                 text = "Funcionalidades",
@@ -226,6 +250,59 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
  * ([ipbGreen]) para o teal da marca, de modo que os dois leiam como um único bloco de
  * cabeçalho — o título fica na TopBar, aqui só sobra o subtítulo.
  */
+private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")
+
+/** Sundays whose played songs were never registered; each opens the pre-filled register screen. */
+@Composable
+internal fun PendingConfirmationsCard(
+    pending: PendingConfirmationsUi,
+    onDateClick: (LocalDate) -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BrandColors.Orange.copy(alpha = 0.12f)),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Confirmar músicas de domingo",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            when (pending) {
+                PendingConfirmationsUi.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                is PendingConfirmationsUi.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = pending.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onRetry) { Text("Tentar novamente") }
+                }
+                is PendingConfirmationsUi.Dates -> {
+                    Text(
+                        text = "Músicas tocadas ainda não registradas:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    pending.dates.forEach { date ->
+                        TextButton(onClick = { onDateClick(date) }) {
+                            Text("Domingo ${date.format(DAY_MONTH)}")
+                        }
+                    }
+                }
+                PendingConfirmationsUi.Hidden -> Unit
+            }
+        }
+    }
+}
+
 @Composable
 private fun AdminHeaderStrip() {
     Box(

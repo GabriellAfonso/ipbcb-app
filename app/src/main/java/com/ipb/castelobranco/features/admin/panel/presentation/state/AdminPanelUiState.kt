@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.admin.panel.presentation.state
 
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard
+import java.time.LocalDate
 
 /**
  * @param isEmpty the user reached the panel but no card is allowed — show a message, not a blank grid.
@@ -10,4 +11,16 @@ data class AdminPanelUiState(
     val cards: List<PanelCard> = emptyList(),
     val isEmpty: Boolean = false,
     val memberCount: Int? = null,
+    val pending: PendingConfirmationsUi = PendingConfirmationsUi.Hidden,
 )
+
+/** The "Confirmar músicas de domingo" card: Sundays whose played songs are still to be registered. */
+sealed interface PendingConfirmationsUi {
+    /** No `manage` on `songs`, nothing pending, or access refused. */
+    data object Hidden : PendingConfirmationsUi
+    data object Loading : PendingConfirmationsUi
+    data class Failed(val message: String) : PendingConfirmationsUi
+
+    /** Never empty, newest first. */
+    data class Dates(val dates: List<LocalDate>) : PendingConfirmationsUi
+}
