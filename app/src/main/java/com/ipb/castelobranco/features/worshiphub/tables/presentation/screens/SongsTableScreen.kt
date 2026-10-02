@@ -1,5 +1,12 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.screens
 
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireTexts
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireSaveState
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireEvent
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -75,12 +82,17 @@ data class WorshipSongsUiState(
     val allSongs: List<Song> = emptyList(),
     val isRefreshingSuggestions: Boolean = false,
     val isRefreshing: Boolean = false,
+    val save: RepertoireSaveState = RepertoireSaveState(),
 )
 
 
 data class WorshipSongsActions(
     val onBackClick: () -> Unit,
     val onGenerateClick: () -> Unit,
+    val onClearRepertoire: () -> Unit,
+    val onSaveClick: () -> Unit = {},
+    val onConfirmSave: () -> Unit = {},
+    val onDismissSave: () -> Unit = {},
     val onSongSelect: (position: Int, song: Song?) -> Unit,
     val onToneChange: (position: Int, tone: String) -> Unit,
     val onToggleFixed: (position: Int) -> Unit,
@@ -102,11 +114,27 @@ fun WorshipSongsTableScreen(
         allSongs = viewModel.allSongs.collectAsStateWithLifecycle().value,
         isRefreshingSuggestions = viewModel.isRefreshingSuggestedSongs.collectAsStateWithLifecycle().value,
         isRefreshing = viewModel.isRefreshing.collectAsStateWithLifecycle().value,
+        save = viewModel.saveState.collectAsStateWithLifecycle().value,
     )
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            val message = when (event) {
+                is RepertoireEvent.Saved -> event.message
+                is RepertoireEvent.SaveFailed -> event.message
+            }
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     val actions = WorshipSongsActions(
         onBackClick = onBackClick,
         onGenerateClick = viewModel::refreshSuggestedSongs,
+        onClearRepertoire = viewModel::clearRepertoire,
+        onSaveClick = viewModel::requestSave,
+        onConfirmSave = viewModel::confirmSave,
+        onDismissSave = viewModel::dismissSave,
         onSongSelect = viewModel::selectSong,
         onToneChange = viewModel::onToneChange,
         onToggleFixed = viewModel::toggleFixed,
@@ -117,6 +145,7 @@ fun WorshipSongsTableScreen(
     WorshipSongsTableContent(
         state = state,
         actions = actions,
+        snackbarHostState = snackbarHostState,
     )
 }
 
@@ -124,7 +153,18 @@ fun WorshipSongsTableScreen(
 fun WorshipSongsTableContent(
     state: WorshipSongsUiState,
     actions: WorshipSongsActions,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
+    state.save.pendingSaveDate?.let { date ->
+        AlertDialog(
+            onDismissRequest = actions.onDismissSave,
+            title = { Text(RepertoireTexts.confirmTitle(date)) },
+            text = { Text(RepertoireTexts.CONFIRM_BODY) },
+            confirmButton = { TextButton(onClick = actions.onConfirmSave) { Text("Salvar") } },
+            dismissButton = { TextButton(onClick = actions.onDismissSave) { Text("Cancelar") } },
+        )
+    }
+
     val tabs = listOf("Ultimos Domingos", "Mais tocadas", "Top tons", "Repertório")
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
@@ -267,12 +307,20 @@ fun WorshipSongsTableContent(
                                 onToneChange = actions.onToneChange,
                                 onToggleFixed = actions.onToggleFixed,
                                 onGenerateClick = actions.onGenerateClick,
+                                onClearClick = actions.onClearRepertoire,
+                                save = state.save,
+                                onSaveClick = actions.onSaveClick,
                                 onSongInfoClick = actions.onSongClick,
                             )
                         }
                     }
                 }
             }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp),
+            )
 
             // FAB de busca — sobreposto no canto inferior direito
             FloatingActionButton(

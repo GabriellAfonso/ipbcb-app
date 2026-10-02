@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.tabs
 
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireSaveState
 import com.ipb.castelobranco.core.domain.util.normalize
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
@@ -46,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +82,9 @@ fun RepertoireTab(
     onToneChange: (position: Int, tone: String) -> Unit,
     onToggleFixed: (position: Int) -> Unit,
     onGenerateClick: () -> Unit,
+    onClearClick: () -> Unit,
+    save: RepertoireSaveState = RepertoireSaveState(),
+    onSaveClick: () -> Unit = {},
     onSongInfoClick: (songId: Int) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -133,7 +138,14 @@ fun RepertoireTab(
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        val hasAnySelection = rows.any { it.selectedSong != null }
+        TextButton(
+            onClick = onClearClick,
+            enabled = !isRefreshing && hasAnySelection,
+            modifier = Modifier.align(Alignment.End).padding(horizontal = 4.dp),
+        ) {
+            Text(text = "Limpar repertório")
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -161,7 +173,30 @@ fun RepertoireTab(
                 }
             }
 
-            val hasAnySelection = rows.any { it.selectedSong != null }
+            if (save.canSave) {
+                Button(
+                    onClick = onSaveClick,
+                    enabled = !isRefreshing && save.isSaveEnabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (save.isSaving) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    } else {
+                        Text(text = "Salvar")
+                    }
+                }
+            }
+
             Button(
                 onClick = { share() },
                 enabled = !isRefreshing && hasAnySelection,

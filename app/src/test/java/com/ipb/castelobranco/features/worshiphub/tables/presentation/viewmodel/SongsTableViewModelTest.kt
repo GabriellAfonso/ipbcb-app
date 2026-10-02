@@ -67,7 +67,7 @@ class SongsTableViewModelTest {
         coEvery { repository.refreshAllSongs() } returns RefreshResult.Updated
         coEvery { repository.refreshSuggestedSongs(any<Map<Int, Int>>()) } returns RefreshResult.Updated
 
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
     }
 
     @After
@@ -86,7 +86,7 @@ class SongsTableViewModelTest {
     @Test
     fun `allSongs emits list when state is Data`() = runTest {
         every { repository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.allSongs.collect { } }
         advanceUntilIdle()
@@ -98,7 +98,7 @@ class SongsTableViewModelTest {
     @Test
     fun `allSongs emits empty list when state is Error`() = runTest {
         every { repository.observeAllSongs() } returns flowOf(SnapshotState.Error(AppError.Unknown()))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.allSongs.collect { } }
         advanceUntilIdle()
@@ -120,7 +120,7 @@ class SongsTableViewModelTest {
     @Test
     fun `lastSundays emits list when state is Data`() = runTest {
         every { repository.observeSongsBySunday() } returns flowOf(SnapshotState.Data(fakeSundays))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.lastSundays.collect { } }
         advanceUntilIdle()
@@ -142,7 +142,7 @@ class SongsTableViewModelTest {
     @Test
     fun `topSongs emits list when state is Data`() = runTest {
         every { repository.observeTopSongs() } returns flowOf(SnapshotState.Data(fakeTopSongs))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.topSongs.collect { } }
         advanceUntilIdle()
@@ -164,7 +164,7 @@ class SongsTableViewModelTest {
     @Test
     fun `topTones emits list when state is Data`() = runTest {
         every { repository.observeTopTones() } returns flowOf(SnapshotState.Data(fakeTopTones))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.topTones.collect { } }
         advanceUntilIdle()
@@ -186,7 +186,7 @@ class SongsTableViewModelTest {
     @Test
     fun `suggestedSongs emits list when state is Data`() = runTest {
         every { repository.observeSuggestedSongs() } returns flowOf(SnapshotState.Data(fakeSuggested))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         val job = launch { viewModel.suggestedSongs.collect { } }
         advanceUntilIdle()
@@ -316,7 +316,7 @@ class SongsTableViewModelTest {
             SundaySet("15/04/2024", listOf(SundaySetItem(1, "Oceans", "Hillsong", "G"))),
         )
         every { repository.observeSongsBySunday() } returns flowOf(SnapshotState.Data(sundays))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
         val job = launch { viewModel.lastSundays.collect { } }
         advanceUntilIdle()
 
@@ -332,7 +332,7 @@ class SongsTableViewModelTest {
             SundaySet("01/04/2024", listOf(SundaySetItem(1, "Oceans", "Hillsong", "D")))
         )
         every { repository.observeSongsBySunday() } returns flowOf(SnapshotState.Data(sundays))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
         val job = launch { viewModel.lastSundays.collect { } }
         advanceUntilIdle()
 
@@ -351,7 +351,7 @@ class SongsTableViewModelTest {
             ))
         )
         every { repository.observeSongsBySunday() } returns flowOf(SnapshotState.Data(sundays))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
         val job = launch { viewModel.lastSundays.collect { } }
         advanceUntilIdle()
 
@@ -445,7 +445,7 @@ class SongsTableViewModelTest {
     fun `refreshSuggestedSongs syncs unfixed rows from API response`() = runTest {
         every { repository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         every { repository.observeSuggestedSongs() } returns flowOf(SnapshotState.Data(fakeSuggested))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         viewModel.refreshSuggestedSongs(minDurationMs = 0L)
         advanceUntilIdle()
@@ -460,7 +460,7 @@ class SongsTableViewModelTest {
     fun `refreshSuggestedSongs does not overwrite fixed rows`() = runTest {
         every { repository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
         every { repository.observeSuggestedSongs() } returns flowOf(SnapshotState.Data(fakeSuggested))
-        viewModel = SongsTableViewModel(repository)
+        viewModel = songsTableViewModel(repository)
 
         viewModel.selectSong(position = 1, song = fakeSongs[1])
         viewModel.toggleFixed(position = 1)
