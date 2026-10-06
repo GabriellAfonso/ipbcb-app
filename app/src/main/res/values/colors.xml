@@ -9,4 +9,6 @@
     <color name="white">#FFFFFFFF</color>
     <color name="background_light">#F8FAF7</color>
     <color name="background_dark">#111413</color>
+    <!-- Tints the notification icon circle; matches the app launcher icon's green. -->
+    <color name="notification_accent">#FF045948</color>
 </resources>

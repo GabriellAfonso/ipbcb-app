@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.ForegroundInfo
 import com.ipb.castelobranco.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,7 +61,8 @@ class GalleryUploadNotifications @Inject constructor(
     private fun builder(): NotificationCompat.Builder {
         ensureChannel()
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
             .setPriority(NotificationCompat.PRIORITY_LOW)
     }
 

@@ -61,7 +61,8 @@ class BirthdayNotificationWorker @AssistedInject constructor(
     private fun notifySingle(birthday: Birthday) {
         val message = randomMessage(birthday)
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ContextCompat.getColor(applicationContext, R.color.notification_accent))
             .setContentTitle("Aniversariante do dia")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
@@ -83,7 +84,8 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         birthdays.forEach { inboxStyle.addLine(randomMessage(it)) }
 
         val summary = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ContextCompat.getColor(applicationContext, R.color.notification_accent))
             .setContentTitle(summaryText)
             .setContentText("Toque para ver")
             .setStyle(inboxStyle)
@@ -97,7 +99,8 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         birthdays.forEachIndexed { index, birthday ->
             val message = randomMessage(birthday)
             val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setColor(ContextCompat.getColor(applicationContext, R.color.notification_accent))
                 .setContentTitle("Aniversariante do dia")
                 .setContentText(message)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(message))

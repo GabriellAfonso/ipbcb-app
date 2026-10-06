@@ -49,6 +49,14 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Icon and tint for any notification the system shows on the app's behalf. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
+
         <!-- Firebase Cloud Messaging: Sunday setlist and play-confirmation data messages. -->
         <service
             android:name=".core.data.push.IpbMessagingService"
