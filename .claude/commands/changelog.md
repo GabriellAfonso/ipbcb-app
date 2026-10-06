@@ -1,15 +1,15 @@
 ---
 description: Gera um changelog em pt-BR agrupado por área, salva em changelogs/vX.Y.Z.md e exibe versão resumida para Play Store (≤500 chars). Use: /changelog 0.9.6 0.9.7
-allowed-tools: Bash(git log:*), Bash(git tag:*), Bash(git rev-parse:*), Bash(mkdir:*), Bash(tee:*), Bash(echo:*), Bash(grep:*), Bash(sed:*)
+allowed-tools: Bash(bash .claude/scripts/changelog-range.sh:*), Bash(git log:*), Bash(git tag --list:*), Bash(git rev-parse:*), Bash(grep:*), Bash(sed:*), Bash(mkdir:*), Bash(tee:*), Bash(echo:*)
 ---
 
 ## Contexto
 
 - Versão atual do app: !`grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/'`
-- Tags de versão: !`git tag --sort=-version:refname | head -10 || echo "(nenhuma tag)"`
-- Range resolvido: !`A="$ARGUMENTS"; r(){ git rev-parse -q --verify "v$1^{commit}" || git rev-parse -q --verify "$1^{commit}" || git log --format=%H --grep="bump version to $1" -1; }; if [ -z "$A" ]; then L=$(git tag --sort=-version:refname | head -1); echo "${L:-(sem tag)}..HEAD"; elif [ "${A#*..}" != "$A" ]; then echo "$A"; else set -- $A; F=$(r "$1"); T=$([ -n "$2" ] && r "$2"); echo "$1..${2:-HEAD}  =  $(git rev-parse --short ${F:-HEAD})..$(git rev-parse --short ${T:-HEAD})"; fi`
-- Commits do range: !`A="$ARGUMENTS"; r(){ git rev-parse -q --verify "v$1^{commit}" || git rev-parse -q --verify "$1^{commit}" || git log --format=%H --grep="bump version to $1" -1; }; if [ -z "$A" ]; then L=$(git tag --sort=-version:refname | head -1); git log --oneline --no-merges ${L:+$L..}HEAD; elif [ "${A#*..}" != "$A" ]; then git log --oneline --no-merges $A; else set -- $A; F=$(r "$1"); T=$([ -n "$2" ] && r "$2"); git log --oneline --no-merges ${F:+$F..}${T:-HEAD}; fi`
-- Log completo com corpo: !`A="$ARGUMENTS"; r(){ git rev-parse -q --verify "v$1^{commit}" || git rev-parse -q --verify "$1^{commit}" || git log --format=%H --grep="bump version to $1" -1; }; if [ -z "$A" ]; then L=$(git tag --sort=-version:refname | head -1); git log --pretty=format:"%s|%b" --no-merges ${L:+$L..}HEAD; elif [ "${A#*..}" != "$A" ]; then git log --pretty=format:"%s|%b" --no-merges $A; else set -- $A; F=$(r "$1"); T=$([ -n "$2" ] && r "$2"); git log --pretty=format:"%s|%b" --no-merges ${F:+$F..}${T:-HEAD}; fi`
+- Tags de versão: !`T=$(git tag --list 'v*' --sort=-version:refname | head -10); echo "${T:-(nenhuma tag)}"`
+- Range resolvido: !`bash .claude/scripts/changelog-range.sh $ARGUMENTS`
+- Commits do range: !`R=$(bash .claude/scripts/changelog-range.sh $ARGUMENTS) && git log --oneline --no-merges "$R" || echo "$R"`
+- Log completo com corpo: !`R=$(bash .claude/scripts/changelog-range.sh $ARGUMENTS) && git log --pretty=format:"%s|%b" --no-merges "$R" || echo "$R"`
 
 ## Sua tarefa
 
@@ -19,48 +19,50 @@ Gere um changelog completo e salve-o em arquivo. Siga os passos abaixo na ordem.
 
 ### Passo 1 — Identificar a versão alvo
 
-O range é resolvido por **tag de versão**. Cada release lançada tem uma tag `vX.Y.Z` apontando para
-o commit que virou APK. Se a tag não existir, o resolvedor cai no commit
-`chore(release): bump version to X.Y.Z` — que é aproximado, porque o bump nem sempre é o último
-commit da versão.
+O range é resolvido por **tag de versão** (`.claude/scripts/changelog-range.sh`). Cada release tem uma tag
+`vX.Y.Z`, criada pelo `/release` no commit que vira o `.aab`. Se a tag não existir, o resolvedor cai no commit
+`chore(release): bump version to X.Y.Z` — aproximado, porque o bump nem sempre é o último commit da versão.
 
-Formas aceitas em `$ARGUMENTS`:
+Formas aceitas em `$ARGUMENTS` (com ou sem `v`):
 
-- `0.9.6 0.9.7` — da tag `v0.9.6` (exclusiva) até a `v0.9.7` (inclusiva). **Versão alvo: `0.9.7`**
+- `0.9.6 0.9.7` — da tag `v0.9.6` (exclusiva) até a `v0.9.7` (inclusiva). **Versão alvo: `0.9.7`**. É a forma
+  recomendada depois de um `/release`.
 - `0.9.6` — da tag `v0.9.6` até `HEAD`. Versão alvo: o `versionName` atual
-- `<sha>..HEAD` ou `<ref>..<ref>` — range literal do git, usado como veio
-- sem argumento — da tag mais recente até `HEAD`. Versão alvo: o `versionName` atual
+- `<ref>..<ref>` — range literal do git, usado como veio. Versão alvo: o `versionName` atual
+- sem argumento — da tag mais recente até `HEAD`. Se a tag mais recente já está no `HEAD` (logo depois do
+  `/release`), usa da penúltima até ela. Versão alvo: a versão da tag final, ou o `versionName` atual quando o
+  range termina em `HEAD`
 
-O bloco **Range resolvido** acima mostra o intervalo que realmente foi usado, com os SHAs. Confira
-antes de gerar: se a versão informada não tiver tag nem commit de bump, o lado do range vem vazio e
-o `git log` devolve o histórico inteiro — nesse caso avise em vez de gerar.
+Confira o bloco **Range resolvido** antes de gerar. Se ele começar com `UNRESOLVED`, **pare e avise** o motivo —
+não gere nada. Se o range vier vazio (nenhum commit), avise também.
 
-### Ao lançar uma versão nova
-
-Depois de publicar, marque o commit lançado para que o próximo changelog tenha o range exato:
-
-```bash
-git tag vX.Y.Z <sha-do-commit-lançado>
-git push origin vX.Y.Z
-```
+Este comando nunca cria, move ou apaga tags — isso é feito pelo usuário via `/release`.
 
 ---
 
 ### Passo 2 — Mapeamento de escopos → seções
 
-| Escopos dos commits                            | Seção no changelog                                                              |
-|------------------------------------------------|---------------------------------------------------------------------------------|
-| `hymnal`, `hinario`                            | **Hinário**                                                                     |
-| `chord`, `cifra`, `lyrics`, `letra`            | **Cifras e Letras**                                                             |
-| `worshiphub`, `repertorio`                     | **Repertório**                                                                  |
-| `gallery`, `galeria`                           | **Galeria**                                                                     |
-| `bible`, `biblia`                              | **Bíblia**                                                                      |
-| `schedule`, `agenda`                           | **Agenda**                                                                      |
-| `studies`, `estudos`                           | **Estudos**                                                                     |
-| `auth`, `profile`, `settings`, `core`          | **Geral**                                                                       |
-| Sem escopo reconhecível                        | **Geral**                                                                       |
+| Escopos dos commits                                  | Seção no changelog           |
+|------------------------------------------------------|------------------------------|
+| `hymnal`, `hinario`                                  | **Hinário**                  |
+| `chord`, `cifra`, `lyrics`, `letra`                  | **Cifras e Letras**          |
+| `worshiphub`, `repertorio`, `setlist`                | **Repertório**               |
+| `gallery`, `galeria`                                 | **Galeria**                  |
+| `bible`, `biblia`                                    | **Bíblia**                   |
+| `schedule`, `agenda`                                 | **Agenda**                   |
+| `studies`, `estudos`                                 | **Estudos**                  |
+| `members`, `birthdays`                               | **Membros e aniversariantes** |
+| `auth`, `profile`, `settings`, `home`, `theme`, `notifications`, `access` | **Geral**   |
+| Sem escopo reconhecível                              | **Geral**                    |
 
-> **Atenção — escopo `admin`:** commits com escopo `admin` devem ser classificados pela feature que afetam (leia o body do commit). Ex: `feat(admin): add chord chart creation` → **Cifras e Letras**, não Geral. Só use Geral se o commit for sobre o painel admin em si.
+> **Escopos transversais — classifique pelo body, não pelo escopo:** `core`, `admin`, `push` e `reports` mexem em
+> código compartilhado ou no painel, mas quase sempre afetam uma feature específica. Leia o body e coloque na seção
+> da feature. Ex.: `feat(push): distribute the sunday setlist` → **Repertório**; `feat(reports): make hymnal
+> configuration owner-only` → **Hinário**; `feat(core): ...setlist...` → **Repertório**. Só use **Geral** quando o
+> commit for sobre o app como um todo (login, navegação, tema, permissões) ou sobre o painel admin em si.
+
+> **Sempre omitidos:** `build`, `deps`, `specs`, `speckit`, `claude`, `changelog`, `release`, `test` — exceto se o
+> body descrever algo que o usuário final percebe.
 
 ---
 
@@ -69,13 +71,13 @@ git push origin vX.Y.Z
 Formato do arquivo `.md`:
 
 ~~~
-# Changelog — <versão alvo>
+# Changelog — v<versão alvo>
 
-> Gerado em: <data atual>
-> Commits: <range ou "últimos 30">
+> Gerado em: <data atual, dd/MM/yyyy>
+> Commits: `<range resolvido>` (`<sha curto inicial>..<sha curto final>`, <N> commits)
 
 ## <Seção com mais mudanças>
-- <Descrição humana, imperativo, pt-BR — pode ser detalhada>
+- <Descrição humana, pt-BR — pode ser detalhada>
 - ...
 
 ## <Próxima seção>
@@ -106,25 +108,29 @@ Formato do arquivo `.md`:
 
 ### Passo 4 — Salvar o arquivo
 
-Execute o seguinte comando para criar a pasta e salvar:
+O arquivo é sempre `changelogs/v<versão alvo>.md` (com `v`, como os existentes):
 
 ```bash
-mkdir -p changelogs && tee changelogs/<versão-alvo>.md << 'EOF'
+mkdir -p changelogs && tee changelogs/v<versão-alvo>.md << 'EOF'
 <conteúdo gerado>
 EOF
 ```
 
-Confirme a criação com: `echo "✅ Salvo em changelogs/<versão-alvo>.md"`
+Confirme a criação com: `echo "✅ Salvo em changelogs/v<versão-alvo>.md"`
 
 ---
 
 ### Regras gerais
 
-1. **Leia o body dos commits** — o título sozinho não basta. Use o body (disponível no log completo acima) para entender *o que* a mudança faz e *onde* ela se aplica. Não assuma a seção só pelo escopo do título.
-2. **Traduza e humanize** — não copie mensagens de commit cruas. `feat(hymnal): add vertical scroll mode` → `Novo modo de rolagem vertical`.
+1. **Leia o body dos commits** — o título sozinho não basta. Use o body (disponível no log completo acima) para
+   entender *o que* a mudança faz e *onde* ela se aplica. Não assuma a seção só pelo escopo do título.
+2. **Traduza e humanize** — não copie mensagens de commit cruas. `feat(hymnal): add vertical scroll mode` →
+   `Novo modo de rolagem vertical`.
 3. **Agrupe semanticamente** — múltiplos commits da mesma funcionalidade viram uma linha.
-4. **Omita** chore, test, docs, bump de versão e refactors internos — só o que o usuário final percebe.
+4. **Omita** chore, test, docs, bump de versão e refactors internos — só o que o usuário final percebe. Mudanças
+   só do build de debug também ficam de fora.
 5. **Ordem das seções:** mais mudanças primeiro; "Geral" sempre por último.
 6. **Sem seções vazias** — omita seções sem mudanças visíveis ao usuário.
-7. **Versão Play Store:** máximo **500 caracteres** (incluindo espaços). Se não couber tudo, priorize as mudanças mais impactantes. Informe a contagem ao final: `(XXX/500 caracteres)`.
+7. **Versão Play Store:** máximo **500 caracteres** (incluindo espaços). Se não couber tudo, priorize as mudanças
+   mais impactantes. Informe a contagem ao final: `(XXX/500 caracteres)`.
 8. O bloco Play Store deve ser a **última seção do arquivo**, separada por `---`, para fácil localização e cópia.
