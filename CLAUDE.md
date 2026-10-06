@@ -114,6 +114,21 @@ Both environments can build/test simultaneously without cleaning. First run on a
 - Conventional Commits: `feat`, `fix`, `refactor`, `chore`, `test`, `docs`.
 - Version bump in separate commit: `chore(release): bump version to X.Y.Z`.
 
+## Release
+
+The release is done by the user, never by Claude. Claude must never run `/release`, bump `versionName` /
+`versionCode`, or create tags on its own — not even as a suggestion mid-task. The checklist below is the user's
+reminder before generating a release `.aab`.
+
+`/release X.Y.Z` bumps `versionName` and `versionCode` (+1), commits `chore(release): bump version to X.Y.Z` and
+creates tag `vX.Y.Z`.
+
+1. `/release X.Y.Z` (user types it)
+2. Build the `.aab` from that commit (the tag must point to what ships; if it ships from a later commit,
+   `git tag -f vX.Y.Z <sha>`).
+3. `/changelog <previous> X.Y.Z` — resolves its range from the tags, so a missing tag breaks the next changelog.
+4. Push manually: `git push && git push origin vX.Y.Z`.
+
 ## Pitfalls
 
 1. **Graph-scoped VM:** In existing graphs (hymnal, gallery, worshiphub, admin), use `hiltViewModel(graphEntry)` — not bare `hiltViewModel()`. **`CoreViewModel` is the exception:** `AppNavHost` resolves it outside the `NavHost` (Activity scope), so `hiltViewModel(getBackStackEntry(AppRoutes.CORE))` returns a *second*, never-initialized instance. Pass what you need down as a parameter to the graph.
