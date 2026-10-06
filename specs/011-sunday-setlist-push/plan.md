@@ -163,7 +163,7 @@ app/src/main/java/com/ipb/castelobranco/
 │   │       ├── viewmodel/SongsTableViewModel.kt           # draft restore/save, clear, save flow, events
 │   │       ├── viewmodel/RepertoireTexts.kt (new)
 │   │       ├── screens/SongsTableScreen.kt                # new actions, event collection, dialog
-│   │       └── tabs/SuggestionsTab.kt                     # Gerar | Salvar | Compartilhar, "Limpar repertório"
+│   │       └── tabs/SuggestionsTab.kt                     # Gerar | Salvar; clear + share icons right, below rows
 │   ├── shared/
 │   │   ├── domain/SundaySection.kt (new)
 │   │   └── presentation/components/SongContentListScreen.kt, SundaySectionList.kt (new)

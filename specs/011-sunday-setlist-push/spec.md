@@ -107,7 +107,8 @@ hour without changes and check the tab is empty.
 
 ### User Story 2 - A leader saves the Sunday setlist (Priority: P1)
 
-A user who can save sees "Salvar" between "Gerar" and "Compartilhar". Tapping it asks to confirm the save for the
+A user who can save sees "Salvar" next to "Gerar" (sharing is a small icon on the right, just below the rows).
+Tapping "Salvar" asks to confirm the save for the
 Sunday it applies to (today if today is Sunday, otherwise next Sunday), sends the filled rows in their positions, and
 tells the user the result. A mistake is fixed by saving again.
 
@@ -285,14 +286,16 @@ from the card, return and check only the other remains.
 - **FR-002**: On opening the tab, the app MUST restore the stored rows when the last change was less than one hour ago;
   otherwise it MUST discard the draft and show empty rows. Every change renews the hour.
 - **FR-003**: A restored row whose song is not in the song catalog MUST come back empty; other rows are unaffected.
-- **FR-004**: "Limpar repertório" MUST empty every row and delete the stored draft.
+- **FR-004**: "Limpar repertório" MUST empty every row and delete the stored draft. It is a small clear icon
+  (content description "Limpar repertório") beside the share icon, enabled only when a row is filled.
 - **FR-005**: The draft MUST be local to the device, never sent to the server, never filled from a server setlist, and
   kept across logout.
 
 **Save**
 
-- **FR-006**: "Salvar" MUST be shown only when the profile allows saving a setlist; "Gerar" and "Compartilhar" stay as
-  today, available to everyone who sees the tab.
+- **FR-006**: "Salvar" MUST be shown only when the profile allows saving a setlist; "Gerar" and sharing stay
+  available to everyone who sees the tab. Sharing is a small share icon (content description "Compartilhar") on the
+  right, just below the rows, not a text button.
 - **FR-007**: The setlist date MUST be today when today is Sunday, otherwise the next Sunday, using the device's calendar
   date; the user MUST see that date (dd/MM) and confirm before the save is sent.
 - **FR-008**: The save MUST send only the filled rows, each with its own position and key.
