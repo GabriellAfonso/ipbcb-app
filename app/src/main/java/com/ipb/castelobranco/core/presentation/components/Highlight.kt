@@ -30,6 +30,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.domain.model.Gender
+import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
+import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleRowUi
 import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleSectionUi
 
 // ─── Main Highlight Carousel ────────────────────────────────────────────────
@@ -104,8 +106,11 @@ fun Highlight(
     }
 }
 
+private const val PAST_ROW_ALPHA = 0.45f
+
 @Composable
-fun HighlightSundaySchedule(section: ScheduleSectionUi) {
+fun HighlightSundaySchedule(schedule: NextScheduleUi) {
+    val section = schedule.section
     val rows = section.rows.sortedBy { it.day }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -136,44 +141,36 @@ fun HighlightSundaySchedule(section: ScheduleSectionUi) {
             }
         }
 
-        // Table header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceDim)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = "Dia",
-                modifier = Modifier.weight(0.25f),
-                style = MaterialTheme.typography.labelLarge
-            )
-            Text(
-                text = "Responsável",
-                modifier = Modifier.weight(0.75f),
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-
-        // Schedule rows
-        Column(modifier = Modifier.fillMaxWidth()) {
+        // Schedule rows: each takes an equal share of the remaining height, so 4 or 5 rows fill the card
+        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
             rows.forEachIndexed { index, row ->
+                val isNext = row.day == schedule.nextDay
+                val isPast = schedule.nextDay == null || row.day < schedule.nextDay
+                val color = when {
+                    isNext -> MaterialTheme.colorScheme.primary
+                    isPast -> MaterialTheme.colorScheme.onSurface.copy(alpha = PAST_ROW_ALPHA)
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 9.dp),
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = String.format(java.util.Locale.getDefault(), "%02d", row.day),
                         modifier = Modifier.weight(0.25f),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = if (isNext) FontWeight.Bold else FontWeight.SemiBold,
+                        color = color
                     )
                     Text(
                         text = row.member,
                         modifier = Modifier.weight(0.75f),
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isNext) FontWeight.Bold else null,
+                        color = color,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -353,6 +350,51 @@ private fun HighlightPreview() {
             { HighlightEvents() }
         )
     )
+}
+
+@Preview(showBackground = true, name = "Card - schedule 4 rows (next = 9)")
+@Composable
+private fun HighlightSchedule4Preview() {
+    Highlight(pages = listOf {
+        HighlightSundaySchedule(
+            schedule = NextScheduleUi(
+                section = ScheduleSectionUi(
+                    title = "Terça",
+                    time = "19:30",
+                    rows = listOf(
+                        ScheduleRowUi(day = 2, member = "Ana Silva"),
+                        ScheduleRowUi(day = 9, member = "Carlos Oliveira"),
+                        ScheduleRowUi(day = 16, member = "Pedro Almeida"),
+                        ScheduleRowUi(day = 23, member = "Juliana Costa"),
+                    )
+                ),
+                nextDay = 9
+            )
+        )
+    })
+}
+
+@Preview(showBackground = true, name = "Card - schedule 5 rows (next = 15)")
+@Composable
+private fun HighlightSchedule5Preview() {
+    Highlight(pages = listOf {
+        HighlightSundaySchedule(
+            schedule = NextScheduleUi(
+                section = ScheduleSectionUi(
+                    title = "Domingo",
+                    time = "18:00",
+                    rows = listOf(
+                        ScheduleRowUi(day = 1, member = "Ana Silva"),
+                        ScheduleRowUi(day = 8, member = "Carlos Oliveira"),
+                        ScheduleRowUi(day = 15, member = "Gabriela Martins de Albuquerque"),
+                        ScheduleRowUi(day = 22, member = "Pedro Almeida"),
+                        ScheduleRowUi(day = 29, member = "Juliana Costa"),
+                    )
+                ),
+                nextDay = 15
+            )
+        )
+    })
 }
 
 @Preview(showBackground = true, name = "Card - 4 birthdays (1 col)")

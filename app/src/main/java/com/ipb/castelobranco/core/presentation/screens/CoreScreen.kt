@@ -26,7 +26,7 @@ import com.ipb.castelobranco.core.presentation.components.HighlightScheduleUnava
 import com.ipb.castelobranco.core.presentation.components.HighlightSundaySchedule
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
 import com.ipb.castelobranco.features.profile.presentation.viewmodel.ProfileViewModel
-import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleSectionUi
+import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
 import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -120,7 +120,7 @@ fun CoreScreen(
     onNavigateToAdmin: () -> Unit,
     onNavigateToBirthdays: () -> Unit,
     authState: UserAuthState,
-    nextSection: ScheduleSectionUi?,
+    nextSection: NextScheduleUi?,
     birthdays: List<Birthday>,
     onLogout: () -> Unit,
 ) {
@@ -162,14 +162,14 @@ fun CoreScreen(
 }
 
 private fun buildHighlightPages(
-    nextSection: ScheduleSectionUi?,
+    nextSection: NextScheduleUi?,
     birthdays: List<Birthday> = emptyList(),
     onBirthdaysClick: () -> Unit = {},
 ): List<@Composable () -> Unit> = buildList {
     add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
 
     if (nextSection != null) {
-        add { HighlightSundaySchedule(section = nextSection) }
+        add { HighlightSundaySchedule(schedule = nextSection) }
     } else {
         add { HighlightScheduleUnavailable() }
     }

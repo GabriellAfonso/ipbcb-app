@@ -34,6 +34,13 @@ data class ScheduleSectionUi(
     val rows: List<ScheduleRowUi>
 )
 
+/** Section shown on the home highlight; [nextDay] is the upcoming date, null when every date has passed. */
+@Immutable
+data class NextScheduleUi(
+    val section: ScheduleSectionUi,
+    val nextDay: Int?
+)
+
 @Composable
 fun MonthScheduleTable(
     sections: List<ScheduleSectionUi>?,

@@ -220,6 +220,37 @@ class ScheduleViewModelTest {
 
     // endregion
 
+    // region resolveNextDay
+
+    private val sundays = listOf(29, 1, 8, 15, 22)
+
+    @Test
+    fun `resolveNextDay returns first day on or after today in the current month`() {
+        assertEquals(15, resolveNextDay(sundays, 2026, 10, 2026, 10, 10))
+    }
+
+    @Test
+    fun `resolveNextDay treats today as the next day`() {
+        assertEquals(8, resolveNextDay(sundays, 2026, 10, 2026, 10, 8))
+    }
+
+    @Test
+    fun `resolveNextDay is null when every date of the current month has passed`() {
+        assertNull(resolveNextDay(sundays, 2026, 10, 2026, 10, 30))
+    }
+
+    @Test
+    fun `resolveNextDay returns the first day for a future month`() {
+        assertEquals(1, resolveNextDay(sundays, 2027, 1, 2026, 12, 31))
+    }
+
+    @Test
+    fun `resolveNextDay is null for a past month`() {
+        assertNull(resolveNextDay(sundays, 2026, 9, 2026, 10, 1))
+    }
+
+    // endregion
+
     // region refreshMonthSchedule
 
     @Test

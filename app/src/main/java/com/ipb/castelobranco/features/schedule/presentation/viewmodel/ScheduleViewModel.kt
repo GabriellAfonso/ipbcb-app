@@ -7,6 +7,7 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.schedule.domain.model.MonthSchedule
 import com.ipb.castelobranco.features.schedule.domain.repository.ScheduleRepository
+import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
 import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleSectionUi
 import com.ipb.castelobranco.features.schedule.presentation.mapper.toSectionsUi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +17,28 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import timber.log.Timber
 import javax.inject.Inject
+
+/**
+ * First of [days] that is today or later. A schedule for a future month has no past dates;
+ * one for a past month has no upcoming date (null).
+ */
+internal fun resolveNextDay(
+    days: List<Int>,
+    scheduleYear: Int,
+    scheduleMonth: Int,
+    todayYear: Int,
+    todayMonth: Int,
+    todayDay: Int,
+): Int? {
+    val scheduleKey = scheduleYear * 12 + scheduleMonth
+    val todayKey = todayYear * 12 + todayMonth
+    val threshold = when {
+        scheduleKey > todayKey -> 0
+        scheduleKey < todayKey -> return null
+        else -> todayDay
+    }
+    return days.sorted().firstOrNull { it >= threshold }
+}
 
 sealed interface ScheduleUiState {
     object Loading : ScheduleUiState
@@ -44,10 +67,23 @@ class ScheduleViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = mapSnapshotToUiState(repository.getCurrentSnapshot())
         )
-    val nextSection: StateFlow<ScheduleSectionUi?> = uiState
+    val nextSection: StateFlow<NextScheduleUi?> = uiState
         .map { state ->
             if (state is ScheduleUiState.Success) {
-                findNextSection(state.sections)
+                findNextSection(state.sections)?.let { section ->
+                    val calendar = Calendar.getInstance()
+                    NextScheduleUi(
+                        section = section,
+                        nextDay = resolveNextDay(
+                            days = section.rows.map { it.day },
+                            scheduleYear = state.data.year,
+                            scheduleMonth = state.data.month,
+                            todayYear = calendar.get(Calendar.YEAR),
+                            todayMonth = calendar.get(Calendar.MONTH) + 1,
+                            todayDay = calendar.get(Calendar.DAY_OF_MONTH),
+                        )
+                    )
+                }
             } else null
         }
         .stateIn(

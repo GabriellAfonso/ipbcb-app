@@ -532,9 +532,18 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 | Pagina | Conteudo |
 |--------|----------|
 | 1 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
-| 2 | Escala do Domingo (tabela dia x membro) |
+| 2 | Escala do proximo culto (tabela dia x membro) |
 | 3 | Eventos |
 | Fallback | "Agenda indisponivel" (se dados nao carregaram) |
+
+**Card da escala.** Mostra a secao do proximo culto (`ScheduleViewModel.nextSection`, tipo `NextScheduleUi`):
+cabecalho com titulo + horario e uma linha por data do mes, sem cabecalho de colunas. Um dia da semana
+pode cair 5 vezes no mes, entao o card precisa caber 5 linhas: as linhas dividem por igual a altura
+abaixo do cabecalho, entao 4 ou 5 linhas ocupam o card inteiro, sem sobra no rodape. Destaque por data,
+calculado no ViewModel (`nextDay`):
+- **proxima data** (primeiro dia >= hoje): dia e nome em negrito, cor `primary`;
+- **datas passadas** (dia < `nextDay`, ou todas quando `nextDay` e nulo): texto esmaecido;
+- escala de mes futuro: nenhuma data passada, a primeira e a proxima; escala de mes anterior: todas passadas.
 
 HorizontalPager com auto-scroll (tween 600ms), cards com rounded corners (16dp) e shadow (6dp).
 
