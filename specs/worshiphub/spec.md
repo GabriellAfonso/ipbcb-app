@@ -206,7 +206,10 @@ secao "Repertorio de domingo dd/MM" com as musicas do repertorio guardado no apa
 Com busca ativa a secao some e as musicas dela voltam para a lista filtrada. A secao aparece desde que o
 repertorio chega ate o fim do domingo dele (`ObserveSundaySetlistUseCase`), e funciona offline. Tap abre o
 detalhe como qualquer item. Montada por `buildSundaySection` (`worshiphub/shared/domain`) e desenhada por
-`SongContentListScreen(sundaySection = ...)`. Os fixados manuais continuam como antes, separados.
+`SongContentListScreen(sundaySection = ...)`. Os fixados manuais continuam como antes, separados. O
+pull-to-refresh (de Cifras e de Letras) tambem rele o repertorio (`SyncSundaySetlistUseCase`), junto com o
+catalogo: e o gesto que se tenta quando a secao nao apareceu. Falha nessa leitura e silenciosa, como na
+abertura do app.
 
 **Dados:** `GET chord-charts/`
 ```

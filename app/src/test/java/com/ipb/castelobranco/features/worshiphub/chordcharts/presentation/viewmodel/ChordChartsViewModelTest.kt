@@ -12,6 +12,7 @@ import com.ipb.castelobranco.core.testing.FakeAccessRepository
 import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
 import com.ipb.castelobranco.core.testing.setlistOf
 import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.model.ChordChart
 import java.time.LocalDate
@@ -53,6 +54,9 @@ class ChordChartsViewModelTest {
     private lateinit var setlistPreferences: SetlistPreferences
     private val accessRepository = FakeAccessRepository()
     private val sundaySetlist = FakeSundaySetlistRepository()
+    private val syncSundaySetlist: SyncSundaySetlistUseCase = mockk {
+        coEvery { this@mockk.invoke() } returns Result.success(Unit)
+    }
     private lateinit var viewModel: ChordChartsViewModel
 
     private val fakeSongs = listOf(
@@ -91,6 +95,7 @@ class ChordChartsViewModelTest {
         setlistPreferences,
         ObserveAccessUseCase(accessRepository),
         ObserveSundaySetlistUseCase(sundaySetlist, DateProvider { TODAY }),
+        syncSundaySetlist,
     )
 
     // region uiState — edit buttons follow `songs` (spec 006)
@@ -314,6 +319,22 @@ class ChordChartsViewModelTest {
         viewModel.refresh(minDurationMs = 0L)
         advanceUntilIdle()
         coVerify { getChordChartsUseCase.refresh() }
+    }
+
+    @Test
+    fun `refresh also re-reads the Sunday setlist`() = runTest {
+        viewModel.refresh(minDurationMs = 0L)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { syncSundaySetlist() }
+    }
+
+    @Test
+    fun `a failed setlist read does not break the refresh`() = runTest {
+        coEvery { syncSundaySetlist() } returns Result.failure(IllegalStateException("offline"))
+        viewModel.refresh(minDurationMs = 0L)
+        advanceUntilIdle()
+        coVerify { getChordChartsUseCase.refresh() }
+        assertFalse(viewModel.isRefreshing.value)
     }
 
     @Test

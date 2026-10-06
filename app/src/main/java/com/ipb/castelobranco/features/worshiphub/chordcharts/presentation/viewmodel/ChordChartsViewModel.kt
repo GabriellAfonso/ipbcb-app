@@ -14,6 +14,7 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartsUiState
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
 import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
+import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
 import com.ipb.castelobranco.features.worshiphub.shared.domain.buildSundaySection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -34,6 +35,7 @@ class ChordChartsViewModel @Inject constructor(
     private val setlistPreferences: SetlistPreferences,
     observeAccess: ObserveAccessUseCase,
     observeSundaySetlist: ObserveSundaySetlistUseCase,
+    private val syncSundaySetlist: SyncSundaySetlistUseCase,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -53,8 +55,14 @@ class ChordChartsViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             val start = System.currentTimeMillis()
+            // Pulling also re-reads the Sunday setlist: the gesture people try when it has not shown up.
+            val setlist = launch {
+                runCatching { syncSundaySetlist() }.getOrElse { Result.failure(it) }
+                    .onFailure { Timber.w(it, "Failed to refresh the Sunday setlist") }
+            }
             runCatching { getChordChartsUseCase.refresh() }
                 .onFailure { Timber.w(it, "Failed to refresh chord charts") }
+            setlist.join()
             val elapsed = System.currentTimeMillis() - start
             if (elapsed < minDurationMs) delay(minDurationMs - elapsed)
             _isRefreshing.value = false
