@@ -5,8 +5,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,17 +17,19 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -123,12 +128,12 @@ fun MemberPhotoPreview(
 }
 
 /**
- * The photo (or the initials) full screen, over a dark background. The camera in the top-left
- * corner picks a photo, or removes the current one; the close button and system back leave.
+ * The photo (or the initials) full screen, over a dark background. "Trocar foto" in the top-left
+ * corner opens the picker straight away; the trash next to it removes the current photo. The close
+ * button and system back leave.
  *
  * @param onPickPhoto null when the user may not change the photo (`manage` on `members`).
- * @param onRemovePhoto null when the user may not remove it (`owner` on `members`). With both null
- *   there is no camera at all.
+ * @param onRemovePhoto null when the user may not remove it (`owner` on `members`).
  */
 @Composable
 fun MemberPhotoViewer(
@@ -141,7 +146,6 @@ fun MemberPhotoViewer(
     onDismiss: () -> Unit,
 ) {
     val canRemove = onRemovePhoto != null && photoUrl != null
-    var menuOpen by remember { mutableStateOf(false) }
     val buttonColors = IconButtonDefaults.iconButtonColors(
         containerColor = Color.Black.copy(alpha = BUTTON_ALPHA),
         contentColor = Color.White,
@@ -167,27 +171,32 @@ fun MemberPhotoViewer(
                     .align(Alignment.Center),
             )
             if (isBusy) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
-            if (onPickPhoto != null || canRemove) Box(
+            if (onPickPhoto != null || canRemove) Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .safeDrawingPadding()
                     .padding(8.dp),
             ) {
-                IconButton(onClick = { menuOpen = true }, enabled = !isBusy, colors = buttonColors) {
-                    Icon(Icons.Filled.PhotoCamera, contentDescription = "Trocar foto")
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    if (onPickPhoto != null) {
-                        DropdownMenuItem(
-                            text = { Text("Escolher foto") },
-                            onClick = { menuOpen = false; onPickPhoto() },
-                        )
+                if (onPickPhoto != null) {
+                    TextButton(
+                        onClick = onPickPhoto,
+                        enabled = !isBusy,
+                        shape = CircleShape,
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = Color.Black.copy(alpha = BUTTON_ALPHA),
+                            contentColor = Color.White,
+                        ),
+                        contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Trocar foto", modifier = Modifier.padding(start = 8.dp))
                     }
-                    if (canRemove) {
-                        DropdownMenuItem(
-                            text = { Text("Remover foto") },
-                            onClick = { menuOpen = false; onRemovePhoto?.invoke() },
-                        )
+                }
+                if (canRemove) {
+                    IconButton(onClick = { onRemovePhoto?.invoke() }, enabled = !isBusy, colors = buttonColors) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Remover foto")
                     }
                 }
             }

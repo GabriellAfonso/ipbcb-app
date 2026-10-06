@@ -278,13 +278,67 @@ class MemberFormViewModelTest {
     }
 
     @Test
-    fun `a new member ignores picked photos`() = runTest {
+    fun `a new member previews a picked photo`() = runTest {
         val vm = viewModel()
         advanceUntilIdle()
 
         vm.onPhotoPicked(jpeg)
 
+        assertTrue(vm.uiState.value.pickedPhoto.contentEquals(jpeg))
+        assertTrue(vm.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `a new member's initials follow the typed name`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onDraftChanged(vm.uiState.value.draft.copy(name = "Bruno Lima"))
+
+        assertEquals("BL", vm.uiState.value.initials)
+    }
+
+    @Test
+    fun `creating with a photo uploads it to the new id`() = runTest {
+        val uploadedTo = mutableListOf<Int>()
+        api.onCreateMember = { ok(recordDto(id = 40, name = "Bruno")) }
+        api.onUploadPhoto = { id, _ -> uploadedTo += id; ok(PhotoUrlDto("https://host/n.jpg")) }
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onDraftChanged(vm.uiState.value.draft.copy(name = "Bruno"))
+        vm.onPhotoPicked(jpeg)
+
+        vm.events.test {
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(MembersEvent.Saved(40), awaitItem())
+        }
+        assertEquals(listOf(40), uploadedTo)
         assertNull(vm.uiState.value.pickedPhoto)
+    }
+
+    @Test
+    fun `a failed upload after creating retries only the upload`() = runTest {
+        api.onCreateMember = { ok(recordDto(id = 40, name = "Bruno")) }
+        api.onUploadPhoto = { _, _ -> throw IOException("offline") }
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.onDraftChanged(vm.uiState.value.draft.copy(name = "Bruno"))
+        vm.onPhotoPicked(jpeg)
+
+        vm.events.test {
+            vm.onSave()
+            advanceUntilIdle()
+            assertTrue((awaitItem() as MembersEvent.ShowMessage).message.contains("conexão"))
+
+            api.onUploadPhoto = { _, _ -> ok(PhotoUrlDto("https://host/n.jpg")) }
+            vm.onSave()
+            advanceUntilIdle()
+            assertEquals(MembersEvent.Saved(40), awaitItem())
+        }
+        assertEquals(1, api.createdBodies.size)
+        assertTrue(api.updatedBodies.isEmpty())
+        assertEquals(2, api.uploadedParts.size)
     }
 
     // endregion

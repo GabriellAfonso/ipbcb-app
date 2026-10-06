@@ -278,7 +278,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   cartão esmaecido), busca por nome no aparelho (sem acento/maiúscula), sem filtros, botão
   "Novo membro". Estados: carregando, erro com "Tentar novamente", rol vazio, busca sem resultado.
 - **Perfil** — faixa verde, foto grande sem botão próprio (toque traz a foto para frente da tela em quadrado,
-  segundo toque abre em tela cheia com câmera no canto superior esquerdo para escolher ou remover; sem foto, as
+  segundo toque abre em tela cheia com o botão "Trocar foto" (lápis) no canto superior esquerdo, que abre o
+  seletor direto, e, ao lado, a lixeira para remover quando há foto; sem foto, as
   iniciais fazem o mesmo caminho), nome, idade · sexo, chips de situação e
   cargo, seções "Dados pessoais" e "Vida na igreja" (batismo
   com "há N anos", ministérios), card "Perfil válido" / "Perfil inválido" só de leitura (a validade muda no formulário, para um toque
@@ -288,9 +289,9 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   servidor; validação local (nome obrigatório, ≤ 255, datas não futuras, batismo não antes do
   nascimento) e `field_errors` do servidor no campo certo; edição envia só o que mudou; sair com
   alteração pendente pede confirmação. A validade (switch "Perfil válido") só se altera aqui e vale ao
-  salvar, como os demais campos. Na edição, a foto aparece no topo com câmera: a escolhida fica em
-  pré-visualização e só sobe ao salvar, depois dos campos. A foto de um membro novo é adicionada depois da
-  criação.
+  salvar, como os demais campos. Na criação e na edição, a foto aparece no topo com câmera (na criação, as
+  iniciais acompanham o nome digitado): a escolhida fica em pré-visualização e só sobe ao salvar, depois dos
+  campos — na criação, depois que o servidor devolve o id do membro novo.
 - **Histórico** — do mais novo ao mais antigo, frases em português ("X alterou Situação de A para B",
   "X cadastrou o membro", "X trocou/removeu a foto"); editor apagado = "Usuário removido".
 - **Excluir** — diálogo avisa que ficha, histórico e foto somem para sempre; o botão só libera quando o

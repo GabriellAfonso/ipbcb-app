@@ -118,8 +118,9 @@ those were sent and changed; try each validation rule.
 
 A leader adds, replaces or removes a member's photo, picking it the same way they pick their own profile photo.
 On the profile the photo has no button of its own: tapping it pops it in front of the screen as a square, tapping
-that opens it full screen, and a camera there changes or removes it. Without a photo, the initials go the same way. The edit form also offers a camera to change it along with the
-other fields. Only leaders can see member photos.
+that opens it full screen, where a "Trocar foto" button (pencil) opens the picker straight away and a trash button
+removes it. Without a photo, the initials go the same way. The create and edit forms also offer a camera to pick it
+along with the other fields. Only leaders can see member photos.
 
 **Why this priority**: Helps leaders recognise members, but the roll is usable without it.
 
@@ -129,16 +130,16 @@ profile and the list and confirm what is shown. Try a file over 10 MB and a file
 **Acceptance Scenarios**:
 
 1. **Given** a member without a photo, **When** the leader taps the initials on the profile, **Then** they pop
-   in front as a square like a photo would; **When** the leader opens them full screen, taps the camera, chooses
-   "Escolher foto", picks and crops an image, **Then** it is uploaded and shown on the profile and on the list card.
+   in front as a square like a photo would; **When** the leader opens them full screen, taps "Trocar foto", picks and
+   crops an image, **Then** it is uploaded and shown on the profile and on the list card.
 2. **Given** a member with a photo, **When** the leader taps it on the profile, **Then** it pops in front of the
    screen as a larger square over a dimmed background (a tap outside closes it); **When** they tap the square,
-   **Then** it opens full screen with a camera button in the top-left corner.
-3. **Given** the full-screen photo, **When** the leader taps the camera and chooses "Escolher foto", picks and
+   **Then** it opens full screen with a "Trocar foto" button (pencil) in the top-left corner.
+3. **Given** the full-screen photo, **When** the leader taps "Trocar foto", picks and
    crops an image, **Then** the new photo replaces the old one everywhere.
-4. **Given** the full-screen photo, **When** the leader taps the camera, chooses "Remover foto" and confirms,
+4. **Given** the full-screen photo, **When** the leader taps the trash button next to "Trocar foto" and confirms,
    **Then** the full screen, the profile and the card show the initials.
-5. **Given** the edit form of an existing member, **When** the leader taps the camera on the photo at the top and
+5. **Given** the create or edit form, **When** the leader taps the camera on the photo at the top and
    picks an image, **Then** the form previews it and counts it as an unsaved change; **When** they save, **Then**
    the field changes are sent first and the photo is uploaded after; **When** they leave without saving, **Then**
    the current photo stays.
@@ -300,7 +301,9 @@ confirm, and check the member is gone from the list.
   as a general form message, keeping everything the leader typed. A rule refusal with no `field_errors` shows the
   server's `detail` exactly as sent (it already names the offending value, in Portuguese).
 - **FR-021**: Leaving the form with unsaved changes MUST ask for confirmation.
-- **FR-022**: A new member's photo is added after creation (profile or edit form), not in the create form.
+- **FR-022**: The create form MUST offer a photo the same way as the edit form (FR-022a). Its initials follow the
+  name being typed. On "Salvar" the member is created first, then the photo is uploaded to the new id; if the upload
+  fails, the member stays created and FR-022a's retry applies (saving again only retries the upload).
 - **FR-022a**: The edit form MUST show the member's photo (or initials) at the top with a camera button to pick a
   new one. The picked photo is only previewed until "Salvar": the field changes are saved first, then the photo is
   uploaded. If the upload fails, the field changes stay saved, the form stays open with the picked photo and a
@@ -313,8 +316,9 @@ confirm, and check the member is gone from the list.
 - **FR-023a**: On the profile the photo MUST NOT have a button of its own and a tap MUST NOT open the picker. A tap
   pops the photo in front of the screen: it grows out of the photo's own place into a large square above the
   middle of the screen, over a dimmed background, and shrinks back there when a tap outside or system back closes
-  it; a tap on the square opens it full screen (dark background, camera button top-left with "Escolher
-  foto" and, when there is a photo, "Remover foto"; close button top-right; system back also closes). Without a
+  it; a tap on the square opens it full screen (dark background; top-left a "Trocar foto" button with a pencil
+  that opens the picker directly and, when there is a photo and the leader may remove it, a trash button next to it;
+  close button top-right; system back also closes). Without a
   photo the initials stand in for it at every step.
 - **FR-024**: The app MUST refuse, before uploading, files over 10 MB or not in JPEG, PNG, WEBP or GIF format, with
   a message.

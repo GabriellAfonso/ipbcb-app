@@ -40,8 +40,9 @@ import javax.inject.Inject
  * becomes a request; the server's `field_errors` land on the same fields. An edit sends only what
  * the leader changed.
  *
- * An edit can also pick a new photo: it is only previewed until the save, which sends the fields
- * first and uploads the photo after. A failed upload keeps the photo, so saving again retries it.
+ * Both can also pick a photo: it is only previewed until the save, which sends the fields first
+ * (creating the member, when new) and uploads the photo after. A failed upload keeps the photo, so
+ * saving again retries it — a member already created is not created twice.
  */
 @HiltViewModel
 class MemberFormViewModel @Inject constructor(
@@ -106,6 +107,8 @@ class MemberFormViewModel @Inject constructor(
             it.copy(
                 draft = draft,
                 hasUnsavedChanges = draft.isChanged() || it.pickedPhoto != null,
+                // A new member has no saved name yet: the initials follow what is typed.
+                initials = if (memberId == null) initialsOf(draft.name) else it.initials,
                 fieldErrors = it.fieldErrors - changedFields(it.draft, draft),
                 generalError = null,
             )
@@ -113,7 +116,6 @@ class MemberFormViewModel @Inject constructor(
     }
 
     fun onPhotoPicked(bytes: ByteArray) {
-        if (memberId == null) return
         validatePhoto(bytes)
             .onSuccess { _uiState.update { it.copy(pickedPhoto = bytes, hasUnsavedChanges = true) } }
             .onFailure { throwable ->
@@ -137,6 +139,8 @@ class MemberFormViewModel @Inject constructor(
                     // The fields are saved: a retry after a failed upload must not send them again.
                     original = saved
                     originalDraft = saved.toDraft()
+                    // The form now shows the record as the server keeps it, so a retry finds no field changed.
+                    _uiState.update { it.copy(draft = saved.toDraft()) }
                     if (!uploadPickedPhoto(saved.id)) return@launch
                     _uiState.update { it.copy(isSaving = false, hasUnsavedChanges = false) }
                     _events.emit(MembersEvent.Saved(saved.id))

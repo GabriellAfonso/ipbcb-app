@@ -165,9 +165,7 @@ private fun FormFields(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        if (state.isEditing) {
-            FormPhoto(state, imageLoader, onPickPhoto, Modifier.align(Alignment.CenterHorizontally))
-        }
+        FormPhoto(state, imageLoader, onPickPhoto, Modifier.align(Alignment.CenterHorizontally))
         state.generalError?.let { message ->
             Text(
                 text = message,
