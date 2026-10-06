@@ -15,7 +15,6 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.DeleteMemberU
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberHistoryUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.RemoveMemberPhotoUseCase
-import com.ipb.castelobranco.features.admin.members.domain.usecase.SetMemberValidityUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.UploadMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUi
@@ -52,7 +51,6 @@ class MemberProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getMember: GetMemberUseCase,
     private val getHistory: GetMemberHistoryUseCase,
-    private val setValidity: SetMemberValidityUseCase,
     private val uploadPhoto: UploadMemberPhotoUseCase,
     private val removePhoto: RemoveMemberPhotoUseCase,
     private val deleteMember: DeleteMemberUseCase,
@@ -102,31 +100,6 @@ class MemberProfileViewModel @Inject constructor(
             loadLastChange()
         }
     }
-
-    // region validity
-
-    fun onValidityChanged(isValid: Boolean) {
-        val current = record ?: return
-        if (!_uiState.value.canEdit) return
-        if (_uiState.value.isSavingValidity || current.isValid == isValid) return
-
-        render(current.copy(isValid = isValid))
-        _uiState.update { it.copy(isSavingValidity = true) }
-        viewModelScope.launch {
-            setValidity(memberId, isValid)
-                .onSuccess { updated ->
-                    show(updated)
-                    loadLastChange()
-                }
-                .onFailure { throwable ->
-                    render(current)
-                    fail(throwable, FailureKind.WRITE)
-                }
-            _uiState.update { it.copy(isSavingValidity = false) }
-        }
-    }
-
-    // endregion
 
     // region photo
 

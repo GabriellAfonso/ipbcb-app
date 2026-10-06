@@ -20,7 +20,6 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.DeleteMemberU
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberHistoryUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.RemoveMemberPhotoUseCase
-import com.ipb.castelobranco.features.admin.members.domain.usecase.SetMemberValidityUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.UploadMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ValidateMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.fixedDateProvider
@@ -68,7 +67,6 @@ class MemberProfileViewModelTest {
         savedStateHandle = SavedStateHandle(mapOf(MembersRoutes.ARG_MEMBER_ID to 12)),
         getMember = GetMemberUseCase(repository),
         getHistory = GetMemberHistoryUseCase(repository, BuildHistorySentenceUseCase()),
-        setValidity = SetMemberValidityUseCase(repository),
         uploadPhoto = UploadMemberPhotoUseCase(ValidateMemberPhotoUseCase(), repository),
         removePhoto = RemoveMemberPhotoUseCase(repository),
         deleteMember = DeleteMemberUseCase(repository),
@@ -172,39 +170,6 @@ class MemberProfileViewModelTest {
 
         assertTrue(vm.uiState.value.error!!.contains("conexão"))
         assertNull(vm.uiState.value.profile)
-    }
-
-    // endregion
-
-    // region validity
-
-    @Test
-    fun `validity switch saves at once`() = runTest {
-        api.onUpdateMember = { id, _ -> ok(recordDto(id = id, isActive = false)) }
-        val vm = viewModel()
-        advanceUntilIdle()
-
-        vm.onValidityChanged(false)
-        assertFalse(vm.uiState.value.profile!!.isValid)
-        advanceUntilIdle()
-
-        assertFalse(vm.uiState.value.profile!!.isValid)
-        assertEquals(setOf("is_active"), api.updatedBodies.single().second.keys)
-    }
-
-    @Test
-    fun `validity switch goes back when the save fails`() = runTest {
-        api.onUpdateMember = { _, _ -> throw IOException("offline") }
-        val vm = viewModel()
-        advanceUntilIdle()
-
-        vm.events.test {
-            vm.onValidityChanged(false)
-            advanceUntilIdle()
-
-            assertTrue(vm.uiState.value.profile!!.isValid)
-            assertTrue((awaitItem() as MembersEvent.ShowMessage).message.contains("conexão"))
-        }
     }
 
     // endregion

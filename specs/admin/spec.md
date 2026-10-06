@@ -277,12 +277,14 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   segundo toque abre em tela cheia com câmera no canto superior esquerdo para escolher ou remover; sem foto, as
   iniciais fazem o mesmo caminho), nome, idade · sexo, chips de situação e
   cargo, seções "Dados pessoais" e "Vida na igreja" (batismo
-  com "há N anos", ministérios), switch "Perfil válido" que salva na hora e volta se falhar, card da
+  com "há N anos", ministérios), card "Perfil válido" / "Perfil inválido" só de leitura (a validade muda no formulário, para um toque
+  sem querer não esconder o membro), card da
   última alteração, "Cadastrado em" e "Excluir membro".
 - **Formulário** — um só para criar e editar; opções de situação, cargo e ministérios vêm do
   servidor; validação local (nome obrigatório, ≤ 255, datas não futuras, batismo não antes do
   nascimento) e `field_errors` do servidor no campo certo; edição envia só o que mudou; sair com
-  alteração pendente pede confirmação. Na edição, a foto aparece no topo com câmera: a escolhida fica em
+  alteração pendente pede confirmação. A validade (switch "Perfil válido") só se altera aqui e vale ao
+  salvar, como os demais campos. Na edição, a foto aparece no topo com câmera: a escolhida fica em
   pré-visualização e só sobe ao salvar, depois dos campos. A foto de um membro novo é adicionada depois da
   criação.
 - **Histórico** — do mais novo ao mais antigo, frases em português ("X alterou Situação de A para B",

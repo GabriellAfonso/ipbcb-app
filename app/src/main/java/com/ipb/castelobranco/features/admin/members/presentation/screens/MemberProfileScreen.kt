@@ -83,7 +83,6 @@ data class MemberProfileActions(
     val onRemovePhotoRequested: () -> Unit = {},
     val onRemovePhotoConfirmed: () -> Unit = {},
     val onRemovePhotoDismissed: () -> Unit = {},
-    val onValidityChanged: (Boolean) -> Unit = {},
     val onOpenHistory: () -> Unit = {},
     val onDeleteRequested: () -> Unit = {},
     val onDeleteTypedChange: (String) -> Unit = {},
@@ -141,7 +140,6 @@ fun MemberProfileScreen(
                     onRemovePhotoRequested = viewModel::onRemovePhotoRequested,
                     onRemovePhotoConfirmed = viewModel::onRemovePhotoConfirmed,
                     onRemovePhotoDismissed = viewModel::onRemovePhotoDismissed,
-                    onValidityChanged = viewModel::onValidityChanged,
                     onOpenHistory = { memberId?.let(onOpenHistory) },
                     onDeleteRequested = viewModel::onDeleteRequested,
                     onDeleteTypedChange = viewModel::onDeleteTypedChange,
@@ -253,11 +251,7 @@ private fun ProfileBody(
                 InfoRow("Batismo", profile.baptismLabel)
                 MinistriesRow(profile.ministries)
             }
-            ValidityCard(
-                isValid = profile.isValid,
-                enabled = state.canEdit && !state.isSavingValidity,
-                onChange = actions.onValidityChanged,
-            )
+            ValidityCard(isValid = profile.isValid)
             HistoryCard(
                 summary = state.lastChange?.let { "Última: ${it.editorName} ${it.text}" },
                 onClick = actions.onOpenHistory,

@@ -42,7 +42,6 @@ class MemberProfileFlagsTest {
         savedStateHandle = SavedStateHandle(mapOf(MembersRoutes.ARG_MEMBER_ID to 1)),
         getMember = mockk(relaxed = true),
         getHistory = mockk(relaxed = true),
-        setValidity = mockk(relaxed = true),
         uploadPhoto = mockk(relaxed = true),
         removePhoto = mockk(relaxed = true),
         deleteMember = mockk(relaxed = true),

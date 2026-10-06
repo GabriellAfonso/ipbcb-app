@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -22,7 +20,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -117,9 +114,9 @@ fun MinistriesRow(ministries: List<String>) {
     }
 }
 
-/** "Perfil válido" — saves the moment it moves. */
+/** "Perfil válido" — read-only; validity changes only in the form, so a stray tap never hides a member. */
 @Composable
-fun ValidityCard(isValid: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+fun ValidityCard(isValid: Boolean) {
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -146,8 +143,6 @@ fun ValidityCard(isValid: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit
                 color = if (isValid) colors.onSurfaceVariant else OnInvalidContainer,
             )
         }
-        Spacer(Modifier.width(12.dp))
-        Switch(checked = isValid, onCheckedChange = onChange, enabled = enabled)
     }
 }
 
@@ -196,7 +191,7 @@ private fun ProfileSectionsPreview() {
                 InfoRow("Batismo", "Não informado")
                 MinistriesRow(listOf("Louvor", "Recepção"))
             }
-            ValidityCard(isValid = false, enabled = true, onChange = {})
+            ValidityCard(isValid = false)
             HistoryCard("Pr. João alterou Situação de Visitante para Ativo", onClick = {})
         }
     }

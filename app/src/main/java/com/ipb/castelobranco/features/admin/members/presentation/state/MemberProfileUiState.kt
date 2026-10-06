@@ -7,14 +7,13 @@ data class MemberProfileUiState(
     val error: String? = null,
     val profile: MemberProfileUi? = null,
     val lastChange: HistoryLine? = null,
-    val isSavingValidity: Boolean = false,
     val isPhotoBusy: Boolean = false,
     val showRemovePhotoDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
     val deleteTyped: String = "",
     val canConfirmDelete: Boolean = false,
     val isDeleting: Boolean = false,
-    /** Edit and the validity switch: `manage` on `members`. */
+    /** Edit (validity included): `manage` on `members`. */
     val canEdit: Boolean = false,
     val canChangePhoto: Boolean = false,
     /** Delete and photo removal: `owner` on `members` (Admin only). */
