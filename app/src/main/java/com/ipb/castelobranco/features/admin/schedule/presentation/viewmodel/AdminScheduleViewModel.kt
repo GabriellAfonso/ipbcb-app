@@ -38,6 +38,10 @@ class AdminScheduleViewModel @Inject constructor(
             is AdminScheduleEvent.MonthChanged -> changeMonth(event.year, event.month)
             is AdminScheduleEvent.MemberSelected -> selectMember(event.itemIndex, event.member)
             AdminScheduleEvent.GenerateSchedule -> generateSchedule()
+            AdminScheduleEvent.SaveRequested -> _uiState.update {
+                it.copy(showSaveConfirmation = it.canSave && !it.isSaving)
+            }
+            AdminScheduleEvent.SaveConfirmationDismissed -> _uiState.update { it.copy(showSaveConfirmation = false) }
             AdminScheduleEvent.SaveSchedule -> saveSchedule()
             AdminScheduleEvent.SaveResultDismissed -> _uiState.update { it.copy(saveResult = null) }
             AdminScheduleEvent.SnackbarShown -> _uiState.update { it.copy(snackbarMessage = null) }
@@ -121,6 +125,7 @@ class AdminScheduleViewModel @Inject constructor(
     }
 
     private fun saveSchedule() {
+        _uiState.update { it.copy(showSaveConfirmation = false) }
         val state = _uiState.value
         if (!state.canSave) return
         viewModelScope.launch {

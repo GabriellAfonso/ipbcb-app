@@ -14,6 +14,7 @@ data class AdminScheduleUiState(
     val isGenerating: Boolean = false,
     val isSaving: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
+    val showSaveConfirmation: Boolean = false,
     val saveResult: SaveResult? = null,
     val snackbarMessage: String? = null
 ) {
@@ -49,6 +50,8 @@ sealed interface AdminScheduleEvent {
     data class MonthChanged(val year: Int, val month: Int) : AdminScheduleEvent
     data class MemberSelected(val itemIndex: Int, val member: Member) : AdminScheduleEvent
     data object GenerateSchedule : AdminScheduleEvent
+    data object SaveRequested : AdminScheduleEvent
+    data object SaveConfirmationDismissed : AdminScheduleEvent
     data object SaveSchedule : AdminScheduleEvent
     data object SaveResultDismissed : AdminScheduleEvent
     data object SnackbarShown : AdminScheduleEvent

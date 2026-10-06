@@ -150,6 +150,59 @@ class AdminScheduleViewModelTest {
 
     // endregion
 
+    // region save confirmation
+
+    @Test
+    fun `SaveRequested opens the confirmation without saving`() = runTest {
+        coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
+
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+        viewModel.onEvent(AdminScheduleEvent.SaveRequested)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showSaveConfirmation)
+        coVerify(exactly = 0) { repository.saveSchedule(any(), any(), any()) }
+    }
+
+    @Test
+    fun `SaveRequested does not open the confirmation when the schedule is incomplete`() = runTest {
+        viewModel.onEvent(AdminScheduleEvent.SaveRequested)
+
+        assertFalse(viewModel.uiState.value.showSaveConfirmation)
+    }
+
+    @Test
+    fun `SaveConfirmationDismissed closes the confirmation without saving`() = runTest {
+        coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
+
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+        viewModel.onEvent(AdminScheduleEvent.SaveRequested)
+        viewModel.onEvent(AdminScheduleEvent.SaveConfirmationDismissed)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showSaveConfirmation)
+        coVerify(exactly = 0) { repository.saveSchedule(any(), any(), any()) }
+    }
+
+    @Test
+    fun `SaveSchedule after confirmation closes the dialog and saves`() = runTest {
+        coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
+        coEvery { repository.saveSchedule(any(), any(), any()) } returns Result.success(Unit)
+
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+        viewModel.onEvent(AdminScheduleEvent.SaveRequested)
+        viewModel.onEvent(AdminScheduleEvent.SaveSchedule)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showSaveConfirmation)
+        assertEquals(SaveResult.Success, viewModel.uiState.value.saveResult)
+    }
+
+    // endregion
+
     // region saveSchedule
 
     @Test

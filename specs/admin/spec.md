@@ -149,6 +149,10 @@ pendentes (seção 2.1) e a notificação "Confirmar músicas de domingo", que p
 
 Eventos de uma vez saem por `AdminScheduleEvent`.
 
+"Salvar escala" não grava direto: abre um diálogo "Salvar escala de {mês} {ano}?" com "Salvar" e "Cancelar"
+(tocar fora também cancela). O mês no título é o que evita salvar no mês errado depois de navegar pelas setas.
+O diálogo não avisa se o mês já tem escala — a tela não sabe disso (não há endpoint que diga).
+
 ## 5. Regras
 
 - O item "Painel de Gestão" aparece no menu do `CoreScreen` quando `authState.isLoggedIn &&

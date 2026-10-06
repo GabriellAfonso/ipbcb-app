@@ -67,6 +67,8 @@ data class AdminScheduleActions(
     val onMemberSelect: (itemIndex: Int, member: Member) -> Unit,
     val onGenerate: () -> Unit,
     val onSave: () -> Unit,
+    val onConfirmSave: () -> Unit,
+    val onDismissSaveConfirmation: () -> Unit,
     val onShare: (String) -> Unit,
     val onDismissSaveResult: () -> Unit,
 )
@@ -105,7 +107,9 @@ fun AdminScheduleScreen(
             viewModel.onEvent(AdminScheduleEvent.MemberSelected(index, member))
         },
         onGenerate = { viewModel.onEvent(AdminScheduleEvent.GenerateSchedule) },
-        onSave = { viewModel.onEvent(AdminScheduleEvent.SaveSchedule) },
+        onSave = { viewModel.onEvent(AdminScheduleEvent.SaveRequested) },
+        onConfirmSave = { viewModel.onEvent(AdminScheduleEvent.SaveSchedule) },
+        onDismissSaveConfirmation = { viewModel.onEvent(AdminScheduleEvent.SaveConfirmationDismissed) },
         onShare = onShare,
         onDismissSaveResult = { viewModel.onEvent(AdminScheduleEvent.SaveResultDismissed) },
     )
@@ -200,6 +204,14 @@ fun AdminScheduleContent(
                     .align(Alignment.TopCenter)
                     .padding(top = 8.dp)
             )
+
+            if (state.showSaveConfirmation) {
+                SaveConfirmationDialog(
+                    monthLabel = state.monthLabel,
+                    onConfirm = actions.onConfirmSave,
+                    onDismiss = actions.onDismissSaveConfirmation
+                )
+            }
 
             SaveResultDialog(
                 result = state.saveResult,
@@ -362,6 +374,28 @@ private fun ActionButtons(
             }
         }
     }
+}
+
+@Composable
+private fun SaveConfirmationDialog(
+    monthLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Salvar escala de $monthLabel?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(text = "Salvar", fontWeight = FontWeight.SemiBold, color = Green)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
