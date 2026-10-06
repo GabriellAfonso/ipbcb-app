@@ -499,6 +499,9 @@ se ele mudou no servidor.
 - `onAppForeground()` / `onAppBackground()` — `ON_START`/`ON_STOP` do `AppNavHost`: marcam `AppForegroundState`;
   o primeiro tambem sincroniza a galeria e o repertorio de domingo
 - No boot logado e no `LoginSuccess`, agenda o registro do token de push
+- No `LoginSuccess`, roda de novo a fase de rede da cascata (todos os `Refreshable`): o boot sem sessao
+  guardou erro (401) nos snapshots restritos a membros (escala, aniversariantes...) e nada mais os
+  buscaria ate o proximo boot
 
 ### 6.3 CoreScreen (Tela Principal)
 

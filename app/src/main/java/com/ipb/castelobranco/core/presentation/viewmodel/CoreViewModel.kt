@@ -122,6 +122,8 @@ class CoreViewModel @Inject constructor(
                         refreshProfileOnAppOpen()
                         // A galeria só é acessível a membros: antes do login não havia o que sincronizar.
                         launch { galleryAutoDownload.onLoginSuccess() }
+                        // O boot anônimo guardou 401 na escala, aniversariantes etc.: busca de novo com a sessão.
+                        launch { preloadDataUseCase.refreshDataFromNetwork() }
                     }
                     // O perfil guardado pode estar desatualizado: um papel removido vale já no servidor.
                     AuthEventBus.Event.PermissionDenied -> launch {

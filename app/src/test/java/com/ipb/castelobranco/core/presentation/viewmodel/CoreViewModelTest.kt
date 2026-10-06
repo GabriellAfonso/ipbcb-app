@@ -115,6 +115,7 @@ class CoreViewModelTest {
         membersRepository = mockk()
 
         coEvery { preloadDataUseCase(any()) } just runs
+        coEvery { preloadDataUseCase.refreshDataFromNetwork() } just runs
         coEvery { scheduleRepository.clearScheduleCache() } just runs
         every { authSession.isLoggedInFlow } returns emptyFlow()
         coEvery { authSession.isLoggedIn() } returns false
@@ -329,6 +330,17 @@ class CoreViewModelTest {
 
         // REPLACE descarta um WorkInfo com 401 registrado enquanto ainda estava deslogado
         coVerify(exactly = 1) { galleryAutoDownload.onLoginSuccess() }
+    }
+
+    @Test
+    fun `initialize on LoginSuccess refreshes the network data the anonymous boot could not read`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        authEventsFlow.emit(AuthEventBus.Event.LoginSuccess)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { preloadDataUseCase.refreshDataFromNetwork() }
     }
 
     @Test

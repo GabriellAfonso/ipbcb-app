@@ -31,7 +31,8 @@ class PreloadDataUseCase @Inject constructor(
         }
     }
 
-    private suspend fun refreshDataFromNetwork() = withContext(ioDispatcher) {
+    /** Network phase alone: after login, data the anonymous boot could not read (401) is fetched again. */
+    suspend fun refreshDataFromNetwork() = withContext(ioDispatcher) {
         supervisorScope {
             refreshables
                 .map { async { runCatching { it.refresh() } } }
