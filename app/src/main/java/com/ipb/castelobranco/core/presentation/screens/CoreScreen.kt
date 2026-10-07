@@ -145,7 +145,14 @@ fun CoreScreen(
             ) {
                 Spacer(modifier = Modifier.height(60.dp))
 
-                Highlight(pages = buildHighlightPages(nextSection, birthdays, onNavigateToBirthdays))
+                Highlight(
+                    pages = buildHighlightPages(
+                        nextSection      = nextSection,
+                        birthdays        = birthdays,
+                        onBirthdaysClick = onNavigateToBirthdays,
+                        onScheduleClick  = onNavigateToSchedule,
+                    )
+                )
 
                 Spacer(modifier = Modifier.height(60.dp))
                 ButtonGrid(
@@ -165,13 +172,14 @@ private fun buildHighlightPages(
     nextSection: NextScheduleUi?,
     birthdays: List<Birthday> = emptyList(),
     onBirthdaysClick: () -> Unit = {},
+    onScheduleClick: () -> Unit = {},
 ): List<@Composable () -> Unit> = buildList {
     add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
 
     if (nextSection != null) {
-        add { HighlightSundaySchedule(schedule = nextSection) }
+        add { HighlightSundaySchedule(schedule = nextSection, onClick = onScheduleClick) }
     } else {
-        add { HighlightScheduleUnavailable() }
+        add { HighlightScheduleUnavailable(onClick = onScheduleClick) }
     }
 
     add { HighlightEvents() }

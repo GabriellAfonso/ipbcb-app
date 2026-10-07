@@ -109,11 +109,15 @@ fun Highlight(
 private const val PAST_ROW_ALPHA = 0.45f
 
 @Composable
-fun HighlightSundaySchedule(schedule: NextScheduleUi) {
+fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) {
     val section = schedule.section
     val rows = section.rows.sortedBy { it.day }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(onClick = onClick)
+    ) {
 
         // Title + time
         Row(
@@ -188,11 +192,12 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi) {
 // ─── Default Composables ─────────────────────────────────────────────────────
 
 @Composable
-fun HighlightScheduleUnavailable() {
+fun HighlightScheduleUnavailable(onClick: () -> Unit = {}) {
     HighlightPlaceholder(
         icon = "📅",
         title = "Escala",
-        message = "Escala indisponível"
+        message = "Escala indisponível",
+        modifier = Modifier.clickable(onClick = onClick)
     )
 }
 

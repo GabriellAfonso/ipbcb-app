@@ -532,9 +532,9 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 | Pagina | Conteudo |
 |--------|----------|
 | 1 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
-| 2 | Escala do proximo culto (tabela dia x membro) |
+| 2 | Escala do proximo culto (tabela dia x membro) — clicavel, abre a tela de escala (`AppRoutes.SCHEDULE`) |
 | 3 | Eventos |
-| Fallback | "Agenda indisponivel" (se dados nao carregaram) |
+| Fallback | "Escala indisponivel" (se dados nao carregaram) — tambem clicavel, abre a tela de escala |
 
 **Card da escala.** Mostra a secao do proximo culto (`ScheduleViewModel.nextSection`, tipo `NextScheduleUi`):
 cabecalho com titulo + horario e uma linha por data do mes, sem cabecalho de colunas. Um dia da semana
