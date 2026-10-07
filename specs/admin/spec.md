@@ -108,6 +108,12 @@ sem acesso ou recusa 403 escondem o card; carregando mostra uma barra de progres
 "Tentar novamente". A lista é lida de novo sempre que o painel volta à tela (`ON_RESUME`), então um domingo recém
 registrado some sozinho. Não é um `PanelCard`: é dado do servidor, não uma área. Não é guardado no aparelho.
 
+Quem pode salvar repertório (`can_save_setlist` do perfil) vê, à direita de cada domingo, um botão "Remover" com
+ícone de lixeira. Ele pede confirmação ("Remover repertório de dd/MM?") e apaga o repertório no servidor
+(`DELETE api/setlists/{date}/`); o domingo sai do card na hora (com o último, o card some). `404` conta como removido. Qualquer outra falha mantém o
+domingo e mostra o snackbar "Não foi possível remover o repertório de dd/MM.". Nenhum outro aparelho é avisado: a banda
+deixa de ver o repertório quando o app relê o repertório atual.
+
 Nenhum card mostra badge com contador. Contadores só entram quando houver dado real por trás;
 número fixo no código seria informação falsa para a liderança.
 

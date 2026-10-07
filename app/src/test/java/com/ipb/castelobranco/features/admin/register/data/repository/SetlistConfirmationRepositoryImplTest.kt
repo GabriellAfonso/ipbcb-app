@@ -18,7 +18,9 @@ class SetlistConfirmationRepositoryImplTest {
     private class FakeApi : SetlistAdminApi {
         var byDate: (String) -> Response<SetlistDto> = { errorResponse(404) }
         var pending: () -> Response<List<SetlistDto>> = { Response.success(emptyList()) }
+        var delete: (String) -> Response<Unit> = { Response.success(204, Unit) }
         val requestedDates = mutableListOf<String>()
+        val deletedDates = mutableListOf<String>()
 
         override suspend fun byDate(date: String): Response<SetlistDto> {
             requestedDates += date
@@ -26,6 +28,11 @@ class SetlistConfirmationRepositoryImplTest {
         }
 
         override suspend fun pending(): Response<List<SetlistDto>> = pending.invoke()
+
+        override suspend fun delete(date: String): Response<Unit> {
+            deletedDates += date
+            return delete.invoke(date)
+        }
     }
 
     private val api = FakeApi()
@@ -76,5 +83,25 @@ class SetlistConfirmationRepositoryImplTest {
         api.pending = { errorResponse(403) }
 
         assertTrue(repository.pending().exceptionOrNull() is AppError.Auth)
+    }
+
+    @Test
+    fun `deletes the setlist of a date`() = runTest {
+        assertTrue(repository.delete(sunday).isSuccess)
+        assertEquals(listOf("2026-10-04"), api.deletedDates)
+    }
+
+    @Test
+    fun `deleting a missing setlist fails with 404`() = runTest {
+        api.delete = { errorResponse(404) }
+
+        assertEquals(404, (repository.delete(sunday).exceptionOrNull() as AppError.Server).code)
+    }
+
+    @Test
+    fun `deleting with no network fails as network`() = runTest {
+        api.delete = { throw IOException("offline") }
+
+        assertTrue(repository.delete(sunday).exceptionOrNull() is AppError.Network)
     }
 }

@@ -40,7 +40,10 @@ even offline, and the Sunday-night reminder and an admin card lead straight to a
   need `manage` on scope `songs` — the same level that opens "Gestão do Louvor".
 - **Current setlist**: the next setlist dated today or later; the server answers "none" explicitly, not as an error.
 - **Pending confirmation**: setlists dated today or earlier with no played songs registered, newest first. Registering
-  the played songs for a date removes it.
+  the played songs for a date removes it, and so does deleting its setlist.
+- **Delete**: a setlist can be deleted by date, with the same permission as saving (`manage` on `songs` and worship
+  member). Its items go with it; played songs already registered do not. No push follows: the band's devices drop
+  their stored copy the next time they read the current setlist and get "none". A date with no setlist is "not found".
 - **Push**: data-only messages carrying a type (`setlist_saved` or `confirm_plays`) and a date, no other data.
   Delivery is best effort; the server expects the app to re-read the current setlist on start and resume.
 - **Device token**: registered after login and on rotation, unregistered on logout while the session is still valid;
@@ -74,6 +77,8 @@ Defaults taken while writing this spec, consistent with the request and features
 | 11 | Notification channel | One new channel, "Repertório", for both messages | User can mute it without muting birthdays or uploads |
 | 12 | Notification permission | Reuse the existing request on launch (Android 13+); no extra prompt | The app already asks once at start |
 | 13 | Pre-filled register screen | Rows are the setlist's songs and keys in position order, editable before sending; the date is fixed to the setlist's Sunday | What was played may differ from what was planned |
+| 14 | Who sees the delete button on the pending card | Only users the profile reports as able to save a setlist; the others still see the dates | The server refuses the delete without worship membership, so a button that always fails is not offered |
+| 15 | Deleting a setlist that is already gone (`404`) | Treated as done: the date leaves the card, no error | The outcome the user wanted is already true |
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -250,6 +255,15 @@ from the card, return and check only the other remains.
 5. **Given** a tap on a date, **Then** the register screen opens pre-filled exactly as in User Story 5.
 6. **Given** the user registered the played songs for one Sunday, **When** they return to the panel, **Then** the list
    is read again and that Sunday is gone.
+7. **Given** a user who can save a setlist, **When** they tap "Remover" (trash icon and text, at the right end of a
+   date's line), **Then** a dialog asks "Remover repertório de dd/MM?" with "As músicas planejadas para esse domingo
+   serão apagadas.", "Remover" and "Cancelar"; "Cancelar" changes nothing.
+8. **Given** the dialog, **When** the user taps "Remover" and the server deletes it (or answers that it no longer
+   exists), **Then** that date leaves the card; when it was the last one, the card is hidden.
+9. **Given** the delete fails (no connection, server error, refused), **Then** the date stays and a snackbar says
+   "Não foi possível remover o repertório de dd/MM."
+10. **Given** a user with `manage` on `songs` who cannot save a setlist (not in the worship ministry), **Then** the
+    dates are listed with no "Remover" button.
 
 ---
 
@@ -346,6 +360,10 @@ from the card, return and check only the other remains.
   listing pending Sundays newest first; the card is hidden when the list is empty; tapping a date opens FR-024.
 - **FR-027**: The pending list MUST be read again whenever the panel is shown, so a Sunday registered meanwhile
   disappears.
+- **FR-029**: Each date on the pending card MUST offer a delete action, shown only when the profile says the user can
+  save a setlist. It MUST ask for confirmation, delete the setlist of that date on the server, and remove the date from
+  the card on success or when the server says it no longer exists; any other failure MUST keep the date and show
+  "Não foi possível remover o repertório de dd/MM." No other device is notified.
 
 **States**
 

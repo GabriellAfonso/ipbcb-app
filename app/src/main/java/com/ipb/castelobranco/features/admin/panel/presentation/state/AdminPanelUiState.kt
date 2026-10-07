@@ -21,6 +21,14 @@ sealed interface PendingConfirmationsUi {
     data object Loading : PendingConfirmationsUi
     data class Failed(val message: String) : PendingConfirmationsUi
 
-    /** Never empty, newest first. */
-    data class Dates(val dates: List<LocalDate>) : PendingConfirmationsUi
+    /**
+     * @param dates never empty, newest first.
+     * @param canDelete the profile says the user can save a setlist — the server refuses the delete otherwise.
+     */
+    data class Dates(val dates: List<LocalDate>, val canDelete: Boolean = false) : PendingConfirmationsUi
+}
+
+/** One-shot effects of the panel. */
+sealed interface AdminPanelEvent {
+    data class ShowMessage(val message: String) : AdminPanelEvent
 }

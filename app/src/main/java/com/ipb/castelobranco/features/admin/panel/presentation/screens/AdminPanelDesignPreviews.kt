@@ -418,7 +418,10 @@ private fun DesignC_Merged() {
 @Composable
 private fun PendingConfirmationsCardPreview() {
     PendingConfirmationsCard(
-        pending = PendingConfirmationsUi.Dates(listOf(LocalDate.of(2026, 10, 4), LocalDate.of(2026, 9, 27))),
+        pending = PendingConfirmationsUi.Dates(
+            dates = listOf(LocalDate.of(2026, 10, 4), LocalDate.of(2026, 9, 27)),
+            canDelete = true,
+        ),
         onDateClick = {},
         onRetry = {},
     )

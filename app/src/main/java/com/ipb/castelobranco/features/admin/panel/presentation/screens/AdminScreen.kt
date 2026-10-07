@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
@@ -29,13 +30,20 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +56,7 @@ import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard
 import com.ipb.castelobranco.features.admin.panel.presentation.navigation.AdminNav
+import com.ipb.castelobranco.features.admin.panel.presentation.state.AdminPanelEvent
 import com.ipb.castelobranco.features.admin.panel.presentation.state.AdminPanelUiState
 import com.ipb.castelobranco.features.admin.panel.presentation.viewmodel.AdminPanelViewModel
 
@@ -92,9 +101,23 @@ fun AdminScreen(
     viewModel: AdminPanelViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     // Also on return from the register screen: a Sunday just registered leaves the card.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPending() }
-    AdminPanelContent(state = state, nav = nav, onRetryPending = viewModel::refreshPending)
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is AdminPanelEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+    AdminPanelContent(
+        state = state,
+        nav = nav,
+        snackbarHostState = snackbarHostState,
+        onRetryPending = viewModel::refreshPending,
+        onDeleteSetlist = viewModel::deleteSetlist,
+    )
 }
 
 /**
@@ -105,7 +128,9 @@ fun AdminScreen(
 fun AdminPanelContent(
     state: AdminPanelUiState,
     nav: AdminNav,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onRetryPending: () -> Unit = {},
+    onDeleteSetlist: (LocalDate) -> Unit = {},
 ) {
     val actions = state.cards.map { card -> card.toAction(nav, state.memberCount) }
 
@@ -116,65 +141,74 @@ fun AdminPanelContent(
         onBackClick = nav.back,
         topBarExtension = { AdminHeaderStrip() }
     ) { innerPadding ->
-
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (state.pending != PendingConfirmationsUi.Hidden) {
-                PendingConfirmationsCard(
-                    pending = state.pending,
-                    onDateClick = nav.confirmSunday,
-                    onRetry = onRetryPending,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Spacer(modifier = Modifier.height(20.dp))
-            }
 
-            Text(
-                text = "Funcionalidades",
-                modifier = Modifier.padding(horizontal = 20.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (state.isEmpty) {
-                Text(
-                    text = EMPTY_PANEL_MESSAGE,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 32.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            actions.chunked(2).forEach { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    row.forEach { action ->
-                        AdminActionCard(
-                            action = action,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                if (state.pending != PendingConfirmationsUi.Hidden) {
+                    PendingConfirmationsCard(
+                        pending = state.pending,
+                        onDateClick = nav.confirmSunday,
+                        onRetry = onRetryPending,
+                        onDelete = onDeleteSetlist,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Funcionalidades",
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (state.isEmpty) {
+                    Text(
+                        text = EMPTY_PANEL_MESSAGE,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 32.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                actions.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        row.forEach { action ->
+                            AdminActionCard(
+                                action = action,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
@@ -252,14 +286,30 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
  */
 private val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")
 
-/** Sundays whose played songs were never registered; each opens the pre-filled register screen. */
+/**
+ * Sundays whose played songs were never registered; each opens the pre-filled register screen and, when
+ * [PendingConfirmationsUi.Dates.canDelete], can have its setlist deleted after a confirmation.
+ */
 @Composable
 internal fun PendingConfirmationsCard(
     pending: PendingConfirmationsUi,
     onDateClick: (LocalDate) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    onDelete: (LocalDate) -> Unit = {},
 ) {
+    var confirmingDelete by rememberSaveable { mutableStateOf<LocalDate?>(null) }
+    confirmingDelete?.let { date ->
+        DeleteSetlistDialog(
+            date = date,
+            onConfirm = {
+                confirmingDelete = null
+                onDelete(date)
+            },
+            onDismiss = { confirmingDelete = null },
+        )
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -292,8 +342,32 @@ internal fun PendingConfirmationsCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     pending.dates.forEach { date ->
-                        TextButton(onClick = { onDateClick(date) }) {
-                            Text("Domingo ${date.format(DAY_MONTH)}")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            TextButton(onClick = { onDateClick(date) }) {
+                                Text("Domingo ${date.format(DAY_MONTH)}")
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            if (pending.canDelete) {
+                                val description = "Remover repertório de ${date.format(DAY_MONTH)}"
+                                TextButton(
+                                    onClick = { confirmingDelete = date },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error,
+                                    ),
+                                    modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Remover")
+                                }
+                            }
                         }
                     }
                 }
@@ -301,6 +375,21 @@ internal fun PendingConfirmationsCard(
             }
         }
     }
+}
+
+@Composable
+private fun DeleteSetlistDialog(date: LocalDate, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Remover repertório de ${date.format(DAY_MONTH)}?") },
+        text = { Text("As músicas planejadas para esse domingo serão apagadas.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Remover", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }
 
 @Composable

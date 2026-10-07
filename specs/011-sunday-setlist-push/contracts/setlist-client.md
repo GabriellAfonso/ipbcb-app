@@ -17,6 +17,7 @@ All calls on `@AuthedRetrofit` (JWT, `PermissionDeniedInterceptor`, `TokenAuthen
 | worshiphub/tables | `SetlistSaveApi.save` | `PUT api/setlists/{date}/` | `{"items": [{"song_id","position","tone"}]}` | `200` `SetlistDto` |
 | admin/register | `SetlistAdminApi.byDate` | `GET api/setlists/{date}/` | — | `200` `SetlistDto` |
 | admin/register | `SetlistAdminApi.pending` | `GET api/setlists/pending-confirmation/` | — | `200` `List<SetlistDto>` |
+| admin/register | `SetlistAdminApi.delete` | `DELETE api/setlists/{date}/` | — | `204` |
 
 `{date}` always `YYYY-MM-DD` (`DateTimeFormatter.ISO_LOCAL_DATE`). `SetlistDto` and its mapper live in
 `core/data/setlist` and are reused by both features.
@@ -74,6 +75,18 @@ The draft is never changed by a save, successful or not.
 | `200` `[]` | hidden |
 | `403` | hidden (access changed; profile re-read hides the panel entry too) |
 | network / other | short error + "Tentar novamente" |
+
+### Delete a pending setlist (`DeletePendingSetlistUseCase`)
+
+The "Remover" button (trash icon and text) shows only with `WorshipAccess.canSaveSetlist`. The repository passes every refusal on as `AppError`;
+the use case turns `404` into success.
+
+| Answer | Use case | Card |
+|--------|----------|------|
+| `204` | success | date removed; card hidden when it was the last |
+| `404` | success (already gone) | date removed; card hidden when it was the last |
+| `403` | `AppError.Auth(403)`; profile re-read by `PermissionDeniedInterceptor` | date kept; snackbar "Não foi possível remover o repertório de dd/MM." |
+| network / other | `AppError` | date kept; same snackbar |
 
 ## 3. Push messages acted on
 

@@ -25,6 +25,11 @@ class SetlistConfirmationRepositoryImpl @Inject constructor(
         api.pending().bodyOrThrow().map { it.toDomain() }
     }.mapError()
 
+    override suspend fun delete(date: LocalDate): Result<Unit> = runCatching {
+        val response = api.delete(date.toString())
+        if (!response.isSuccessful) throw response.toAppError()
+    }.mapError()
+
     private fun <T> Response<T>.bodyOrThrow(): T {
         if (!isSuccessful) throw toAppError()
         return body() ?: throw AppError.Server(code = code(), message = "Resposta vazia")

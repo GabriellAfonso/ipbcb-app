@@ -4,7 +4,9 @@ import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.FakeWorshipAccessRepository
 import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
@@ -16,6 +18,7 @@ import com.ipb.castelobranco.features.admin.members.ok
 import com.ipb.castelobranco.features.admin.members.summaryDto
 import com.ipb.castelobranco.features.admin.panel.domain.VisiblePanelCardsUseCase
 import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.features.admin.register.domain.usecase.DeletePendingSetlistUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.GetPendingConfirmationsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,6 +41,7 @@ class AdminPanelViewModelTest {
     private val api = FakeMembersAdminApi()
     private val repository = MembersAdminRepositoryImpl(api)
     private val access = FakeAccessRepository()
+    private val setlists = FakeSetlistConfirmationRepository()
 
     private val roll = MemberListDto(listOf(summaryDto(1, "Ana Souza"), summaryDto(2, "José Ribeiro")))
 
@@ -52,8 +56,10 @@ class AdminPanelViewModelTest {
             ObserveAccessUseCase(access),
             VisiblePanelCardsUseCase(),
             ObserveMembersUseCase(repository),
+            ObserveWorshipAccessUseCase(FakeWorshipAccessRepository()),
             RefreshMembersUseCase(repository),
-            GetPendingConfirmationsUseCase(FakeSetlistConfirmationRepository()),
+            GetPendingConfirmationsUseCase(setlists),
+            DeletePendingSetlistUseCase(setlists),
         )
 
     @Test

@@ -11,4 +11,7 @@ interface SetlistConfirmationRepository {
 
     /** Setlists dated today or earlier whose played songs were never registered, newest first. */
     suspend fun pending(): Result<List<SundaySetlist>>
+
+    /** Deletes the setlist of [date]; a missing one fails with `AppError.Server(404)`. */
+    suspend fun delete(date: LocalDate): Result<Unit>
 }

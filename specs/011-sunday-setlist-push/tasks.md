@@ -139,6 +139,11 @@ No shared setup: the only new library (`firebase-messaging`) belongs to User Sto
 - [X] T066 [US6] Add `PendingConfirmationsUi` (`Hidden`, `Loading`, `Failed(message)`, `Dates(dates)`) and `pending` to `features/admin/panel/presentation/state/AdminPanelUiState.kt`; in `features/admin/panel/presentation/viewmodel/AdminPanelViewModel.kt` add `refreshPending()` (`Hidden` without `SONGS ≥ MANAGE`; empty → `Hidden`; `403` → `Hidden`; failure → `Failed`)
 - [X] T067 [US6] Pending card ("Confirmar músicas de domingo", dates dd/MM, loading, error + "Tentar novamente", tap → `nav.confirmSunday(date)`) above the grid and `LifecycleEventEffect(ON_RESUME) { refreshPending() }` in `features/admin/panel/presentation/screens/AdminScreen.kt`; preview in `features/admin/panel/presentation/screens/AdminPanelDesignPreviews.kt`
 - [X] T068 [P] [US6] Tests: hidden without access and with empty list, dates newest first, failure state, refresh re-reads in `features/admin/panel/presentation/viewmodel/AdminPanelViewModelPendingTest.kt`; use case happy + error in `features/admin/register/domain/usecase/GetPendingConfirmationsUseCaseTest.kt`
+- [X] T075 [US6] Add `SetlistAdminApi.delete` (`DELETE api/setlists/{date}/`, `Response<Unit>`), `SetlistConfirmationRepository.delete(date)` and `DeletePendingSetlistUseCase` (`404` → success) in `features/admin/register/`
+- [X] T076 [US6] `PendingConfirmationsUi.Dates.canDelete` from `WorshipAccess.canSaveSetlist`, `deleteSetlist(date)` (removes the date; last one → `Hidden`) and `AdminPanelEvent.ShowMessage` on failure in `features/admin/panel/presentation/`
+- [X] T077 [US6] "Remover" button (trash icon + text) at the right of each date, with confirmation dialog in `PendingConfirmationsCard`, snackbar in `AdminScreen`; previews updated
+- [X] T078 [P] [US6] Tests: repository delete (204, 404, network), use case (success, 404 = success, network), ViewModel (date removed, card hidden when empty, failure emits snackbar, `canDelete` follows the profile)
+- [X] T079 Update `specs/admin/spec.md` §2 (pending card delete action)
 
 ## Phase 9: Polish & Cross-Cutting
 

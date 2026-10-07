@@ -43,4 +43,39 @@ class SetlistConfirmationUseCasesTest {
 
         assertTrue(GetPendingConfirmationsUseCase(repository)().exceptionOrNull() is AppError.Network)
     }
+
+    @Test
+    fun `deleting a setlist succeeds`() = runTest {
+        val repository = FakeSetlistConfirmationRepository()
+
+        assertTrue(DeletePendingSetlistUseCase(repository)(newer).isSuccess)
+        assertEquals(listOf(newer), repository.deletedDates)
+    }
+
+    @Test
+    fun `a setlist already gone counts as deleted`() = runTest {
+        val repository = FakeSetlistConfirmationRepository(
+            deleteResult = { Result.failure(AppError.Server(code = 404)) },
+        )
+
+        assertTrue(DeletePendingSetlistUseCase(repository)(newer).isSuccess)
+    }
+
+    @Test
+    fun `a failed delete is passed on`() = runTest {
+        val repository = FakeSetlistConfirmationRepository(deleteResult = { Result.failure(AppError.Network()) })
+
+        assertTrue(DeletePendingSetlistUseCase(repository)(newer).exceptionOrNull() is AppError.Network)
+    }
+
+    @Test
+    fun `a server error on delete is passed on`() = runTest {
+        val repository = FakeSetlistConfirmationRepository(
+            deleteResult = { Result.failure(AppError.Server(code = 500)) },
+        )
+
+        val error = DeletePendingSetlistUseCase(repository)(newer).exceptionOrNull()
+
+        assertEquals(500, (error as AppError.Server).code)
+    }
 }
