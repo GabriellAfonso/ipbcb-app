@@ -23,6 +23,7 @@ import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryAutoDownload
 import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoImage
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -319,9 +320,9 @@ class GalleryViewModelTest {
     @Test
     fun `follows the page the user moved to`() = runTest(dispatcher) {
         publish(listOf(galleryAlbum(1)), albumPhotos)
-        val viewer = observe(viewModel.viewerState(1, 10))
+        val viewer = observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))
         viewer()
-        viewModel.onPageChanged(albumId = 1, openedPhotoId = 10, currentPhotoId = 11)
+        viewModel.onPageChanged(VIEWER, currentPhotoId = 11)
 
         publish(listOf(galleryAlbum(1)), albumPhotos.filter { it.id != 11L })
 
@@ -353,4 +354,8 @@ class GalleryViewModelTest {
     }
 
     // endregion
+
+    private companion object {
+        const val VIEWER = "viewer"
+    }
 }

@@ -5,7 +5,9 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -115,10 +117,12 @@ fun NavGraphBuilder.galleryGraph(
         ) { entry ->
             val albumId = entry.arguments?.getLong(GalleryRoutes.ARG_ALBUM_ID) ?: 0L
             val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
+            val viewModel = graphViewModel(navController, entry)
             PhotoScreen(
+                viewerId = viewerId(entry, viewModel),
                 source = ViewerSource.Album(albumId),
                 photoId = photoId,
-                viewModel = graphViewModel(navController, entry),
+                viewModel = viewModel,
                 nav = nav,
             )
         }
@@ -132,10 +136,12 @@ fun NavGraphBuilder.galleryGraph(
         ) { entry ->
             val memberIds = GalleryRoutes.memberIdsOf(entry.arguments?.getString(GalleryRoutes.ARG_MEMBER_IDS))
             val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
+            val viewModel = graphViewModel(navController, entry)
             PhotoScreen(
+                viewerId = viewerId(entry, viewModel),
                 source = ViewerSource.People(memberIds),
                 photoId = photoId,
-                viewModel = graphViewModel(navController, entry),
+                viewModel = viewModel,
                 nav = nav,
             )
         }
@@ -154,6 +160,19 @@ fun NavGraphBuilder.galleryGraph(
             TrashScreen(viewModel = hiltViewModel<TrashViewModel>(), nav = nav)
         }
     }
+}
+
+/** Lives in the viewer's entry: cleared when the entry leaves the stack, kept across a rotation. */
+private class ViewerLease : ViewModel()
+
+/** The viewer's id is its entry's; the [GalleryViewModel] drops that viewer once the entry is gone. */
+@Composable
+private fun viewerId(entry: NavBackStackEntry, galleryViewModel: GalleryViewModel): String {
+    val viewerId = entry.id
+    viewModel(viewModelStoreOwner = entry) {
+        ViewerLease().apply { addCloseable { galleryViewModel.closeViewer(viewerId) } }
+    }
+    return viewerId
 }
 
 @Composable

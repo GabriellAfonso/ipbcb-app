@@ -22,7 +22,10 @@ import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCas
 import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadRepository
 import com.ipb.castelobranco.features.gallery.domain.upload.ObserveUploadsUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
+import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
+import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
 /** Upload queue in memory: records what was queued and dismissed. */
@@ -71,3 +74,10 @@ fun manageUseCases(
     setPhotoMembers = SetPhotoMembersUseCase(repository),
     changePhotoMembers = ChangePhotoMembersUseCase(repository),
 )
+
+/** Opens a viewer whose id is derived from what it shows, as if each source/photo pair were its own entry. */
+fun GalleryViewModel.viewerState(source: ViewerSource, photoId: Long): StateFlow<PhotoViewerUiState> =
+    viewerState("$source/$photoId", source, photoId)
+
+fun GalleryViewModel.viewerState(albumId: Long, photoId: Long): StateFlow<PhotoViewerUiState> =
+    viewerState(ViewerSource.Album(albumId), photoId)

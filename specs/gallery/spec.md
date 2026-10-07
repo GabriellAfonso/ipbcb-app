@@ -31,8 +31,9 @@ Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usa
 ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel` e Pessoas o próprio
 `PeopleViewModel`, presos às suas entradas (a lista da lixeira é lida de novo a cada visita; a seleção de pessoas dura
 a visita). Cada tela coleta um `StateFlow` de UiState (`GalleryRootUiState`, `AlbumUiState`,
-`PhotoViewerUiState`) e passa dados puros ao composable de conteúdo. O estado de cada álbum e de cada visualizador é
-memoizado por chave no ViewModel.
+`PhotoViewerUiState`) e passa dados puros ao composable de conteúdo. O estado de cada álbum é memoizado pelo id no
+ViewModel; o de cada visualizador, pela entrada do back stack que o abriu (`NavBackStackEntry.id`), e é descartado
+quando essa entrada sai da pilha — não numa rotação, em que a entrada continua.
 
 `isLoggedIn` é **parâmetro de `galleryGraph`** (`StateFlow<Boolean>`), vindo do `CoreViewModel` que o `AppNavHost`
 resolve. Não pode ser buscado por `getBackStackEntry(AppRoutes.CORE)`: o `CoreViewModel` vive no escopo da Activity,
@@ -59,7 +60,8 @@ sem sub-álbuns: "Nenhuma foto neste álbum.". Cada álbum aberto é uma entrada
 ### 1.3 Foto
 
 Pager horizontal pelas fotos **de onde foi aberto** (`ViewerSource`): o álbum (o `albumId` da rota), na ordem da
-grid, ou o resultado de um filtro de pessoas (os `memberIds` da rota, seção 10.6); abre na foto tocada. Top bar = nome
+grid, ou o resultado de um filtro de pessoas (os `memberIds` da rota, seção 10.6); abre sempre na foto tocada, mesmo
+que uma visita anterior a partir dela tenha deslizado para outra; uma rotação mantém a página atual. Top bar = nome
 da foto sem extensão, "ⓘ" (detalhes, seção 10.2) e o menu de gestão. Zoom por pinça, duplo toque volta ao normal, "Baixar" (salva em
 `Pictures/ipb_castelobranco` com o nome da foto e o MIME pela extensão) e "Compartilhar". Foto ainda sem original no
 aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.

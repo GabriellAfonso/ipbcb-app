@@ -60,7 +60,9 @@ import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.state.toGalleryPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +73,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -203,7 +206,8 @@ class GalleryViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryRootUiState())
 
     private val albumStates = mutableMapOf<Long, StateFlow<AlbumUiState>>()
-    private val viewers = mutableMapOf<Pair<ViewerSource, Long>, Viewer>()
+    /** Keyed by the back stack entry that opened the viewer: each opening starts on the tapped photo. */
+    private val viewers = mutableMapOf<String, Viewer>()
 
     init {
         // Abrir a galeria é um dos gatilhos do sync.
@@ -242,19 +246,18 @@ class GalleryViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AlbumUiState())
     }
 
-    fun viewerState(source: ViewerSource, photoId: Long): StateFlow<PhotoViewerUiState> =
-        viewers.getOrPut(source to photoId) { Viewer(source, photoId) }.state
-
-    fun viewerState(albumId: Long, photoId: Long): StateFlow<PhotoViewerUiState> =
-        viewerState(ViewerSource.Album(albumId), photoId)
+    fun viewerState(viewerId: String, source: ViewerSource, photoId: Long): StateFlow<PhotoViewerUiState> =
+        viewers.getOrPut(viewerId) { Viewer(source, photoId) }.state
 
     /** The pager settled on [currentPhotoId]; used to pick the next photo if this one leaves. */
-    fun onPageChanged(source: ViewerSource, openedPhotoId: Long, currentPhotoId: Long) {
-        viewers[source to openedPhotoId]?.current?.value = currentPhotoId
+    fun onPageChanged(viewerId: String, currentPhotoId: Long) {
+        viewers[viewerId]?.current?.value = currentPhotoId
     }
 
-    fun onPageChanged(albumId: Long, openedPhotoId: Long, currentPhotoId: Long) =
-        onPageChanged(ViewerSource.Album(albumId), openedPhotoId, currentPhotoId)
+    /** The viewer's back stack entry left the stack: its state is not reused by a later opening. */
+    fun closeViewer(viewerId: String) {
+        viewers.remove(viewerId)?.close()
+    }
 
     fun consumeMessage() {
         _message.value = null
@@ -853,6 +856,8 @@ class GalleryViewModel @Inject constructor(
      * posts why — unless this ViewModel moved, deleted or retagged it, which posts its own message.
      */
     private inner class Viewer(private val source: ViewerSource, openedPhotoId: Long) {
+        // Child of viewModelScope, so closing the viewer stops its sharing coroutine.
+        private val scope = CoroutineScope(viewModelScope.coroutineContext + Job(viewModelScope.coroutineContext.job))
         val current = MutableStateFlow(openedPhotoId)
         private var lastIds: List<Long> = emptyList()
 
@@ -900,7 +905,9 @@ class GalleryViewModel @Inject constructor(
                 currentIndex = index,
                 permissions = permissions,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PhotoViewerUiState())
+        }.stateIn(scope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PhotoViewerUiState())
+
+        fun close() = scope.cancel()
     }
 
     /** The photo being tagged left the viewer: its picker has nothing left to edit. */

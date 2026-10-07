@@ -97,12 +97,14 @@ private const val DETAILS_LABEL = "Detalhes"
 
 @Composable
 fun PhotoScreen(
+    /** Identifies this opening of the viewer (its back stack entry). */
+    viewerId: String,
     source: ViewerSource,
     photoId: Long,
     viewModel: GalleryViewModel,
     nav: GalleryNav,
 ) {
-    val state by viewModel.viewerState(source, photoId).collectAsStateWithLifecycle()
+    val state by viewModel.viewerState(viewerId, source, photoId).collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -117,7 +119,7 @@ fun PhotoScreen(
             state = state,
             previewLoader = viewModel.previewLoader,
             onBack = nav.back,
-            onPageChanged = { currentId -> viewModel.onPageChanged(source, photoId, currentId) },
+            onPageChanged = { currentId -> viewModel.onPageChanged(viewerId, currentId) },
             onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
             onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
             // Cada ação usa o álbum da própria foto: num resultado de filtro, as fotos vêm de vários.
