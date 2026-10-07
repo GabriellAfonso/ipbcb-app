@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +48,6 @@ import com.ipb.castelobranco.features.gallery.presentation.viewmodel.PeopleViewM
 
 private const val GRID_COLUMNS = 3
 private const val PEOPLE_TITLE = "Pessoas"
-private const val MY_PHOTOS_TITLE = "Minhas fotos"
 private const val SEARCH_LABEL = "Buscar pessoa"
 private const val UNSELECT_LABEL = "Tirar do filtro"
 private const val PERSON_KEY_PREFIX = "person-"
@@ -67,7 +65,7 @@ data class PeopleActions(
 )
 
 /**
- * The people filter or "Minhas fotos". [galleryViewModel] (the graph's) only shows the gallery's
+ * The people filter. [galleryViewModel] (the graph's) only shows the gallery's
  * messages here — e.g. why the viewer opened from a result closed.
  */
 @Composable
@@ -75,12 +73,7 @@ fun PeopleScreen(viewModel: PeopleViewModel, galleryViewModel: GalleryViewModel,
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by galleryViewModel.message.collectAsStateWithLifecycle()
 
-    // "Minhas fotos" sem vínculo de membro não tem o que mostrar.
-    LaunchedEffect(state.isClosed) {
-        if (state.isClosed) nav.back()
-    }
-
-    GalleryMessageHost(message, isLeaving = state.isClosed, galleryViewModel, nav) {
+    GalleryMessageHost(message, isLeaving = false, galleryViewModel, nav) {
         PeopleContent(
             state = state,
             previewLoader = viewModel.previewLoader,
@@ -98,7 +91,7 @@ fun PeopleScreen(viewModel: PeopleViewModel, galleryViewModel: GalleryViewModel,
 @Composable
 fun PeopleContent(state: PeopleUiState, previewLoader: ImageLoader?, actions: PeopleActions) {
     BaseScreen(
-        tabName = if (state.isMine) MY_PHOTOS_TITLE else PEOPLE_TITLE,
+        tabName = PEOPLE_TITLE,
         logoRes = R.drawable.ic_galery,
         showBackArrow = true,
         onBackClick = actions.onBack,
@@ -213,7 +206,7 @@ private fun PeopleListPreview() {
             isLoading = false,
             showSearch = true,
             people = listOf(
-                PersonRow(40, "João Lima", "3 fotos", isChecked = false),
+                PersonRow(40, "João Lima (você)", "3 fotos", isChecked = false),
                 PersonRow(12, "Maria Souza", "1 foto", isChecked = false),
             ),
         ),

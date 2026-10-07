@@ -10,7 +10,6 @@ import com.ipb.castelobranco.core.di.DefaultDispatcher
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.error.toAppError
-import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.features.gallery.data.work.GalleryDownloadWorker
 import com.ipb.castelobranco.features.gallery.data.work.GalleryUploadWorker
 import com.ipb.castelobranco.features.gallery.di.GalleryThumbnailLoader
@@ -90,7 +89,6 @@ class GalleryViewModel @Inject constructor(
     private val autoDownload: GalleryAutoDownloadUseCase,
     private val manage: GalleryManageUseCases,
     observeAccess: ObserveAccessUseCase,
-    observeOwnMemberId: ObserveOwnMemberIdUseCase,
     connectivityObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
     @param:GalleryThumbnailLoader val previewLoader: ImageLoader,
@@ -110,14 +108,12 @@ class GalleryViewModel @Inject constructor(
         val uploads: List<UploadItem>,
         val copying: Set<Long>,
         val uploadProgress: Pair<Int, Int>,
-        val ownMemberId: Long? = null,
     )
 
     private data class ManageFlags(
         val permissions: GalleryPermissions,
         val organize: OrganizeSession?,
         val selection: Selection?,
-        val ownMemberId: Long?,
     )
 
     /** The local copy with its tree, built once per change off the main thread. */
@@ -139,9 +135,6 @@ class GalleryViewModel @Inject constructor(
     val permissions: StateFlow<GalleryPermissions> = observeAccess()
         .map { it.toGalleryPermissions() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, GalleryPermissions.NONE)
-
-    private val ownMemberId: StateFlow<Long?> = observeOwnMemberId()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val organize = MutableStateFlow<OrganizeSession?>(null)
     private val selection = MutableStateFlow<Selection?>(null)
@@ -170,12 +163,12 @@ class GalleryViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0 to 0)
 
     private val manageView: StateFlow<ManageView> = combine(
-        combine(permissions, organize, selection, ownMemberId, ::ManageFlags),
+        combine(permissions, organize, selection, ::ManageFlags),
         manage.observeUploads(),
         copying,
         uploadProgress,
     ) { flags, uploads, copying, progress ->
-        ManageView(flags.permissions, flags.organize, flags.selection, uploads, copying, progress, flags.ownMemberId)
+        ManageView(flags.permissions, flags.organize, flags.selection, uploads, copying, progress)
     }.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,
@@ -206,7 +199,6 @@ class GalleryViewModel @Inject constructor(
             permissions = manageView.permissions,
             isOrganizing = session != null,
             isSavingOrder = session?.isSaving == true,
-            ownMemberId = manageView.ownMemberId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryRootUiState())
 

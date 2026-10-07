@@ -10,14 +10,11 @@ data class PersonRow(
 )
 
 /**
- * The people filter, or "Minhas fotos" ([isMine]). The filter shows the matching people while nothing
+ * The people filter. It shows the matching people while nothing
  * is selected or a search is typed, and the photos with every selected person otherwise.
  */
 data class PeopleUiState(
     val isLoading: Boolean = true,
-    val isMine: Boolean = false,
-    /** "Minhas fotos" lost its member link: the screen leaves. */
-    val isClosed: Boolean = false,
     val query: String = "",
     /** Search field and chips: the filter, once someone is tagged. */
     val showSearch: Boolean = false,

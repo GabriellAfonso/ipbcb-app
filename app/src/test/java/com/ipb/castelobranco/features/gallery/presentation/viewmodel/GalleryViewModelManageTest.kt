@@ -8,9 +8,7 @@ import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.AppError
-import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
-import com.ipb.castelobranco.core.testing.FakeCurrentMemberRepository
 import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.gallery.data.coverUrl
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
@@ -105,7 +103,6 @@ class GalleryViewModelManageTest {
             autoDownload = mockk(relaxed = true),
             manage = manageUseCases(manage, uploads, repository),
             observeAccess = ObserveAccessUseCase(access),
-            observeOwnMemberId = ObserveOwnMemberIdUseCase(FakeCurrentMemberRepository()),
             connectivityObserver = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns flowOf(true) },
             workManager = mockk<WorkManager> {
                 every { getWorkInfosForUniqueWorkFlow(any()) } returns MutableStateFlow<List<WorkInfo>>(emptyList())

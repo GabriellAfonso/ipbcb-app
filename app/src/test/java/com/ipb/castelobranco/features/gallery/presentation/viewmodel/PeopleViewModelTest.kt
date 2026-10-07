@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.gallery.presentation.viewmodel
 
-import androidx.lifecycle.SavedStateHandle
 import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.core.testing.FakeCurrentMemberRepository
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
@@ -72,10 +71,9 @@ class PeopleViewModelTest {
         )
     }
 
-    private fun viewModel(mine: Boolean = false): PeopleViewModel {
+    private fun viewModel(): PeopleViewModel {
         val repository = mockk<GalleryRepository> { every { localState } returns this@PeopleViewModelTest.localState }
         return PeopleViewModel(
-            savedStateHandle = SavedStateHandle(mapOf(PeopleViewModel.ARG_MINE to mine)),
             repository = repository,
             observeOwnMemberId = ObserveOwnMemberIdUseCase(member),
             previewLoader = mockk(relaxed = true),
@@ -193,28 +191,40 @@ class PeopleViewModelTest {
     }
 
     @Test
-    fun `my photos - the member's photos, then empty text, then closes when the link goes`() =
-        runTest(dispatcher) {
-            member.state.value = 3
-            val state = observe(viewModel(mine = true))
+    fun `the user comes first, marked, and follows the profile live`() = runTest(dispatcher) {
+        member.state.value = 3
+        val viewModel = viewModel()
+        val state = observe(viewModel)
 
-            assertTrue(state().isMine)
-            assertEquals(listOf(20L), state().results.map { it.id })
-            assertEquals(setOf(3L), state().memberIds)
+        assertEquals(listOf("Bruno (você)", "Ana", "João"), state().people.map { it.name })
 
-            member.state.value = 4
-            assertTrue(state().results.isEmpty())
-            assertEquals(TagTexts.MY_PHOTOS_EMPTY, state().emptyText)
+        member.state.value = 2
+        assertEquals(listOf("João (você)", "Ana", "Bruno"), state().people.map { it.name })
 
-            member.state.value = null
-            assertTrue(state().isClosed)
-        }
+        member.state.value = null
+        assertEquals(listOf("Ana", "Bruno", "João"), state().people.map { it.name })
+    }
 
     @Test
-    fun `my photos does not close before a link was ever seen`() = runTest(dispatcher) {
-        val state = observe(viewModel(mine = true))
+    fun `picking the user shows their photos, and the search matches only the name`() = runTest(dispatcher) {
+        member.state.value = 3
+        val viewModel = viewModel()
+        val state = observe(viewModel)
 
-        assertFalse(state().isClosed)
-        assertTrue(state().isLoading)
+        viewModel.onQueryChange("você")
+        assertTrue(state().people.isEmpty())
+
+        viewModel.toggle(3)
+        assertEquals(listOf(20L), state().results.map { it.id })
+        assertEquals(listOf("Bruno (você)"), state().selected.map { it.name })
+    }
+
+    @Test
+    fun `a user tagged nowhere is not listed`() = runTest(dispatcher) {
+        member.state.value = 4
+
+        val state = observe(viewModel())
+
+        assertEquals(listOf("Ana", "Bruno", "João"), state().people.map { it.name })
     }
 }

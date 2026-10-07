@@ -33,7 +33,6 @@ data class GalleryNav(
     val toPhoto: (albumId: Long, photoId: Long) -> Unit,
     val toTrash: () -> Unit,
     val toPeople: () -> Unit = {},
-    val toMyPhotos: () -> Unit = {},
     /** The viewer over the photos with every one of [memberIds]. */
     val toPeoplePhoto: (memberIds: Set<Long>, photoId: Long) -> Unit = { _, _ -> },
 )
@@ -46,12 +45,9 @@ object GalleryRoutes {
     const val PHOTO = "Photo/{$ARG_ALBUM_ID}/{$ARG_PHOTO_ID}"
     const val TRASH = "GalleryTrash"
     const val ARG_MEMBER_IDS = "memberIds"
-    const val ARG_MINE = PeopleViewModel.ARG_MINE
-    const val PEOPLE = "GalleryPeople?$ARG_MINE={$ARG_MINE}"
+    const val PEOPLE = "GalleryPeople"
     const val PEOPLE_PHOTO = "PeoplePhoto/{$ARG_MEMBER_IDS}/{$ARG_PHOTO_ID}"
     private const val ID_SEPARATOR = ","
-
-    fun people(mine: Boolean) = "GalleryPeople?$ARG_MINE=$mine"
 
     /** [memberIds] travel comma-separated: the viewer pages through the photos with all of them. */
     fun peoplePhoto(memberIds: Set<Long>, photoId: Long) =
@@ -81,8 +77,7 @@ fun NavGraphBuilder.galleryGraph(
         toAlbum = { albumId -> navController.navigate(GalleryRoutes.album(albumId)) },
         toPhoto = { albumId, photoId -> navController.navigate(GalleryRoutes.photo(albumId, photoId)) },
         toTrash = { navController.navigate(GalleryRoutes.TRASH) },
-        toPeople = { navController.navigate(GalleryRoutes.people(mine = false)) },
-        toMyPhotos = { navController.navigate(GalleryRoutes.people(mine = true)) },
+        toPeople = { navController.navigate(GalleryRoutes.PEOPLE) },
         toPeoplePhoto = { memberIds, photoId ->
             navController.navigate(GalleryRoutes.peoplePhoto(memberIds, photoId))
         },
@@ -145,16 +140,8 @@ fun NavGraphBuilder.galleryGraph(
             )
         }
 
-        // The filter and "Minhas fotos": its own ViewModel, so the selection lasts only this visit.
-        composable(
-            route = GalleryRoutes.PEOPLE,
-            arguments = listOf(
-                navArgument(GalleryRoutes.ARG_MINE) {
-                    type = NavType.BoolType
-                    defaultValue = false
-                },
-            ),
-        ) { entry ->
+        // The filter: its own ViewModel, so the selection lasts only this visit.
+        composable(GalleryRoutes.PEOPLE) { entry ->
             PeopleScreen(
                 viewModel = hiltViewModel<PeopleViewModel>(),
                 galleryViewModel = graphViewModel(navController, entry),

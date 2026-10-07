@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.gallery.presentation.viewmodel
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.ImageLoader
@@ -29,29 +28,22 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 /**
- * The people filter and "Minhas fotos", read from the gallery's local copy only (offline, and always in
- * step with the photos on the device). Lives with its screen entry: the selection survives a trip to the
- * viewer and is gone once the screen is left.
+ * The people filter, read from the gallery's local copy only (offline, and always in step with the photos
+ * on the device). The user's own member, when linked, comes first. Lives with its screen entry: the
+ * selection survives a trip to the viewer and is gone once the screen is left.
  */
 @HiltViewModel
 class PeopleViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
     repository: GalleryRepository,
     observeOwnMemberId: ObserveOwnMemberIdUseCase,
     @param:GalleryThumbnailLoader val previewLoader: ImageLoader,
     @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private val isMine: Boolean = savedStateHandle.get<Boolean>(ARG_MINE) ?: false
-
     private data class Local(val local: GalleryLocalState, val tree: GalleryTree?, val people: List<TaggedPerson>)
 
     private val query = MutableStateFlow("")
     private val selection = MutableStateFlow<Set<Long>>(emptySet())
-
-    /** "Minhas fotos" closes only after a link was seen: the first emission may come before the profile. */
-    @Volatile
-    private var sawMember = false
 
     /** Everyone tagged in the last computed state: a toggle drops people no longer tagged anywhere. */
     @Volatile
@@ -64,9 +56,9 @@ class PeopleViewModel @Inject constructor(
 
     val state: StateFlow<PeopleUiState> = combine(local, query, selection, observeOwnMemberId()) {
             local, query, selection, ownMemberId ->
-        if (isMine) mine(local, ownMemberId) else filter(local, query, selection)
+        filter(local, query, selection, ownMemberId)
     }.flowOn(defaultDispatcher)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PeopleUiState(isMine = isMine))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PeopleUiState())
 
     fun onQueryChange(value: String) {
         query.value = value
@@ -81,15 +73,17 @@ class PeopleViewModel @Inject constructor(
         query.value = ""
     }
 
-    private fun filter(local: Local, query: String, selection: Set<Long>): PeopleUiState {
+    private fun filter(local: Local, query: String, selection: Set<Long>, ownMemberId: Long?): PeopleUiState {
         val tree = local.tree ?: return PeopleUiState(isLoading = true)
         taggedIds = local.people.mapTo(HashSet()) { it.id }
         if (local.people.isEmpty()) return PeopleUiState(isLoading = false, emptyText = TagTexts.NO_TAGS)
         // A person no longer tagged anywhere leaves the list and the selection.
         val selectedIds = selection.filterTo(LinkedHashSet()) { it in taggedIds }
-        val selected = local.people.filter { it.id in selectedIds }.map { it.toRow(checked = true) }
-        val matching = local.people.filter { NameSearch.matches(it.name, query) }
-            .map { it.toRow(checked = it.id in selectedIds) }
+        // The user first; sortedBy is stable, so everyone else keeps the name order.
+        val people = local.people.sortedBy { it.id != ownMemberId }
+        val selected = people.filter { it.id in selectedIds }.map { it.toRow(checked = true, ownMemberId) }
+        val matching = people.filter { NameSearch.matches(it.name, query) }
+            .map { it.toRow(checked = it.id in selectedIds, ownMemberId) }
         val showResults = selectedIds.isNotEmpty() && query.isBlank()
         val results = if (showResults) tiles(tree, local.local, selectedIds) else emptyList()
         return PeopleUiState(
@@ -110,32 +104,17 @@ class PeopleViewModel @Inject constructor(
         )
     }
 
-    private fun mine(local: Local, ownMemberId: Long?): PeopleUiState {
-        if (ownMemberId == null) {
-            return PeopleUiState(isLoading = !sawMember, isMine = true, isClosed = sawMember)
-        }
-        sawMember = true
-        val tree = local.tree ?: return PeopleUiState(isLoading = true, isMine = true)
-        val memberIds = setOf(ownMemberId)
-        val results = tiles(tree, local.local, memberIds)
-        return PeopleUiState(
-            isLoading = false,
-            isMine = true,
-            showResults = true,
-            results = results,
-            memberIds = memberIds,
-            emptyText = TagTexts.MY_PHOTOS_EMPTY.takeIf { results.isEmpty() },
-        )
-    }
-
     private fun tiles(tree: GalleryTree, local: GalleryLocalState, memberIds: Set<Long>): List<PhotoTile> =
         GalleryPeople.photosWithAll(tree, memberIds).map { PhotoTile(it.id, GalleryUiMapper.photoImage(it, local)) }
 
-    private fun TaggedPerson.toRow(checked: Boolean) = PersonRow(id, name, TagTexts.photoCount(photoCount), checked)
+    private fun TaggedPerson.toRow(checked: Boolean, ownMemberId: Long?) = PersonRow(
+        id = id,
+        name = if (id == ownMemberId) TagTexts.ownName(name) else name,
+        countText = TagTexts.photoCount(photoCount),
+        isChecked = checked,
+    )
 
     companion object {
-        /** Route argument: `true` opens "Minhas fotos". */
-        const val ARG_MINE = "mine"
         private const val STOP_TIMEOUT_MS = 5_000L
     }
 }

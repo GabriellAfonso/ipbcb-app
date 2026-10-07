@@ -13,8 +13,9 @@ internal object TagTexts {
     const val NO_RESULT = "Nenhuma foto com todas essas pessoas."
     const val NO_TAGS = "Ninguém foi marcado nas fotos ainda."
     const val NO_PERSON_FOUND = "Nenhuma pessoa encontrada."
-    const val MY_PHOTOS_TITLE = "Minhas fotos"
-    const val MY_PHOTOS_EMPTY = "Você ainda não foi marcado em nenhuma foto."
+
+    /** The user's own row in the filter: "João Lima (você)". */
+    fun ownName(name: String): String = "$name (você)"
 
     /** "1 foto", "3 fotos". */
     fun photoCount(count: Int): String = if (count == 1) "1 foto" else "$count fotos"

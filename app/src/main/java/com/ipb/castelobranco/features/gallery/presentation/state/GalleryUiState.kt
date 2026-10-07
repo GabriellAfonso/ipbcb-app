@@ -43,17 +43,12 @@ data class GalleryRootUiState(
     /** "Organizar" open on the root: [albums] already follow the draft order. */
     val isOrganizing: Boolean = false,
     val isSavingOrder: Boolean = false,
-    /** The member record linked to the user's profile; `null` = not linked. */
-    val ownMemberId: Long? = null,
 ) {
     /** The trash icon: owners only, not while organizing. */
     val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
 
     /** The people filter: everyone, once the gallery is on the device, not while organizing. */
     val showPeople: Boolean get() = hasIndex && !isOrganizing
-
-    /** "Minhas fotos": only for a profile linked to a member. */
-    val showMyPhotos: Boolean get() = ownMemberId != null && showPeople
 }
 
 data class AlbumUiState(

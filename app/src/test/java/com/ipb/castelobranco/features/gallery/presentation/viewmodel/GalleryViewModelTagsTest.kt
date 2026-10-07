@@ -8,9 +8,7 @@ import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.error.AppError
-import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
-import com.ipb.castelobranco.core.testing.FakeCurrentMemberRepository
 import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
@@ -57,7 +55,6 @@ class GalleryViewModelTagsTest {
     private val dispatcher = StandardTestDispatcher()
     private val localState = MutableStateFlow(GalleryLocalState.EMPTY)
     private val access = FakeAccessRepository()
-    private val member = FakeCurrentMemberRepository()
     private val manage = FakeGalleryManageRepository()
     private lateinit var viewModel: GalleryViewModel
 
@@ -94,7 +91,6 @@ class GalleryViewModelTagsTest {
             autoDownload = mockk(relaxed = true),
             manage = manageUseCases(manage, FakeUploadRepository(), repository),
             observeAccess = ObserveAccessUseCase(access),
-            observeOwnMemberId = ObserveOwnMemberIdUseCase(member),
             connectivityObserver = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns flowOf(true) },
             workManager = mockk<WorkManager> {
                 every { getWorkInfosForUniqueWorkFlow(any()) } returns MutableStateFlow<List<WorkInfo>>(emptyList())
@@ -143,29 +139,19 @@ class GalleryViewModelTagsTest {
     // region root entries
 
     @Test
-    fun `Minhas fotos shows only with a member id, and follows it live`() = runTest(dispatcher) {
+    fun `people entry shows once the gallery is on the device`() = runTest(dispatcher) {
         val root = observe(viewModel.rootState)
         assertTrue(root().showPeople)
-        assertFalse(root().showMyPhotos)
-
-        member.state.value = 1
-        assertTrue(root().showMyPhotos)
-        assertEquals(1L, root().ownMemberId)
-
-        member.state.value = null
-        assertFalse(root().showMyPhotos)
     }
 
     @Test
     fun `no people entry while organizing`() = runTest(dispatcher) {
         asManager()
-        member.state.value = 1
         val root = observe(viewModel.rootState)
 
         viewModel.startOrganize(null)
 
         assertFalse(root().showPeople)
-        assertFalse(root().showMyPhotos)
     }
 
     // endregion

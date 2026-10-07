@@ -10,9 +10,9 @@ Fonte da verdade no backend: `backend/specs/gallery/spec.md`, `013-gallery-write
 `014-gallery-trash-sync/contracts/gallery-trash-api.md`, `015-gallery-member-tags/contracts/gallery-tags-api.md`,
 `016-photo-upload-idempotency/contracts/photo-upload-api.md`.
 
-Cada foto diz quem está nela (membros marcados); todo membro vê as pessoas de uma foto, filtra a galeria por pessoas
-e abre "Minhas fotos", e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). A gestão vive
-nas próprias telas da galeria — o painel de gestão não tem card dela (seção 8.1).
+Cada foto diz quem está nela (membros marcados); todo membro vê as pessoas de uma foto e filtra a galeria por pessoas
+(achando a si mesmo no topo da lista), e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). A
+gestão vive nas próprias telas da galeria — o painel de gestão não tem card dela (seção 8.1).
 
 ---
 
@@ -23,8 +23,8 @@ nas próprias telas da galeria — o painel de gestão não tem card dela (seç�
 | Galeria | `GalleryMain`                 | `CoreScreen → botão Galeria` |
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
-| Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro ou de "Minhas fotos" (seção 10.6) |
-| Pessoas / Minhas fotos | `GalleryPeople?mine={mine}` | "Pessoas" no menu ⋮ / entrada "Minhas fotos" na raiz (seção 10) |
+| Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro (seção 10.6) |
+| Pessoas | `GalleryPeople`               | "Pessoas" no menu ⋮ da raiz (seção 10.6) |
 | Lixeira | `GalleryTrash`                | "Lixeira" no menu ⋮ da raiz (`owner`, seção 9) |
 
 Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
@@ -43,7 +43,7 @@ Toda lista é ordenada por `position`, depois `id` — nunca por nome de arquivo
 ### 1.1 Galeria (raiz)
 
 Grid de 2 colunas com os álbuns raiz (`parent_id` nulo): capa quadrada (preta quando não há) e nome. Acima da grid,
-um banner não-bloqueante (seção 5) e, para perfil vinculado a um membro, a entrada "Minhas fotos" (seção 10.7). Na
+um banner não-bloqueante (seção 5); nada mais fica entre a barra e os álbuns. Na
 barra, um único menu ⋮ reúne "Pessoas" (abre o filtro, seção 10.6), "Lixeira" (`owner`) e "Organizar" (`manage`, com
 2+ álbuns) — sem ícones soltos, para não poluir a barra; o menu some durante o "Organizar". Abrir a galeria dispara um
 sync.
@@ -572,9 +572,9 @@ resultado, não pelo álbum. Detalhes, menu de gestão e tratamento de remoção
 usam o álbum da própria foto. Uma foto que sai do resultado (apagada, ou desmarcada) conta como removida (seção 1.4);
 quando foi o próprio usuário que desmarcou, o aviso é "Marcações salvas".
 
-### 10.7 Minhas fotos
+### 10.7 Você no filtro
 
-Com `member_id` no perfil, a raiz mostra "Minhas fotos" (sem vínculo, não aparece e não há convite para vincular);
-aparece e some ao vivo quando o perfil muda. Abre `GalleryPeople?mine=true`: a mesma grid filtrada por esse membro,
-título "Minhas fotos", vazio "Você ainda não foi marcado em nenhuma foto.". Se o vínculo sumir com a tela aberta, ela
-fecha.
+Não há entrada nem tela própria de "Minhas fotos": com `member_id` no perfil, a própria pessoa vem **primeiro** na
+lista do filtro (também entre os resultados de uma busca), como "{nome} (você)", e escolhê-la é como escolher qualquer
+outra — sozinha, o resultado são as fotos dela. Sem vínculo, ou sem marcação em nenhuma foto, ela não tem destaque (e,
+sem marcação, não aparece, como qualquer pessoa). O destaque segue o perfil ao vivo; a busca casa só com o nome.
