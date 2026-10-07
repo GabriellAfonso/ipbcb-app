@@ -120,13 +120,15 @@ The release is done by the user, never by Claude. Claude must never run `/releas
 `versionCode`, or create tags on its own — not even as a suggestion mid-task. The checklist below is the user's
 reminder before generating a release `.aab`.
 
-`/release X.Y.Z` bumps `versionName` and `versionCode` (+1), commits `chore(release): bump version to X.Y.Z` and
-creates tag `vX.Y.Z`.
+`/release X.Y.Z` bumps `versionName` and `versionCode` (+1), commits `chore(release): bump version to X.Y.Z`,
+runs `/changelog <previous> X.Y.Z`, commits `docs(changelog): add vX.Y.Z changelog` and creates tag `vX.Y.Z` on
+that commit, so the tag covers both.
 
 1. `/release X.Y.Z` (user types it)
-2. Build the `.aab` from that commit (the tag must point to what ships; if it ships from a later commit,
-   `git tag -f vX.Y.Z <sha>`).
-3. `/changelog <previous> X.Y.Z` — resolves its range from the tags, so a missing tag breaks the next changelog.
+2. Review `changelogs/vX.Y.Z.md`. A fix is a new commit plus `git tag -f vX.Y.Z <sha>`.
+3. Build the `.aab` from the tagged commit (the tag must point to what ships; if it ships from a later commit,
+   regenerate the changelog and `git tag -f vX.Y.Z <sha>`). The next changelog resolves its range from the tags,
+   so a missing tag breaks it.
 4. Push manually: `git push && git push origin vX.Y.Z`.
 
 ## Pitfalls

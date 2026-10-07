@@ -20,13 +20,16 @@ Gere um changelog completo e salve-o em arquivo. Siga os passos abaixo na ordem.
 ### Passo 1 — Identificar a versão alvo
 
 O range é resolvido por **tag de versão** (`.claude/scripts/changelog-range.sh`). Cada release tem uma tag
-`vX.Y.Z`, criada pelo `/release` no commit que vira o `.aab`. Se a tag não existir, o resolvedor cai no commit
-`chore(release): bump version to X.Y.Z` — aproximado, porque o bump nem sempre é o último commit da versão.
+`vX.Y.Z`, criada pelo `/release` no commit do changelog, logo depois do bump. Se a tag não existir, o resolvedor
+cai no commit `chore(release): bump version to X.Y.Z`.
+
+Dentro do `/release` a tag da versão alvo ainda não existe: o range termina no bump, que é o `HEAD`. Nesse caso,
+escreva no header `v<anterior>..vX.Y.Z`, porque a tag vai para o commit deste changelog.
 
 Formas aceitas em `$ARGUMENTS` (com ou sem `v`):
 
-- `0.9.6 0.9.7` — da tag `v0.9.6` (exclusiva) até a `v0.9.7` (inclusiva). **Versão alvo: `0.9.7`**. É a forma
-  recomendada depois de um `/release`.
+- `0.9.6 0.9.7` — da tag `v0.9.6` (exclusiva) até a `v0.9.7` (inclusiva), ou até o bump da `0.9.7` se a tag
+  ainda não existe. **Versão alvo: `0.9.7`**. É a forma que o `/release` usa.
 - `0.9.6` — da tag `v0.9.6` até `HEAD`. Versão alvo: o `versionName` atual
 - `<ref>..<ref>` — range literal do git, usado como veio. Versão alvo: o `versionName` atual
 - sem argumento — da tag mais recente até `HEAD`. Se a tag mais recente já está no `HEAD` (logo depois do
@@ -36,7 +39,7 @@ Formas aceitas em `$ARGUMENTS` (com ou sem `v`):
 Confira o bloco **Range resolvido** antes de gerar. Se ele começar com `UNRESOLVED`, **pare e avise** o motivo —
 não gere nada. Se o range vier vazio (nenhum commit), avise também.
 
-Este comando nunca cria, move ou apaga tags — isso é feito pelo usuário via `/release`.
+Este comando nunca cria, move ou apaga tags nem faz commit — isso é feito pelo `/release`.
 
 ---
 

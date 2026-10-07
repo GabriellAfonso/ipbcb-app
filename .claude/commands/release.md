@@ -1,7 +1,7 @@
 ---
-description: Bump versionName/versionCode, commit "chore(release): bump version to X.Y.Z", create tag vX.Y.Z and hand off to /changelog. Use: /release 0.9.8
+description: Bump versionName/versionCode, commit "chore(release): bump version to X.Y.Z", generate and commit the changelog, then tag vX.Y.Z on that commit. Use: /release 0.9.8
 disable-model-invocation: true
-allowed-tools: Read, Edit, Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git log:*), Bash(git rev-parse:*), Bash(grep:*)
+allowed-tools: Read, Edit, Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git tag:*), Bash(git log:*), Bash(git rev-parse:*), Bash(grep:*), Skill
 ---
 
 ## Context
@@ -46,22 +46,41 @@ git add app/build.gradle.kts
 git commit -m "chore(release): bump version to X.Y.Z"
 ```
 
-### Step 4 — Tag
+### Step 4 — Changelog
 
-Lightweight tag on the release commit, matching the existing tags:
+Invoke the `changelog` skill with `<previous version> X.Y.Z`, where `<previous version>` is the newest existing
+tag without the `v` (from **Latest tags**). The `vX.Y.Z` tag does not exist yet, so the range ends at the bump
+commit from Step 3. Follow that skill fully: it writes `changelogs/vX.Y.Z.md`.
+
+If it stops (`UNRESOLVED` or an empty range), stop here too: the bump commit stays, no tag is created. Tell the
+user what happened.
+
+Then commit only that file, with the same rules as Step 3:
+
+```
+git add changelogs/vX.Y.Z.md
+git commit -m "docs(changelog): add vX.Y.Z changelog"
+```
+
+### Step 5 — Tag
+
+Lightweight tag on the changelog commit (`HEAD`), matching the existing tags. The tag then covers both the bump
+and its changelog:
 
 ```
 git tag vX.Y.Z
 ```
 
-### Step 5 — Report
+### Step 6 — Report
 
-Run `git log --oneline -n 3` and `git tag --sort=-version:refname | head -3` and show both. Then tell the user:
+Run `git log --oneline -n 3` and `git tag --sort=-version:refname | head -3` and show both, plus the Play Store
+block from the changelog. Then tell the user:
 
-- the release is ready to build;
-- the changelog is next: `/changelog <previous version> X.Y.Z`;
+- the release is ready to build from the tagged commit;
+- to review `changelogs/vX.Y.Z.md`: a fix is a new commit, and the tag then moves with `git tag -f vX.Y.Z <sha>`;
 - push is manual: `git push && git push origin vX.Y.Z`;
-- if the build that ships ends up on a later commit, move the tag: `git tag -f vX.Y.Z <sha>`.
+- if the build that ships ends up on a later commit, regenerate the changelog with `/changelog <previous> X.Y.Z`
+  and move the tag: `git tag -f vX.Y.Z <sha>`.
 
 ### Rules
 
