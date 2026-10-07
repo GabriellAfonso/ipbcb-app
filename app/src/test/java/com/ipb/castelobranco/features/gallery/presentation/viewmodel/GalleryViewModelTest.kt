@@ -330,6 +330,42 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `reopening a photo starts on it, not where the last visit stopped`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        val first = observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))
+        first()
+        viewModel.onPageChanged(VIEWER, currentPhotoId = 12)
+        assertEquals(2, first().currentIndex)
+
+        val second = observe(viewModel.viewerState(OTHER_VIEWER, ViewerSource.Album(1), 10))
+
+        assertEquals(0, second().currentIndex)
+    }
+
+    @Test
+    fun `same viewer id keeps the page - a rotation`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))()
+        viewModel.onPageChanged(VIEWER, currentPhotoId = 12)
+
+        val again = observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))
+
+        assertEquals(2, again().currentIndex)
+    }
+
+    @Test
+    fun `closed viewer is dropped - its id starts fresh`() = runTest(dispatcher) {
+        publish(listOf(galleryAlbum(1)), albumPhotos)
+        observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))()
+        viewModel.onPageChanged(VIEWER, currentPhotoId = 12)
+
+        viewModel.closeViewer(VIEWER)
+        val reopened = observe(viewModel.viewerState(VIEWER, ViewerSource.Album(1), 10))
+
+        assertEquals(0, reopened().currentIndex)
+    }
+
+    @Test
     fun `only photo deleted - viewer closes`() = runTest(dispatcher) {
         publish(listOf(galleryAlbum(1)), listOf(galleryPhoto(10)))
         val viewer = observe(viewModel.viewerState(1, 10))
@@ -357,5 +393,6 @@ class GalleryViewModelTest {
 
     private companion object {
         const val VIEWER = "viewer"
+        const val OTHER_VIEWER = "other-viewer"
     }
 }
