@@ -8,7 +8,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
 import androidx.compose.foundation.background
@@ -324,7 +323,6 @@ internal fun PendingConfirmationsCard(
             )
             Spacer(modifier = Modifier.height(8.dp))
             when (pending) {
-                PendingConfirmationsUi.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 is PendingConfirmationsUi.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = pending.message,

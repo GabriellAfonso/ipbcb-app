@@ -16,9 +16,11 @@ data class AdminPanelUiState(
 
 /** The "Confirmar músicas de domingo" card: Sundays whose played songs are still to be registered. */
 sealed interface PendingConfirmationsUi {
-    /** No `manage` on `songs`, nothing pending, or access refused. */
+    /**
+     * No `manage` on `songs`, nothing pending, access refused, or the first read still running — the list is
+     * usually empty, so a loading card would flash in and out on every visit.
+     */
     data object Hidden : PendingConfirmationsUi
-    data object Loading : PendingConfirmationsUi
     data class Failed(val message: String) : PendingConfirmationsUi
 
     /**

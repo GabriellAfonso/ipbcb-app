@@ -85,8 +85,8 @@ class AdminPanelViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AdminPanelUiState())
 
     /**
-     * Re-read every time the panel is shown, so a Sunday registered meanwhile leaves the card. Only
-     * the first read shows loading; later ones keep the dates on screen until the answer.
+     * Re-read every time the panel is shown, so a Sunday registered meanwhile leaves the card. Whatever is
+     * on screen stays until the answer, so the card never appears just to vanish.
      */
     fun refreshPending() {
         viewModelScope.launch {
@@ -94,7 +94,6 @@ class AdminPanelViewModel @Inject constructor(
                 pending.value = PendingConfirmationsUi.Hidden
                 return@launch
             }
-            if (pending.value !is PendingConfirmationsUi.Dates) pending.value = PendingConfirmationsUi.Loading
             pending.value = getPendingConfirmations().fold(
                 onSuccess = { dates ->
                     if (dates.isEmpty()) PendingConfirmationsUi.Hidden else PendingConfirmationsUi.Dates(dates)

@@ -153,5 +153,6 @@ chart id opened on tap.
 
 ## Admin panel — `features/admin/panel`
 
-`AdminPanelUiState` + `pending: PendingConfirmationsUi` = `Hidden` | `Loading` | `Failed(message)` |
-`Dates(dates: List<LocalDate>)` (never empty — empty maps to `Hidden`).
+`AdminPanelUiState` + `pending: PendingConfirmationsUi` = `Hidden` | `Failed(message)` |
+`Dates(dates: List<LocalDate>)` (never empty — empty maps to `Hidden`). No `Loading`: the card stays hidden until
+the first answer.

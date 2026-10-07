@@ -104,7 +104,8 @@ comunica isso ao usuário.
 **Confirmar músicas de domingo (spec 011):** acima da grade, para quem tem `songs` ≥ `manage`, um card lista os
 domingos com repertório salvo cujas músicas tocadas ainda não foram registradas (`GET api/setlists/pending-confirmation/`,
 mais recente primeiro), como "Domingo dd/MM". Tocar num domingo abre o registro pré-preenchido (seção 3). Lista vazia,
-sem acesso ou recusa 403 escondem o card; carregando mostra uma barra de progresso; falha mostra o texto do erro e
+sem acesso ou recusa 403 escondem o card; enquanto a primeira leitura não volta o card não aparece (quase sempre não
+há pendência, e um card que surge e some empurra a grade à toa); falha mostra o texto do erro e
 "Tentar novamente". A lista é lida de novo sempre que o painel volta à tela (`ON_RESUME`), então um domingo recém
 registrado some sozinho. Não é um `PanelCard`: é dado do servidor, não uma área. Não é guardado no aparelho.
 

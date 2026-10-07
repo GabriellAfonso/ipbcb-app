@@ -369,7 +369,8 @@ from the card, return and check only the other remains.
 
 - **FR-028**: Every new screen or section — save in progress, the "Repertório de domingo" section, the pre-filled
   register, the pending card — MUST handle loading, success and error, following the app's error rules
-  (`specs/constitution.md`).
+  (`specs/constitution.md`). The pending card's loading is silent: it stays hidden until the first answer, since the
+  list is usually empty and a card that flashes in and out pushes the grid for nothing.
 
 ### Key Entities
 

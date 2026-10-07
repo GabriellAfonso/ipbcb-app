@@ -268,7 +268,7 @@ graphs pass ids (e.g. lyrics detail).
 ## R15 — Pending card in the admin panel
 
 **Decision**: `features/admin/register/domain` gains `SetlistConfirmationRepository.pending()` and
-`GetPendingConfirmationsUseCase`. `AdminPanelViewModel` gains `pending: PendingConfirmationsUi` (`Hidden` | `Loading` |
+`GetPendingConfirmationsUseCase`. `AdminPanelViewModel` gains `pending: PendingConfirmationsUi` (`Hidden` |
 `Failed(message)` | `Dates(List<LocalDate>)`), `Hidden` unless `Access.allows(SONGS, MANAGE)`; `Dates(empty)` maps to
 `Hidden` (FR-026). `AdminScreen` calls `refreshPending()` on `ON_RESUME` (`LifecycleEventEffect`), so returning from the
 register screen re-reads it (FR-027). The card is a full-width card above the grid, outside `PanelCard` (it is not an
