@@ -64,6 +64,7 @@ Ranking global de tons mais utilizados. Lista ordenada por `tone_count` decresce
 Gera sugestao de 4 musicas para o proximo domingo, priorizando musicas nao tocadas nos ultimos 90 dias. Permite fixar musicas em posicoes especificas e re-gerar as demais.
 
 **Tom automatico:** ao selecionar uma musica, o tom mais usado historicamente para aquela musica e preenchido automaticamente (calculado client-side a partir de `songsBySunday`).
+O seletor de tom oferece os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
 
 **Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
 

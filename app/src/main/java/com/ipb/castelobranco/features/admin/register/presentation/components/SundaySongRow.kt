@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ipb.castelobranco.core.domain.constants.NATURAL_TONES
+import com.ipb.castelobranco.core.domain.constants.MUSIC_TONES
 import com.ipb.castelobranco.features.admin.register.presentation.state.SundaySongRowState
 import com.ipb.castelobranco.features.admin.register.presentation.util.SongLabelFormatter
 import com.ipb.castelobranco.core.domain.model.Song
@@ -259,7 +259,7 @@ fun SundaySongRow(
                 expanded = expandedTone,
                 onDismissRequest = { expandedTone = false }
             ) {
-                NATURAL_TONES.forEach { tone ->
+                MUSIC_TONES.forEach { tone ->
                     DropdownMenuItem(
                         text = { Text(tone) },
                         onClick = {

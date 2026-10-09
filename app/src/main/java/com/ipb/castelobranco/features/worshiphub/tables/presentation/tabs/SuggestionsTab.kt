@@ -66,7 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ipb.castelobranco.core.domain.constants.NATURAL_TONES
+import com.ipb.castelobranco.core.domain.constants.MUSIC_TONES
 import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireRowState
@@ -466,7 +466,7 @@ private fun RepertoireRow(
                 expanded = expandedTone,
                 onDismissRequest = { expandedTone = false }
             ) {
-                NATURAL_TONES.forEach { tone ->
+                MUSIC_TONES.forEach { tone ->
                     DropdownMenuItem(
                         text = { Text(tone) },
                         onClick = {

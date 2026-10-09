@@ -131,7 +131,8 @@ a administração gerencia.
 `MusicRegistrationScreen` + `MusicRegistrationViewModel`. Um seletor (`RegistrationTypeSelect`)
 escolhe entre os dois tipos de `RegistrationType`:
 
-- `SUNDAY` — "Registrar domingo": data do culto e as músicas tocadas, em linhas ordenadas.
+- `SUNDAY` — "Registrar domingo": data do culto e as músicas tocadas, em linhas ordenadas. O tom de cada linha
+  sai de uma lista com os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
 - `MUSIC` — "Registrar música": cadastro de uma música nova no hinário.
 
 Cadastro de cifra e de letra ainda não existe: falta o endpoint no backend.
