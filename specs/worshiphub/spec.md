@@ -235,6 +235,8 @@ Na tela de lista de cifras, quem tem `manage` ou `owner` no escopo `songs` (Admi
 - Selecionar musica da lista preenche o campo e fecha a lista
 - Campos de tom e instrumento (singleLine)
 - Campo multiline para digitar a cifra (fonte monospace)
+- Com o teclado aberto, a tela encolhe para caber acima dele: o campo da cifra e o botao "Salvar" ficam
+  visiveis, e o trecho sendo digitado nunca fica atras do teclado
 - Botao "Salvar" (desabilitado se musica, tom, instrumento ou cifra vazios)
 - Apos salvar com sucesso, volta automaticamente para a lista
 
@@ -248,7 +250,7 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
 
-**Edicao (`songs` ≥ `manage`):** quem pode editar ve menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** quem pode editar ve menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada. Com o teclado aberto, o campo encolhe para caber acima dele — o trecho sendo editado nunca fica atras do teclado, mesmo no fim do texto.
 
 ---
 
@@ -286,6 +288,7 @@ Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve me
 - Campo de busca de musica (filtra `AllSongs` em tempo real, accent-insensitive)
 - Selecionar musica da lista preenche o campo e fecha a lista
 - Campo multiline para digitar a letra (fonte monospace)
+- Com o teclado aberto, a tela encolhe para caber acima dele (mesmo comportamento da criacao de cifra)
 - Botao "Salvar" (desabilitado se musica ou letra nao selecionada)
 - Apos salvar com sucesso, volta automaticamente para a lista
 
@@ -295,7 +298,7 @@ Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve me
 
 Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsStanza>`, cada estrofe com suas linhas.
 
-**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
 
 ---
 

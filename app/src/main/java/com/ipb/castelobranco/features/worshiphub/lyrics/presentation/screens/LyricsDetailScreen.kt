@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -108,7 +110,10 @@ private fun LyricsDetailContent(
                 isSaving        = state.isSaving,
                 saveError       = state.saveError,
                 onContentChange = onEditContentChange,
-                modifier        = Modifier.padding(innerPadding),
+                modifier        = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
+                    .imePadding(),
             )
             state.stanzas.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
             scrollMode == SongScrollMode.VERTICAL -> LyricsVerticalContent(
