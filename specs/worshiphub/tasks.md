@@ -54,3 +54,13 @@ Tarefas para implementacao da feature "Musicas". Tabelas, Cifras e Letras ja exi
 - [x] `RepertoireTab`: receber `onSongInfoClick`, icone info overlay no select (AnimatedVisibility, aparece com musica selecionada)
 - [x] `WorshipHubNavGraph`: conectar `onSongClick` → `navController.navigate(SongsRoutes.detail(songId))`
 - [x] Previews: atualizar previews das tabs com novo parametro
+
+## 7. Edicao e exclusao de musica (backend 018)
+
+- [x] `SongsEditApi` (`@AuthedRetrofit`): `PATCH api/songs/{id}/` e `DELETE api/songs/{id}/`
+- [x] `SongEditValidator` — regras de nome/artista/link no dominio, com mensagens por campo
+- [x] `SongEditRepository` + impl — mapeia respostas em `SongWriteResult`; atualiza snapshots no sucesso
+- [x] `UpdateSongUseCase` (valida, pula envio sem mudanca) e `DeleteSongUseCase`
+- [x] `SongDetailViewModel` — `canEdit`/`canDelete`, modo edicao, salvar, excluir, evento `Deleted`
+- [x] `SongDetailScreen` — menu ⋮, formulario de edicao, dialog de confirmacao e de erro da exclusao
+- [x] Testes: validator, repository (sucesso, 409, 400, rede), use cases, view model

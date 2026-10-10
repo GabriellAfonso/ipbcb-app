@@ -183,6 +183,52 @@ Tela com todas as informacoes consolidadas de uma musica. Dados vem de multiplas
 | tem cifra(s)? | `ChordCharts` snapshot | filtrar por `songId` |
 | tem letra? | `Lyrics` snapshot | filtrar por `songId` |
 
+#### Edicao (`songs` ≥ `manage`)
+
+Quem tem `manage` ou `owner` no escopo `songs` ve menu overflow (⋮) na TopBar. Menu normal: "Editar" (e
+"Excluir", so para `owner`). Em modo edicao: "Salvar" e "Cancelar" — mesmo mecanismo de cifras e letras.
+
+**Modo edicao:** a tela troca header, estatisticas e botoes por um formulario com tres campos, ja preenchidos com
+os valores atuais: **Nome**, **Artista** e **Link do YouTube** (vazio quando a musica nao tem link). Categoria nao
+e editavel (o backend nao aceita). Com o teclado aberto o formulario rola e o campo em foco fica acima dele.
+
+**Validacao no app** (antes de enviar; mesmas regras do backend). Valores sao comparados e enviados sem espacos nas
+pontas:
+- Nome e artista: obrigatorios, ate 100 caracteres — "Informe o nome." / "Informe o artista." /
+  "Use até 100 caracteres."
+- Link: vazio (remove o link) ou URL `http(s)` com ate 200 caracteres — "Link inválido. Use um endereço http(s)."
+  / "Use até 200 caracteres."
+
+O erro aparece embaixo do proprio campo e some quando o campo e editado. Com erro, nada e enviado.
+
+**Salvar:** se nada mudou, so sai do modo edicao, sem chamada. Senao envia `PATCH api/songs/{id}/` com
+`{"title", "artist", "youtube_link"}` (link vazio = `""`) via API autenticada. Durante o envio, spinner no topo do
+formulario e "Salvar"/"Cancelar" desabilitados. No sucesso sai do modo edicao e atualiza `songs/`,
+`songs-by-sunday/` e `top-songs/`, que repetem o titulo da musica. Falhas ficam no modo edicao, com a mensagem
+acima dos campos:
+
+| Resposta | Mensagem |
+|----------|----------|
+| `409` | "Já existe uma música com esse nome e artista." |
+| `400` com `field_errors` | erro do app no campo correspondente (`title`, `artist`, `youtube_link`) |
+| `403` | "Você não tem permissão para editar músicas." |
+| `404` | "Essa música não existe mais." |
+| rede / outros | mensagem generica (`toUserMessage()`) |
+
+#### Exclusao (`songs` = `owner`)
+
+"Excluir" abre dialog de confirmacao: titulo "Excluir música?", texto
+"“{nome}” será excluída junto com as cifras e a letra. Essa ação não pode ser desfeita.", botoes "Excluir" e
+"Cancelar". Confirmar envia `DELETE api/songs/{id}/` via API autenticada; durante o envio a tela mostra spinner.
+
+- **`204`:** atualiza `songs/`, `chord-charts/` e `lyrics/` (o backend apaga cifras e letra junto) e volta para a
+  tela anterior.
+- **`409`** (musica tocada em algum domingo ou presente numa setlist): dialog "Não foi possível excluir" com o
+  `detail` do backend, que ja explica o motivo em pt-BR (ex.: "A música "Oceans" não pode ser excluída: foi tocada
+  em 7 domingos…"). Sem `detail`: "Essa música já foi usada em domingos ou setlists e não pode ser excluída."
+- **`403`:** "Você não tem permissão para excluir músicas." · **`404`:** "Essa música não existe mais." ·
+  rede / outros: mensagem generica — todos no mesmo dialog. A musica continua na tela.
+
 ---
 
 ## 4. Cifras
@@ -436,6 +482,8 @@ feature nao importa `features/profile`:
 | PATCH | `chord-charts/{id}/` | Atualiza `content` de uma cifra |
 | POST | `lyrics/` | Cria nova letra |
 | PATCH | `lyrics/{id}/` | Atualiza `content` de uma letra existente |
+| PATCH | `api/songs/{id}/` | Edita `title`, `artist`, `youtube_link` de uma musica (backend 018) |
+| DELETE | `api/songs/{id}/` | Exclui musica sem uso em domingos/setlists — nivel `owner`; `409` com `detail` se em uso |
 | PUT | `api/setlists/{date}/` | Salva o repertorio do domingo (`manage` em `songs` + membro do Louvor; spec 011) |
 
 O contrato do repertorio e do backend: `backend/specs/017-sunday-setlist-push/contracts/setlist-api.md`.

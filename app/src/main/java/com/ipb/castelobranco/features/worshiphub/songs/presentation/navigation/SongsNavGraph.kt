@@ -45,6 +45,7 @@ fun NavGraphBuilder.songsGraph(navController: NavHostController) {
                 onChordChartClick = { id -> navController.navigate("chord_chart_detail/$id") },
                 onLyricsClick     = { id -> navController.navigate("lyrics_detail/$id") },
                 onBackClick       = { navController.safePopBackStack() },
+                onDeleted         = { navController.safePopBackStack() },
             )
         }
     }

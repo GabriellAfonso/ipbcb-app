@@ -3,22 +3,27 @@ package com.ipb.castelobranco.features.worshiphub.songs.presentation.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.TextSnippet
 import androidx.compose.material3.AlertDialog
@@ -26,11 +31,16 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,13 +52,17 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.state.ChordChartOption
+import com.ipb.castelobranco.features.worshiphub.songs.presentation.state.SongDetailEvent
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.state.SongDetailUiState
+import com.ipb.castelobranco.features.worshiphub.songs.presentation.state.SongEditFormState
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel.SongDetailViewModel
 
 private val Green = BrandColors.Green
@@ -60,14 +74,31 @@ fun SongDetailScreen(
     onChordChartClick: (id: Int) -> Unit,
     onLyricsClick: (id: Int) -> Unit,
     onBackClick: () -> Unit,
+    onDeleted: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                SongDetailEvent.Deleted -> onDeleted()
+            }
+        }
+    }
+
     SongDetailContent(
-        state             = state,
-        onChordChartClick = onChordChartClick,
-        onLyricsClick     = onLyricsClick,
-        onBackClick       = onBackClick,
+        state                = state,
+        onChordChartClick    = onChordChartClick,
+        onLyricsClick        = onLyricsClick,
+        onBackClick          = onBackClick,
+        onEnterEdit          = viewModel::enterEditMode,
+        onTitleChange        = viewModel::onTitleChange,
+        onArtistChange       = viewModel::onArtistChange,
+        onYoutubeLinkChange  = viewModel::onYoutubeLinkChange,
+        onCancelEdit         = viewModel::cancelEdit,
+        onSaveEdit           = viewModel::saveEdit,
+        onDelete             = viewModel::deleteSong,
+        onDismissDeleteError = viewModel::dismissDeleteError,
     )
 }
 
@@ -78,18 +109,41 @@ private fun SongDetailContent(
     onChordChartClick: (id: Int) -> Unit,
     onLyricsClick: (id: Int) -> Unit,
     onBackClick: () -> Unit,
+    onEnterEdit: () -> Unit,
+    onTitleChange: (String) -> Unit,
+    onArtistChange: (String) -> Unit,
+    onYoutubeLinkChange: (String) -> Unit,
+    onCancelEdit: () -> Unit,
+    onSaveEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onDismissDeleteError: () -> Unit,
 ) {
     val context = LocalContext.current
     var showChordChartDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     BaseScreen(
         tabName       = "Música",
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
+        extraActions  = {
+            if (state.canEdit && !state.isLoading && state.error == null && !state.isDeleting) {
+                SongOverflowMenu(
+                    isEditing = state.isEditing,
+                    isSaving  = state.edit?.isSaving == true,
+                    canDelete = state.canDelete,
+                    onEdit    = onEnterEdit,
+                    onDelete  = { showDeleteConfirm = true },
+                    onSave    = onSaveEdit,
+                    onCancel  = onCancelEdit,
+                )
+            }
+        },
     ) { innerPadding ->
+        val edit = state.edit
         when {
-            state.isLoading -> {
+            state.isLoading || state.isDeleting -> {
                 Column(
                     modifier            = Modifier.fillMaxSize().padding(innerPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -111,6 +165,16 @@ private fun SongDetailContent(
                     )
                 }
             }
+            edit != null -> SongEditForm(
+                form                = edit,
+                onTitleChange       = onTitleChange,
+                onArtistChange      = onArtistChange,
+                onYoutubeLinkChange = onYoutubeLinkChange,
+                modifier            = Modifier
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding)
+                    .imePadding(),
+            )
             else -> {
                 Column(
                     modifier = Modifier
@@ -246,6 +310,168 @@ private fun SongDetailContent(
             onDismiss = { showChordChartDialog = false },
         )
     }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title            = { Text("Excluir música?") },
+            text             = {
+                Text(
+                    "“${state.songName}” será excluída junto com as cifras e a letra. " +
+                        "Essa ação não pode ser desfeita.",
+                )
+            },
+            confirmButton    = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                    },
+                ) {
+                    Text("Excluir", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton    = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancelar")
+                }
+            },
+        )
+    }
+
+    state.deleteError?.let { message ->
+        AlertDialog(
+            onDismissRequest = onDismissDeleteError,
+            title            = { Text("Não foi possível excluir") },
+            text             = { Text(message) },
+            confirmButton    = {
+                TextButton(onClick = onDismissDeleteError) {
+                    Text("OK")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun SongOverflowMenu(
+    isEditing: Boolean,
+    isSaving: Boolean,
+    canDelete: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector        = Icons.Filled.MoreVert,
+                contentDescription = "Menu",
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (isEditing) {
+                DropdownMenuItem(
+                    text    = { Text("Salvar") },
+                    onClick = { expanded = false; onSave() },
+                    enabled = !isSaving,
+                )
+                DropdownMenuItem(
+                    text    = { Text("Cancelar") },
+                    onClick = { expanded = false; onCancel() },
+                    enabled = !isSaving,
+                )
+            } else {
+                DropdownMenuItem(
+                    text    = { Text("Editar") },
+                    onClick = { expanded = false; onEdit() },
+                )
+                if (canDelete) {
+                    DropdownMenuItem(
+                        text    = { Text("Excluir", color = MaterialTheme.colorScheme.error) },
+                        onClick = { expanded = false; onDelete() },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongEditForm(
+    form: SongEditFormState,
+    onTitleChange: (String) -> Unit,
+    onArtistChange: (String) -> Unit,
+    onYoutubeLinkChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier            = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (form.isSaving) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Green)
+            }
+        }
+        form.saveError?.let { message ->
+            Text(
+                text  = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        SongEditField(
+            label         = "Nome",
+            value         = form.title,
+            error         = form.fieldErrors.title,
+            enabled       = !form.isSaving,
+            onValueChange = onTitleChange,
+        )
+        SongEditField(
+            label         = "Artista",
+            value         = form.artist,
+            error         = form.fieldErrors.artist,
+            enabled       = !form.isSaving,
+            onValueChange = onArtistChange,
+        )
+        SongEditField(
+            label           = "Link do YouTube",
+            value           = form.youtubeLink,
+            error           = form.fieldErrors.youtubeLink,
+            enabled         = !form.isSaving,
+            onValueChange   = onYoutubeLinkChange,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+        )
+    }
+}
+
+@Composable
+private fun SongEditField(
+    label: String,
+    value: String,
+    error: String?,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+) {
+    OutlinedTextField(
+        value           = value,
+        onValueChange   = onValueChange,
+        label           = { Text(label) },
+        isError         = error != null,
+        supportingText  = error?.let { { Text(it) } },
+        enabled         = enabled,
+        singleLine      = true,
+        keyboardOptions = keyboardOptions,
+        modifier        = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
