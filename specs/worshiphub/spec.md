@@ -66,6 +66,11 @@ Gera sugestao de 4 musicas para o proximo domingo, priorizando musicas nao tocad
 **Tom automatico:** ao selecionar uma musica, o tom mais usado historicamente para aquela musica e preenchido automaticamente (calculado client-side a partir de `songsBySunday`).
 O seletor de tom oferece os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
 
+**Catalogo ao abrir:** entrar na aba Repertorio atualiza o catalogo de musicas (`GET songs/`), para que
+uma musica recem-cadastrada apareca no select sem reiniciar o app. Falha e silenciosa: o select continua com o
+catalogo que ja estava carregado. O catalogo e um so no app (`SongsRepositoryImpl` e `@Singleton`): lista de
+musicas, repertorio, cifras, letras e o registro de domingo (admin) leem a mesma instancia em memoria.
+
 **Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
 
 **Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada) ficam salvas no aparelho a cada mudanca

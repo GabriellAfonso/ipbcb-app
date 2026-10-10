@@ -107,6 +107,24 @@ class SongsTableViewModelTest {
         assertTrue(viewModel.allSongs.value.isEmpty())
     }
 
+    @Test
+    fun `refreshAllSongs refreshes the catalog`() = runTest {
+        viewModel.refreshAllSongs()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.refreshAllSongs() }
+    }
+
+    @Test
+    fun `refreshAllSongs failure is silent`() = runTest {
+        coEvery { repository.refreshAllSongs() } throws RuntimeException("offline")
+
+        viewModel.refreshAllSongs()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.allSongs.value.isEmpty())
+    }
+
     // endregion
 
     // region lastSundays

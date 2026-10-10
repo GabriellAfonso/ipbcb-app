@@ -23,7 +23,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
+import javax.inject.Singleton
 
+/**
+ * One instance for the whole app: `SongsRepository` and `AllSongsRepository` are both bound to it, and two
+ * copies would share the disk cache and ETag while keeping separate in-memory catalogs — a refresh in one
+ * would get 304 in the other and leave it stale.
+ */
+@Singleton
 class SongsRepositoryImpl @Inject constructor(
     private val songsBySundaySnapshot: SongsBySundaySnapshotRepository,
     private val topSongsSnapshot: TopSongsSnapshotRepository,

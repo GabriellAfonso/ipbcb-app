@@ -97,6 +97,7 @@ data class WorshipSongsActions(
     val onToneChange: (position: Int, tone: String) -> Unit,
     val onToggleFixed: (position: Int) -> Unit,
     val onRefreshCurrentTab: (tabIndex: Int) -> Unit = {},
+    val onRepertoireOpen: () -> Unit = {},
     val onSongClick: (songId: Int) -> Unit = {},
 )
 
@@ -139,6 +140,7 @@ fun WorshipSongsTableScreen(
         onToneChange = viewModel::onToneChange,
         onToggleFixed = viewModel::toggleFixed,
         onRefreshCurrentTab = viewModel::refreshCurrentTab,
+        onRepertoireOpen = viewModel::refreshAllSongs,
         onSongClick = onSongClick,
     )
 
@@ -176,6 +178,10 @@ fun WorshipSongsTableContent(
 
     LaunchedEffect(showSearch) {
         if (showSearch) focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(selectedTabIndex) {
+        if (selectedTabIndex == REPERTOIRE_TAB_INDEX) actions.onRepertoireOpen()
     }
 
     BaseScreen(
@@ -401,3 +407,5 @@ private fun AutoSizeTabText(
         modifier = Modifier.drawWithContent { if (readyToDraw) drawContent() },
     )
 }
+
+private const val REPERTOIRE_TAB_INDEX = 3
