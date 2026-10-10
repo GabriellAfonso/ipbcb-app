@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -278,9 +279,13 @@ private fun LyricsVerticalContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            stanzas.forEachIndexed { index, stanza ->
-                if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                StanzaBlock(stanza)
+            SelectionContainer {
+                Column {
+                    stanzas.forEachIndexed { index, stanza ->
+                        if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                        StanzaBlock(stanza)
+                    }
+                }
             }
         }
     }
@@ -332,9 +337,14 @@ private fun LyricsPageContent(stanzas: List<LyricsStanza>) {
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        stanzas.forEachIndexed { index, stanza ->
-            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-            StanzaBlock(stanza)
+        // Long press selects the text to copy; taps still turn the page.
+        SelectionContainer {
+            Column {
+                stanzas.forEachIndexed { index, stanza ->
+                    if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                    StanzaBlock(stanza)
+                }
+            }
         }
     }
 }

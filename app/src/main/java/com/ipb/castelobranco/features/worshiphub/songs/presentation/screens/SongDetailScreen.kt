@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
@@ -118,63 +119,67 @@ private fun SongDetailContent(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 16.dp),
                 ) {
-                    // Header
-                    Text(
-                        text       = state.songName,
-                        style      = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color      = Green,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text  = state.artist,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Header and stats can be long-pressed to copy (song name, artist, tones, dates).
+                    SelectionContainer {
+                        Column {
+                            Text(
+                                text       = state.songName,
+                                style      = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = Green,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text  = state.artist,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                    // Stats
-                    Text(
-                        text       = "Estatísticas",
-                        style      = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                            // Stats
+                            Text(
+                                text       = "Estatísticas",
+                                style      = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        text  = "Tocada ${state.playCount} " +
-                            "${if (state.playCount == 1) "vez" else "vezes"} aos domingos",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                            Text(
+                                text  = "Tocada ${state.playCount} " +
+                                    "${if (state.playCount == 1) "vez" else "vezes"} aos domingos",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
 
-                    if (state.tones.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text  = "Tons: ${state.tones.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
-                    if (state.lastSundays.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text       = "Últimos domingos:",
-                            style      = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color      = MaterialTheme.colorScheme.onSurface,
-                        )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            state.lastSundays.forEach { date ->
-                                AssistChip(
-                                    onClick = {},
-                                    label   = { Text(date) },
+                            if (state.tones.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text  = "Tons: ${state.tones.joinToString(", ")}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                 )
+                            }
+
+                            if (state.lastSundays.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text       = "Últimos domingos:",
+                                    style      = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color      = MaterialTheme.colorScheme.onSurface,
+                                )
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    state.lastSundays.forEach { date ->
+                                        AssistChip(
+                                            onClick = {},
+                                            label   = { Text(date) },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

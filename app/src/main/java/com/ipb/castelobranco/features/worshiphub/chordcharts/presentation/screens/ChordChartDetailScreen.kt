@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -279,9 +280,13 @@ private fun ChordVerticalContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
-            blocks.forEachIndexed { index, block ->
-                if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                if (block.isIntro) IntroBlock(block) else SectionBlock(block)
+            SelectionContainer {
+                Column {
+                    blocks.forEachIndexed { index, block ->
+                        if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                        if (block.isIntro) IntroBlock(block) else SectionBlock(block)
+                    }
+                }
             }
         }
     }
@@ -343,9 +348,14 @@ private fun ChordPageContent(blocks: List<ChordBlock>) {
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        blocks.forEachIndexed { index, block ->
-            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-            if (block.isIntro) IntroBlock(block) else SectionBlock(block)
+        // Long press selects the text to copy; taps still turn the page.
+        SelectionContainer {
+            Column {
+                blocks.forEachIndexed { index, block ->
+                    if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                    if (block.isIntro) IntroBlock(block) else SectionBlock(block)
+                }
+            }
         }
     }
 }

@@ -157,6 +157,9 @@ Tela com todas as informacoes consolidadas de uma musica. Dados vem de multiplas
 - Tons utilizados (lista de tons distintos extraida client-side de `songsBySunday`, filtrada por `songId`)
 - Ultimo(s) domingo(s) em que foi tocada (ate 3, depende do espaco na tela)
 
+**Texto copiavel:** header e estatisticas (nome, artista, contagem, tons e datas) ficam dentro de um
+`SelectionContainer`: long press seleciona e abre o menu de copiar do sistema. Os botoes de acao nao entram.
+
 **Acoes (botoes):**
 - **Cifra** — navega para tela de cifra existente:
   - Se 1 cifra registrada: navega direto para `ChordChartDetailScreen`
@@ -255,6 +258,10 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
 
+**Texto copiavel:** o conteudo (acordes e letra), nos modos horizontal e vertical, fica num `SelectionContainer`:
+long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua virando a pagina. O cabecalho
+(tom, paginas) nao entra.
+
 **Edicao (`songs` ≥ `manage`):** quem pode editar ve menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada. Com o teclado aberto, o campo encolhe para caber acima dele — o trecho sendo editado nunca fica atras do teclado, mesmo no fim do texto.
 
 ---
@@ -302,6 +309,8 @@ Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve me
 ### 5.3 Detalhe da Letra
 
 Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsStanza>`, cada estrofe com suas linhas.
+
+**Texto copiavel:** a letra e copiavel como na cifra (4.3), nos dois modos de rolagem.
 
 **Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
 
