@@ -4,7 +4,9 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import androidx.lifecycle.SavedStateHandle
 import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.features.admin.register.domain.FakeWorshipRegisterRepository
 import com.ipb.castelobranco.features.admin.register.domain.usecase.GetSetlistForDateUseCase
+import com.ipb.castelobranco.features.admin.register.domain.usecase.RegisterSongUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.ObserveSongsUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.SubmitSundayPlaysUseCase
 import com.ipb.castelobranco.features.admin.register.presentation.state.MusicRegistrationEvent
@@ -40,6 +42,7 @@ class MusicRegistrationViewModelTest {
     private lateinit var observeSongsUseCase: ObserveSongsUseCase
     private lateinit var submitSundayPlaysUseCase: SubmitSundayPlaysUseCase
     private lateinit var viewModel: MusicRegistrationViewModel
+    private val songRepository = FakeWorshipRegisterRepository()
 
     private val songsFlow = MutableStateFlow<SnapshotState<List<Song>>>(SnapshotState.Loading)
 
@@ -67,6 +70,7 @@ class MusicRegistrationViewModelTest {
         return MusicRegistrationViewModel(
             observeSongsUseCase,
             submitSundayPlaysUseCase,
+            RegisterSongUseCase(songRepository),
             GetSetlistForDateUseCase(FakeSetlistConfirmationRepository()),
             SavedStateHandle(),
         ).also {
@@ -259,14 +263,56 @@ class MusicRegistrationViewModelTest {
 
     // region Submit
 
-    @Test
-    fun `Submit with MUSIC type shows not implemented message`() = runTest {
-        createViewModel()
+    private fun fillMusicForm(title: String = "Oceans", artist: String = "Hillsong") {
         viewModel.onEvent(MusicRegistrationEvent.RegistrationTypeChanged(RegistrationType.MUSIC))
+        viewModel.onEvent(MusicRegistrationEvent.MusicTitleChanged(title))
+        viewModel.onEvent(MusicRegistrationEvent.MusicArtistChanged(artist))
+    }
+
+    @Test
+    fun `Submit with MUSIC registers the song, clears the form and refreshes the catalogue`() = runTest {
+        createViewModel()
+        viewModel.onEvent(MusicRegistrationEvent.Init)
+        advanceUntilIdle()
+        fillMusicForm()
 
         viewModel.onEvent(MusicRegistrationEvent.Submit)
+        advanceUntilIdle()
 
-        assertEquals("Registro de música ainda não implementado.", viewModel.uiState.value.snackbarMessage)
+        val state = viewModel.uiState.value
+        assertEquals(listOf("Oceans" to "Hillsong"), songRepository.registeredSongs)
+        assertEquals("Música cadastrada.", state.snackbarMessage)
+        assertEquals("", state.musicForm.title)
+        assertEquals("", state.musicForm.artist)
+        assertFalse(state.isSubmitting)
+        // Once on Init, once after the registration.
+        coVerify(exactly = 2) { observeSongsUseCase.refresh() }
+    }
+
+    @Test
+    fun `Submit with MUSIC on 409 shows duplicate message and keeps the form`() = runTest {
+        songRepository.registerSongResult = { _, _ -> Result.failure(AppError.Server(code = 409)) }
+        createViewModel()
+        fillMusicForm()
+
+        viewModel.onEvent(MusicRegistrationEvent.Submit)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Essa música já está cadastrada.", state.snackbarMessage)
+        assertEquals("Oceans", state.musicForm.title)
+        assertFalse(state.isSubmitting)
+    }
+
+    @Test
+    fun `Submit with MUSIC and blank fields does not call the repository`() = runTest {
+        createViewModel()
+        fillMusicForm(artist = "  ")
+
+        viewModel.onEvent(MusicRegistrationEvent.Submit)
+        advanceUntilIdle()
+
+        assertTrue(songRepository.registeredSongs.isEmpty())
     }
 
     @Test
@@ -323,8 +369,9 @@ class MusicRegistrationViewModelTest {
     @Test
     fun `SnackbarShown clears snackbar message`() = runTest {
         createViewModel()
-        viewModel.onEvent(MusicRegistrationEvent.RegistrationTypeChanged(RegistrationType.MUSIC))
+        fillMusicForm()
         viewModel.onEvent(MusicRegistrationEvent.Submit)
+        advanceUntilIdle()
         assertTrue(viewModel.uiState.value.snackbarMessage != null)
 
         viewModel.onEvent(MusicRegistrationEvent.SnackbarShown)

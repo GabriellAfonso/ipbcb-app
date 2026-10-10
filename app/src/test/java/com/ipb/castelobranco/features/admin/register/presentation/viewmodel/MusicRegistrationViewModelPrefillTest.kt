@@ -7,7 +7,9 @@ import com.ipb.castelobranco.core.domain.setlist.SetlistItem
 import com.ipb.castelobranco.core.domain.setlist.SundaySetlist
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.features.admin.register.domain.FakeWorshipRegisterRepository
 import com.ipb.castelobranco.features.admin.register.domain.usecase.GetSetlistForDateUseCase
+import com.ipb.castelobranco.features.admin.register.domain.usecase.RegisterSongUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.ObserveSongsUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.SubmitSundayPlaysUseCase
 import com.ipb.castelobranco.features.admin.register.presentation.state.MusicRegistrationEvent
@@ -60,6 +62,7 @@ class MusicRegistrationViewModelPrefillTest {
         MusicRegistrationViewModel(
             observeSongs,
             mockk<SubmitSundayPlaysUseCase>(),
+            RegisterSongUseCase(FakeWorshipRegisterRepository()),
             GetSetlistForDateUseCase(repository),
             SavedStateHandle(if (date == null) emptyMap() else mapOf("date" to date)),
         )
