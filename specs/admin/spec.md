@@ -133,13 +133,25 @@ escolhe entre os dois tipos de `RegistrationType`:
 
 - `SUNDAY` — "Registrar domingo": data do culto e as músicas tocadas, em linhas ordenadas. O tom de cada linha
   sai de uma lista com os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
-- `MUSIC` — "Registrar música": cadastro de uma música nova no hinário.
+- `MUSIC` — "Registrar música": cadastro de uma música nova no catálogo de músicas (o mesmo do Worship Hub).
+
+**Registrar música:** o form tem "Título" e "Artista", os dois obrigatórios (o botão só habilita com os dois
+preenchidos). Enviar faz `POST api/songs/` com `{ title, artist }` já sem espaços nas pontas
+(`RegisterSongUseCase`, `WorshipRegisterRepository`). Categoria e link do YouTube não entram pelo app.
+
+- Sucesso: snackbar "Música cadastrada.", o form volta vazio e o catálogo é relido, então a música já aparece no
+  registro de domingo e no Repertório do Worship Hub.
+- `409` (mesmo título e artista, ignorando maiúsculas): "Essa música já está cadastrada." O form fica como está.
+- `400` (campo vazio, ou com mais de 100 caracteres): "Título ou artista inválido. Use até 100 caracteres."
+- Outras falhas (rede, `403` sem `songs` `manage`, 5xx): o texto genérico da categoria do erro.
+- Enquanto envia, um segundo toque em enviar é ignorado.
 
 **Catálogo ao abrir:** toda vez que a tela abre, o catálogo de músicas é atualizado (`GET songs/`, via
 `AllSongsRepository`, o mesmo catálogo do Worship Hub), para que uma música recém-cadastrada apareça nas linhas
 sem reiniciar o app. Falha mantém o catálogo já carregado; sem catálogo nenhum, "Falha ao carregar músicas.".
 
-Cadastro de cifra e de letra ainda não existe: falta o endpoint no backend.
+Cadastro de cifra e de letra ainda não existe no app. O backend já tem os endpoints (`POST`/`PATCH` em
+`api/chord-charts/` e `api/lyrics/`, com `songs` `manage`); falta só a tela.
 
 Eventos de uma vez (sucesso, erro de envio) saem por `MusicRegistrationEvent`.
 

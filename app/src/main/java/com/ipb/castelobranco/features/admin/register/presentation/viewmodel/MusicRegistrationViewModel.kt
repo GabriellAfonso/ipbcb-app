@@ -5,10 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.admin.register.domain.usecase.ObserveSongsUseCase
+import com.ipb.castelobranco.features.admin.register.domain.usecase.RegisterSongUseCase
 import com.ipb.castelobranco.features.admin.register.domain.usecase.SubmitSundayPlaysUseCase
 import com.ipb.castelobranco.features.admin.register.domain.validation.MusicRegistrationValidator
 import com.ipb.castelobranco.features.admin.register.presentation.state.MusicRegistrationEvent
 import com.ipb.castelobranco.features.admin.register.presentation.state.MusicRegistrationUiState
+import com.ipb.castelobranco.features.admin.register.presentation.state.MusicSongFormState
 import com.ipb.castelobranco.features.admin.register.presentation.state.RegistrationType
 import com.ipb.castelobranco.features.admin.register.presentation.util.addRow
 import com.ipb.castelobranco.features.admin.register.presentation.util.removeRow
@@ -40,6 +42,7 @@ import javax.inject.Inject
 class MusicRegistrationViewModel @Inject constructor(
     private val observeSongsUseCase: ObserveSongsUseCase,
     private val submitSundayPlaysUseCase: SubmitSundayPlaysUseCase,
+    private val registerSongUseCase: RegisterSongUseCase,
     private val getSetlistForDate: GetSetlistForDateUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -255,12 +258,12 @@ class MusicRegistrationViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isSubmitting) return
 
-        if (state.registrationType != RegistrationType.SUNDAY) {
-            _uiState.update { it.copy(snackbarMessage = "Registro de música ainda não implementado.") }
+        if (!state.canSubmit) return
+
+        if (state.registrationType == RegistrationType.MUSIC) {
+            registerSong(state)
             return
         }
-
-        if (!state.canSubmit) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true) }
@@ -289,6 +292,41 @@ class MusicRegistrationViewModel @Inject constructor(
         }
     }
 
+    private fun registerSong(state: MusicRegistrationUiState) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true) }
+            registerSongUseCase(title = state.musicForm.title, artist = state.musicForm.artist).fold(
+                onSuccess = {
+                    _uiState.update { current ->
+                        current.copy(
+                            musicForm = MusicSongFormState(),
+                            snackbarMessage = "Música cadastrada.",
+                            isSubmitting = false,
+                        )
+                    }
+                    // The catalogue is shared, so the new song shows up on Sunday rows and in the Worship Hub.
+                    refreshSongs()
+                },
+                onFailure = { error ->
+                    Timber.w(error, "Failed to register song")
+                    _uiState.update { current ->
+                        current.copy(
+                            snackbarMessage = registerSongErrorMessage(error.toAppError()),
+                            isSubmitting = false,
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun registerSongErrorMessage(error: AppError): String = when {
+        error is AppError.Server && error.code == HTTP_CONFLICT -> "Essa música já está cadastrada."
+        error is AppError.Server && error.code == HTTP_BAD_REQUEST ->
+            "Título ou artista inválido. Use até 100 caracteres."
+        else -> error.toUserMessage()
+    }
+
     private fun consumeSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
     }
@@ -300,7 +338,9 @@ class MusicRegistrationViewModel @Inject constructor(
     }
 
     private companion object {
+        const val HTTP_BAD_REQUEST = 400
         const val HTTP_NOT_FOUND = 404
+        const val HTTP_CONFLICT = 409
         val DAY_MONTH: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM")
     }
 }

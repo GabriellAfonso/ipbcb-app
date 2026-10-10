@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.admin.register.data.repository
 
+import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.features.admin.register.data.api.WorshipRegisterApi
+import com.ipb.castelobranco.features.admin.register.data.dto.RegisterSongRequestDto
 import com.ipb.castelobranco.features.admin.register.data.mapper.buildRegisterRequest
 import com.ipb.castelobranco.features.admin.register.domain.repository.WorshipRegisterRepository
 import com.ipb.castelobranco.features.admin.register.domain.model.SundayPlayPushItem
@@ -22,5 +24,18 @@ class WorshipRegisterRepositoryImpl @Inject constructor(
         val response = api.registerSundayPlays(body)
         if (!response.isSuccessful) throw response.toAppError()
         Unit
+    }.mapError()
+
+    override suspend fun registerSong(title: String, artist: String): Result<Song> = runCatching {
+        val response = api.registerSong(RegisterSongRequestDto(title = title, artist = artist))
+        if (!response.isSuccessful) throw response.toAppError()
+        val body = response.body() ?: error("Empty body on song registration")
+        Song(
+            id = body.id,
+            title = body.title,
+            artist = body.artist,
+            categoryName = body.categoryName,
+            youtubeLink = body.youtubeLink,
+        )
     }.mapError()
 }
