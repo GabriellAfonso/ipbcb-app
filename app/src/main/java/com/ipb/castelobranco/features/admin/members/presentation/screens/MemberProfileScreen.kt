@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
@@ -247,18 +248,23 @@ private fun ProfileBody(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 32.dp),
         ) {
-            SectionCard("Dados pessoais") {
-                InfoRow("Nome", profile.firstName)
-                InfoRow("Sobrenome", profile.lastName)
-                InfoRow("Nascimento", profile.birthDateLabel)
-                InfoRow("Idade", profile.ageLabel)
-                InfoRow("Sexo", profile.genderLabel)
-            }
-            SectionCard("Vida na igreja") {
-                InfoRow("Situação", profile.statusLabel)
-                InfoRow("Cargo", profile.roleText)
-                InfoRow("Batismo", profile.baptismLabel)
-                MinistriesRow(profile.ministries)
+            // Long press copies a field, so leaders can pass it on without retyping.
+            SelectionContainer {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionCard("Dados pessoais") {
+                        InfoRow("Nome", profile.firstName)
+                        InfoRow("Sobrenome", profile.lastName)
+                        InfoRow("Nascimento", profile.birthDateLabel)
+                        InfoRow("Idade", profile.ageLabel)
+                        InfoRow("Sexo", profile.genderLabel)
+                    }
+                    SectionCard("Vida na igreja") {
+                        InfoRow("Situação", profile.statusLabel)
+                        InfoRow("Cargo", profile.roleText)
+                        InfoRow("Batismo", profile.baptismLabel)
+                        MinistriesRow(profile.ministries)
+                    }
+                }
             }
             ValidityCard(isValid = profile.isValid)
             HistoryCard(

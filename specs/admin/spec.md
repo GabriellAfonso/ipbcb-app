@@ -311,6 +311,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   com "há N anos", ministérios), card "Perfil válido" / "Perfil inválido" só de leitura (a validade muda no formulário, para um toque
   sem querer não esconder o membro), card da
   última alteração, "Cadastrado em" e "Excluir membro".
+  Os textos de "Dados pessoais" e "Vida na igreja" são copiáveis (long press seleciona e abre o menu de copiar do
+  sistema); o resto da tela não.
 - **Formulário** — um só para criar e editar; opções de situação, cargo e ministérios vêm do
   servidor; validação local (nome obrigatório, ≤ 255, datas não futuras, batismo não antes do
   nascimento) e `field_errors` do servidor no campo certo; edição envia só o que mudou; sair com
