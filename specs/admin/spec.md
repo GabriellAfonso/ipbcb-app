@@ -135,6 +135,10 @@ escolhe entre os dois tipos de `RegistrationType`:
   sai de uma lista com os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
 - `MUSIC` — "Registrar música": cadastro de uma música nova no hinário.
 
+**Catálogo ao abrir:** toda vez que a tela abre, o catálogo de músicas é atualizado (`GET songs/`, via
+`AllSongsRepository`, o mesmo catálogo do Worship Hub), para que uma música recém-cadastrada apareça nas linhas
+sem reiniciar o app. Falha mantém o catálogo já carregado; sem catálogo nenhum, "Falha ao carregar músicas.".
+
 Cadastro de cifra e de letra ainda não existe: falta o endpoint no backend.
 
 Eventos de uma vez (sucesso, erro de envio) saem por `MusicRegistrationEvent`.

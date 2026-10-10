@@ -27,6 +27,7 @@ import com.ipb.castelobranco.features.admin.register.presentation.state.SundaySo
 import com.ipb.castelobranco.features.admin.register.presentation.util.SongLabelFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +56,8 @@ class MusicRegistrationViewModel @Inject constructor(
         )
     )
     val uiState: StateFlow<MusicRegistrationUiState> = _uiState.asStateFlow()
+
+    private var songsJob: Job? = null
 
     init {
         if (prefillDate != null) loadPrefill(prefillDate)
@@ -135,12 +138,14 @@ class MusicRegistrationViewModel @Inject constructor(
         }
     }
 
+    /** Observes the catalog once per ViewModel, but refreshes it every time the screen opens. */
     private fun init() {
-        val alreadyObserving =
-            _uiState.value.isLoadingSongs || _uiState.value.availableSongs.isNotEmpty()
-        if (alreadyObserving) return
+        if (songsJob == null) observeSongs()
+        refreshSongs()
+    }
 
-        viewModelScope.launch {
+    private fun observeSongs() {
+        songsJob = viewModelScope.launch {
             observeSongsUseCase.observe().collect { snapshot ->
                 when (snapshot) {
                     is SnapshotState.Loading -> {
@@ -165,7 +170,9 @@ class MusicRegistrationViewModel @Inject constructor(
                 }
             }
         }
+    }
 
+    private fun refreshSongs() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingSongs = true) }
             try {

@@ -11,8 +11,10 @@ import com.ipb.castelobranco.features.admin.register.presentation.state.MusicReg
 import com.ipb.castelobranco.features.admin.register.presentation.state.RegistrationType
 import com.ipb.castelobranco.core.domain.model.Song
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,17 +111,19 @@ class MusicRegistrationViewModelTest {
     }
 
     @Test
-    fun `Init called twice does not re-observe`() = runTest {
+    fun `Init called twice observes once but refreshes every time`() = runTest {
         createViewModel()
         viewModel.onEvent(MusicRegistrationEvent.Init)
         songsFlow.value = SnapshotState.Data(fakeSongs)
         advanceUntilIdle()
 
-        // Second Init should be ignored (alreadyObserving = true)
+        // Reopening the screen must pick up songs registered meanwhile
         viewModel.onEvent(MusicRegistrationEvent.Init)
         advanceUntilIdle()
 
         assertEquals(fakeSongs, viewModel.uiState.value.availableSongs)
+        verify(exactly = 1) { observeSongsUseCase.observe() }
+        coVerify(exactly = 2) { observeSongsUseCase.refresh() }
     }
 
     // endregion
