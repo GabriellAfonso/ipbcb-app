@@ -244,6 +244,33 @@ class ChordChartsViewModelTest {
     }
 
     @Test
+    fun `searchLyrics matches chart content ignoring chords`() = runTest {
+        val content = "[D]You call me [A]out upon the [G]waters"
+        val charts = listOf(
+            ChordChart(id = 10, songId = 1, content = content, tone = "D", instrument = "violão"),
+            ChordChart(id = 11, songId = 2, content = "[G]Way maker", tone = "G", instrument = "teclado"),
+        )
+        every { getChordChartsUseCase.observe() } returns flowOf(SnapshotState.Data(charts))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        viewModel = newViewModel()
+
+        val job = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onQueryChange("out upon")
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.filteredCharts.isEmpty())
+
+        viewModel.onSearchLyricsChange(true)
+        advanceUntilIdle()
+        job.cancel()
+
+        val filtered = viewModel.uiState.value.filteredCharts
+        assertEquals(listOf(10), filtered.map { it.id })
+        assertEquals("You call me out upon the waters", filtered.first().lyricsSnippet)
+    }
+
+    @Test
     fun `onQueryChange filters charts by song name case-insensitively`() = runTest {
         every { getChordChartsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeCharts))
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))

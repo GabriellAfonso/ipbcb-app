@@ -299,6 +299,55 @@ class LyricsViewModelTest {
         assertEquals(2, viewModel.uiState.value.filteredLyrics.size)
     }
 
+    @Test
+    fun `searchLyrics adds content matches after title matches, with the snippet`() = runTest {
+        val songs = fakeSongs + Song(id = 3, title = "Waters Deep", artist = "X", categoryName = "Louvor")
+        val lyrics = fakeLyrics + Lyrics(id = 12, songId = 3, content = "Deep calls to deep")
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(lyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(songs))
+        viewModel = LyricsViewModel(
+            getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist, syncSundaySetlist,
+        )
+
+        val job = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onQueryChange("waters")
+        advanceUntilIdle()
+        assertEquals(listOf(12), viewModel.uiState.value.filteredLyrics.map { it.id })
+
+        viewModel.onSearchLyricsChange(true)
+        advanceUntilIdle()
+        job.cancel()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.searchLyrics)
+        assertEquals(listOf(12, 10), state.filteredLyrics.map { it.id })
+        assertNull(state.filteredLyrics[0].lyricsSnippet)
+        assertEquals("You call me out upon the waters...", state.filteredLyrics[1].lyricsSnippet)
+    }
+
+    @Test
+    fun `searchLyrics finds nothing when the content does not match`() = runTest {
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeLyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        viewModel = LyricsViewModel(
+            getLyricsUseCase, songsRepository, setlistPreferences, ObserveAccessUseCase(accessRepository),
+            observeSundaySetlist, syncSundaySetlist,
+        )
+
+        val job = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onSearchLyricsChange(true)
+        viewModel.onQueryChange("mountains")
+        advanceUntilIdle()
+        job.cancel()
+
+        assertTrue(viewModel.uiState.value.filteredLyrics.isEmpty())
+    }
+
     // endregion
 
     // region onTogglePin
