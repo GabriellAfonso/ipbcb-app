@@ -14,6 +14,7 @@ import com.ipb.castelobranco.features.admin.members.domain.model.MemberOptions
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberRecord
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberSummary
 import com.ipb.castelobranco.features.admin.members.domain.model.toSummary
+import com.ipb.castelobranco.features.admin.members.domain.repository.MemberPhotoStore
 import com.ipb.castelobranco.features.admin.members.domain.repository.MembersAdminRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,11 +38,16 @@ import javax.inject.Singleton
  * which is how the list screen reflects a change made on the profile without any event between
  * the two. Signing out calls [clear] through the members `SessionScopedCache`.
  *
+ * Member photos are the one thing allowed on disk, encrypted, in [photoStore]: a replaced, removed
+ * or deleted photo leaves it at once, a fresh list drops photos removed by someone else, and a
+ * refused read (401 after renewal, 403) erases it entirely.
+ *
  * Logs carry the member id only.
  */
 @Singleton
 class MembersAdminRepositoryImpl @Inject constructor(
     private val api: MembersAdminApi,
+    private val photoStore: MemberPhotoStore,
 ) : MembersAdminRepository {
 
     private data class CachedRecord(val etag: String?, val record: MemberRecord)
@@ -60,11 +66,13 @@ class MembersAdminRepositoryImpl @Inject constructor(
         if (!response.isSuccessful) throw response.toAppError()
         val body = response.body() ?: throw AppError.Unknown(message = EMPTY_BODY)
 
+        val list = body.members.map { it.toDomain() }
         mutex.withLock {
             listEtag = response.headers()[MembersAdminEndpoints.ETAG]
-            members.value = body.members.map { it.toDomain() }
+            members.value = list
         }
-    }.mapError()
+        photoStore.retainOnly(list.mapNotNullTo(HashSet()) { it.photoUrl })
+    }.mapError().wipePhotosIfAccessLost()
 
     override suspend fun getMember(id: Int): Result<MemberRecord> = runCatching {
         val cached = mutex.withLock { records[id] }
@@ -75,7 +83,7 @@ class MembersAdminRepositoryImpl @Inject constructor(
 
         store(record, etag = response.headers()[MembersAdminEndpoints.ETAG])
         record
-    }.mapError()
+    }.mapError().wipePhotosIfAccessLost()
 
     override suspend fun getOptions(): Result<MemberOptions> = runCatching {
         val response = api.getOptions()
@@ -106,7 +114,9 @@ class MembersAdminRepositoryImpl @Inject constructor(
     override suspend fun deleteMember(id: Int): Result<Unit> = runCatching {
         val response = api.deleteMember(id)
         response.throwIfFailed(id)
+        val photoUrl = photoUrlOf(id)
         forget(id)
+        photoUrl?.let { photoStore.remove(it) }
         Timber.i("Member %d deleted", id)
     }.mapError()
 
@@ -121,7 +131,9 @@ class MembersAdminRepositoryImpl @Inject constructor(
             response.throwIfFailed(id)
             val url = response.bodyOrThrow().photoUrl
 
+            val oldUrl = photoUrlOf(id)
             updatePhoto(id, url)
+            if (oldUrl != null && oldUrl != url) photoStore.remove(oldUrl)
             Timber.i("Member %d photo changed", id)
             url
         }.mapError()
@@ -129,7 +141,9 @@ class MembersAdminRepositoryImpl @Inject constructor(
     override suspend fun removePhoto(id: Int): Result<Unit> = runCatching {
         val response = api.removePhoto(id)
         response.throwIfFailed(id)
+        val oldUrl = photoUrlOf(id)
         updatePhoto(id, null)
+        oldUrl?.let { photoStore.remove(it) }
         Timber.i("Member %d photo removed", id)
     }.mapError()
 
@@ -164,6 +178,10 @@ class MembersAdminRepositoryImpl @Inject constructor(
         members.update { list -> list?.filterNot { it.id == id } }
     }
 
+    private suspend fun photoUrlOf(id: Int): String? = mutex.withLock {
+        records[id]?.record?.photoUrl ?: members.value?.firstOrNull { it.id == id }?.photoUrl
+    }
+
     private suspend fun updatePhoto(id: Int, url: String?) = mutex.withLock {
         records[id]?.let { records[id] = CachedRecord(etag = null, record = it.record.copy(photoUrl = url)) }
         members.update { list -> list?.map { if (it.id == id) it.copy(photoUrl = url) else it } }
@@ -189,6 +207,11 @@ class MembersAdminRepositoryImpl @Inject constructor(
             )
         }
         throw error
+    }
+
+    /** A refused read means the leader lost access: their device copy of the photos goes too. */
+    private suspend fun <T> Result<T>.wipePhotosIfAccessLost(): Result<T> = onFailure {
+        if (it is AppError.Auth) photoStore.wipe()
     }
 
     private fun <T> Response<T>.bodyOrThrow(): T = body() ?: throw AppError.Unknown(message = EMPTY_BODY)

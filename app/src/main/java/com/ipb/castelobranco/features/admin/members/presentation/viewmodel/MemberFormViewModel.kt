@@ -15,6 +15,7 @@ import com.ipb.castelobranco.features.admin.members.domain.model.toDraft
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberOptionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.SaveMemberUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.UploadMemberPhotoUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ValidateMemberDraftUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ValidateMemberPhotoUseCase
@@ -53,6 +54,7 @@ class MemberFormViewModel @Inject constructor(
     private val saveMember: SaveMemberUseCase,
     private val validatePhoto: ValidateMemberPhotoUseCase,
     private val uploadPhoto: UploadMemberPhotoUseCase,
+    observePhotoRevisions: ObserveMemberPhotoRevisionsUseCase,
     @MemberPhotoLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
 
@@ -69,9 +71,19 @@ class MemberFormViewModel @Inject constructor(
     private var original: MemberRecord? = null
     private var originalDraft: MemberDraft? = null
 
+    private var photoRevisions: Map<String, Int> = emptyMap()
+
     init {
         load()
+        viewModelScope.launch {
+            observePhotoRevisions().collect { revisions ->
+                photoRevisions = revisions
+                _uiState.update { it.copy(photoRevision = revisionOf(it.photoUrl)) }
+            }
+        }
     }
+
+    private fun revisionOf(url: String?): Int = url?.let { photoRevisions[it] } ?: 0
 
     fun load() {
         _uiState.update { it.copy(isLoading = true, loadError = null) }
@@ -96,6 +108,7 @@ class MemberFormViewModel @Inject constructor(
                     hasUnsavedChanges = false,
                     initials = record?.name?.let(::initialsOf).orEmpty(),
                     photoUrl = record?.photoUrl,
+                    photoRevision = revisionOf(record?.photoUrl),
                     pickedPhoto = null,
                 )
             }

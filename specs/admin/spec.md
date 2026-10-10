@@ -270,7 +270,8 @@ parâmetros é pública, então só o salvar pode ser recusado.
 
 ## 7. Membros
 
-Spec completa da feature: [`specs/005-admin-members-management/`](../005-admin-members-management/spec.md).
+Spec completa da feature: [`specs/005-admin-members-management/`](../005-admin-members-management/spec.md);
+cache criptografado de fotos e "Baixar": [`specs/012-encrypted-session-photo-cache/`](../012-encrypted-session-photo-cache/spec.md).
 Contrato consumido: `specs/010-members-management` do backend.
 
 Área em que a liderança mantém o rol de membros: lista, perfil, cadastro, edição, foto (visível só
@@ -303,7 +304,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   "Novo membro". Estados: carregando, erro com "Tentar novamente", rol vazio, busca sem resultado.
 - **Perfil** — faixa verde, foto grande sem botão próprio (toque traz a foto para frente da tela em quadrado,
   segundo toque abre em tela cheia com o botão "Trocar foto" (lápis) no canto superior esquerdo, que abre o
-  seletor direto, e, ao lado, a lixeira para remover quando há foto; sem foto, as
+  seletor direto, o X no direito e, embaixo, lado a lado e centralizados, "Apagar" (lixeira + texto) e "Baixar"
+  (download + texto), os dois só quando há foto; sem foto, as
   iniciais fazem o mesmo caminho), nome, idade · sexo, chips de situação e
   cargo, seções "Dados pessoais" e "Vida na igreja" (batismo
   com "há N anos", ministérios), card "Perfil válido" / "Perfil inválido" só de leitura (a validade muda no formulário, para um toque
@@ -323,15 +325,29 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
 
 ### 7.4 Regras
 
-- **Só online, só memória** (LGPD art. 11): nada de membro vai para o disco — sem snapshot, sem cache
-  de imagem em disco. O repositório (`@Singleton`) guarda lista, fichas abertas e ETags em memória,
-  e cada escrita atualiza a lista na hora. A foto carrega por um `ImageLoader` próprio
-  (`@MemberPhotoLoader`) no client autenticado, sem cache em disco; falha = iniciais. O único rastro
-  em disco é o recorte do UCrop, apagado logo depois de lido.
-- Logout e queda de sessão limpam tudo via `SessionScopedCache` (core §4.4.1).
+- **Dados só online, só memória** (LGPD art. 11): nenhum dado de membro vai para o disco — sem snapshot.
+  O repositório (`@Singleton`) guarda lista, fichas abertas e ETags em memória, e cada escrita atualiza a lista
+  na hora. O rastro do UCrop é apagado logo depois de lido.
+- **Fotos: cache em disco criptografado** (012). `@MemberPhotoLoader` (Coil, client autenticado, cache em disco do
+  Coil desligado) lê por `MemberPhotoFetcher` → `MemberPhotoSource` → `EncryptedMemberPhotoCache`:
+  `no_backup/member_photos/<sha256 do caminho>`, AES-GCM com chave própria no Keystore
+  (`ipbcb_member_photos_v1`), 50 MB com descarte das menos usadas. Cópia do cache aparece na hora e é
+  revalidada em segundo plano com `If-None-Match`: 304 mantém, 200 troca, 404 apaga, 401/403 apaga o cache
+  inteiro e a chave, 429/rede mantém. `revisions` (por URL) chega às telas como `photoRevision`, que entra na
+  chave de memória do Coil. O repositório (porta `MemberPhotoStore`) tira a foto antiga ao trocar, remover ou
+  excluir, poda o que saiu da lista a cada lista nova (200) e apaga tudo num 401/403 de lista ou ficha.
+  Falha = iniciais.
+- **Baixar** (`manage`): `DownloadMemberPhotoUseCase` → `MemberPhotoGallerySaver` grava a foto exibida (do cache,
+  funciona offline) sem criptografia em `Pictures/IPB Castelo Branco/<nome> <aaaa-mm-dd>.<ext>`, sem sobrescrever.
+  Android 10+: MediaStore com `IS_PENDING`, apagado se falhar. Android 7–9: pede `WRITE_EXTERNAL_STORAGE`
+  (`maxSdkVersion=28`) na tela (`rememberStoragePermissionGate`), grava num temporário e renomeia, depois
+  `MediaScannerConnection`. A cópia baixada é do líder: o app não a rastreia nem apaga.
+- Logout e queda de sessão (inclusive sessão criptografada ilegível) limpam tudo — memória, cache de fotos e
+  chave — via `SessionScopedCache` (core §4.4.1).
 - Logs levam só o id do membro.
 - **Ações por nível** em `members`: lista, perfil e histórico com `view`; "Novo membro", editar, switch de
-  validade e trocar a foto com `manage`; "Excluir membro" e "Remover foto" só com `owner` (na prática, só Admin).
+  validade, trocar e baixar a foto com `manage`; "Excluir membro" e "Apagar" (foto) só com `owner` (na prática,
+  só Admin).
   O botão que o nível não cobre não aparece; os flags chegam prontos no estado da tela.
 - 403 numa **leitura** (lista, perfil, histórico, carga do formulário): mostra o `detail` e volta ao painel.
   403 numa **escrita** (salvar, validade, foto, excluir): mostra o `detail` e fica na tela, com o que foi digitado.

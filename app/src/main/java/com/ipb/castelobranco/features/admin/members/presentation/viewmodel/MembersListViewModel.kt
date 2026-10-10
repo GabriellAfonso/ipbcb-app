@@ -8,6 +8,7 @@ import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.members.di.MemberPhotoLoader
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberSummary
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMembersUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.RefreshMembersUseCase
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberCardUi
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -41,6 +43,7 @@ class MembersListViewModel @Inject constructor(
     observeMembers: ObserveMembersUseCase,
     private val refreshMembers: RefreshMembersUseCase,
     observeAccess: ObserveAccessUseCase,
+    observePhotoRevisions: ObserveMemberPhotoRevisionsUseCase,
     @MemberPhotoLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
 
@@ -54,8 +57,14 @@ class MembersListViewModel @Inject constructor(
     val events: SharedFlow<MembersEvent> = _events.asSharedFlow()
 
     val uiState: StateFlow<MembersListUiState> =
-        combine(observeMembers(), query, isRefreshing, loadError, canAdd) { members, query, refreshing, error, add ->
-            buildState(members, query, refreshing, error).copy(canAdd = add)
+        combine(
+            observeMembers().combine(observePhotoRevisions().onStart { emit(emptyMap()) }, ::Pair),
+            query,
+            isRefreshing,
+            loadError,
+            canAdd,
+        ) { (members, revisions), query, refreshing, error, add ->
+            buildState(members, revisions, query, refreshing, error).copy(canAdd = add)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MembersListUiState())
 
     init {
@@ -81,6 +90,7 @@ class MembersListViewModel @Inject constructor(
 
     private fun buildState(
         members: List<MemberSummary>?,
+        revisions: Map<String, Int>,
         query: String,
         refreshing: Boolean,
         error: String?,
@@ -93,17 +103,18 @@ class MembersListViewModel @Inject constructor(
             isLoading = members == null && refreshing,
             error = error.takeIf { members == null },
             query = query,
-            members = visible.map { it.toCard() },
+            members = visible.map { it.toCard(revisions) },
             totalCount = all.size,
         )
     }
 
-    private fun MemberSummary.toCard() = MemberCardUi(
+    private fun MemberSummary.toCard(revisions: Map<String, Int>) = MemberCardUi(
         id = id,
         name = name,
         initials = initialsOf(name),
         photoUrl = photoUrl,
         statusLabel = statusLabel(status),
         isValid = isValid,
+        photoRevision = photoUrl?.let { revisions[it] } ?: 0,
     )
 }

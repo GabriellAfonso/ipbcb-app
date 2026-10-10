@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.members.data.repository
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.features.admin.members.apiError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
@@ -22,7 +23,7 @@ import java.io.IOException
 class MembersAdminRepositoryImplTest {
 
     private val api = FakeMembersAdminApi()
-    private val repository = MembersAdminRepositoryImpl(api)
+    private val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
 
     private val roll = MemberListDto(
         listOf(summaryDto(1, "Ana Souza"), summaryDto(3, "Carla Mendes", isActive = false))

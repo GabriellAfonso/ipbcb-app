@@ -53,6 +53,7 @@ fun MemberCard(
             initials = member.initials,
             photoUrl = member.photoUrl,
             imageLoader = imageLoader,
+            photoRevision = member.photoRevision,
             shape = RectangleShape,
             initialsSize = 40.sp,
             modifier = Modifier

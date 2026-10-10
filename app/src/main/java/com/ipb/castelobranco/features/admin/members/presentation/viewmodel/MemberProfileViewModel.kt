@@ -7,11 +7,15 @@ import coil.ImageLoader
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.core.domain.error.toAppError
+import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.admin.members.di.MemberPhotoLoader
 import com.ipb.castelobranco.features.admin.members.domain.model.DeleteConfirmation
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberRecord
 import com.ipb.castelobranco.features.admin.members.domain.usecase.ComputeMemberAgeUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.DeleteMemberUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.DownloadMemberPhotoUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberHistoryUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.RemoveMemberPhotoUseCase
@@ -56,6 +60,8 @@ class MemberProfileViewModel @Inject constructor(
     private val deleteMember: DeleteMemberUseCase,
     private val computeAge: ComputeMemberAgeUseCase,
     observeAccess: ObserveAccessUseCase,
+    observePhotoRevisions: ObserveMemberPhotoRevisionsUseCase,
+    private val downloadPhoto: DownloadMemberPhotoUseCase,
     @MemberPhotoLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
 
@@ -68,6 +74,7 @@ class MemberProfileViewModel @Inject constructor(
     val events: SharedFlow<MembersEvent> = _events.asSharedFlow()
 
     private var record: MemberRecord? = null
+    private var photoRevisions: Map<String, Int> = emptyMap()
 
     init {
         // A profile refresh after a refusal hides the actions the user lost, in place.
@@ -81,8 +88,15 @@ class MemberProfileViewModel @Inject constructor(
                         canChangePhoto = canManage,
                         canDelete = isOwner,
                         canRemovePhoto = isOwner,
+                        canDownloadPhoto = canManage,
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            observePhotoRevisions().collect { revisions ->
+                photoRevisions = revisions
+                _uiState.update { it.copy(photoRevision = revisionOf(it.profile?.photoUrl)) }
             }
         }
     }
@@ -141,6 +155,24 @@ class MemberProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Saves the photo on screen to the device gallery. A refusal here only says why — it does not
+     * leave the area, like any other action the leader started.
+     */
+    fun onDownloadPhoto() {
+        val state = _uiState.value
+        val profile = state.profile ?: return
+        val url = profile.photoUrl ?: return
+        if (!state.canDownloadPhoto || state.isDownloadingPhoto) return
+        _uiState.update { it.copy(isDownloadingPhoto = true) }
+        viewModelScope.launch {
+            downloadPhoto(profile.id, profile.name, url)
+                .onSuccess { _events.emit(MembersEvent.ShowMessage(PHOTO_SAVED)) }
+                .onFailure { _events.emit(MembersEvent.ShowMessage(it.toAppError().toUserMessage())) }
+            _uiState.update { it.copy(isDownloadingPhoto = false) }
+        }
+    }
+
     // endregion
 
     // region delete
@@ -190,13 +222,17 @@ class MemberProfileViewModel @Inject constructor(
     }
 
     private fun render(member: MemberRecord) {
-        _uiState.update { it.copy(profile = member.toUi(), error = null) }
+        _uiState.update {
+            it.copy(profile = member.toUi(), error = null, photoRevision = revisionOf(member.photoUrl))
+        }
     }
 
     /**
      * @param inPlace nothing is on screen yet, so a plain failure becomes the screen's error state
      *   instead of a passing message.
      */
+    private fun revisionOf(url: String?): Int = url?.let { photoRevisions[it] } ?: 0
+
     private suspend fun fail(throwable: Throwable, kind: FailureKind, inPlace: Boolean = false) {
         val event = throwable.toMembersEvent(kind)
         if (inPlace && event is MembersEvent.ShowMessage) {
@@ -232,7 +268,8 @@ class MemberProfileViewModel @Inject constructor(
         )
     }
 
-    private companion object {
-        const val HEADLINE_SEPARATOR = " · "
+    companion object {
+        private const val HEADLINE_SEPARATOR = " · "
+        const val PHOTO_SAVED = "Foto salva em Imagens/IPB Castelo Branco"
     }
 }

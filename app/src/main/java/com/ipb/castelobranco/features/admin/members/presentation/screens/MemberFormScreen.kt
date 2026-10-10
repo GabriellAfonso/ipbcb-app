@@ -262,6 +262,7 @@ private fun FormPhoto(
             photoUrl = state.photoUrl,
             imageLoader = imageLoader,
             pickedPhoto = state.pickedPhoto,
+            photoRevision = state.photoRevision,
             initialsSize = 32.sp,
             modifier = Modifier
                 .size(FORM_PHOTO_SIZE.dp)

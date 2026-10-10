@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
 import androidx.lifecycle.SavedStateHandle
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
@@ -47,13 +49,21 @@ class MemberProfileFlagsTest {
         deleteMember = mockk(relaxed = true),
         computeAge = mockk(relaxed = true),
         observeAccess = ObserveAccessUseCase(access),
+        observePhotoRevisions = ObserveMemberPhotoRevisionsUseCase(FakeMemberPhotoStore()),
+        downloadPhoto = mockk(relaxed = true),
         imageLoader = mockk(relaxed = true),
     )
 
-    private data class Flags(val edit: Boolean, val photo: Boolean, val delete: Boolean, val remove: Boolean)
+    private data class Flags(
+        val edit: Boolean,
+        val photo: Boolean,
+        val delete: Boolean,
+        val remove: Boolean,
+        val download: Boolean,
+    )
 
     private fun MemberProfileViewModel.flags() = uiState.value.let {
-        Flags(it.canEdit, it.canChangePhoto, it.canDelete, it.canRemovePhoto)
+        Flags(it.canEdit, it.canChangePhoto, it.canDelete, it.canRemovePhoto, it.canDownloadPhoto)
     }
 
     @Test
@@ -62,7 +72,8 @@ class MemberProfileFlagsTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals(Flags(edit = false, photo = false, delete = false, remove = false), vm.flags())
+        val none = Flags(edit = false, photo = false, delete = false, remove = false, download = false)
+        assertEquals(none, vm.flags())
     }
 
     @Test
@@ -71,7 +82,7 @@ class MemberProfileFlagsTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals(Flags(edit = true, photo = true, delete = false, remove = false), vm.flags())
+        assertEquals(Flags(edit = true, photo = true, delete = false, remove = false, download = true), vm.flags())
     }
 
     @Test
@@ -80,7 +91,7 @@ class MemberProfileFlagsTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals(Flags(edit = true, photo = true, delete = true, remove = true), vm.flags())
+        assertEquals(Flags(edit = true, photo = true, delete = true, remove = true, download = true), vm.flags())
     }
 
     @Test

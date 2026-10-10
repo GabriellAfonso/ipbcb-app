@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.ipb.castelobranco.features.admin.members.apiError
@@ -42,7 +43,7 @@ class MemberHistoryViewModelTest {
 
     private fun viewModel() = MemberHistoryViewModel(
         SavedStateHandle(mapOf(MembersRoutes.ARG_MEMBER_ID to 12)),
-        GetMemberHistoryUseCase(MembersAdminRepositoryImpl(api), BuildHistorySentenceUseCase()),
+        GetMemberHistoryUseCase(MembersAdminRepositoryImpl(api, FakeMemberPhotoStore()), BuildHistorySentenceUseCase()),
     )
 
     @Test

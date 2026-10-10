@@ -19,6 +19,11 @@ data class MemberProfileUiState(
     /** Delete and photo removal: `owner` on `members` (Admin only). */
     val canDelete: Boolean = false,
     val canRemovePhoto: Boolean = false,
+    /** "Baixar" in the full-screen photo: `manage` on `members`. */
+    val canDownloadPhoto: Boolean = false,
+    val isDownloadingPhoto: Boolean = false,
+    /** Bumps when the device copy of the photo changed, so it loads again. */
+    val photoRevision: Int = 0,
 )
 
 /** Every text already formatted; the screen only lays it out. */

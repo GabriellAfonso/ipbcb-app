@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.ipb.castelobranco.features.admin.members.apiError
@@ -45,7 +47,7 @@ class MemberFormViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val api = FakeMembersAdminApi()
-    private val repository = MembersAdminRepositoryImpl(api)
+    private val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
 
     @Before
     fun setUp() {
@@ -68,6 +70,7 @@ class MemberFormViewModelTest {
         saveMember = SaveMemberUseCase(repository),
         validatePhoto = ValidateMemberPhotoUseCase(),
         uploadPhoto = UploadMemberPhotoUseCase(ValidateMemberPhotoUseCase(), repository),
+        observePhotoRevisions = ObserveMemberPhotoRevisionsUseCase(FakeMemberPhotoStore()),
         imageLoader = mockk(),
     )
 

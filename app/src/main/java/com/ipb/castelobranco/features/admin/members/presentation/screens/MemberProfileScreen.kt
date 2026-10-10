@@ -70,6 +70,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.components.Sect
 import com.ipb.castelobranco.features.admin.members.presentation.components.StatusChip
 import com.ipb.castelobranco.features.admin.members.presentation.components.Tag
 import com.ipb.castelobranco.features.admin.members.presentation.components.ValidityCard
+import com.ipb.castelobranco.features.admin.members.presentation.components.rememberStoragePermissionGate
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberProfileUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
@@ -83,6 +84,7 @@ data class MemberProfileActions(
     val onRemovePhotoRequested: () -> Unit = {},
     val onRemovePhotoConfirmed: () -> Unit = {},
     val onRemovePhotoDismissed: () -> Unit = {},
+    val onDownloadPhoto: () -> Unit = {},
     val onOpenHistory: () -> Unit = {},
     val onDeleteRequested: () -> Unit = {},
     val onDeleteTypedChange: (String) -> Unit = {},
@@ -101,6 +103,10 @@ fun MemberProfileScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val pickPhoto = rememberSquarePhotoPicker(onPicked = viewModel::onPhotoPicked)
+    val downloadPhoto = rememberStoragePermissionGate(
+        onGranted = viewModel::onDownloadPhoto,
+        onDenied = { message -> snackbarHostState.showSnackbar(message) },
+    )
 
     // Coming back from the form shows the edit at once.
     LifecycleResumeEffect(Unit) {
@@ -138,6 +144,7 @@ fun MemberProfileScreen(
                     onEdit = { memberId?.let(onEdit) },
                     onPickPhoto = pickPhoto,
                     onRemovePhotoRequested = viewModel::onRemovePhotoRequested,
+                    onDownloadPhoto = downloadPhoto,
                     onRemovePhotoConfirmed = viewModel::onRemovePhotoConfirmed,
                     onRemovePhotoDismissed = viewModel::onRemovePhotoDismissed,
                     onOpenHistory = { memberId?.let(onOpenHistory) },
@@ -223,9 +230,11 @@ private fun ProfileBody(
             ExpandablePhoto(
                 profile = profile,
                 imageLoader = imageLoader,
-                isBusy = state.isPhotoBusy,
+                isBusy = state.isPhotoBusy || state.isDownloadingPhoto,
+                photoRevision = state.photoRevision,
                 canChangePhoto = state.canChangePhoto,
                 canRemovePhoto = state.canRemovePhoto,
+                canDownloadPhoto = state.canDownloadPhoto,
                 actions = actions,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -293,8 +302,10 @@ private fun ExpandablePhoto(
     profile: MemberProfileUi,
     imageLoader: ImageLoader?,
     isBusy: Boolean,
+    photoRevision: Int,
     canChangePhoto: Boolean,
     canRemovePhoto: Boolean,
+    canDownloadPhoto: Boolean,
     actions: MemberProfileActions,
     modifier: Modifier = Modifier,
 ) {
@@ -308,6 +319,7 @@ private fun ExpandablePhoto(
             photoUrl = profile.photoUrl,
             imageLoader = imageLoader,
             initialsSize = PHOTO_INITIALS.sp,
+            photoRevision = photoRevision,
             modifier = Modifier
                 .size(PHOTO_SIZE.dp)
                 .onGloballyPositioned { bounds = Rect(it.positionOnScreen(), it.size.toSize()) }
@@ -330,6 +342,7 @@ private fun ExpandablePhoto(
             originInitialsSize = PHOTO_INITIALS.sp,
             onOpenFullScreen = { stage = PhotoStage.FULL_SCREEN },
             onDismiss = { stage = PhotoStage.IN_PLACE },
+            photoRevision = photoRevision,
         )
         PhotoStage.FULL_SCREEN -> MemberPhotoViewer(
             initials = profile.initials,
@@ -338,7 +351,9 @@ private fun ExpandablePhoto(
             isBusy = isBusy,
             onPickPhoto = actions.onPickPhoto.takeIf { canChangePhoto },
             onRemovePhoto = actions.onRemovePhotoRequested.takeIf { canRemovePhoto },
+            onDownload = actions.onDownloadPhoto.takeIf { canDownloadPhoto },
             onDismiss = { stage = PhotoStage.IN_PLACE },
+            photoRevision = photoRevision,
         )
     }
 }

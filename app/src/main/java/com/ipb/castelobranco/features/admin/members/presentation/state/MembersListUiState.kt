@@ -21,4 +21,6 @@ data class MemberCardUi(
     val photoUrl: String?,
     val statusLabel: String,
     val isValid: Boolean,
+    /** Bumps when the device copy of the photo changed, so it loads again. */
+    val photoRevision: Int = 0,
 )

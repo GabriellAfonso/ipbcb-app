@@ -1,7 +1,12 @@
 package com.ipb.castelobranco.features.admin.members.domain.usecase
 
 import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.core.domain.util.DateProvider
+import com.ipb.castelobranco.features.admin.members.domain.repository.MemberPhotoExporter
+import com.ipb.castelobranco.features.admin.members.domain.repository.MemberPhotoRevisions
 import com.ipb.castelobranco.features.admin.members.domain.repository.MembersAdminRepository
+import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -64,4 +69,41 @@ class RemoveMemberPhotoUseCase @Inject constructor(
     private val repository: MembersAdminRepository,
 ) {
     suspend operator fun invoke(id: Int): Result<Unit> = repository.removePhoto(id)
+}
+
+/** Bumps per URL whenever the device copy of a photo changes, so screens reload it. */
+class ObserveMemberPhotoRevisionsUseCase @Inject constructor(
+    private val revisions: MemberPhotoRevisions,
+) {
+    operator fun invoke(): Flow<Map<String, Int>> = revisions.revisions
+}
+
+/**
+ * The name a downloaded photo gets in the gallery: the member's name and the day, e.g.
+ * "Maria Souza 2026-10-09". Characters a file name cannot hold are dropped; a name left empty
+ * falls back to "Membro <id>".
+ */
+object MemberPhotoFileName {
+    private const val MAX_NAME_CHARS = 100
+    private const val FALLBACK_PREFIX = "Membro "
+    private val FORBIDDEN = Regex("""[\/:*?"<>|\p{Cntrl}]""")
+    private val SPACES = Regex("""\s+""")
+
+    fun build(name: String, memberId: Int, date: LocalDate): String {
+        val clean = name.replace(FORBIDDEN, "").replace(SPACES, " ").trim().take(MAX_NAME_CHARS).trim()
+        val base = clean.trimStart('.').ifEmpty { FALLBACK_PREFIX + memberId }
+        return "$base $date"
+    }
+}
+
+/**
+ * Saves the member's photo, unencrypted, to the device gallery. The copy is the leader's from then
+ * on: the app neither tracks nor removes it (specs/012-encrypted-session-photo-cache, FR-021).
+ */
+class DownloadMemberPhotoUseCase @Inject constructor(
+    private val exporter: MemberPhotoExporter,
+    private val dateProvider: DateProvider,
+) {
+    suspend operator fun invoke(id: Int, name: String, url: String): Result<Unit> =
+        exporter.save(MemberPhotoFileName.build(name, id, dateProvider.today()), url)
 }

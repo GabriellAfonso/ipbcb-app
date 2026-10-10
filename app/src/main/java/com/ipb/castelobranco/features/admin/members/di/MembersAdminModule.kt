@@ -5,6 +5,7 @@ import com.ipb.castelobranco.core.di.AuthedRetrofit
 import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.features.admin.members.data.api.MembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
+import com.ipb.castelobranco.features.admin.members.domain.repository.MemberPhotoStore
 import com.ipb.castelobranco.features.admin.members.domain.repository.MembersAdminRepository
 import dagger.Binds
 import dagger.Module
@@ -34,15 +35,27 @@ abstract class MembersAdminModule {
         fun provideMembersAdminApi(@AuthedRetrofit retrofit: Retrofit): MembersAdminApi =
             retrofit.create(MembersAdminApi::class.java)
 
-        /** Sign-out wipes the roll held in memory and the photos Coil kept in memory. */
+        /**
+         * Sign-out (or a session lost) wipes the roll held in memory, the photos Coil kept in memory
+         * and the encrypted photo cache on disk together with its key.
+         */
         @Provides
         @IntoSet
         fun provideMembersSessionCache(
             repository: MembersAdminRepository,
             @MemberPhotoLoader imageLoader: ImageLoader,
-        ): SessionScopedCache = SessionScopedCache {
-            repository.clear()
-            imageLoader.memoryCache?.clear()
-        }
+            photoStore: MemberPhotoStore,
+        ): SessionScopedCache = membersSessionCache(repository, imageLoader, photoStore)
     }
+}
+
+/** Kept apart from the module so it can be tested with fakes. */
+internal fun membersSessionCache(
+    repository: MembersAdminRepository,
+    imageLoader: ImageLoader?,
+    photoStore: MemberPhotoStore,
+): SessionScopedCache = SessionScopedCache {
+    repository.clear()
+    imageLoader?.memoryCache?.clear()
+    photoStore.wipe()
 }

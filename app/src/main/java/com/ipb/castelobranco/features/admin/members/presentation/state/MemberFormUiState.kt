@@ -24,4 +24,6 @@ data class MemberFormUiState(
     val initials: String = "",
     val photoUrl: String? = null,
     val pickedPhoto: ByteArray? = null,
+    /** Bumps when the device copy of [photoUrl] changed, so it loads again. */
+    val photoRevision: Int = 0,
 )

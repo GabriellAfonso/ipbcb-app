@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.panel.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
@@ -39,7 +40,7 @@ class AdminPanelViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val api = FakeMembersAdminApi()
-    private val repository = MembersAdminRepositoryImpl(api)
+    private val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
     private val access = FakeAccessRepository()
     private val setlists = FakeSetlistConfirmationRepository()
 

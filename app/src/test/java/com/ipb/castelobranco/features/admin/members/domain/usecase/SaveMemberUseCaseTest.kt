@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.members.domain.usecase
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.features.admin.members.data.api.FakeMembersAdminApi
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
@@ -19,7 +20,7 @@ import org.junit.Test
 class SaveMemberUseCaseTest {
 
     private val api = FakeMembersAdminApi()
-    private val save = SaveMemberUseCase(MembersAdminRepositoryImpl(api))
+    private val save = SaveMemberUseCase(MembersAdminRepositoryImpl(api, FakeMemberPhotoStore()))
 
     @Test
     fun `new member is created with the filled fields`() = runTest {

@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import app.cash.turbine.test
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
@@ -38,7 +40,7 @@ class MembersListViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val api = FakeMembersAdminApi()
-    private val repository = MembersAdminRepositoryImpl(api)
+    private val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
     private val access = FakeAccessRepository()
 
     private val roll = MemberListDto(
@@ -55,11 +57,14 @@ class MembersListViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
+    private val photos = FakeMemberPhotoStore()
+
     private fun viewModel() =
         MembersListViewModel(
             ObserveMembersUseCase(repository),
             RefreshMembersUseCase(repository),
             ObserveAccessUseCase(access),
+            ObserveMemberPhotoRevisionsUseCase(photos),
             mockk(),
         )
 

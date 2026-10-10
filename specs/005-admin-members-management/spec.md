@@ -19,8 +19,9 @@ feature gives leaders a **Membros** area inside the app's admin panel to browse 
 create and edit members, manage a leader-only member photo, read who changed what, and delete a record.
 
 Member data ties religious affiliation to a named person — sensitive personal data under LGPD art. 11. The app
-therefore works **online only** for this area: no member data or member photo is ever written to the device's
-storage.
+therefore works **online only** for this area: no member data is ever written to the device's storage. Member photos
+may be kept in an encrypted on-device cache that is erased on sign-out or loss of access
+(`specs/012-encrypted-session-photo-cache`).
 
 Chosen designs (previewed in `features/admin/members/presentation/screens/MembersDesignPreviews.kt`):
 
@@ -118,8 +119,8 @@ those were sent and changed; try each validation rule.
 
 A leader adds, replaces or removes a member's photo, picking it the same way they pick their own profile photo.
 On the profile the photo has no button of its own: tapping it pops it in front of the screen as a square, tapping
-that opens it full screen, where a "Trocar foto" button (pencil) opens the picker straight away and a trash button
-removes it. Without a photo, the initials go the same way. The create and edit forms also offer a camera to pick it
+that opens it full screen, where a "Trocar foto" button (pencil) opens the picker straight away, and "Apagar" and
+"Baixar" buttons at the bottom remove the photo or save it to the device gallery. Without a photo, the initials go the same way. The create and edit forms also offer a camera to pick it
 along with the other fields. Only leaders can see member photos.
 
 **Why this priority**: Helps leaders recognise members, but the roll is usable without it.
@@ -137,8 +138,10 @@ profile and the list and confirm what is shown. Try a file over 10 MB and a file
    **Then** it opens full screen with a "Trocar foto" button (pencil) in the top-left corner.
 3. **Given** the full-screen photo, **When** the leader taps "Trocar foto", picks and
    crops an image, **Then** the new photo replaces the old one everywhere.
-4. **Given** the full-screen photo, **When** the leader taps the trash button next to "Trocar foto" and confirms,
-   **Then** the full screen, the profile and the card show the initials.
+4. **Given** the full-screen photo, **When** the leader taps "Apagar" at the bottom and confirms, **Then** the full
+   screen, the profile and the card show the initials.
+4a. **Given** the full-screen photo and a leader with `manage`, **When** they tap "Baixar", **Then** the photo is saved
+   to the device gallery in Pictures/IPB Castelo Branco (FR-026a).
 5. **Given** the create or edit form, **When** the leader taps the camera on the photo at the top and
    picks an image, **Then** the form previews it and counts it as an unsaved change; **When** they save, **Then**
    the field changes are sent first and the photo is uploaded after; **When** they leave without saving, **Then**
@@ -220,10 +223,11 @@ confirm, and check the member is gone from the list.
   only, or nothing. 29 February is valid with no year or with a leap year.
 - **Very long names**: cards cut them at two lines; the profile shows the full name.
 - **Photo selected while offline**: the upload fails with the connection message and the current photo stays.
-- **Opening the area without connection**: the list shows the connection error with "Tentar novamente"; nothing
-  from a previous session is shown, because nothing is kept on the device.
-- **Sign-out**: all member data held in memory is discarded; signing in as another user never shows the previous
-  user's members.
+- **Opening the area without connection**: the list shows the connection error with "Tentar novamente"; no member
+  data from a previous session is shown, because member data is not kept on the device (only photos are cached,
+  encrypted — 012).
+- **Sign-out**: all member data held in memory and the encrypted photo cache are discarded; signing in as another
+  user never shows the previous user's members or photos.
 - **Photo refused or rate-limited**: initials are shown in its place; opening the screen again tries again.
 - **Empty roll**: the list shows an empty state inviting the leader to add the first member.
 
@@ -317,14 +321,19 @@ confirm, and check the member is gone from the list.
   pops the photo in front of the screen: it grows out of the photo's own place into a large square above the
   middle of the screen, over a dimmed background, and shrinks back there when a tap outside or system back closes
   it; a tap on the square opens it full screen (dark background; top-left a "Trocar foto" button with a pencil
-  that opens the picker directly and, when there is a photo and the leader may remove it, a trash button next to it;
-  close button top-right; system back also closes). Without a
-  photo the initials stand in for it at every step.
+  that opens the picker directly; close button top-right; at the bottom, side by side and centred, "Apagar" (trash
+  icon + text; `owner` and a photo) and "Baixar" (download icon + text; `manage` and a photo — FR-026a); system back
+  also closes). Without a photo the initials stand in for it at every step and no bottom button is shown. Details in
+  `specs/012-encrypted-session-photo-cache` (FR-016–FR-019).
 - **FR-024**: The app MUST refuse, before uploading, files over 10 MB or not in JPEG, PNG, WEBP or GIF format, with
   a message.
 - **FR-025**: Removing a photo MUST ask for confirmation.
 - **FR-026**: Member photos MUST be fetched through the signed-in media path; a refused, missing or rate-limited
   photo MUST fall back to initials without an error dialog.
+- **FR-026a**: A leader with `manage` on `members` MUST be able to save a member's photo, unencrypted, to the device
+  gallery in Pictures/IPB Castelo Branco, from the full-screen viewer. The saved copy is the leader's responsibility:
+  the app never removes or tracks it. Rules (permission on Android 9 and earlier, file name, messages, no partial
+  file) in `specs/012-encrypted-session-photo-cache` (FR-020–FR-027).
 
 **History**
 
@@ -349,11 +358,14 @@ confirm, and check the member is gone from the list.
 
 **Data protection**
 
-- **FR-033**: The members area MUST work online only. No member data and no member photo may be written to the
-  device's storage — no offline copy, no image file cache.
+- **FR-033**: The members area MUST work online only. No member data may be written to the device's storage — no
+  offline copy. Member photos MAY be cached on disk only encrypted, with their own key, under the rules of
+  `specs/012-encrypted-session-photo-cache` (FR-008–FR-014); a photo saved with "Baixar" (FR-026a) is outside the
+  app's control and not covered by this rule.
 - **FR-034**: Member data MAY be kept in memory during the session and revalidated with the server so unchanged
   data is not downloaded again.
-- **FR-035**: Signing out MUST discard all member data held in memory.
+- **FR-035**: Signing out MUST discard all member data held in memory and erase the encrypted photo cache and its
+  key from the device (012 FR-012).
 - **FR-036**: App logs for these operations MUST NOT contain member data (names, dates, gender, status, role,
   ministries, photos); a member id is allowed.
 
@@ -382,8 +394,9 @@ confirm, and check the member is gone from the list.
 - **SC-002**: A leader creates a member with name, dates, status and one ministry in under 2 minutes.
 - **SC-003**: The list for a roll of 1,000 members loads in under 3 seconds on a typical mobile connection, and
   search narrows it with no noticeable delay.
-- **SC-004**: 0 member records, member photos or member fields are found in the device's storage after using every
-  screen of the area and after signing out.
+- **SC-004**: 0 member records or member fields are found in the device's storage after using every screen of the
+  area, and 0 readable member photos (outside those the leader saved with "Baixar") after signing out or a refused
+  members request (012 SC-007).
 - **SC-005**: 0 entry points to the members area are visible to non-leader users.
 - **SC-006**: 100% of history entry types (creation, photo change, photo removal, each field, deleted editor) read
   as a Portuguese sentence with no raw codes such as `true`, `M` or ISO dates.
@@ -408,7 +421,7 @@ confirm, and check the member is gone from the list.
   trace.
 - The regular member list and birthdays that members see are unchanged by this feature.
 - Out of scope: contact, address and family data; managing statuses, roles and ministries; offline access;
-  exporting or sharing member data.
+  exporting or sharing member data (saving a single photo with "Baixar" is the one exception — FR-026a).
 
 ## Dependencies
 

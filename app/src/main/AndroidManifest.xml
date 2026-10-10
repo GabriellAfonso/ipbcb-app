@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- "Baixar" a member photo into Pictures/IPB Castelo Branco; only Android 9 and older need it -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Gallery upload queue: long queues keep running as a foreground data transfer. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

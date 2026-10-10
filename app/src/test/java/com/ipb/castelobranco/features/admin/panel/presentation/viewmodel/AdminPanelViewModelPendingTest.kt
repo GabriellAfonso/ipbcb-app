@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.admin.panel.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Role
@@ -42,7 +43,7 @@ import java.time.LocalDate
 class AdminPanelViewModelPendingTest {
 
     private val dispatcher = StandardTestDispatcher()
-    private val members = MembersAdminRepositoryImpl(FakeMembersAdminApi())
+    private val members = MembersAdminRepositoryImpl(FakeMembersAdminApi(), FakeMemberPhotoStore())
     private val access = FakeAccessRepository()
     private val setlists = FakeSetlistConfirmationRepository()
     private val worship = FakeWorshipAccessRepository(WORSHIP_LEADER)

@@ -1,5 +1,10 @@
 package com.ipb.castelobranco.features.admin.members.presentation.viewmodel
 
+import com.ipb.castelobranco.features.admin.members.domain.repository.MemberPhotoExporter
+import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.features.admin.members.domain.usecase.DownloadMemberPhotoUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMemberPhotoRevisionsUseCase
+import com.ipb.castelobranco.features.admin.members.data.photo.FakeMemberPhotoStore
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.ipb.castelobranco.core.domain.access.AccessLevel
@@ -50,7 +55,7 @@ class MemberProfileViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val api = FakeMembersAdminApi()
-    private val repository = MembersAdminRepositoryImpl(api)
+    private val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
     private val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0)
 
     @Before
@@ -75,8 +80,82 @@ class MemberProfileViewModelTest {
         observeAccess = ObserveAccessUseCase(
             FakeAccessRepository(accessOf(Role.ADMIN, Scope.MEMBERS to AccessLevel.OWNER))
         ),
+        observePhotoRevisions = ObserveMemberPhotoRevisionsUseCase(photos),
+        downloadPhoto = DownloadMemberPhotoUseCase(exporter, fixedDateProvider),
         imageLoader = mockk(),
     ).also { it.load() }
+
+    private val photos = FakeMemberPhotoStore()
+    private val exporter = FakeMemberPhotoExporter()
+
+    // region download
+
+    @Test
+    fun `download saves the photo under the member name and says where`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, photoUrl = PHOTO_URL)) }
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.events.test {
+            vm.onDownloadPhoto()
+            assertEquals(MembersEvent.ShowMessage(MemberProfileViewModel.PHOTO_SAVED), awaitItem())
+        }
+        assertEquals(1, exporter.saved.size)
+        assertEquals(PHOTO_URL, exporter.saved.single().second)
+        assertTrue(exporter.saved.single().first.endsWith(fixedDateProvider.today().toString()))
+        assertFalse(vm.uiState.value.isDownloadingPhoto)
+    }
+
+    @Test
+    fun `failed download shows the message and stays in the area`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, photoUrl = PHOTO_URL)) }
+        exporter.result = Result.failure(AppError.Auth(code = 403, userMessage = "Sem permissão."))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.events.test {
+            vm.onDownloadPhoto()
+            assertEquals(MembersEvent.ShowMessage("Sem permissão."), awaitItem())
+        }
+    }
+
+    @Test
+    fun `second tap while downloading is ignored`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, photoUrl = PHOTO_URL)) }
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onDownloadPhoto()
+        vm.onDownloadPhoto()
+        advanceUntilIdle()
+
+        assertEquals(1, exporter.saved.size)
+    }
+
+    @Test
+    fun `no photo means nothing to download`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.onDownloadPhoto()
+        advanceUntilIdle()
+
+        assertTrue(exporter.saved.isEmpty())
+    }
+
+    @Test
+    fun `a bumped revision of the shown photo reaches the state`() = runTest {
+        api.onGetMember = { id, _ -> ok(recordDto(id = id, photoUrl = PHOTO_URL)) }
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        photos.revisions.value = mapOf(PHOTO_URL to 2)
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.photoRevision)
+    }
+
+    // endregion
 
     // region read
 
@@ -264,4 +343,16 @@ class MemberProfileViewModelTest {
     }
 
     // endregion
+}
+
+private const val PHOTO_URL = "https://gabrielafonso.com.br/ipbcb/media/members/abc.jpg"
+
+private class FakeMemberPhotoExporter : MemberPhotoExporter {
+    val saved = mutableListOf<Pair<String, String>>()
+    var result: Result<Unit> = Result.success(Unit)
+
+    override suspend fun save(fileBaseName: String, url: String): Result<Unit> {
+        saved += fileBaseName to url
+        return result
+    }
 }
