@@ -264,8 +264,8 @@ logout completo: o trabalho não é cancelado e a galeria local não é apagada.
 
 Uma foto **sem original no aparelho** (nova esperando WiFi, primeiro download em andamento) aparece pelo seu
 `thumbnail_url` (lado maior 1000 px), carregado pela rede — em qualquer rede, só as células visíveis — pelo loader
-`@GalleryThumbnailLoader` (Coil sobre o `@Client` autenticado, cache em disco de 100 MB). Com o original no disco,
-usa o original. Sem original e sem preview (nulo, offline sem cache, erro): cinza.
+`@GalleryThumbnailLoader` (Coil sobre o `@Client` autenticado, cache em disco de 100 MB, memória limitada a 10% —
+`core` 5.6.1). Com o original no disco, usa o original. Sem original e sem preview (nulo, offline sem cache, erro): cinza.
 
 Esta é a **única** exceção à regra "nenhuma tela carrega URL de mídia direto": originais e capas só entram no aparelho
 pelo sync e pelo download.

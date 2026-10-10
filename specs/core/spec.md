@@ -462,6 +462,13 @@ Monitora conectividade WiFi via `ConnectivityManager` + `callbackFlow`.
 
 - `isOnWifi: Flow<Boolean>` — emite estado atual + mudancas.
 
+### 5.6.1 Imagens — orcamento de memoria do Coil
+
+O app tem tres `ImageLoader`: o padrao (`MyApp` como `ImageLoaderFactory`: originais e capas da galeria, avatar
+da conta), `@GalleryThumbnailLoader` e `@MemberPhotoLoader`. Cada um tem seu cache de memoria, porque o logout
+esvazia os dois autenticados separadamente. O Coil daria 25% da memoria do app a cada um (75% so em bitmaps);
+`ImageMemoryBudget` (`core/data/image`) limita: padrao 15%, previews da galeria 10%, fotos de membros 5%.
+
 ### 5.7 Constantes de Storage
 
 ```kotlin

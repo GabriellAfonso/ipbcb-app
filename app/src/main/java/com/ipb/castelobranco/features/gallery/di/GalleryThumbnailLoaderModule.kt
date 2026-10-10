@@ -4,6 +4,7 @@ import android.content.Context
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
 import coil.disk.DiskCache
+import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.di.Client
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryPreviewCache
 import dagger.Module
@@ -41,6 +42,7 @@ object GalleryThumbnailLoaderModule {
     ): ImageLoader = ImageLoader.Builder(context)
         .okHttpClient(client)
         .respectCacheHeaders(false)
+        .memoryCache { ImageMemoryBudget.memoryCache(context, ImageMemoryBudget.GALLERY_PREVIEWS) }
         .diskCache {
             DiskCache.Builder()
                 .directory(context.cacheDir.resolve(CACHE_DIR))

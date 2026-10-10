@@ -2,6 +2,7 @@ package com.ipb.castelobranco.features.admin.members.di
 
 import android.content.Context
 import coil.ImageLoader
+import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.data.security.AeadCipher
 import com.ipb.castelobranco.core.data.security.KeystoreAeadCipher
 import com.ipb.castelobranco.core.di.Client
@@ -82,6 +83,7 @@ object MemberPhotoLoaderModule {
     ): ImageLoader = ImageLoader.Builder(context)
         .okHttpClient(client)
         .diskCache(null)
+        .memoryCache { ImageMemoryBudget.memoryCache(context, ImageMemoryBudget.MEMBER_PHOTOS) }
         .respectCacheHeaders(false)
         .components { add(MemberPhotoFetcher.Factory(source)) }
         .build()

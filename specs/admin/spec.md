@@ -331,7 +331,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   O repositório (`@Singleton`) guarda lista, fichas abertas e ETags em memória, e cada escrita atualiza a lista
   na hora. O rastro do UCrop é apagado logo depois de lido.
 - **Fotos: cache em disco criptografado** (012). `@MemberPhotoLoader` (Coil, client autenticado, cache em disco do
-  Coil desligado) lê por `MemberPhotoFetcher` → `MemberPhotoSource` → `EncryptedMemberPhotoCache`:
+  Coil desligado, memória limitada a 5% — `core` 5.6.1) lê por `MemberPhotoFetcher` → `MemberPhotoSource` →
+  `EncryptedMemberPhotoCache`:
   `no_backup/member_photos/<sha256 do caminho>`, AES-GCM com chave própria no Keystore
   (`ipbcb_member_photos_v1`), 50 MB com descarte das menos usadas. Cópia do cache aparece na hora e é
   revalidada em segundo plano com `If-None-Match`: 304 mantém, 200 troca, 404 apaga, 401/403 apaga o cache

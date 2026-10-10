@@ -7,6 +7,9 @@ import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.data.worker.BirthdayNotificationWorker
 import com.ipb.castelobranco.features.hymnal.domain.sync.HymnViewSyncScheduler
@@ -24,7 +27,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltAndroidApp
-class MyApp : Application(), Configuration.Provider {
+class MyApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject lateinit var themePreferences: ThemePreferences
     @Inject lateinit var workerFactory: HiltWorkerFactory
@@ -36,6 +39,11 @@ class MyApp : Application(), Configuration.Provider {
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
+
+    /** Coil's default loader, used by every `AsyncImage` that does not pass its own. */
+    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+        .memoryCache { ImageMemoryBudget.memoryCache(this, ImageMemoryBudget.DEFAULT) }
+        .build()
 
     override fun onCreate() {
         super.onCreate()
