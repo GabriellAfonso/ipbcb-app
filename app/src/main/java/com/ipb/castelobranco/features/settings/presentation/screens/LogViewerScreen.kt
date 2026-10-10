@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
@@ -149,13 +150,16 @@ private fun LogRow(entry: LogEntry) {
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    Text(
-        text = entry.formatted(),
-        fontFamily = FontFamily.Monospace,
-        fontSize = 11.sp,
-        color = color,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-    )
+    // One container per row: a selection spanning lazy items breaks once they scroll out of composition.
+    SelectionContainer {
+        Text(
+            text = entry.formatted(),
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = color,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
 }
