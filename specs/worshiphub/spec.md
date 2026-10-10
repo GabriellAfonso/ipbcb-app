@@ -29,7 +29,7 @@ Lista agrupada por data (`dd/MM/yyyy`). Cada domingo mostra as musicas tocadas c
 
 **Click no titulo:** titulo da musica e clicavel (ripple padrao Material). Navega para `SongDetailScreen` usando `songId`. Apenas o texto do titulo e clicavel, nao a row inteira.
 
-**Busca:** filtra por data, titulo, artista ou tom (accent-insensitive via `normalize()`).
+**Busca:** filtra por data, titulo, artista ou tom (accent-insensitive e sem pontuacao via `normalize()` — "07/04" casa com "07/04/2024"). Mostra o domingo inteiro quando qualquer campo casa. O resultado atualiza apos uma pausa curta na digitacao (~150 ms); limpar a busca volta a lista completa na hora. A digitacao e o scroll nunca travam, mesmo com o historico inteiro carregado.
 
 **Dados:** `GET songs-by-sunday/`
 ```

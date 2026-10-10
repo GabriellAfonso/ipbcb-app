@@ -16,6 +16,8 @@ import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SaveReper
 import com.ipb.castelobranco.core.domain.setlist.setlistDateFor
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
+import com.ipb.castelobranco.core.di.DefaultDispatcher
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SearchSundaysUseCase
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SaveSetlistResult
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.RepertoireValidation
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SaveSundaySetlistUseCase
@@ -25,6 +27,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import java.time.LocalDate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +37,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -72,6 +80,8 @@ class SongsTableViewModel @Inject constructor(
     observeWorshipAccess: ObserveWorshipAccessUseCase,
     private val dateProvider: DateProvider,
     private val saveSetlist: SaveSundaySetlistUseCase,
+    private val searchSundays: SearchSundaysUseCase,
+    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     val allSongs: StateFlow<List<Song>> = repository.observeAllSongs()
@@ -86,6 +96,36 @@ class SongsTableViewModel @Inject constructor(
     }
 
     val lastSundays: StateFlow<SnapshotState<List<SundaySet>>> = repository.observeSongsBySunday()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SnapshotState.Loading)
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    /** [lastSundays] filtered by [searchQuery]; normalizing runs once per data load, off the main thread. */
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    val filteredSundays: StateFlow<SnapshotState<List<SundaySet>>> = combine(
+        lastSundays.map { state ->
+            when (state) {
+                is SnapshotState.Data -> SnapshotState.Data(searchSundays.index(state.value))
+                is SnapshotState.Loading -> state
+                is SnapshotState.Error -> state
+            }
+        },
+        // Empty query (opening the tab, clearing the field) skips the debounce so the full list is instant.
+        _searchQuery.debounce { query -> if (query.isEmpty()) 0L else SEARCH_DEBOUNCE_MS },
+    ) { state, query -> state to query }
+        .mapLatest { (state, query) ->
+            when (state) {
+                is SnapshotState.Data -> SnapshotState.Data(searchSundays(state.value, query))
+                is SnapshotState.Loading -> state
+                is SnapshotState.Error -> state
+            }
+        }
+        .flowOn(defaultDispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, SnapshotState.Loading)
 
     val topSongs: StateFlow<SnapshotState<List<TopSong>>> = repository.observeTopSongs()
@@ -323,6 +363,7 @@ class SongsTableViewModel @Inject constructor(
 
     private companion object {
         const val ROW_COUNT = 4
+        const val SEARCH_DEBOUNCE_MS = 150L
 
         fun emptyRows() = (1..ROW_COUNT).map { RepertoireRowState(position = it) }
 

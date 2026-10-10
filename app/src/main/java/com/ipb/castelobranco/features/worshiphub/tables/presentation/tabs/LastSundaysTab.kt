@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.tabs
 
-import com.ipb.castelobranco.core.domain.util.normalize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 
 import androidx.compose.ui.text.font.FontWeight
@@ -41,23 +39,8 @@ private val columns = listOf(
 @Composable
 fun LastSundaysTab(
     sundays: List<SundaySet>,
-    searchQuery: String = "",
     onSongClick: (songId: Int) -> Unit = {},
 ) {
-    val filtered = remember(sundays, searchQuery) {
-    if (searchQuery.isBlank()) sundays
-    else {
-        val nq = searchQuery.normalize()
-        sundays.filter { sunday ->
-        val matchDate = sunday.date.contains(nq, ignoreCase = true)
-        val hasMatchingSong = sunday.songs.any { song ->
-            song.title.normalize().contains(nq, ignoreCase = true) ||
-            song.artist.normalize().contains(nq, ignoreCase = true) ||
-            song.tone.contains(nq, ignoreCase = true)
-        }
-        matchDate || hasMatchingSong
-    }
-}}
     Column(modifier = Modifier.fillMaxWidth()) {
         Header(columns)
 
@@ -66,7 +49,7 @@ fun LastSundaysTab(
             contentPadding = PaddingValues(0.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            items(filtered) { sunday ->
+            items(sundays, key = { it.date }) { sunday ->
                 SundaySection(sunday = sunday, onSongClick = onSongClick)
             }
         }

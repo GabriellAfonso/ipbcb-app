@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.SolidColor
 
 data class WorshipSongsUiState(
     val sundays: SnapshotState<List<SundaySet>> = SnapshotState.Loading,
+    val searchQuery: String = "",
     val topSongs: SnapshotState<List<TopSong>> = SnapshotState.Loading,
     val topTones: SnapshotState<List<TopTone>> = SnapshotState.Loading,
     val repertoireRows: List<RepertoireRowState> = emptyList(),
@@ -99,6 +100,7 @@ data class WorshipSongsActions(
     val onRefreshCurrentTab: (tabIndex: Int) -> Unit = {},
     val onRepertoireOpen: () -> Unit = {},
     val onSongClick: (songId: Int) -> Unit = {},
+    val onSearchQueryChange: (query: String) -> Unit = {},
 )
 
 @Composable
@@ -108,7 +110,8 @@ fun WorshipSongsTableScreen(
     viewModel: SongsTableViewModel
 ) {
     val state = WorshipSongsUiState(
-        sundays = viewModel.lastSundays.collectAsStateWithLifecycle().value,
+        sundays = viewModel.filteredSundays.collectAsStateWithLifecycle().value,
+        searchQuery = viewModel.searchQuery.collectAsStateWithLifecycle().value,
         topSongs = viewModel.topSongs.collectAsStateWithLifecycle().value,
         topTones = viewModel.topTones.collectAsStateWithLifecycle().value,
         repertoireRows = viewModel.repertoireRows.collectAsStateWithLifecycle().value,
@@ -142,6 +145,7 @@ fun WorshipSongsTableScreen(
         onRefreshCurrentTab = viewModel::refreshCurrentTab,
         onRepertoireOpen = viewModel::refreshAllSongs,
         onSongClick = onSongClick,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
     )
 
     WorshipSongsTableContent(
@@ -169,8 +173,9 @@ fun WorshipSongsTableContent(
 
     val tabs = listOf("Ultimos Domingos", "Mais tocadas", "Top tons", "Repertório")
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var searchQuery by remember { mutableStateOf("") }
-    var showSearch by remember { mutableStateOf(false) }
+    val searchQuery = state.searchQuery
+    // The query outlives this composition in the ViewModel: reopen the bar so an active filter stays visible.
+    var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
     val focusRequester = remember { FocusRequester() }
 
     val barColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -225,7 +230,7 @@ fun WorshipSongsTableContent(
                         Spacer(modifier = Modifier.width(8.dp))
                         BasicTextField(
                             value = searchQuery,
-                            onValueChange = { searchQuery = it },
+                            onValueChange = actions.onSearchQueryChange,
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(focusRequester),
@@ -246,7 +251,7 @@ fun WorshipSongsTableContent(
                             }
                         )
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
+                            IconButton(onClick = { actions.onSearchQueryChange("") }) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Limpar",
@@ -291,7 +296,6 @@ fun WorshipSongsTableContent(
                         0 -> SnapshotContent(state.sundays) { data ->
                             LastSundaysTab(
                                 sundays = data,
-                                searchQuery = searchQuery,
                                 onSongClick = actions.onSongClick,
                             )
                         }
@@ -333,7 +337,7 @@ fun WorshipSongsTableContent(
                 onClick = {
                     if (showSearch) {
                         showSearch = false
-                        searchQuery = ""
+                        actions.onSearchQueryChange("")
                     } else {
                         showSearch = true
                     }
