@@ -3,7 +3,9 @@ package com.ipb.castelobranco.core.data.snapshot
 import com.ipb.castelobranco.core.data.local.SnapshotStorage
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -68,6 +70,19 @@ class LocalSnapshotCacheTest {
         assertNull(storage.etags["test_key"])
     }
 
+    @Test
+    fun `exists reports stored data without decoding it`() = runTest {
+        storage.jsons["test_key"] = "encoded:hello"
+
+        assertTrue(cache.exists())
+        assertEquals(0, codec.decodes)
+    }
+
+    @Test
+    fun `exists is false when storage is empty`() = runTest {
+        assertFalse(cache.exists())
+    }
+
     // region fakes
 
     class FakeStorage : SnapshotStorage {
@@ -85,7 +100,8 @@ class LocalSnapshotCacheTest {
 
     class FakeCodec : SnapshotCodec<String> {
         override fun encode(value: String): String = "encoded:$value"
-        override fun decode(raw: String): String = raw.removePrefix("encoded:")
+        var decodes = 0
+        override fun decode(raw: String): String = raw.removePrefix("encoded:").also { decodes++ }
     }
 
     // endregion

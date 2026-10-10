@@ -23,6 +23,8 @@ class LocalSnapshotCache<T>(
         }
     }
 
+    override suspend fun exists(): Boolean = storage.exists(key)
+
     override suspend fun save(dto: T, etag: String?) {
         storage.save(key, codec.encode(dto))
         etag?.let { storage.saveETag(key, it) }

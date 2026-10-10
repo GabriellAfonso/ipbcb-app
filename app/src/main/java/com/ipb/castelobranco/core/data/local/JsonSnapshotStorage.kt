@@ -45,6 +45,10 @@ class JsonSnapshotStorage @Inject constructor(
         jsonFileForKey(key).takeIf { it.exists() }?.readText()
     }
 
+    override suspend fun exists(key: String): Boolean = withContext(ioDispatcher) {
+        jsonFileForKey(key).exists()
+    }
+
     override suspend fun clear(key: String) = withContext(ioDispatcher) {
         val json = jsonFileForKey(key)
         if (json.exists()) json.delete()

@@ -252,6 +252,7 @@ interface SnapshotFetcher<Dto> {
 ```kotlin
 interface SnapshotCache<Dto> {
     suspend fun load(): Dto?
+    suspend fun exists(): Boolean   // padrao: load() != null; LocalSnapshotCache so olha o arquivo
     suspend fun save(dto: Dto, etag: String?)
     suspend fun loadETag(): String?
     suspend fun clear()
@@ -359,6 +360,7 @@ interface SnapshotRepository<T> {
 interface SnapshotStorage {
     suspend fun save(key: String, json: String)
     suspend fun loadOrNull(key: String): String?
+    suspend fun exists(key: String): Boolean
     suspend fun clear(key: String)
     suspend fun clearAll()
     suspend fun loadETagOrNull(key: String): String?
@@ -370,6 +372,8 @@ interface SnapshotStorage {
 - Nomes: `{safe_key}.json` e `{safe_key}_etag.txt`
 - Sanitizacao: lowercase, apenas alfanumerico + underscore/hyphen
 - I/O em `Dispatchers.IO`
+- `exists(key)` checa so o arquivo `.json`: para saber se um snapshot grande existe (ex.: Biblia), nunca
+  ler e decodificar o conteudo.
 
 ### 5.2 Codecs
 

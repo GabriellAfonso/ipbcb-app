@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -51,6 +52,21 @@ class JsonSnapshotStorageTest {
         val result = storage.loadOrNull("missing_key")
 
         assertNull(result)
+    }
+
+    // endregion
+
+    // region exists
+
+    @Test
+    fun `exists is true after save and false after clear`() = runTest {
+        assertFalse(storage.exists("bible_naa"))
+
+        storage.save("bible_naa", "[]")
+        assertTrue(storage.exists("bible_naa"))
+
+        storage.clear("bible_naa")
+        assertFalse(storage.exists("bible_naa"))
     }
 
     // endregion
