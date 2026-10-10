@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.core.presentation.viewmodel
 
+import com.ipb.castelobranco.core.data.security.SessionRecovery
+import com.ipb.castelobranco.core.testing.FakeAeadCipher
 import com.ipb.castelobranco.core.domain.access.Access
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.RefreshAccessUseCase
@@ -81,6 +83,7 @@ class CoreViewModelTest {
 
     private var sessionCacheClears = 0
     private val sessionCache = SessionScopedCache { sessionCacheClears++ }
+    private val sessionRecovery = SessionRecovery(FakeAeadCipher())
 
     private val authEventsFlow = MutableSharedFlow<AuthEventBus.Event>()
 
@@ -156,6 +159,7 @@ class CoreViewModelTest {
             pushScheduler,
             UnregisterDeviceUseCase(pushScheduler, devices, tokenStore),
             AppForegroundState(),
+            sessionRecovery,
         )
     }
 
@@ -178,6 +182,17 @@ class CoreViewModelTest {
         loginFlow.value = true
         advanceUntilIdle()
         assertTrue(viewModel.isLoggedIn.value)
+    }
+
+    @Test
+    fun `unreadable session wipes session caches even when never logged in`() = runTest {
+        sessionRecovery.onSessionUnreadable()
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(1, sessionCacheClears)
+        assertFalse(sessionRecovery.pendingWipe.value)
     }
 
     // endregion

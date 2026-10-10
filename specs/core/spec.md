@@ -51,7 +51,8 @@ core/
 | `@Client` | OkHttpClient | Client autenticado (interceptor + authenticator) |
 | `@AuthLessClient` | OkHttpClient | Client sem auth |
 | `@ApiBaseUrl` | String | URL base da API |
-| `@AuthPrefs` | DataStore | Armazenamento de tokens |
+| `@AuthPrefs` | DataStore | Sessao (tokens), gravada criptografada — secao 5.5.1 |
+| `@SessionCipher` | AeadCipher | Chave do Keystore que sela `@AuthPrefs` |
 | `@SettingsPrefs` | DataStore | Preferencias de tema/fonte/scroll |
 | `@SetlistPrefs` | DataStore | Pins de musicas do dia |
 
@@ -64,7 +65,7 @@ Qualifier errado em API protegida resulta em 401 silencioso.
 | `HttpClientModule` | Singleton | OkHttpClient (auth e authless), logging interceptor |
 | `RetrofitModule` | Singleton | Retrofit instances, base URL |
 | `SerializationModule` | Singleton | kotlinx.serialization.Json configurado |
-| `DataStoreModule` | Singleton | 3 DataStores (auth, settings, setlist) |
+| `DataStoreModule` | Singleton | DataStores (auth criptografado, settings, setlist, push) + `@SessionCipher` |
 | `SnapshotCoreModule` | Singleton | Logger, SnapshotStorage, SnapshotCacheFactory |
 | `AuthCoreModule` | Singleton | Bind AuthEventBus -> AuthEventBusImpl |
 | `StartupBindingsModule` | Singleton | Multibinding sets de Preloadable e Refreshable |
@@ -325,7 +326,9 @@ lider; o repertorio de domingo guardado, secao 4.2.4). Features registram implem
 `CoreViewModel` chama `clear()` de todos:
 - em `logout()`, antes de `logoutUseCase()`;
 - quando `isLoggedInFlow` passa de `true` para `false` (sessao encerrada pelo `TokenAuthenticator`
-  depois de um refresh que falhou — nesse caminho `logout()` nao e chamado).
+  depois de um refresh que falhou — nesse caminho `logout()` nao e chamado);
+- quando `SessionRecovery.pendingWipe` fica `true` (sessao criptografada ilegivel, secao 5.5.1) — mesmo num boot
+  que ja comeca deslogado, onde a transicao acima nao acontece.
 
 Existe para que `core/` limpe dado de uma feature sem importa-la, do mesmo jeito que
 `Preloadable`/`Refreshable` disparam o boot.
@@ -431,6 +434,24 @@ Metodo: `toggleSong(songId)` — adiciona/remove do set.
 enum class SongScrollMode { HORIZONTAL, VERTICAL }
 ```
 
+### 5.5.1 Sessao criptografada (`core/data/security`)
+
+A sessao (`@AuthPrefs`) e um Preferences DataStore cujo arquivo so contem um blob selado:
+`files/datastore/auth_prefs.enc.preferences_pb`. Nada da sessao fica em texto puro no disco.
+
+| Peca | Papel |
+|------|-------|
+| `AeadCipher` | Porta: `encrypt`, `decrypt` (falha = `UndecryptableException`), `destroyKey` |
+| `KeystoreAeadCipher(alias)` | AES-256-GCM com chave nao exportavel no `AndroidKeyStore`; formato `[versao][IV 12][cifra+tag]` |
+| `EncryptedSerializer` | Envolve qualquer `OkioSerializer`; blob que nao abre vira `CorruptionException` |
+| `PlaintextAuthPrefsMigration` | Primeira leitura apos a atualizacao: copia `auth_prefs.preferences_pb` para o arquivo criptografado e apaga o antigo. Se o criptografado ja tem tokens, eles ficam (sao mais novos) |
+| `SessionRecovery` | Handler de corrupcao: destroi a chave e liga `pendingWipe`; a sessao vira vazia (app deslogado, sem mensagem) |
+| `EncryptedAuthPrefs.create` | Monta o store (storage okio + serializer + migracao + handler) |
+
+Alias: `ipbcb_session_v1`. Arquivos novo e antigo ficam fora de backup e transferencia
+(`backup_rules.xml`, `data_extraction_rules.xml`). Formato e regras:
+`specs/012-encrypted-session-photo-cache/contracts/on-device-storage.md`.
+
 ### 5.6 NetworkConnectivityObserver
 
 Monitora conectividade WiFi via `ConnectivityManager` + `callbackFlow`.
@@ -469,7 +490,7 @@ Unica Activity do app (`@AndroidEntryPoint`), `launchMode="singleTop"`.
 
 Orquestra inicializacao e estado global.
 
-**Injecoes:** `PreloadDataUseCase`, `AuthSession`, `FetchProfileUseCase`, `AuthEventBus`, `LogoutUseCase`, `GalleryAutoDownload`, `BibleAutoDownload`, `BibleRepository`, `ScheduleRepository`, `SyncSundaySetlistUseCase`, `ObserveWorshipAccessUseCase`, `PushRegistrationScheduler`, `UnregisterDeviceUseCase`, `AppForegroundState`.
+**Injecoes:** `PreloadDataUseCase`, `AuthSession`, `FetchProfileUseCase`, `AuthEventBus`, `LogoutUseCase`, `GalleryAutoDownload`, `BibleAutoDownload`, `BibleRepository`, `ScheduleRepository`, `SyncSundaySetlistUseCase`, `ObserveWorshipAccessUseCase`, `PushRegistrationScheduler`, `UnregisterDeviceUseCase`, `AppForegroundState`, `SessionRecovery`.
 
 **State:**
 - `isPreloading: StateFlow<Boolean>` — app inicializando
@@ -482,7 +503,8 @@ Orquestra inicializacao e estado global.
 - `LogoutSuccess`
 
 **Fluxo de inicializacao:**
-1. Observa mudancas de login state
+1. Observa mudancas de login state e `SessionRecovery.pendingWipe` (sessao ilegivel → limpa os
+   `SessionScopedCache`, secao 4.4.1)
 2. Reage a `LoginSuccess` do AuthEventBus
 3. Cascata: preload disco -> refresh rede -> auto-download gallery/bible -> fetch profile
 

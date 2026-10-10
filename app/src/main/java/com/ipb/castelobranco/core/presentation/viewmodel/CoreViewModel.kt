@@ -20,6 +20,7 @@ import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
 import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
 import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.data.security.SessionRecovery
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.push.PushRegistrationScheduler
@@ -59,6 +60,7 @@ class CoreViewModel @Inject constructor(
     private val pushRegistration: PushRegistrationScheduler,
     private val unregisterDevice: UnregisterDeviceUseCase,
     private val appForeground: AppForegroundState,
+    private val sessionRecovery: SessionRecovery,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -110,6 +112,18 @@ class CoreViewModel @Inject constructor(
                 if (wasLoggedIn && !logged) clearSessionScopedCaches()
                 wasLoggedIn = logged
                 _isLoggedIn.value = logged
+            }
+        }
+
+        // A sessão criptografada não abriu (chave perdida, arquivo corrompido): o app já começa
+        // deslogado, sem mensagem. Os caches da sessão — fotos de membros em disco inclusive — vão
+        // junto, mesmo que este processo nunca tenha estado logado.
+        viewModelScope.launch {
+            sessionRecovery.pendingWipe.collect { pending ->
+                if (pending) {
+                    clearSessionScopedCaches()
+                    sessionRecovery.acknowledgeWipe()
+                }
             }
         }
 

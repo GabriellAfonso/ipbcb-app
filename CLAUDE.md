@@ -72,7 +72,8 @@ features/
 ```kotlin
 @AuthedRetrofit / @AuthLessRetrofit   // protected / public APIs
 @Client / @AuthLessClient             // authenticated / unauthenticated OkHttpClient
-@AuthPrefs / @SettingsPrefs           // DataStores
+@AuthPrefs / @SettingsPrefs           // DataStores (@AuthPrefs is encrypted)
+@SessionCipher / @MemberPhotoCipher   // Keystore AES-GCM ciphers (session store / member photo cache)
 @ApiBaseUrl                           // base URL string
 ```
 
@@ -81,7 +82,8 @@ Wrong qualifier on protected API → silent 401.
 ## Security
 
 - Never hardcode keys/secrets — use `local.properties` + `BuildConfig`.
-- Auth tokens: pending migration to `EncryptedSharedPreferences` (currently plain DataStore).
+- Auth tokens: `@AuthPrefs` DataStore sealed with an Android Keystore AES-GCM key (`core/data/security`).
+  Member photos: encrypted disk cache with its own key; member data never touches the disk.
 - No `Log.d` with PII in production. ProGuard/R8 active in release.
 
 ## Tests
@@ -202,5 +204,5 @@ specs/                          # project root, outside server/
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/011-sunday-setlist-push/plan.md`
+at `specs/012-encrypted-session-photo-cache/plan.md`
 <!-- SPECKIT END -->

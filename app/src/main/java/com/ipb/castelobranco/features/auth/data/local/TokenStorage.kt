@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ipb.castelobranco.core.data.security.AuthPrefsFiles
 import com.ipb.castelobranco.core.di.AuthPrefs
 import com.ipb.castelobranco.features.auth.domain.model.AuthTokens
 import javax.inject.Inject
@@ -24,7 +25,7 @@ class TokenStorage @Inject constructor(
     private val json: Json
 ) {
     private object Keys {
-        val TOKENS = stringPreferencesKey("auth_tokens")
+        val TOKENS = stringPreferencesKey(AuthPrefsFiles.AUTH_TOKENS_KEY)
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

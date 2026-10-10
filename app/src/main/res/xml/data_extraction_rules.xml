@@ -7,8 +7,12 @@
     <cloud-backup>
         <!-- Auth tokens must never be backed up — restoring them on another device = active session without password -->
         <exclude domain="file" path="datastore/auth_prefs.preferences_pb"/>
+        <!-- Encrypted session store (012): its Keystore key never travels, so a restored copy could never open -->
+        <exclude domain="file" path="datastore/auth_prefs.enc.preferences_pb"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore/auth_prefs.preferences_pb"/>
+        <!-- Encrypted session store (012): its Keystore key never travels, so a restored copy could never open -->
+        <exclude domain="file" path="datastore/auth_prefs.enc.preferences_pb"/>
     </device-transfer>
 </data-extraction-rules>
