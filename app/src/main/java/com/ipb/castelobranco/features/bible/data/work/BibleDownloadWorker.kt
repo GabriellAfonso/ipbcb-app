@@ -51,7 +51,7 @@ class BibleDownloadWorker @AssistedInject constructor(
 
             for (translation in translations) {
                 val cache = caches[translation] ?: continue
-                val alreadyCached = !force && cache.load() != null
+                val alreadyCached = !force && cache.exists()
                 if (!alreadyCached) {
                     val response = api.getBibleRaw(translation.code, ifNoneMatch = null)
                     if (!response.isSuccessful) {

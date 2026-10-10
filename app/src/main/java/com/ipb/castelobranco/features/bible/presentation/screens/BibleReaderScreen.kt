@@ -150,7 +150,8 @@ fun BibleReaderScreen(
             if (book == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     when {
-                        download.isDownloading || download.isPending -> CircularProgressIndicator()
+                        state.isLoadingBooks || download.isDownloading || download.isPending ->
+                            CircularProgressIndicator()
                         download.error != null -> Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {

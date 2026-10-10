@@ -105,6 +105,18 @@ class BibleViewModelTest {
         val job = subscribeAndAdvance(vm)
 
         assertFalse(vm.uiState.value.isBibleReady)
+        assertFalse(vm.uiState.value.isLoadingBooks)
+        job.cancel()
+    }
+
+    @Test
+    fun `uiState isLoadingBooks while the repository decodes`() = runTest {
+        every { repository.booksFlow } returns MutableStateFlow(null)
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertTrue(vm.uiState.value.isLoadingBooks)
+        assertFalse(vm.uiState.value.isBibleReady)
         job.cancel()
     }
 

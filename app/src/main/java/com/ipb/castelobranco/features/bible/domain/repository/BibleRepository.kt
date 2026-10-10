@@ -13,13 +13,17 @@ import kotlinx.coroutines.flow.StateFlow
  * SnapshotStorage (filesDir/snapshots/bible_*.json).
  */
 interface BibleRepository {
-    val booksFlow: StateFlow<List<BibleBook>>
+    /**
+     * Livros da tradução ativa, decodificados só enquanto alguém coleta e soltos da memória logo depois.
+     * `null` = ainda decodificando; vazio = tradução não está no aparelho.
+     */
+    val booksFlow: StateFlow<List<BibleBook>?>
     val activeTranslationFlow: StateFlow<BibleTranslation>
     val cachedTranslationsFlow: StateFlow<Set<BibleTranslation>>
     val positionFlow: StateFlow<BibleReadingPosition>
     val fontSizeFlow: StateFlow<Float>
 
-    /** Carrega cache do disco para a tradução ativa e detecta traduções baixadas. */
+    /** Detecta as traduções baixadas (só checa os arquivos, não decodifica). */
     suspend fun preload()
 
     /** Troca tradução ativa (e recarrega [booksFlow]). Persiste preferência. */

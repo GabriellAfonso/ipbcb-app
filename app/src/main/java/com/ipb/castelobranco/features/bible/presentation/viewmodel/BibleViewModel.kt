@@ -38,6 +38,8 @@ data class BibleDownloadStatus(
 
 data class BibleUiState(
     val books: List<BibleBook> = emptyList(),
+    /** The active translation is on its way into memory: not the same as "not downloaded". */
+    val isLoadingBooks: Boolean = true,
     val activeTranslation: BibleTranslation = BibleTranslation.Default,
     val cachedTranslations: Set<BibleTranslation> = emptySet(),
     val position: BibleReadingPosition = BibleReadingPosition.default(),
@@ -108,7 +110,8 @@ class BibleViewModel @Inject constructor(
             repository.positionFlow,
         ) { books, active, cached, position ->
             BibleUiState(
-                books = books,
+                books = books.orEmpty(),
+                isLoadingBooks = books == null,
                 activeTranslation = active,
                 cachedTranslations = cached,
                 position = position,
