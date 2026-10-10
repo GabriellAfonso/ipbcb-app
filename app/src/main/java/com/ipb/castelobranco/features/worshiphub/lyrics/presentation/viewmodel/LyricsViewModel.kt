@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.data.local.SetlistPreferences
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
-import com.ipb.castelobranco.core.domain.util.normalize
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
+import com.ipb.castelobranco.core.domain.access.Access
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Scope
@@ -15,7 +15,9 @@ import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.state.Lyric
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
 import com.ipb.castelobranco.core.domain.setlist.ObserveSundaySetlistUseCase
 import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
+import com.ipb.castelobranco.features.worshiphub.shared.domain.ContentSearch
 import com.ipb.castelobranco.features.worshiphub.shared.domain.buildSundaySection
+import com.ipb.castelobranco.features.worshiphub.shared.domain.matchesTitle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -40,6 +43,9 @@ class LyricsViewModel @Inject constructor(
 
     private val _query = MutableStateFlow("")
 
+    /** "Buscar na letra": off on every visit, so the plain search stays name-only. */
+    private val _searchLyrics = MutableStateFlow(false)
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -48,7 +54,16 @@ class LyricsViewModel @Inject constructor(
 
     private val access = observeAccess()
 
-    private val queryAndAccess = combine(_query, access) { q, a -> q to a }
+    private val search = combine(_query, _searchLyrics, access) { query, searchLyrics, access ->
+        SearchInput(query, searchLyrics, access)
+    }
+
+    // Content is normalized once per snapshot, so each keystroke only runs `contains`.
+    private val indexed = getLyricsUseCase.observe().map { state ->
+        val index = (state as? SnapshotState.Data)?.value.orEmpty()
+            .associate { it.id to ContentSearch.index(it.content) }
+        state to index
+    }
 
     fun refresh(minDurationMs: Long = 600L) {
         if (_isRefreshing.value) return
@@ -70,12 +85,12 @@ class LyricsViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<LyricsUiState> = combine(
-        getLyricsUseCase.observe(),
+        indexed,
         songsRepository.observeAllSongs(),
         pinnedSongs,
-        queryAndAccess,
+        search,
         observeSundaySetlist(),
-    ) { lyricsState, songsState, pinnedSongIds, (query, access), sundaySetlist ->
+    ) { (lyricsState, contentIndex), songsState, pinnedSongIds, (query, searchLyrics, access), sundaySetlist ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
@@ -107,12 +122,19 @@ class LyricsViewModel @Inject constructor(
                 }
 
                 val filtered = if (query.isBlank()) sorted.filterNot { section?.songIds?.contains(it.songId) == true }
-                else sorted.filter { it.songName.normalize().contains(query.normalize(), ignoreCase = true) }
+                else {
+                    val (byTitle, others) = sorted.partition { matchesTitle(it.songName, query) }
+                    if (!searchLyrics) byTitle
+                    else byTitle + others.mapNotNull { item ->
+                        contentIndex[item.id]?.findSnippet(query)?.let { item.copy(lyricsSnippet = it) }
+                    }
+                }
 
                 LyricsUiState(
                     lyrics         = sorted,
                     filteredLyrics = filtered,
                     query          = query,
+                    searchLyrics   = searchLyrics,
                     canEdit        = canEdit,
                     sundaySection  = section,
                 )
@@ -128,7 +150,17 @@ class LyricsViewModel @Inject constructor(
         _query.value = query
     }
 
+    fun onSearchLyricsChange(enabled: Boolean) {
+        _searchLyrics.value = enabled
+    }
+
     fun onTogglePin(songId: Int) {
         viewModelScope.launch { setlistPreferences.toggleSong(songId) }
     }
 }
+
+private data class SearchInput(
+    val query: String,
+    val searchLyrics: Boolean,
+    val access: Access,
+)

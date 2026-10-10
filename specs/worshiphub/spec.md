@@ -201,7 +201,7 @@ Os tres estados sem itens sao renderizados dentro de um container com `verticalS
 o `PullToRefreshBox` so recebe o gesto de puxar se o filho despachar nested scroll — sem isso a
 tela vazia ficaria sem nenhuma forma de recarregar.
 
-**Busca:** campo no topo, filtra por nome da musica (accent-insensitive).
+**Busca:** campo no topo, filtra por nome da musica (accent-insensitive). Ver **Busca na letra** (secao 10.1).
 
 **Pinned:** musicas podem ser fixadas no topo da lista via `SetlistPreferences`. Ordem de exibicao: pinned primeiro (na ordem de pin), depois o resto.
 
@@ -265,7 +265,7 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 Lista de todas as letras cadastradas. Cada item mostra nome da musica.
 
-**Busca:** campo no topo, filtra por nome da musica (accent-insensitive).
+**Busca:** campo no topo, filtra por nome da musica (accent-insensitive). Ver **Busca na letra** (secao 10.1).
 
 **Pinned:** mesmo mecanismo de `SetlistPreferences` das cifras.
 
@@ -460,8 +460,26 @@ Todas as listas usam busca accent-insensitive via `String.normalize()` (em `core
 |------|-----------------|
 | Ultimos Domingos | data, titulo, artista, tom |
 | Musicas (lista) | titulo, artista |
-| Cifras | nome da musica |
-| Letras | nome da musica |
+| Cifras | nome da musica; com "Buscar na letra", tambem o texto da cifra (sem acordes) |
+| Letras | nome da musica; com "Buscar na letra", tambem o texto da letra |
+
+### 10.1 Busca na letra (Cifras e Letras)
+
+Para achar uma musica lembrando so de um trecho. Desligada por padrao: a busca normal continua so pelo nome.
+
+- Com texto no campo de busca aparece, logo abaixo dele, o chip "Buscar na letra". Sem texto o chip nao
+  aparece e a tela fica como sempre.
+- Ligado, a lista mostra primeiro as musicas cujo nome casa (como antes) e depois as que so casam pelo
+  conteudo. Cada uma dessas ultimas mostra, embaixo do nome, a linha da letra onde o trecho foi achado.
+- O conteudo casa quando **todas** as palavras digitadas aparecem nele, em qualquer ordem e em qualquer linha
+  (accent-insensitive, sem pontuacao, sem diferenciar maiusculas). Assim quem lembra a frase meio errada ainda
+  acha. A linha mostrada e a que contem mais palavras da busca (a primeira, no empate).
+- Cifras: acordes (`[G]`) e diretivas (`{start_of_chorus}`, `{comment: ...}`) sao ignorados, entao "grande"
+  casa com `gran[D]de`.
+- O chip e por visita a tela: sair e voltar volta ao padrao (desligado). Limpar o campo esconde o chip mas
+  mantem a escolha enquanto a tela estiver aberta.
+- Funciona offline: usa o conteudo que ja esta no snapshot local, sem request nova.
+- Com a busca ativa a secao "Repertorio de domingo" some, como em qualquer busca.
 
 ---
 

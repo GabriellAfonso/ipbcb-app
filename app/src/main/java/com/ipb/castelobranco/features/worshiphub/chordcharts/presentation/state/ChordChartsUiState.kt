@@ -6,6 +6,7 @@ data class ChordChartsUiState(
     val charts: List<ChordChartListItem> = emptyList(),
     val filteredCharts: List<ChordChartListItem> = emptyList(),
     val query: String = "",
+    val searchLyrics: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val canEdit: Boolean = false,
@@ -20,4 +21,6 @@ data class ChordChartListItem(
     val tone: String,
     val instrument: String,
     val isPinned: Boolean = false,
+    /** Line where "Buscar na letra" found the query; `null` when the name matched or the search is off. */
+    val lyricsSnippet: String? = null,
 )

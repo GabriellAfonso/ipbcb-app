@@ -13,6 +13,8 @@ data class SongContentRow(
     val songName: String,
     val isPinned: Boolean = false,
     val chips: List<SongContentChip> = emptyList(),
+    /** Matching lyrics line from "Buscar na letra", shown under the name. */
+    val snippet: String? = null,
 )
 
 data class SongContentChip(val text: String, val color: Color)

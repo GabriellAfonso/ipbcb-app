@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -30,6 +31,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,7 +69,8 @@ private val ListEdgePadding = 8.dp
  * same layout; only labels, accent color, leading icon and the optional metadata chips differ.
  *
  * Pinning and the admin "add" action são opcionais: a lista de músicas não tem nenhum dos dois.
- * `onTogglePin` nulo esconde o marcador de fixado.
+ * `onTogglePin` nulo esconde o marcador de fixado. `onSearchLyricsChange` nulo esconde o chip
+ * "Buscar na letra" (a lista de músicas não tem conteúdo para buscar).
  */
 @Composable
 fun SongContentListScreen(
@@ -87,6 +92,8 @@ fun SongContentListScreen(
     addItemLabel: String = "",
     onCreateClick: () -> Unit = {},
     sundaySection: SundaySectionUi? = null,
+    searchLyrics: Boolean = false,
+    onSearchLyricsChange: ((Boolean) -> Unit)? = null,
 ) {
     BaseScreen(
         tabName       = tabName,
@@ -116,6 +123,11 @@ fun SongContentListScreen(
                     placeholder   = searchPlaceholder,
                     resultsCount  = rows.size,
                 )
+
+                // Só com texto digitado: sem busca a tela fica exatamente como sempre foi.
+                if (onSearchLyricsChange != null && query.isNotBlank()) {
+                    SearchLyricsChip(selected = searchLyrics, onSelectedChange = onSearchLyricsChange)
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -222,6 +234,26 @@ private fun SearchCard(
 }
 
 @Composable
+private fun SearchLyricsChip(selected: Boolean, onSelectedChange: (Boolean) -> Unit) {
+    FilterChip(
+        selected    = selected,
+        onClick     = { onSelectedChange(!selected) },
+        label       = { Text("Buscar na letra") },
+        leadingIcon = if (selected) {
+            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+        } else {
+            null
+        },
+        colors      = FilterChipDefaults.filterChipColors(
+            selectedContainerColor   = Green.copy(alpha = 0.15f),
+            selectedLabelColor       = Green,
+            selectedLeadingIconColor = Green,
+        ),
+        modifier    = Modifier.padding(start = ListEdgePadding + 4.dp, top = 4.dp),
+    )
+}
+
+@Composable
 private fun SongContentCard(
     item: SongContentRow,
     accentColor: Color,
@@ -274,6 +306,18 @@ private fun SongContentCard(
                     maxLines   = 1,
                     overflow   = TextOverflow.Ellipsis,
                 )
+
+                if (item.snippet != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text      = "“${item.snippet}”",
+                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style     = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
+                        maxLines  = 2,
+                        overflow  = TextOverflow.Ellipsis,
+                    )
+                }
 
                 if (item.chips.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
