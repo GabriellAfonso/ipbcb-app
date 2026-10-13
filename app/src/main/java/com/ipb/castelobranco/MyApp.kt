@@ -11,6 +11,7 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.data.local.ThemePreferences
+import com.ipb.castelobranco.core.data.worker.BirthdayNotificationSchedule
 import com.ipb.castelobranco.core.data.worker.BirthdayNotificationWorker
 import com.ipb.castelobranco.features.hymnal.domain.sync.HymnViewSyncScheduler
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
@@ -20,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
@@ -66,24 +66,26 @@ class MyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         hymnViewSyncScheduler.scheduleSync()
     }
 
+    /**
+     * KEEP on both: WorkManager starts this process to run the worker, so `onCreate` runs again inside that run,
+     * and a replacing policy would cancel the very run that started it.
+     */
     private fun scheduleBirthdayNotifications() {
-        val now = LocalDateTime.now()
-        val targetToday = now.toLocalDate().atTime(TARGET_HOUR)
-        val nextRun = if (now.isBefore(targetToday)) targetToday else targetToday.plusDays(1)
-        val initialDelay = Duration.between(now, nextRun).toMinutes()
-
-        val request = PeriodicWorkRequestBuilder<BirthdayNotificationWorker>(
-            1, TimeUnit.DAYS
-        ).setInitialDelay(initialDelay, TimeUnit.MINUTES).build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            BirthdayNotificationWorker.WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
-            request
+        val workManager = WorkManager.getInstance(this)
+        workManager.cancelUniqueWork(BirthdayNotificationWorker.LEGACY_WORK_NAME)
+        scheduleBirthdayRun(workManager, BirthdayNotificationWorker.NOON_WORK_NAME, BirthdayNotificationSchedule.NOON)
+        scheduleBirthdayRun(
+            workManager,
+            BirthdayNotificationWorker.EVENING_WORK_NAME,
+            BirthdayNotificationSchedule.EVENING,
         )
     }
 
-    companion object {
-        private val TARGET_HOUR: LocalTime = LocalTime.of(8, 0)
+    private fun scheduleBirthdayRun(workManager: WorkManager, name: String, target: LocalTime) {
+        val initialDelay = BirthdayNotificationSchedule.initialDelay(LocalDateTime.now(), target)
+        val request = PeriodicWorkRequestBuilder<BirthdayNotificationWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(initialDelay.toMinutes(), TimeUnit.MINUTES)
+            .build()
+        workManager.enqueueUniquePeriodicWork(name, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }

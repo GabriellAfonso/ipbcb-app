@@ -63,6 +63,8 @@ As a church member, I want to receive a notification on the day of a member's bi
 3. **Given** the user has denied notification permission, **When** the Worker executes, **Then** no notification is shown and no error occurs.
 4. **Given** cached birthday data exists on disk but the app is closed (the Worker runs in a fresh process that never loaded the cache into memory), **When** the Worker executes, **Then** it reads the disk cache and shows the notification as in scenario 1.
 5. **Given** no cached birthday data exists (e.g., first install, never opened), **When** the Worker executes, **Then** it completes silently without error.
+6. **Given** the 12:00 run already posted today's birthday notification, **When** the 18:00 run executes, **Then** nothing is posted again.
+7. **Given** the 12:00 run did not post today (delayed or blocked by the system, or permission granted only later), **When** the 18:00 run executes, **Then** it posts today's birthday notification.
 
 ---
 
@@ -99,6 +101,7 @@ As a church member, I want to tap the birthdays card and see every month of the 
 - **FR-006**: System MUST require user authentication to fetch birthday data.
 - **FR-007**: System MUST display the birthday card within the existing highlight carousel on the home screen, replacing the current static placeholder.
 - **FR-008**: System MUST send a daily notification for members whose birthday is today, using cached data (no network required). The Worker MUST load the disk cache itself when memory is empty, since it usually runs while the app is closed.
+- **FR-015**: The notification MUST be scheduled at 12:00 — not in the early morning, when it would land in a pile of overnight notifications the user clears without reading. A second run at 18:00 is a fallback: it posts only when no birthday notification was posted that day, so the user never gets the same notification twice. The date of the last posted notification is stored locally.
 - **FR-009**: System MUST personalize notification messages by gender (do/da/de prefix) and randomly select from a pool of message templates.
 - **FR-010**: System MUST group multiple birthday notifications under a summary when more than one member has a birthday on the same day.
 - **FR-011**: System MUST request POST_NOTIFICATIONS runtime permission on Android 13+ and degrade gracefully if denied.
@@ -110,7 +113,7 @@ As a church member, I want to tap the birthdays card and see every month of the 
 
 - **Birthday**: Represents a member's birthday entry — contains the member's name (text), birth month (integer 1-12), birth day of the month (integer 1-31), and gender (MALE, FEMALE, or UNKNOWN). Birth year (and so age) is not exposed by the API.
 - **Gender**: Enum representing member gender — mapped from API values `"M"`, `"F"`, or `null`.
-- **BirthdayNotificationWorker**: Daily WorkManager worker that reads cached birthdays, filters for today, and dispatches notifications.
+- **BirthdayNotificationWorker**: WorkManager worker run daily at 12:00 and 18:00 that reads cached birthdays, filters for today, and dispatches notifications unless one was already posted today.
 
 ## Success Criteria *(mandatory)*
 

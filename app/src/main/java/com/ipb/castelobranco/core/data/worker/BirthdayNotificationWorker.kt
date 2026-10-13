@@ -16,7 +16,6 @@ import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.domain.model.Gender
 import com.ipb.castelobranco.core.domain.repository.MembersRepository
-import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -36,13 +35,12 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         if (!enabled) return Result.success()
 
         val today = LocalDate.now()
+        val lastNotified = themePreferences.birthdayLastNotified()
+        if (lastNotified == today) return Result.success()
+
         // The app is usually closed at the scheduled hour: memory is empty, so read the disk cache.
         val snapshot = membersRepository.loadCurrentSnapshot()
-
-        val birthdays = when (snapshot) {
-            is SnapshotState.Data -> snapshot.value.filter { it.month == today.monthValue && it.day == today.dayOfMonth }
-            else -> emptyList()
-        }
+        val birthdays = BirthdayNotificationSchedule.birthdaysToNotify(snapshot, today, lastNotified)
 
         if (birthdays.isEmpty()) return Result.success()
 
@@ -55,6 +53,7 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         } else {
             notifyGroup(birthdays)
         }
+        themePreferences.setBirthdayLastNotified(today)
 
         return Result.success()
     }
@@ -153,7 +152,11 @@ class BirthdayNotificationWorker @AssistedInject constructor(
     }
 
     companion object {
-        const val WORK_NAME = "birthday_daily_notification"
+        const val NOON_WORK_NAME = "birthday_noon_notification"
+        const val EVENING_WORK_NAME = "birthday_evening_notification"
+
+        /** The 8:00 schedule of older versions; cancelled at startup so existing installs move to noon. */
+        const val LEGACY_WORK_NAME = "birthday_daily_notification"
         const val CHANNEL_ID = "birthdays"
         private const val GROUP_KEY = "com.ipb.castelobranco.BIRTHDAYS"
         private const val NOTIFICATION_ID_BASE = 2000

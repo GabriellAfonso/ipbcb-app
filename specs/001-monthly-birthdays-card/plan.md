@@ -104,7 +104,9 @@ app/src/main/java/com/ipb/castelobranco/
 
 ### Architecture
 
-Daily `PeriodicWorkRequest` scheduled at app startup (`MyApp.onCreate`), targeting ~8:00 AM via `initialDelay`. Worker reads from local snapshot cache (no network, no auth).
+Two daily `PeriodicWorkRequest`s of the same worker, scheduled at app startup (`MyApp.onCreate`) with `KEEP`, targeting 12:00 and 18:00 via `initialDelay` (`BirthdayNotificationSchedule`). The 18:00 one is a fallback: the worker stores the date it last posted (`ThemePreferences`) and skips a day already notified. Worker reads from local snapshot cache (no network, no auth). The unique work names changed when the hour moved from 8:00, so startup cancels the legacy `birthday_daily_notification` — under `KEEP`, it would otherwise stay at 8:00 forever on existing installs.
+
+`KEEP` matters: WorkManager starts the app process to run a worker, which runs `onCreate` again; a replacing policy would cancel the run that started the process.
 
 ### Source Code (notification additions)
 

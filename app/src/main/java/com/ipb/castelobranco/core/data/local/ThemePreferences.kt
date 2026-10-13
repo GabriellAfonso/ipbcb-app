@@ -6,10 +6,13 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import com.ipb.castelobranco.core.di.SettingsPrefs
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import javax.inject.Inject
 
 class ThemePreferences @Inject constructor(
@@ -29,6 +32,7 @@ class ThemePreferences @Inject constructor(
     private val hymnalFontSizeKey = floatPreferencesKey("hymnal_font_size")
     private val songScrollModeKey = intPreferencesKey("song_scroll_mode")
     private val birthdayNotificationsKey = booleanPreferencesKey("birthday_notifications_enabled")
+    private val birthdayLastNotifiedKey = longPreferencesKey("birthday_last_notified_epoch_day")
 
     val themeModeFlow: Flow<ThemeMode> =
         dataStore.data.map { prefs ->
@@ -91,6 +95,16 @@ class ThemePreferences @Inject constructor(
     suspend fun setBirthdayNotifications(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[birthdayNotificationsKey] = enabled
+        }
+    }
+
+    /** The day a birthday notification was last posted, so the 18:00 fallback skips a day already notified. */
+    suspend fun birthdayLastNotified(): LocalDate? =
+        dataStore.data.first()[birthdayLastNotifiedKey]?.let(LocalDate::ofEpochDay)
+
+    suspend fun setBirthdayLastNotified(day: LocalDate) {
+        dataStore.edit { prefs ->
+            prefs[birthdayLastNotifiedKey] = day.toEpochDay()
         }
     }
 }
