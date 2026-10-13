@@ -11,6 +11,9 @@ interface MembersRepository {
 
     fun getCurrentSnapshot(): SnapshotState<List<Birthday>>
 
+    /** Like [getCurrentSnapshot], but reads the disk cache first when memory is still empty. */
+    suspend fun loadCurrentSnapshot(): SnapshotState<List<Birthday>>
+
     suspend fun preload()
 
     suspend fun refreshBirthdays(): RefreshResult

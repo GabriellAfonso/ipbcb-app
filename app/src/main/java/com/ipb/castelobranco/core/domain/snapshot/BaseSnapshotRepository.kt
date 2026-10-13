@@ -37,6 +37,15 @@ abstract class BaseSnapshotRepository<Dto, Domain>(
 
     fun getCurrentState(): SnapshotState<Domain> = _state.value
 
+    /**
+     * The state now, loading the cache from disk when nothing is in memory yet — a process started by
+     * a worker or a push never ran the boot preload.
+     */
+    suspend fun loadCurrentState(): SnapshotState<Domain> {
+        if (_state.value !is SnapshotState.Data) preload()
+        return _state.value
+    }
+
     protected fun emitError(error: AppError) {
         _state.value = SnapshotState.Error(error)
     }

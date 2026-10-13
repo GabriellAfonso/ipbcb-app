@@ -29,6 +29,7 @@ class MembersRepositoryImpl @Inject constructor(
 
     override fun observeBirthdays(): Flow<SnapshotState<List<Birthday>>> = observe()
     override fun getCurrentSnapshot(): SnapshotState<List<Birthday>> = getCurrentState()
+    override suspend fun loadCurrentSnapshot(): SnapshotState<List<Birthday>> = loadCurrentState()
     override suspend fun refreshBirthdays(): RefreshResult = refresh()
     override suspend fun clearBirthdaysCache() {
         clearCache()

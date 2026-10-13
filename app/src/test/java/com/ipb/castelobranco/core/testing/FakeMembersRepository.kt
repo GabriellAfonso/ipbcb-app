@@ -17,6 +17,7 @@ class FakeMembersRepository(
 
     override fun observeBirthdays(): Flow<SnapshotState<List<Birthday>>> = state
     override fun getCurrentSnapshot(): SnapshotState<List<Birthday>> = state.value
+    override suspend fun loadCurrentSnapshot(): SnapshotState<List<Birthday>> = state.value
     override suspend fun preload() = Unit
     override suspend fun refreshBirthdays(): RefreshResult {
         refreshCalls++

@@ -61,7 +61,8 @@ As a church member, I want to receive a notification on the day of a member's bi
 1. **Given** cached birthday data exists and today matches a member's birth day, **When** the daily Worker executes, **Then** a notification is shown with a personalized message including the member's name and gender-appropriate prefix.
 2. **Given** multiple members have birthdays today, **When** the Worker executes, **Then** individual notifications are grouped under a summary notification showing the total count.
 3. **Given** the user has denied notification permission, **When** the Worker executes, **Then** no notification is shown and no error occurs.
-4. **Given** no cached birthday data exists (e.g., first install, never opened), **When** the Worker executes, **Then** it completes silently without error.
+4. **Given** cached birthday data exists on disk but the app is closed (the Worker runs in a fresh process that never loaded the cache into memory), **When** the Worker executes, **Then** it reads the disk cache and shows the notification as in scenario 1.
+5. **Given** no cached birthday data exists (e.g., first install, never opened), **When** the Worker executes, **Then** it completes silently without error.
 
 ---
 
@@ -97,7 +98,7 @@ As a church member, I want to tap the birthdays card and see every month of the 
 - **FR-005**: System MUST cache birthday data locally for offline access following the existing snapshot cache pattern.
 - **FR-006**: System MUST require user authentication to fetch birthday data.
 - **FR-007**: System MUST display the birthday card within the existing highlight carousel on the home screen, replacing the current static placeholder.
-- **FR-008**: System MUST send a daily notification for members whose birthday is today, using cached data (no network required).
+- **FR-008**: System MUST send a daily notification for members whose birthday is today, using cached data (no network required). The Worker MUST load the disk cache itself when memory is empty, since it usually runs while the app is closed.
 - **FR-009**: System MUST personalize notification messages by gender (do/da/de prefix) and randomly select from a pool of message templates.
 - **FR-010**: System MUST group multiple birthday notifications under a summary when more than one member has a birthday on the same day.
 - **FR-011**: System MUST request POST_NOTIFICATIONS runtime permission on Android 13+ and degrade gracefully if denied.

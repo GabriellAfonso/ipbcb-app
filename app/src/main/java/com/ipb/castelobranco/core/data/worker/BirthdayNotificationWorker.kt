@@ -36,7 +36,8 @@ class BirthdayNotificationWorker @AssistedInject constructor(
         if (!enabled) return Result.success()
 
         val today = LocalDate.now()
-        val snapshot = membersRepository.getCurrentSnapshot()
+        // The app is usually closed at the scheduled hour: memory is empty, so read the disk cache.
+        val snapshot = membersRepository.loadCurrentSnapshot()
 
         val birthdays = when (snapshot) {
             is SnapshotState.Data -> snapshot.value.filter { it.month == today.monthValue && it.day == today.dayOfMonth }
