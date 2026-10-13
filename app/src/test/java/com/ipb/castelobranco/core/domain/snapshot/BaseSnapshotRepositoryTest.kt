@@ -57,6 +57,34 @@ class BaseSnapshotRepositoryTest {
 
     // endregion
 
+    // region loadCurrentState
+
+    @Test
+    fun `loadCurrentState reads the disk cache when memory is still Loading`() = runTest {
+        val repo = buildRepository(FakeCache(stored = "hello"), FakeFetcher(NetworkResult.NotModified))
+
+        assertEquals(SnapshotState.Data("HELLO"), repo.loadCurrentState())
+    }
+
+    @Test
+    fun `loadCurrentState stays Loading when there is no cache`() = runTest {
+        val repo = buildRepository(FakeCache(stored = null), FakeFetcher(NetworkResult.NotModified))
+
+        assertTrue(repo.loadCurrentState() is SnapshotState.Loading)
+    }
+
+    @Test
+    fun `loadCurrentState keeps data already in memory`() = runTest {
+        val cache = FakeCache(stored = "old")
+        val repo = buildRepository(cache, FakeFetcher(NetworkResult.NotModified))
+        repo.preload()
+        cache.save("new", null)
+
+        assertEquals(SnapshotState.Data("OLD"), repo.loadCurrentState())
+    }
+
+    // endregion
+
     // region preload
 
     @Test
