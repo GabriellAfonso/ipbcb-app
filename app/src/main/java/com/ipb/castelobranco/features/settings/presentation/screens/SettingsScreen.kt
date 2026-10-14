@@ -40,6 +40,7 @@ import com.ipb.castelobranco.BuildConfig
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
+import com.ipb.castelobranco.features.settings.presentation.components.rememberNotificationAccessRequest
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.ResetAction
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.SettingsViewModel
 
@@ -59,6 +60,8 @@ fun SettingsScreen(
         }
     }
 
+    val requestNotificationAccess = rememberNotificationAccessRequest()
+
     LaunchedEffect(viewModel) {
         viewModel.events.collect {
             context.findActivity()?.recreate()
@@ -70,7 +73,11 @@ fun SettingsScreen(
         darkMode                     = resolvedDark,
         onToggleDark                 = { viewModel.toggleDarkMode() },
         birthdayNotifications        = uiState.birthdayNotifications,
-        onToggleBirthdayNotifications = { viewModel.toggleBirthdayNotifications() },
+        onToggleBirthdayNotifications = {
+            // Turning it on is the user's way to get a second chance at a permission denied by accident.
+            if (!uiState.birthdayNotifications) requestNotificationAccess()
+            viewModel.toggleBirthdayNotifications()
+        },
         onRequestResetGallery        = { viewModel.requestReset(ResetAction.GALLERY) },
         onRequestResetBible          = { viewModel.requestReset(ResetAction.BIBLE) },
         pendingConfirmation          = uiState.pendingConfirmation,

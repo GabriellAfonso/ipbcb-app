@@ -21,11 +21,28 @@ Lista em seções, separadas por divisor:
 | Seção        | Item              | Comportamento                                                               |
 |--------------|-------------------|-----------------------------------------------------------------------------|
 | Aparência    | Modo escuro       | Switch; "Ativado"/"Desativado". Troca o tema recriando a Activity.          |
-| Notificações | Aniversários      | Switch; "Ativado"/"Desativado".                                             |
+| Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
 | Dados        | Resetar galeria   | Pede confirmação; apaga as fotos em cache e mostra "Cache apagado".         |
 | Dados        | Resetar Bíblia    | Pede confirmação; apaga a Bíblia local e mostra "Baixando novamente…".      |
 | Diagnóstico  | Logs do app       | Abre a tela de logs.                                                        |
 | Sobre        | Versão            | `versionName` do build, só leitura.                                         |
+
+### 2.1 Acesso a notificações ao ligar Aniversários
+
+A permissão pedida na primeira abertura costuma ser negada sem querer. Ligar o switch de Aniversários (de
+desligado para ligado) é a forma de pedir de novo. A preferência é salva de qualquer jeito; o acesso só decide se
+a notificação aparece.
+
+| Situação ao ligar                                                         | Ação                                      |
+|---------------------------------------------------------------------------|-------------------------------------------|
+| Notificações do app já permitidas                                         | Nada                                      |
+| Android 13+, permissão `POST_NOTIFICATIONS` não concedida                 | Pede a permissão pelo diálogo do sistema  |
+| O sistema não mostra mais o diálogo (negada duas vezes)                   | Abre as configurações de notificação do app |
+| Permissão concedida (ou Android < 13), mas notificações desligadas no sistema | Abre as configurações de notificação do app |
+
+"Não mostra mais o diálogo" = a permissão é negada sem diálogo: o `shouldShowRequestPermissionRationale` é falso
+antes e depois do pedido. Se o usuário acabou de negar no diálogo, nada mais acontece — sem abrir configurações
+logo em seguida. Desligar o switch nunca pede nada.
 
 ---
 
