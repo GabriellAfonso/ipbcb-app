@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -172,7 +173,8 @@ fun WorshipSongsTableContent(
     }
 
     val tabs = listOf("Ultimos Domingos", "Mais tocadas", "Top tons", "Repertório")
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    // Saveable: the NavHost keeps it while Song detail is on top, so back returns to the same tab.
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val searchQuery = state.searchQuery
     // The query outlives this composition in the ViewModel: reopen the bar so an active filter stays visible.
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }

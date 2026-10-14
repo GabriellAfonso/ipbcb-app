@@ -23,6 +23,9 @@ Navegacao: `CoreScreen → WorshipHubScreen → [Tabelas | Musicas | Cifras | Le
 
 Tela com 4 tabs horizontais e busca global via FAB.
 
+**Tab selecionada:** abre em Ultimos Domingos. Ao voltar de `SongDetailScreen` (ou apos rotacao / morte do
+processo), a tela reabre na tab de onde o usuario saiu.
+
 ### 2.1 Ultimos Domingos
 
 Lista agrupada por data (`dd/MM/yyyy`). Cada domingo mostra as musicas tocadas com posicao, titulo, artista e tom.
