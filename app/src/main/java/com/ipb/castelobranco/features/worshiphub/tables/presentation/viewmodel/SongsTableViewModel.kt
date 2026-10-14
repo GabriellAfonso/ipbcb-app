@@ -65,11 +65,13 @@ sealed interface RepertoireEvent {
     data class SaveFailed(val message: String) : RepertoireEvent
 }
 
+/** @param playedId the suggested item's `id` (a Played) when the song came from "Gerar"; `null` when picked by hand. */
 data class RepertoireRowState(
     val position: Int,
     val selectedSong: Song? = null,
     val tone: String = "",
     val isFixed: Boolean = false,
+    val playedId: Int? = null,
 )
 
 @HiltViewModel
@@ -242,6 +244,7 @@ class SongsTableViewModel @Inject constructor(
                         selectedSong = song,
                         tone = if (song == null) "" else draftRow.tone,
                         isFixed = song != null && draftRow.isFixed,
+                        playedId = draftRow.playedId.takeIf { song != null },
                     )
                 }
             }
@@ -275,6 +278,7 @@ class SongsTableViewModel @Inject constructor(
                         selectedSong = song,
                         tone = autoTone,
                         isFixed = if (song == null) false else row.isFixed,
+                        playedId = null,
                     )
                 } else row
             }
@@ -326,8 +330,14 @@ class SongsTableViewModel @Inject constructor(
             try {
                 val rows = _repertoireRows.value
                 val (fixedRows, freeRows) = rows.partition { it.isFixed && it.selectedSong != null }
-                val fixed = fixedRows.associate { it.position to it.selectedSong!!.id }
-                val excluded = shownSuggestions.excludedFor(freeRows.map { it.position }.toSet())
+                // `fixed` takes Played ids; a song picked by hand has none, so it is kept out of the free
+                // positions through `exclude` (Song ids) instead.
+                val fixed = fixedRows.mapNotNull { row -> row.playedId?.let { row.position to it } }.toMap()
+                val handPickedSongIds = fixedRows.filter { it.playedId == null }.mapNotNull { it.selectedSong?.id }
+                val excluded = shownSuggestions.excludedFor(
+                    freePositions = freeRows.map { it.position }.toSet(),
+                    everywhere = handPickedSongIds.toSet(),
+                )
 
                 val refreshJob = async { repository.refreshSuggestedSongs(fixed, excluded) }
                 val minTimeJob = async { delay(minDurationMs) }
@@ -358,10 +368,11 @@ class SongsTableViewModel @Inject constructor(
             rows.map { row ->
                 if (row.isFixed) return@map row
                 val suggestion = suggestions.find { it.position == row.position }
-                if (suggestion != null) {
-                    val song = songs.find { it.id == suggestion.songId }
-                        ?: row.selectedSong
-                    row.copy(selectedSong = song, tone = suggestion.tone)
+                val song = suggestion?.let { songs.find { it.id == suggestion.songId } }
+                if (suggestion != null && song != null) {
+                    row.copy(selectedSong = song, tone = suggestion.tone, playedId = suggestion.id)
+                } else if (suggestion != null) {
+                    row.copy(tone = suggestion.tone)
                 } else {
                     row
                 }
@@ -382,7 +393,13 @@ class SongsTableViewModel @Inject constructor(
         fun emptyRows() = (1..ROW_COUNT).map { RepertoireRowState(position = it) }
 
         fun List<RepertoireRowState>.toDraftRows() = map { row ->
-            DraftRow(position = row.position, songId = row.selectedSong?.id, tone = row.tone, isFixed = row.isFixed)
+            DraftRow(
+                position = row.position,
+                songId = row.selectedSong?.id,
+                tone = row.tone,
+                isFixed = row.isFixed,
+                playedId = row.playedId,
+            )
         }
     }
 }

@@ -31,6 +31,16 @@ class ShownSuggestionsTest {
     }
 
     @Test
+    fun `everywhere songs are added to every free position`() {
+        val shown = ShownSuggestions().record(3, 12)
+
+        assertEquals(
+            mapOf(2 to setOf(50), 3 to setOf(12, 50)),
+            shown.excludedFor(setOf(2, 3), everywhere = setOf(50)),
+        )
+    }
+
+    @Test
     fun `fix drops the position list`() {
         val shown = ShownSuggestions().record(3, 12).fix(3)
 

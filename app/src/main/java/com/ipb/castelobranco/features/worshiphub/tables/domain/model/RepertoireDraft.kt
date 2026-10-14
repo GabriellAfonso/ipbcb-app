@@ -10,10 +10,15 @@ data class RepertoireDraft(
     val updatedAtMillis: Long,
 )
 
-/** One position of the draft; [songId] is `null` for an empty row. */
+/**
+ * One position of the draft; [songId] is `null` for an empty row.
+ *
+ * @param playedId the suggested item's `id` (a Played) when the song came from "Gerar"; `null` when picked by hand.
+ */
 data class DraftRow(
     val position: Int,
     val songId: Int?,
     val tone: String,
     val isFixed: Boolean,
+    val playedId: Int? = null,
 )

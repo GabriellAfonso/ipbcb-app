@@ -109,6 +109,38 @@ class SongsTableViewModelExcludeTest {
     }
 
     @Test
+    fun `a generated fixed row goes in fixed with its Played id, not the Song id`() = runTest {
+        generate(1, 2, 3, 4)
+        viewModel.toggleFixed(position = 2)
+        generate(5, 2, 7, 8)
+
+        assertEquals(mapOf(2 to playedIdOf(2)), sentFixed.last())
+    }
+
+    @Test
+    fun `a hand-picked fixed song is excluded from every free position`() = runTest {
+        generate(1, 2, 3, 4)
+        viewModel.selectSong(position = 2, song = songs[19])
+        viewModel.toggleFixed(position = 2)
+        generate(5, 20, 7, 8)
+
+        assertEquals(emptyMap<Int, Int>(), sentFixed.last())
+        assertEquals(
+            mapOf(1 to setOf(1, 20), 3 to setOf(3, 20), 4 to setOf(4, 20)),
+            sentExcluded.last(),
+        )
+    }
+
+    @Test
+    fun `a generated row keeps its Played id until a song is picked by hand`() = runTest {
+        generate(1, 2, 3, 4)
+
+        assertEquals(playedIdOf(3), viewModel.repertoireRows.value.first { it.position == 3 }.playedId)
+        viewModel.selectSong(position = 3, song = songs[19])
+        assertEquals(null, viewModel.repertoireRows.value.first { it.position == 3 }.playedId)
+    }
+
+    @Test
     fun `repeated song resets only its position`() = runTest {
         generate(1, 2, 3, 4)
         generate(5, 6, 7, 8)

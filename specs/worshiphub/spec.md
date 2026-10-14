@@ -76,7 +76,7 @@ musicas, repertorio, cifras, letras e o registro de domingo (admin) leem a mesma
 
 **Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
 
-**Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada) ficam salvas no aparelho a cada mudanca
+**Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada, execucao sugerida) ficam salvas no aparelho a cada mudanca
 (escolha a mao, tom, fixar/desafixar, "Gerar") e voltam ao reabrir a tela ou o app. Expiram 1h depois da
 ultima mudanca (TTL deslizante); a expiracao so e checada ao restaurar, nunca esvazia uma tela aberta, e
 restaurar nao conta como mudanca. Musica que saiu do catalogo volta como linha vazia; a restauracao espera o
@@ -103,6 +103,12 @@ resposta traz para uma posicao uma musica que ja estava na lista dela, as opcoes
 backend ignora a exclusao e sorteia normalmente): a lista da posicao recomeca so com essa musica. A lista vive
 so enquanto a tela esta aberta — sair da tela ou "Limpar repertorio" zera; nao vai ao rascunho nem ao disco.
 Regras em `ShownSuggestions` (domain). Backend sem o param apenas o ignora.
+
+**Fixar:** cada linha que veio do "Gerar" guarda o `id` do item sugerido (a execucao, Played); escolher
+musica a mao apaga esse id. Linha fixada com id vai em `fixed` — o backend a mantem e nao sorteia a mesma
+musica nas outras posicoes. Linha fixada sem id (escolhida a mao) nao tem execucao para mandar: o `song.id`
+dela vai em `exclude` de todas as posicoes livres. Se o backend tiver de ignorar essa exclusao por falta de
+opcoes, a musica pode repetir no repertorio.
 
 **Dados:** `GET suggested-songs/?fixed=1:12,3:45&exclude=2:7,2:9,3:30`
 - `fixed=posicao:id` — `id` do item (Played).

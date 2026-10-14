@@ -41,13 +41,13 @@ class RepertoireDraftStorage @Inject constructor(
             return null
         }
         return RepertoireDraft(
-            rows = dto.rows.map { DraftRow(it.position, it.songId, it.tone, it.isFixed) },
+            rows = dto.rows.map { DraftRow(it.position, it.songId, it.tone, it.isFixed, it.playedId) },
             updatedAtMillis = updatedAt,
         )
     }
 
     override suspend fun save(draft: RepertoireDraft) {
-        val dto = RepertoireDraftDto(draft.rows.map { DraftRowDto(it.position, it.songId, it.tone, it.isFixed) })
+        val dto = RepertoireDraftDto(draft.rows.map { DraftRowDto(it.position, it.songId, it.tone, it.isFixed, it.playedId) })
         dataStore.edit { prefs ->
             prefs[Keys.ROWS] = json.encodeToString(RepertoireDraftDto.serializer(), dto)
             prefs[Keys.UPDATED_AT] = draft.updatedAtMillis

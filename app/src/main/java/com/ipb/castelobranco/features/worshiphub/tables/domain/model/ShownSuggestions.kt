@@ -6,10 +6,13 @@ package com.ipb.castelobranco.features.worshiphub.tables.domain.model
  */
 data class ShownSuggestions(private val songIdsByPosition: Map<Int, Set<Int>> = emptyMap()) {
 
-    /** Pairs to exclude, only for [freePositions]; positions with nothing shown are left out. */
-    fun excludedFor(freePositions: Set<Int>): Map<Int, Set<Int>> =
+    /**
+     * Pairs to exclude, only for [freePositions], plus [everywhere] in each of them; positions left with
+     * nothing to exclude are left out.
+     */
+    fun excludedFor(freePositions: Set<Int>, everywhere: Set<Int> = emptySet()): Map<Int, Set<Int>> =
         freePositions
-            .associateWith { position -> songIdsByPosition[position].orEmpty() }
+            .associateWith { position -> songIdsByPosition[position].orEmpty() + everywhere }
             .filterValues { it.isNotEmpty() }
 
     /**

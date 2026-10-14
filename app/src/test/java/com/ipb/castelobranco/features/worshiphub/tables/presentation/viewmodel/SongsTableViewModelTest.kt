@@ -439,16 +439,18 @@ class SongsTableViewModelTest {
     // region refreshSuggestedSongs
 
     @Test
-    fun `refreshSuggestedSongs sends only fixed rows in the fixed map`() = runTest {
+    fun `refreshSuggestedSongs excludes a hand-picked fixed song from the free positions`() = runTest {
         viewModel.selectSong(position = 1, song = fakeSongs[0])
         viewModel.toggleFixed(position = 1)
         viewModel.selectSong(position = 2, song = fakeSongs[1]) // not fixed
-        val expectedFixed = mapOf(1 to fakeSongs[0].id)
+        val everywhere = setOf(fakeSongs[0].id)
 
         viewModel.refreshSuggestedSongs(minDurationMs = 0L)
         advanceUntilIdle()
 
-        coVerify { repository.refreshSuggestedSongs(expectedFixed, emptyMap()) }
+        coVerify {
+            repository.refreshSuggestedSongs(emptyMap(), mapOf(2 to everywhere, 3 to everywhere, 4 to everywhere))
+        }
     }
 
     @Test

@@ -14,4 +14,5 @@ data class DraftRowDto(
     @SerialName("song_id") val songId: Int? = null,
     @SerialName("tone") val tone: String = "",
     @SerialName("fixed") val isFixed: Boolean = false,
+    @SerialName("played_id") val playedId: Int? = null,
 )

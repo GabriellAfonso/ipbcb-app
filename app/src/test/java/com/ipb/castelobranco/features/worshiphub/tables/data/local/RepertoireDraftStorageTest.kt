@@ -33,7 +33,7 @@ class RepertoireDraftStorageTest {
 
     private val draft = RepertoireDraft(
         rows = listOf(
-            DraftRow(1, 12, "G", true),
+            DraftRow(1, 12, "G", true, playedId = 340),
             DraftRow(2, null, "", false),
         ),
         updatedAtMillis = 42L,
@@ -50,6 +50,17 @@ class RepertoireDraftStorageTest {
         storage.save(draft)
 
         assertEquals(draft, storage.load())
+    }
+
+    @Test
+    fun `a draft saved before played id existed reads with null played id`() = testScope.runTest {
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("repertoire_draft_v1")] =
+                """{"rows":[{"position":1,"song_id":12,"tone":"G","fixed":true}]}"""
+            prefs[longPreferencesKey("repertoire_draft_updated_at")] = 42L
+        }
+
+        assertEquals(listOf(DraftRow(1, 12, "G", true, playedId = null)), storage.load()?.rows)
     }
 
     @Test
