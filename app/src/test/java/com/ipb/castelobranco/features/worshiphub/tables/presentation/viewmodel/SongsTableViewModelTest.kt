@@ -65,7 +65,7 @@ class SongsTableViewModelTest {
         coEvery { repository.refreshTopSongs() } returns RefreshResult.Updated
         coEvery { repository.refreshTopTones() } returns RefreshResult.Updated
         coEvery { repository.refreshAllSongs() } returns RefreshResult.Updated
-        coEvery { repository.refreshSuggestedSongs(any<Map<Int, Int>>()) } returns RefreshResult.Updated
+        coEvery { repository.refreshSuggestedSongs(any(), any()) } returns RefreshResult.Updated
 
         viewModel = songsTableViewModel(repository)
     }
@@ -448,7 +448,7 @@ class SongsTableViewModelTest {
         viewModel.refreshSuggestedSongs(minDurationMs = 0L)
         advanceUntilIdle()
 
-        coVerify { repository.refreshSuggestedSongs(expectedFixed) }
+        coVerify { repository.refreshSuggestedSongs(expectedFixed, emptyMap()) }
     }
 
     @Test
@@ -456,7 +456,7 @@ class SongsTableViewModelTest {
         viewModel.selectSong(position = 1, song = fakeSongs[0]) // selected but not fixed
         viewModel.refreshSuggestedSongs(minDurationMs = 0L)
         advanceUntilIdle()
-        coVerify { repository.refreshSuggestedSongs(emptyMap()) }
+        coVerify { repository.refreshSuggestedSongs(emptyMap(), emptyMap()) }
     }
 
     @Test
@@ -501,14 +501,14 @@ class SongsTableViewModelTest {
 
     @Test
     fun `refreshSuggestedSongs guard prevents concurrent refresh`() = runTest {
-        coEvery { repository.refreshSuggestedSongs(any<Map<Int, Int>>()) } coAnswers {
+        coEvery { repository.refreshSuggestedSongs(any(), any()) } coAnswers {
             kotlinx.coroutines.delay(5_000); RefreshResult.Updated
         }
         viewModel.refreshSuggestedSongs() // schedules coroutine
         runCurrent() // advance to where _isRefreshingSuggestedSongs = true
         viewModel.refreshSuggestedSongs() // guarded
         advanceUntilIdle()
-        coVerify(exactly = 1) { repository.refreshSuggestedSongs(any<Map<Int, Int>>()) }
+        coVerify(exactly = 1) { repository.refreshSuggestedSongs(any(), any()) }
     }
 
     // endregion

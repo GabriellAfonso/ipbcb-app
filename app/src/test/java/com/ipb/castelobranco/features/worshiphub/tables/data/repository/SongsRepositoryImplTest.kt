@@ -116,7 +116,7 @@ class SongsRepositoryImplTest {
     @Test
     fun `refreshSuggestedSongs on Success returns Updated`() = runTest {
         val dtos = listOf(suggestedDto(1, 10, "Song A", 1))
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Success(dtos, "v1")
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Success(dtos, "v1")
 
         val result = repository.refreshSuggestedSongs()
 
@@ -129,7 +129,7 @@ class SongsRepositoryImplTest {
             suggestedDto(1, 10, "B", 2),
             suggestedDto(2, 20, "A", 1),
         )
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Success(dtos, "v1")
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Success(dtos, "v1")
 
         repository.refreshSuggestedSongs()
 
@@ -143,7 +143,7 @@ class SongsRepositoryImplTest {
     @Test
     fun `refreshSuggestedSongs on Success saves to cache`() = runTest {
         val dtos = listOf(suggestedDto(1, 10, "Song", 1))
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Success(dtos, "v1")
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Success(dtos, "v1")
 
         repository.refreshSuggestedSongs()
 
@@ -156,7 +156,7 @@ class SongsRepositoryImplTest {
 
     @Test
     fun `refreshSuggestedSongs on NotModified returns NotModified`() = runTest {
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.NotModified
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.NotModified
 
         val result = repository.refreshSuggestedSongs()
 
@@ -170,7 +170,7 @@ class SongsRepositoryImplTest {
     @Test
     fun `refreshSuggestedSongs on Failure with cache returns CacheUsed`() = runTest {
         val error = RuntimeException("network error")
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Failure(error)
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Failure(error)
         coEvery { suggestedSongsCache.load() } returns listOf(suggestedDto(1, 10, "Cached", 1))
 
         val result = repository.refreshSuggestedSongs()
@@ -181,7 +181,7 @@ class SongsRepositoryImplTest {
     @Test
     fun `refreshSuggestedSongs on Failure without cache returns Error`() = runTest {
         val error = RuntimeException("network error")
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Failure(error)
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Failure(error)
         coEvery { suggestedSongsCache.load() } returns null
 
         val result = repository.refreshSuggestedSongs()
@@ -193,7 +193,7 @@ class SongsRepositoryImplTest {
     @Test
     fun `refreshSuggestedSongs on Failure sets Error state`() = runTest {
         val error = RuntimeException("fail")
-        coEvery { suggestedSongsFetcher.fetch(any()) } returns NetworkResult.Failure(error)
+        coEvery { suggestedSongsFetcher.fetch(any(), any()) } returns NetworkResult.Failure(error)
         coEvery { suggestedSongsCache.load() } returns null
 
         repository.refreshSuggestedSongs()
@@ -207,22 +207,23 @@ class SongsRepositoryImplTest {
     // region suggestedSongs — fixedByPosition
 
     @Test
-    fun `refreshSuggestedSongs with fixedByPosition passes map to fetcher`() = runTest {
+    fun `refreshSuggestedSongs passes fixed and excluded maps to fetcher`() = runTest {
         val fixed = mapOf(1 to 42, 2 to 99)
-        coEvery { suggestedSongsFetcher.fetch(fixed) } returns NetworkResult.NotModified
+        val excluded = mapOf(3 to setOf(12, 34))
+        coEvery { suggestedSongsFetcher.fetch(fixed, excluded) } returns NetworkResult.NotModified
 
-        repository.refreshSuggestedSongs(fixed)
+        repository.refreshSuggestedSongs(fixed, excluded)
 
-        coVerify { suggestedSongsFetcher.fetch(fixed) }
+        coVerify { suggestedSongsFetcher.fetch(fixed, excluded) }
     }
 
     @Test
     fun `refreshSuggestedSongs without params passes empty map`() = runTest {
-        coEvery { suggestedSongsFetcher.fetch(emptyMap()) } returns NetworkResult.NotModified
+        coEvery { suggestedSongsFetcher.fetch(emptyMap(), emptyMap()) } returns NetworkResult.NotModified
 
         repository.refreshSuggestedSongs()
 
-        coVerify { suggestedSongsFetcher.fetch(emptyMap()) }
+        coVerify { suggestedSongsFetcher.fetch(emptyMap(), emptyMap()) }
     }
 
     // endregion

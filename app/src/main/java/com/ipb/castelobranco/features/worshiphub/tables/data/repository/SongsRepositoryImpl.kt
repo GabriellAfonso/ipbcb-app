@@ -66,15 +66,18 @@ class SongsRepositoryImpl @Inject constructor(
         _suggestedSongsState.asStateFlow()
 
     override suspend fun refreshSuggestedSongs(): RefreshResult =
-        refreshSuggestedSongs(fixedByPosition = emptyMap())
+        refreshSuggestedSongs(fixedByPosition = emptyMap(), excludedByPosition = emptyMap())
 
-    override suspend fun refreshSuggestedSongs(fixedByPosition: Map<Int, Int>): RefreshResult {
+    override suspend fun refreshSuggestedSongs(
+        fixedByPosition: Map<Int, Int>,
+        excludedByPosition: Map<Int, Set<Int>>,
+    ): RefreshResult {
         if (didLoadSuggestedCacheOnce.compareAndSet(false, true)) {
             suggestedSongsCache.load()?.let { cached ->
                 _suggestedSongsState.value = SnapshotState.Data(cached.toDomain())
             }
         }
-        return when (val result = suggestedSongsFetcher.fetch(fixedByPosition)) {
+        return when (val result = suggestedSongsFetcher.fetch(fixedByPosition, excludedByPosition)) {
             is NetworkResult.Success -> {
                 suggestedSongsCache.save(result.body, result.etag)
                 _suggestedSongsState.value = SnapshotState.Data(result.body.toDomain())

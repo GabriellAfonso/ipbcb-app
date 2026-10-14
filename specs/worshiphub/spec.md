@@ -96,7 +96,18 @@ permissao, `detail` do servidor no 400, N musicas nao encontradas no 404, sem co
 o repertorio devolvido vira na hora o "Repertorio de domingo" do aparelho (secao 4.1), sem esperar o push.
 Falha nunca altera o rascunho.
 
-**Dados:** `GET suggested-songs/?fixed=1:12,3:45`
+**Sem repetir ao gerar de novo:** o app guarda, por posicao livre, as musicas (`song.id`) que "Gerar" ja
+mostrou ali e manda essa lista em `exclude`, para o backend nao sortear de novo. So vale para posicoes
+livres: fixar uma posicao descarta a lista dela; desafixar comeca a lista so com a musica atual. Quando a
+resposta traz para uma posicao uma musica que ja estava na lista dela, as opcoes daquela posicao acabaram (o
+backend ignora a exclusao e sorteia normalmente): a lista da posicao recomeca so com essa musica. A lista vive
+so enquanto a tela esta aberta — sair da tela ou "Limpar repertorio" zera; nao vai ao rascunho nem ao disco.
+Regras em `ShownSuggestions` (domain). Backend sem o param apenas o ignora.
+
+**Dados:** `GET suggested-songs/?fixed=1:12,3:45&exclude=2:7,2:9,3:30`
+- `fixed=posicao:id` — `id` do item (Played).
+- `exclude=posicao:songId` — `song.id` do item; posicao pode repetir. Exclusao em posicao fixada e ignorada
+  pelo backend; o app nem envia. Backend conta so os primeiros 200 pares.
 ```
 [{
   "id": int,

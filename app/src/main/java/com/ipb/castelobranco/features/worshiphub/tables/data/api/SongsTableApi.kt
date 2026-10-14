@@ -38,7 +38,8 @@ interface SongsTableApi {
     @GET(SongsTableEndpoint.SUGGESTED_SONGS_PATH)
     suspend fun getSuggestedSongs(
         @Header("If-None-Match") ifNoneMatch: String? = null,
-        @Query("fixed") fixed: String? = null
+        @Query("fixed") fixed: String? = null,
+        @Query("exclude") exclude: String? = null,
     ): Response<List<SuggestedSongDto>>
 
 

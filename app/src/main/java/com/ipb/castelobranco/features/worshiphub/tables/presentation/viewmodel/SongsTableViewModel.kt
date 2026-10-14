@@ -10,6 +10,7 @@ import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySet
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.TopSong
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.TopTone
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.DraftRow
+import com.ipb.castelobranco.features.worshiphub.tables.domain.model.ShownSuggestions
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.ClearRepertoireDraftUseCase
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.RestoreRepertoireDraftUseCase
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SaveRepertoireDraftUseCase
@@ -68,7 +69,7 @@ data class RepertoireRowState(
     val position: Int,
     val selectedSong: Song? = null,
     val tone: String = "",
-    val isFixed: Boolean = false
+    val isFixed: Boolean = false,
 )
 
 @HiltViewModel
@@ -165,6 +166,9 @@ class SongsTableViewModel @Inject constructor(
     private val _repertoireRows = MutableStateFlow(emptyRows())
     val repertoireRows: StateFlow<List<RepertoireRowState>> = _repertoireRows.asStateFlow()
 
+    /** Songs already generated per free position, so "Gerar" does not repeat them; screen-scoped. */
+    private var shownSuggestions = ShownSuggestions()
+
     private val isSaving = MutableStateFlow(false)
     private val pendingSaveDate = MutableStateFlow<LocalDate?>(null)
 
@@ -255,6 +259,7 @@ class SongsTableViewModel @Inject constructor(
     /** "Limpar repertório": empty rows and no draft left on the device. */
     fun clearRepertoire() {
         _repertoireRows.value = emptyRows()
+        shownSuggestions = ShownSuggestions()
         viewModelScope.launch {
             runCatching { clearDraft() }
                 .onFailure { Timber.w(it, "Failed to clear repertoire draft") }
@@ -269,7 +274,7 @@ class SongsTableViewModel @Inject constructor(
                     row.copy(
                         selectedSong = song,
                         tone = autoTone,
-                        isFixed = if (song == null) false else row.isFixed
+                        isFixed = if (song == null) false else row.isFixed,
                     )
                 } else row
             }
@@ -287,12 +292,15 @@ class SongsTableViewModel @Inject constructor(
     }
 
     fun toggleFixed(position: Int) {
+        val row = _repertoireRows.value.find { it.position == position } ?: return
+        val song = row.selectedSong ?: return
         _repertoireRows.update { rows ->
-            rows.map { row ->
-                if (row.position == position && row.selectedSong != null) {
-                    row.copy(isFixed = !row.isFixed)
-                } else row
-            }
+            rows.map { if (it.position == position) it.copy(isFixed = !it.isFixed) else it }
+        }
+        shownSuggestions = if (row.isFixed) {
+            shownSuggestions.unfix(position, song.id)
+        } else {
+            shownSuggestions.fix(position)
         }
         persistDraft()
     }
@@ -316,11 +324,12 @@ class SongsTableViewModel @Inject constructor(
             _isRefreshingSuggestedSongs.value = true
 
             try {
-                val fixed = _repertoireRows.value
-                    .filter { it.isFixed && it.selectedSong != null }
-                    .associate { it.position to it.selectedSong!!.id }
+                val rows = _repertoireRows.value
+                val (fixedRows, freeRows) = rows.partition { it.isFixed && it.selectedSong != null }
+                val fixed = fixedRows.associate { it.position to it.selectedSong!!.id }
+                val excluded = shownSuggestions.excludedFor(freeRows.map { it.position }.toSet())
 
-                val refreshJob = async { repository.refreshSuggestedSongs(fixed) }
+                val refreshJob = async { repository.refreshSuggestedSongs(fixed, excluded) }
                 val minTimeJob = async { delay(minDurationMs) }
 
                 refreshJob.await()
@@ -339,6 +348,11 @@ class SongsTableViewModel @Inject constructor(
         val suggestionsState = repository.observeSuggestedSongs().first()
         val suggestions = (suggestionsState as? SnapshotState.Data)?.value ?: return
         val songs = (repository.observeAllSongs().first() as? SnapshotState.Data)?.value ?: emptyList()
+
+        val freePositions = _repertoireRows.value.filterNot { it.isFixed }.map { it.position }.toSet()
+        shownSuggestions = suggestions
+            .filter { it.position in freePositions }
+            .fold(shownSuggestions) { shown, suggestion -> shown.record(suggestion.position, suggestion.songId) }
 
         _repertoireRows.update { rows ->
             rows.map { row ->

@@ -22,7 +22,15 @@ interface SongsRepository : AllSongsRepository {
 
     fun observeSuggestedSongs(): Flow<SnapshotState<List<SuggestedSong>>>
     suspend fun refreshSuggestedSongs(): RefreshResult
-    suspend fun refreshSuggestedSongs(fixedByPosition: Map<Int, Int>): RefreshResult
+
+    /**
+     * @param fixedByPosition position to Played id (`id` of the suggested item).
+     * @param excludedByPosition position to Song ids (`songId`) not to draw there again.
+     */
+    suspend fun refreshSuggestedSongs(
+        fixedByPosition: Map<Int, Int>,
+        excludedByPosition: Map<Int, Set<Int>>,
+    ): RefreshResult
 
     suspend fun preload()
 }
