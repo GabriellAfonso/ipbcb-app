@@ -79,6 +79,9 @@ class GalleryMediaStore(private val context: Context) {
         root.deleteRecursively()
     }
 
+    /** Bytes of every file under the gallery root — what [clearAll] frees. */
+    fun totalBytes(): Long = root.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+
     private fun writeAtomically(target: File, input: InputStream): File {
         target.parentFile?.mkdirs()
         // Fora da árvore da galeria: um .part com o nome final seria contado como baixado.

@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.settings.presentation.viewmodel
 
 import androidx.appcompat.app.AppCompatDelegate
+import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.DeleteAndRedownloadBibleUseCase
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
@@ -39,6 +40,7 @@ class SettingsViewModelTest {
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var galleryRepository: GalleryRepository
     private lateinit var deleteAndRedownloadBible: DeleteAndRedownloadBibleUseCase
+    private lateinit var bibleRepository: BibleRepository
     private lateinit var viewModel: SettingsViewModel
 
     private val themeModeFlow = MutableSharedFlow<ThemeMode>(replay = 1)
@@ -51,10 +53,18 @@ class SettingsViewModelTest {
         settingsRepository = mockk(relaxed = true)
         galleryRepository = mockk(relaxed = true)
         deleteAndRedownloadBible = mockk(relaxed = true)
+        bibleRepository = mockk(relaxed = true)
         every { settingsRepository.themeModeFlow } returns themeModeFlow
         every { settingsRepository.birthdayNotificationsFlow } returns birthdayNotificationsFlow
         every { settingsRepository.keepScreenOnFlow } returns keepScreenOnFlow
-        viewModel = SettingsViewModel(settingsRepository, galleryRepository, deleteAndRedownloadBible)
+        coEvery { galleryRepository.diskUsageBytes() } returns GALLERY_BYTES
+        coEvery { bibleRepository.diskUsageBytes() } returns BIBLE_BYTES
+        viewModel = SettingsViewModel(
+            settingsRepository,
+            galleryRepository,
+            deleteAndRedownloadBible,
+            bibleRepository,
+        )
     }
 
     @After
@@ -161,6 +171,42 @@ class SettingsViewModelTest {
 
     // endregion
 
+    // region disk usage
+
+    @Test
+    fun `uiState carries the measured disk usage`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            advanceUntilIdle()
+            val state = expectMostRecentItem()
+            assertEquals(GALLERY_BYTES, state.galleryBytes)
+            assertEquals(BIBLE_BYTES, state.bibleBytes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirming a reset measures the disk usage again`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            advanceUntilIdle()
+            coEvery { galleryRepository.diskUsageBytes() } returns 0L
+
+            viewModel.requestReset(ResetAction.GALLERY)
+            viewModel.confirmReset()
+            advanceUntilIdle()
+
+            val state = expectMostRecentItem()
+            assertTrue(state.galleryCleared)
+            assertEquals(0L, state.galleryBytes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // endregion
+
     // region keepScreenOn
 
     @Test
@@ -191,4 +237,9 @@ class SettingsViewModelTest {
     }
 
     // endregion
+
+    private companion object {
+        const val GALLERY_BYTES = 312L * 1024 * 1024
+        const val BIBLE_BYTES = 8L * 1024 * 1024
+    }
 }

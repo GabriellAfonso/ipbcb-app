@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.settings.presentation.viewmodel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.DeleteAndRedownloadBibleUseCase
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
@@ -28,12 +29,17 @@ data class SettingsUiState(
     val pendingConfirmation: ResetAction? = null,
     val galleryCleared: Boolean = false,
     val bibleCleared: Boolean = false,
+    /** Bytes on disk; `null` while still being measured. */
+    val galleryBytes: Long? = null,
+    val bibleBytes: Long? = null,
 )
 
 private data class ExtraState(
     val pendingConfirmation: ResetAction? = null,
     val galleryCleared: Boolean = false,
     val bibleCleared: Boolean = false,
+    val galleryBytes: Long? = null,
+    val bibleBytes: Long? = null,
 )
 
 @HiltViewModel
@@ -41,9 +47,14 @@ class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
     private val galleryRepository: GalleryRepository,
     private val deleteAndRedownloadBible: DeleteAndRedownloadBibleUseCase,
+    private val bibleRepository: BibleRepository,
 ) : ViewModel() {
 
     private val _extra = MutableStateFlow(ExtraState())
+
+    init {
+        refreshDiskUsage()
+    }
 
     val uiState: StateFlow<SettingsUiState> = combine(
         repository.themeModeFlow,
@@ -58,6 +69,8 @@ class SettingsViewModel @Inject constructor(
             pendingConfirmation = extra.pendingConfirmation,
             galleryCleared = extra.galleryCleared,
             bibleCleared = extra.bibleCleared,
+            galleryBytes = extra.galleryBytes,
+            bibleBytes = extra.bibleBytes,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -90,6 +103,15 @@ class SettingsViewModel @Inject constructor(
                     _extra.update { it.copy(bibleCleared = true) }
                 }
             }
+            refreshDiskUsage()
+        }
+    }
+
+    private fun refreshDiskUsage() {
+        viewModelScope.launch {
+            val gallery = galleryRepository.diskUsageBytes()
+            val bible = bibleRepository.diskUsageBytes()
+            _extra.update { it.copy(galleryBytes = gallery, bibleBytes = bible) }
         }
     }
 

@@ -23,8 +23,8 @@ Lista em seções, separadas por divisor:
 | Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
-| Dados        | Resetar galeria   | Pede confirmação; apaga as fotos em cache e mostra "Cache apagado".         |
-| Dados        | Resetar Bíblia    | Pede confirmação; apaga a Bíblia local e mostra "Baixando novamente…".      |
+| Dados        | Resetar galeria   | Mostra o espaço ocupado (2.4). Pede confirmação; apaga as fotos e mostra "Cache apagado". |
+| Dados        | Resetar Bíblia    | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia local e mostra "Baixando novamente…". |
 | Diagnóstico  | Logs do app       | Abre a tela de logs.                                                        |
 | Sobre        | Versão            | `versionName` do build, só leitura.                                         |
 
@@ -65,6 +65,21 @@ Ao sair da tela (ou desligar a preferência), volta ao comportamento normal do s
 
 Telas de leitura: hino (Hinário), capítulo (Bíblia), letra e cifra (Louvor). Listas, formulários e demais telas
 seguem o tempo de tela do sistema.
+
+### 2.4 Espaço ocupado
+
+Cada item de Dados mostra quanto ocupa no aparelho o que o reset vai apagar:
+
+| Item            | O que é somado                                                              | Texto                              |
+|-----------------|-----------------------------------------------------------------------------|------------------------------------|
+| Resetar galeria | Arquivos da galeria no aparelho (originais, capas, fila de envio)            | `Apaga as fotos em cache · 312 MB` |
+| Resetar Bíblia  | Arquivos das traduções baixadas                                               | `Apaga e baixa novamente · 8,4 MB` |
+
+- Calculado fora da thread principal ao abrir a tela e de novo depois de cada reset.
+- Enquanto calcula, o texto aparece sem o tamanho.
+- Formato: B, KB, MB ou GB (base 1024), uma casa decimal abaixo de 10 e vírgula decimal (`8,4 MB`, `312 MB`).
+- Tamanho zero: "nada no aparelho" no lugar do tamanho.
+- Depois do reset vale o texto do reset ("Cache apagado" / "Baixando novamente…").
 
 ---
 

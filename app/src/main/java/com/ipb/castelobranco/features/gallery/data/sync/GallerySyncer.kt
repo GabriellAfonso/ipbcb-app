@@ -152,6 +152,8 @@ class GallerySyncer @Inject constructor(
         _state.update { current -> withFiles(current.index) }
     }
 
+    suspend fun diskUsageBytes(): Long = withContext(ioDispatcher) { mediaStore.totalBytes() }
+
     /** Sign-out: cancels the running sync, then deletes the index, the cursor and every file. */
     suspend fun clear() {
         rerunRequested.set(false)

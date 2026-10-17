@@ -26,4 +26,7 @@ interface GalleryRepository {
 
     /** Deletes the index, the cursor and every gallery file. */
     suspend fun clear()
+
+    /** Bytes the gallery files take on disk — what [clear] frees. */
+    suspend fun diskUsageBytes(): Long
 }

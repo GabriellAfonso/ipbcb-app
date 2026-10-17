@@ -61,6 +61,10 @@ class JsonSnapshotStorage @Inject constructor(
         val dir = File(context.filesDir, dirName)
         if (dir.exists()) dir.deleteRecursively()
     }
+    override suspend fun sizeBytes(key: String): Long = withContext(ioDispatcher) {
+        jsonFileForKey(key).length() + etagFileForKey(key).length()
+    }
+
     override suspend fun loadETagOrNull(key: String): String? = withContext(ioDispatcher) {
         etagFileForKey(key)
             .takeIf { it.exists() }

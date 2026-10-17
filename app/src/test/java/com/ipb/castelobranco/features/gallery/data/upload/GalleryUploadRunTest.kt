@@ -54,6 +54,7 @@ class GalleryUploadRunTest {
         }
         override suspend fun refreshLocalFiles() = Unit
         override suspend fun clear() = Unit
+        override suspend fun diskUsageBytes(): Long = 0L
     }
 
     /** Every image decodes to a small JPEG. */

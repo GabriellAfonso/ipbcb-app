@@ -35,4 +35,7 @@ interface BibleRepository {
 
     /** Apaga JSON cacheado de TODAS as traduções e reseta a posição/preferência. */
     suspend fun clearAll()
+
+    /** Bytes que as traduções baixadas ocupam no aparelho. */
+    suspend fun diskUsageBytes(): Long
 }

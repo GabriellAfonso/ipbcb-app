@@ -131,6 +131,8 @@ class HymnViewQueueStoreTest {
         override suspend fun loadOrNull(key: String): String? = jsons[key]
         override suspend fun clear(key: String) { jsons.remove(key); etags.remove(key) }
         override suspend fun clearAll() { jsons.clear(); etags.clear() }
+        override suspend fun sizeBytes(key: String): Long =
+            (jsons[key]?.length ?: 0).toLong() + (etags[key]?.length ?: 0).toLong()
         override suspend fun loadETagOrNull(key: String): String? = etags[key]
         override suspend fun saveETag(key: String, etag: String) { etags[key] = etag }
         override fun getAbsolutePathForDebug(key: String): String = "/fake/$key.json"

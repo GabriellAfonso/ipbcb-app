@@ -45,6 +45,7 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.presentation.components.rememberNotificationAccessRequest
+import com.ipb.castelobranco.features.settings.presentation.components.withDiskUsage
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.ResetAction
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.SettingsViewModel
 
@@ -84,6 +85,8 @@ fun SettingsScreen(
         onDismissConfirmation        = { viewModel.dismissConfirmation() },
         galleryCleared               = uiState.galleryCleared,
         bibleCleared                 = uiState.bibleCleared,
+        galleryBytes                 = uiState.galleryBytes,
+        bibleBytes                   = uiState.bibleBytes,
         onNavigateToLogViewer        = onNavigateToLogViewer,
     )
 }
@@ -104,6 +107,8 @@ fun SettingsContent(
     onDismissConfirmation: () -> Unit,
     galleryCleared: Boolean,
     bibleCleared: Boolean,
+    galleryBytes: Long? = null,
+    bibleBytes: Long? = null,
     onNavigateToLogViewer: () -> Unit = {},
 ) {
     if (pendingConfirmation != null) {
@@ -167,7 +172,11 @@ fun SettingsContent(
             SettingsActionRow(
                 icon        = Icons.Filled.Image,
                 title       = "Resetar galeria",
-                description = if (galleryCleared) "Cache apagado" else "Apaga as fotos em cache",
+                description = if (galleryCleared) {
+                    "Cache apagado"
+                } else {
+                    withDiskUsage("Apaga as fotos em cache", galleryBytes)
+                },
                 tint        = MaterialTheme.colorScheme.error,
                 done        = galleryCleared,
                 onClick     = onRequestResetGallery,
@@ -175,7 +184,11 @@ fun SettingsContent(
             SettingsActionRow(
                 icon        = Icons.Filled.AutoStories,
                 title       = "Resetar Bíblia",
-                description = if (bibleCleared) "Baixando novamente…" else "Apaga e baixa novamente",
+                description = if (bibleCleared) {
+                    "Baixando novamente…"
+                } else {
+                    withDiskUsage("Apaga e baixa novamente", bibleBytes)
+                },
                 tint        = MaterialTheme.colorScheme.error,
                 done        = bibleCleared,
                 onClick     = onRequestResetBible,

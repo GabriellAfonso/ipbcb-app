@@ -30,4 +30,6 @@ class GalleryRepositoryImpl @Inject constructor(
     override suspend fun refreshLocalFiles() = syncer.refreshLocalFiles()
 
     override suspend fun clear() = syncer.clear()
+
+    override suspend fun diskUsageBytes(): Long = syncer.diskUsageBytes()
 }

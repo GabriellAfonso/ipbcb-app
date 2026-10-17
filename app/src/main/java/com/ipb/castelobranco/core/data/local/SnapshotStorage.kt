@@ -7,6 +7,9 @@ interface SnapshotStorage {
     suspend fun clear(key: String)
     suspend fun clearAll()
 
+    /** Bytes the snapshot of [key] takes on disk (JSON + ETag); 0 when absent. */
+    suspend fun sizeBytes(key: String): Long
+
     suspend fun loadETagOrNull(key: String): String?
     suspend fun saveETag(key: String, etag: String)
 

@@ -126,6 +126,9 @@ class BibleRepositoryImpl @Inject constructor(
         _cachedTranslations.value = emptySet()
     }
 
+    override suspend fun diskUsageBytes(): Long =
+        BibleTranslation.entries.sumOf { storage.sizeBytes(it.snapshotKey) }
+
     /** Checks the files only: decoding a whole Bible to learn that it exists costs megabytes per translation. */
     private suspend fun refreshCachedTranslations() {
         val present = mutableSetOf<BibleTranslation>()
