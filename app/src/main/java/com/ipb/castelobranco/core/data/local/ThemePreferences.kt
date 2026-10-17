@@ -32,6 +32,7 @@ class ThemePreferences @Inject constructor(
     private val hymnalFontSizeKey = floatPreferencesKey("hymnal_font_size")
     private val songScrollModeKey = intPreferencesKey("song_scroll_mode")
     private val birthdayNotificationsKey = booleanPreferencesKey("birthday_notifications_enabled")
+    private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on")
     private val birthdayLastNotifiedKey = longPreferencesKey("birthday_last_notified_epoch_day")
 
     val themeModeFlow: Flow<ThemeMode> =
@@ -95,6 +96,17 @@ class ThemePreferences @Inject constructor(
     suspend fun setBirthdayNotifications(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[birthdayNotificationsKey] = enabled
+        }
+    }
+
+    val keepScreenOnFlow: Flow<Boolean> =
+        dataStore.data.map { prefs ->
+            prefs[keepScreenOnKey] ?: true
+        }
+
+    suspend fun setKeepScreenOn(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[keepScreenOnKey] = enabled
         }
     }
 

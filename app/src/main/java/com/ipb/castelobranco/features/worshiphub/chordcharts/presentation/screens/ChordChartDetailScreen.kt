@@ -60,6 +60,7 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.LineToken
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartDetailUiState
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmodel.ChordChartDetailViewModel
+import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 
 private val ChordColor = BrandColors.Orange
 private val SectionTitleColor = BrandColors.Green
@@ -71,6 +72,7 @@ fun ChordChartDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollMode by viewModel.scrollMode.collectAsStateWithLifecycle()
+    KeepScreenOn()
     ChordChartDetailContent(
         state              = state,
         scrollMode         = scrollMode,

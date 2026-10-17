@@ -41,4 +41,10 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setBirthdayNotifications(enabled: Boolean) {
         themePreferences.setBirthdayNotifications(enabled)
     }
+
+    override val keepScreenOnFlow: Flow<Boolean> = themePreferences.keepScreenOnFlow
+
+    override suspend fun setKeepScreenOn(enabled: Boolean) {
+        themePreferences.setKeepScreenOn(enabled)
+    }
 }

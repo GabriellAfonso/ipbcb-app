@@ -54,6 +54,7 @@ import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.hymnal.presentation.viewmodel.HymnViewTrackingViewModel
 import com.ipb.castelobranco.features.hymnal.presentation.viewmodel.HymnalViewModel
 import kotlin.math.roundToInt
+import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 
 @Composable
 fun HymnDetailScreen(
@@ -64,6 +65,7 @@ fun HymnDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val fontSizeSp by viewModel.hymnalFontSize.collectAsStateWithLifecycle()
+    KeepScreenOn()
 
     val hymn = remember(hymnId, state.hymns) {
         state.hymns.firstOrNull { it.number == hymnId }

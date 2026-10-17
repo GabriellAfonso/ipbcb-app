@@ -1,10 +1,9 @@
 package com.ipb.castelobranco.features.settings.presentation.screens
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,7 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Brightness6
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
@@ -21,6 +21,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +43,7 @@ import com.ipb.castelobranco.BuildConfig
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
+import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.presentation.components.rememberNotificationAccessRequest
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.ResetAction
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.SettingsViewModel
@@ -52,13 +56,6 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val resolvedDark = uiState.darkMode ?: run {
-        when (AppCompatDelegate.getDefaultNightMode()) {
-            AppCompatDelegate.MODE_NIGHT_YES -> true
-            AppCompatDelegate.MODE_NIGHT_NO  -> false
-            else                             -> isSystemInDarkTheme()
-        }
-    }
 
     val requestNotificationAccess = rememberNotificationAccessRequest()
 
@@ -70,8 +67,10 @@ fun SettingsScreen(
 
     SettingsContent(
         onBackClick                  = onBackClick,
-        darkMode                     = resolvedDark,
-        onToggleDark                 = { viewModel.toggleDarkMode() },
+        themeMode                    = uiState.themeMode,
+        onSelectThemeMode            = viewModel::selectThemeMode,
+        keepScreenOn                 = uiState.keepScreenOn,
+        onToggleKeepScreenOn         = { viewModel.toggleKeepScreenOn() },
         birthdayNotifications        = uiState.birthdayNotifications,
         onToggleBirthdayNotifications = {
             // Turning it on is the user's way to get a second chance at a permission denied by accident.
@@ -92,8 +91,10 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     onBackClick: () -> Unit,
-    darkMode: Boolean,
-    onToggleDark: () -> Unit,
+    themeMode: ThemeMode,
+    onSelectThemeMode: (ThemeMode) -> Unit,
+    keepScreenOn: Boolean = true,
+    onToggleKeepScreenOn: () -> Unit = {},
     birthdayNotifications: Boolean = true,
     onToggleBirthdayNotifications: () -> Unit = {},
     onRequestResetGallery: () -> Unit,
@@ -136,12 +137,17 @@ fun SettingsContent(
                 .verticalScroll(rememberScrollState()),
         ) {
             SettingsSectionHeader("Aparência")
+            ThemeModeRow(selected = themeMode, onSelect = onSelectThemeMode)
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            SettingsSectionHeader("Leitura")
             SettingsSwitchRow(
-                icon            = Icons.Filled.DarkMode,
-                title           = "Modo escuro",
-                description     = if (darkMode) "Ativado" else "Desativado",
-                checked         = darkMode,
-                onCheckedChange = { onToggleDark() },
+                icon            = Icons.Filled.LightMode,
+                title           = "Manter tela acesa",
+                description     = "Em hinos, Bíblia, letras e cifras",
+                checked         = keepScreenOn,
+                onCheckedChange = { onToggleKeepScreenOn() },
             )
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -205,6 +211,45 @@ private fun SettingsSectionHeader(title: String) {
         color      = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.SemiBold,
         modifier   = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
+    )
+}
+
+private val themeModeOptions = listOf(
+    ThemeMode.FOLLOW_SYSTEM to "Sistema",
+    ThemeMode.LIGHT         to "Claro",
+    ThemeMode.DARK          to "Escuro",
+)
+
+@Composable
+private fun ThemeModeRow(
+    selected: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+) {
+    ListItem(
+        headlineContent   = { Text("Tema") },
+        supportingContent = {
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            ) {
+                themeModeOptions.forEachIndexed { index, (mode, label) ->
+                    SegmentedButton(
+                        selected = mode == selected,
+                        onClick  = { onSelect(mode) },
+                        shape    = SegmentedButtonDefaults.itemShape(index, themeModeOptions.size),
+                        label    = { Text(label) },
+                    )
+                }
+            }
+        },
+        leadingContent    = {
+            Icon(
+                imageVector        = Icons.Filled.Brightness6,
+                contentDescription = null,
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
     )
 }
 

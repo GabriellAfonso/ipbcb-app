@@ -14,6 +14,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,7 +27,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -43,6 +43,7 @@ class SettingsViewModelTest {
 
     private val themeModeFlow = MutableSharedFlow<ThemeMode>(replay = 1)
     private val birthdayNotificationsFlow = MutableStateFlow(true)
+    private val keepScreenOnFlow = MutableStateFlow(true)
 
     @Before
     fun setup() {
@@ -52,6 +53,7 @@ class SettingsViewModelTest {
         deleteAndRedownloadBible = mockk(relaxed = true)
         every { settingsRepository.themeModeFlow } returns themeModeFlow
         every { settingsRepository.birthdayNotificationsFlow } returns birthdayNotificationsFlow
+        every { settingsRepository.keepScreenOnFlow } returns keepScreenOnFlow
         viewModel = SettingsViewModel(settingsRepository, galleryRepository, deleteAndRedownloadBible)
     }
 
@@ -72,7 +74,6 @@ class SettingsViewModelTest {
             themeModeFlow.emit(ThemeMode.DARK)
             val state = awaitItem()
             assertEquals(ThemeMode.DARK, state.themeMode)
-            assertTrue(state.darkMode == true)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -84,13 +85,12 @@ class SettingsViewModelTest {
             themeModeFlow.emit(ThemeMode.LIGHT)
             val state = awaitItem()
             assertEquals(ThemeMode.LIGHT, state.themeMode)
-            assertEquals(false, state.darkMode)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `uiState reflects FOLLOW_SYSTEM with null darkMode when themeModeFlow emits FOLLOW_SYSTEM`() = runTest {
+    fun `uiState reflects FOLLOW_SYSTEM when themeModeFlow emits FOLLOW_SYSTEM`() = runTest {
         viewModel.uiState.test {
             awaitItem() // initial SettingsUiState()
             themeModeFlow.emit(ThemeMode.DARK) // move away from default first
@@ -98,35 +98,31 @@ class SettingsViewModelTest {
             themeModeFlow.emit(ThemeMode.FOLLOW_SYSTEM)
             val state = awaitItem()
             assertEquals(ThemeMode.FOLLOW_SYSTEM, state.themeMode)
-            assertNull(state.darkMode)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
-    // region toggleDarkMode
+    // region selectThemeMode
 
     @Test
-    fun `toggleDarkMode when current mode is DARK sets theme to LIGHT`() = runTest {
+    fun `selectThemeMode saves the new mode, applies it and asks for recreate`() = runTest {
         mockkStatic(AppCompatDelegate::class)
         every { AppCompatDelegate.setDefaultNightMode(any()) } just Runs
 
-        viewModel.uiState.test {
-            awaitItem()
-            themeModeFlow.emit(ThemeMode.DARK)
-            awaitItem()
-
-            viewModel.toggleDarkMode()
+        viewModel.events.test {
+            viewModel.selectThemeMode(ThemeMode.DARK)
             advanceUntilIdle()
-
-            coVerify { settingsRepository.setThemeMode(ThemeMode.LIGHT) }
+            awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
 
+        coVerify { settingsRepository.setThemeMode(ThemeMode.DARK) }
+        verify { AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES) }
         unmockkStatic(AppCompatDelegate::class)
     }
 
     @Test
-    fun `toggleDarkMode when current mode is LIGHT sets theme to DARK`() = runTest {
+    fun `selectThemeMode FOLLOW_SYSTEM applies the follow-system night mode`() = runTest {
         mockkStatic(AppCompatDelegate::class)
         every { AppCompatDelegate.setDefaultNightMode(any()) } just Runs
 
@@ -135,10 +131,13 @@ class SettingsViewModelTest {
             themeModeFlow.emit(ThemeMode.LIGHT)
             awaitItem()
 
-            viewModel.toggleDarkMode()
+            viewModel.selectThemeMode(ThemeMode.FOLLOW_SYSTEM)
             advanceUntilIdle()
 
-            coVerify { settingsRepository.setThemeMode(ThemeMode.DARK) }
+            coVerify { settingsRepository.setThemeMode(ThemeMode.FOLLOW_SYSTEM) }
+            verify {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            }
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -146,47 +145,49 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `toggleDarkMode when FOLLOW_SYSTEM and system is dark sets theme to LIGHT`() = runTest {
-        mockkStatic(AppCompatDelegate::class)
-        every { AppCompatDelegate.getDefaultNightMode() } returns AppCompatDelegate.MODE_NIGHT_YES
-        every { AppCompatDelegate.setDefaultNightMode(any()) } just Runs
-
-        viewModel.toggleDarkMode()
-        advanceUntilIdle()
-
-        coVerify { settingsRepository.setThemeMode(ThemeMode.LIGHT) }
-
-        unmockkStatic(AppCompatDelegate::class)
-    }
-
-    @Test
-    fun `toggleDarkMode when FOLLOW_SYSTEM and system is light sets theme to DARK`() = runTest {
-        mockkStatic(AppCompatDelegate::class)
-        every { AppCompatDelegate.getDefaultNightMode() } returns AppCompatDelegate.MODE_NIGHT_NO
-        every { AppCompatDelegate.setDefaultNightMode(any()) } just Runs
-
-        viewModel.toggleDarkMode()
-        advanceUntilIdle()
-
-        coVerify { settingsRepository.setThemeMode(ThemeMode.DARK) }
-
-        unmockkStatic(AppCompatDelegate::class)
-    }
-
-    @Test
-    fun `toggleDarkMode emits event after successful toggle`() = runTest {
-        mockkStatic(AppCompatDelegate::class)
-        every { AppCompatDelegate.getDefaultNightMode() } returns AppCompatDelegate.MODE_NIGHT_NO
-        every { AppCompatDelegate.setDefaultNightMode(any()) } just Runs
-
-        viewModel.events.test {
-            viewModel.toggleDarkMode()
-            advanceUntilIdle()
+    fun `selectThemeMode with the current mode does nothing`() = runTest {
+        viewModel.uiState.test {
             awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            awaitItem()
+
+            viewModel.selectThemeMode(ThemeMode.DARK)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { settingsRepository.setThemeMode(any()) }
             cancelAndIgnoreRemainingEvents()
         }
+    }
 
-        unmockkStatic(AppCompatDelegate::class)
+    // endregion
+
+    // region keepScreenOn
+
+    @Test
+    fun `uiState reflects keepScreenOnFlow`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            assertTrue(awaitItem().keepScreenOn)
+            keepScreenOnFlow.value = false
+            assertFalse(awaitItem().keepScreenOn)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `toggleKeepScreenOn saves the opposite of the current value`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            awaitItem()
+
+            viewModel.toggleKeepScreenOn()
+            advanceUntilIdle()
+
+            coVerify { settingsRepository.setKeepScreenOn(false) }
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     // endregion

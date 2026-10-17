@@ -30,6 +30,7 @@ import com.ipb.castelobranco.features.auth.presentation.navigation.authGraph
 import com.ipb.castelobranco.features.bible.presentation.navigation.bibleGraph
 import com.ipb.castelobranco.features.gallery.presentation.navigation.galleryGraph
 import com.ipb.castelobranco.features.hymnal.presentation.navigation.hymnalGraph
+import com.ipb.castelobranco.core.presentation.components.LocalKeepScreenOn
 import com.ipb.castelobranco.core.presentation.screens.BirthdaysScreen
 import com.ipb.castelobranco.core.presentation.screens.CoreView
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
@@ -59,6 +60,7 @@ fun AppNavHost(
     // Toque numa notificação: só depois do cache do disco, quando o acesso do perfil já é conhecido.
     val target by notificationTarget.collectAsStateWithLifecycle()
     val isBootReady by coreViewModel.isBootReady.collectAsStateWithLifecycle()
+    val keepScreenOn by coreViewModel.keepScreenOn.collectAsStateWithLifecycle()
     LaunchedEffect(target, isBootReady) {
         val pending = target ?: return@LaunchedEffect
         if (!isBootReady) return@LaunchedEffect
@@ -90,7 +92,10 @@ fun AppNavHost(
         }
     }
 
-    CompositionLocalProvider(LocalAppNavigator provides appNavigator) {
+    CompositionLocalProvider(
+        LocalAppNavigator provides appNavigator,
+        LocalKeepScreenOn provides keepScreenOn,
+    ) {
         NavHost(
             navController        = navController,
             startDestination     = AppRoutes.CORE,

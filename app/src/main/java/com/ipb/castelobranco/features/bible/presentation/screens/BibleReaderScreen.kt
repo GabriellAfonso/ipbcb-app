@@ -58,6 +58,7 @@ import com.ipb.castelobranco.features.bible.presentation.components.BibleWaiting
 import com.ipb.castelobranco.features.bible.presentation.components.VerseRowData
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleUiEvent
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
+import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 
 @Composable
 fun BibleReaderScreen(
@@ -70,6 +71,7 @@ fun BibleReaderScreen(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var showFontBar by remember { mutableStateOf(false) }
+    KeepScreenOn()
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->

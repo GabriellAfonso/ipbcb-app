@@ -13,6 +13,7 @@ import com.ipb.castelobranco.core.testing.FakeDevicesRepository
 import com.ipb.castelobranco.core.testing.FakePushRegistrationScheduler
 import com.ipb.castelobranco.core.testing.FakeRegisteredTokenStore
 import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.domain.push.UnregisterDeviceUseCase
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
@@ -160,6 +161,7 @@ class CoreViewModelTest {
             UnregisterDeviceUseCase(pushScheduler, devices, tokenStore),
             AppForegroundState(),
             sessionRecovery,
+            mockk<ThemePreferences> { every { keepScreenOnFlow } returns flowOf(true) },
         )
     }
 

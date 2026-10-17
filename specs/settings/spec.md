@@ -20,7 +20,8 @@ Lista em seções, separadas por divisor:
 
 | Seção        | Item              | Comportamento                                                               |
 |--------------|-------------------|-----------------------------------------------------------------------------|
-| Aparência    | Modo escuro       | Switch; "Ativado"/"Desativado". Troca o tema recriando a Activity.          |
+| Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
+| Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
 | Dados        | Resetar galeria   | Pede confirmação; apaga as fotos em cache e mostra "Cache apagado".         |
 | Dados        | Resetar Bíblia    | Pede confirmação; apaga a Bíblia local e mostra "Baixando novamente…".      |
@@ -43,6 +44,27 @@ a notificação aparece.
 "Não mostra mais o diálogo" = a permissão é negada sem diálogo: o `shouldShowRequestPermissionRationale` é falso
 antes e depois do pedido. Se o usuário acabou de negar no diálogo, nada mais acontece — sem abrir configurações
 logo em seguida. Desligar o switch nunca pede nada.
+
+### 2.2 Tema
+
+Escolha única entre três botões lado a lado, com o atual marcado:
+
+| Opção   | Efeito                                                          |
+|---------|-----------------------------------------------------------------|
+| Sistema | Segue o modo claro/escuro do aparelho (padrão de instalação).   |
+| Claro   | Sempre claro.                                                   |
+| Escuro  | Sempre escuro.                                                  |
+
+Tocar na opção já marcada não faz nada. Outra opção salva a escolha e recria a Activity para aplicar o tema. Na
+abertura do app, o tema salvo é aplicado antes da primeira tela.
+
+### 2.3 Manter tela acesa
+
+Enquanto uma tela de leitura está aberta e a preferência está ligada, o aparelho não apaga a tela por inatividade.
+Ao sair da tela (ou desligar a preferência), volta ao comportamento normal do sistema.
+
+Telas de leitura: hino (Hinário), capítulo (Bíblia), letra e cifra (Louvor). Listas, formulários e demais telas
+seguem o tempo de tela do sistema.
 
 ---
 

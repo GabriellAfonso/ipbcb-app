@@ -20,6 +20,7 @@ import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
 import com.ipb.castelobranco.core.domain.setlist.SyncSundaySetlistUseCase
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
 import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.data.security.SessionRecovery
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.Scope
@@ -61,6 +62,7 @@ class CoreViewModel @Inject constructor(
     private val unregisterDevice: UnregisterDeviceUseCase,
     private val appForeground: AppForegroundState,
     private val sessionRecovery: SessionRecovery,
+    themePreferences: ThemePreferences,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -79,6 +81,9 @@ class CoreViewModel @Inject constructor(
 
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    val keepScreenOn: StateFlow<Boolean> = themePreferences.keepScreenOnFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     private val _birthdays = MutableStateFlow<List<Birthday>>(emptyList())
     val birthdays: StateFlow<List<Birthday>> = _birthdays.asStateFlow()

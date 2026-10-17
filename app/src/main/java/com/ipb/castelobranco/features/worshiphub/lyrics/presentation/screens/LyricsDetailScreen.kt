@@ -52,6 +52,7 @@ import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.parser.LyricsStanza
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.state.LyricsDetailUiState
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.viewmodel.LyricsDetailViewModel
+import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 
 private val DotColor   = BrandColors.Blue
 private val TitleColor = BrandColors.Orange
@@ -63,6 +64,7 @@ fun LyricsDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollMode by viewModel.scrollMode.collectAsStateWithLifecycle()
+    KeepScreenOn()
     LyricsDetailContent(
         state              = state,
         scrollMode         = scrollMode,

@@ -20,4 +20,8 @@ interface SettingsRepository {
     val birthdayNotificationsFlow: Flow<Boolean>
 
     suspend fun setBirthdayNotifications(enabled: Boolean)
+
+    val keepScreenOnFlow: Flow<Boolean>
+
+    suspend fun setKeepScreenOn(enabled: Boolean)
 }

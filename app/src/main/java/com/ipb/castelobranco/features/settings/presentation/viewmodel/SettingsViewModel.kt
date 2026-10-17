@@ -22,9 +22,9 @@ import kotlinx.coroutines.launch
 enum class ResetAction { GALLERY, BIBLE }
 
 data class SettingsUiState(
-    val darkMode: Boolean? = null,
     val themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
     val birthdayNotifications: Boolean = true,
+    val keepScreenOn: Boolean = true,
     val pendingConfirmation: ResetAction? = null,
     val galleryCleared: Boolean = false,
     val bibleCleared: Boolean = false,
@@ -48,16 +48,13 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         repository.themeModeFlow,
         repository.birthdayNotificationsFlow,
+        repository.keepScreenOnFlow,
         _extra,
-    ) { mode, birthdayNotif, extra ->
+    ) { mode, birthdayNotif, keepScreenOn, extra ->
         SettingsUiState(
             themeMode = mode,
-            darkMode = when (mode) {
-                ThemeMode.FOLLOW_SYSTEM -> null
-                ThemeMode.DARK -> true
-                ThemeMode.LIGHT -> false
-            },
             birthdayNotifications = birthdayNotif,
+            keepScreenOn = keepScreenOn,
             pendingConfirmation = extra.pendingConfirmation,
             galleryCleared = extra.galleryCleared,
             bibleCleared = extra.bibleCleared,
@@ -102,38 +99,23 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun toggleDarkMode() {
+    fun toggleKeepScreenOn() {
         viewModelScope.launch {
-            val currentMode = uiState.value.themeMode
+            repository.setKeepScreenOn(!uiState.value.keepScreenOn)
+        }
+    }
 
-            val isCurrentlyDark: Boolean = when (currentMode) {
-                ThemeMode.DARK -> true
-                ThemeMode.LIGHT -> false
-                ThemeMode.FOLLOW_SYSTEM -> {
-                    // FOLLOW_SYSTEM: inferir do modo atual aplicado no app
-                    when (AppCompatDelegate.getDefaultNightMode()) {
-                        AppCompatDelegate.MODE_NIGHT_YES -> true
-                        AppCompatDelegate.MODE_NIGHT_NO -> false
-                        else -> false
-                    }
+    fun selectThemeMode(mode: ThemeMode) {
+        if (mode == uiState.value.themeMode) return
+        viewModelScope.launch {
+            repository.setThemeMode(mode)
+            AppCompatDelegate.setDefaultNightMode(
+                when (mode) {
+                    ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
+                    ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                    ThemeMode.FOLLOW_SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                 }
-            }
-
-            val newMode: ThemeMode = if (isCurrentlyDark) {
-                ThemeMode.LIGHT
-            } else {
-                ThemeMode.DARK
-            }
-
-            repository.setThemeMode(newMode)
-
-            val newNightMode = when (newMode) {
-                ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
-                ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
-                ThemeMode.FOLLOW_SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-            }
-            AppCompatDelegate.setDefaultNightMode(newNightMode)
-
+            )
             _events.emit(Unit)
         }
     }
