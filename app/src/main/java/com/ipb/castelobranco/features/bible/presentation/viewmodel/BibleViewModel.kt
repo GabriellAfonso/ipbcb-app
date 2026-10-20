@@ -139,6 +139,27 @@ class BibleViewModel @Inject constructor(
         }
     }
 
+    private val _pendingScroll = MutableStateFlow<VerseRef?>(null)
+
+    /**
+     * Verse to bring on screen once its chapter is shown. A plain event would fire before the saved
+     * position comes back from the preferences and before the translation is decoded.
+     */
+    val pendingScroll: StateFlow<VerseRef?> = _pendingScroll.asStateFlow()
+
+    /** Opens a passage from outside the Bible (doctrine proof texts); counts as normal reading. */
+    fun openPassage(bookAbbrev: String, chapter: Int, verse: Int) {
+        _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
+        viewModelScope.launch {
+            repository.savePosition(bookAbbrev, chapter, verse)
+            _selectedVerses.value = emptySet()
+        }
+    }
+
+    fun consumePendingScroll() {
+        _pendingScroll.value = null
+    }
+
     fun nextChapter() {
         val state = uiState.value
         val book = state.currentBook ?: return

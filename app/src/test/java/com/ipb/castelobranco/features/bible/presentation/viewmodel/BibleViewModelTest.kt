@@ -298,4 +298,22 @@ class BibleViewModelTest {
     }
 
     // endregion
+
+    // region openPassage
+
+    @Test
+    fun `openPassage saves the position and keeps the verse pending until consumed`() = runTest {
+        val vm = buildViewModel()
+
+        vm.openPassage("ex", 1, 1)
+        advanceUntilIdle()
+
+        coVerify { repository.savePosition("ex", 1, 1) }
+        assertEquals(VerseRef("ex", 1, 1), vm.pendingScroll.value)
+
+        vm.consumePendingScroll()
+        assertEquals(null, vm.pendingScroll.value)
+    }
+
+    // endregion
 }

@@ -97,6 +97,18 @@ fun BibleReaderScreen(
         }
     }
 
+    val pendingScroll by viewModel.pendingScroll.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingScroll, state.isBibleReady, state.position) {
+        val target = pendingScroll ?: return@LaunchedEffect
+        val position = state.position
+        val onTarget = position.bookAbbrev.equals(target.bookAbbrev, ignoreCase = true) &&
+            position.chapter == target.chapter
+        if (!state.isBibleReady || !onTarget) return@LaunchedEffect
+        val index = (target.verse - 1).coerceAtLeast(0) + 1 // +1 = item header
+        runCatching { listState.scrollToItem(index) }
+        viewModel.consumePendingScroll()
+    }
+
     BackHandler(enabled = state.selectedVerses.isNotEmpty()) {
         viewModel.clearSelection()
     }
