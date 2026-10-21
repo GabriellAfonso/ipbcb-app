@@ -589,6 +589,8 @@ calculado no ViewModel (`nextDay`):
 - escala de mes futuro: nenhuma data passada, a primeira e a proxima; escala de mes anterior: todas passadas.
 
 HorizontalPager com auto-scroll (tween 600ms), cards com rounded corners (16dp) e shadow (6dp).
+Ao voltar para a home, o carousel sempre mostra uma pagina inteira: sair da home no meio da animacao cancela o
+scroll e o estado salvo guarda o deslocamento parcial, entao o auto-scroll encaixa na pagina atual antes do loop.
 
 #### BirthdaysScreen (aniversariantes do ano)
 

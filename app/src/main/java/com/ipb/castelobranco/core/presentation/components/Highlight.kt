@@ -48,6 +48,10 @@ fun Highlight(
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     LaunchedEffect(Unit) {
+        // Leaving the screen mid-animation cancels it, and the saved state keeps the partial offset.
+        if (pagerState.currentPageOffsetFraction != 0f) {
+            pagerState.scrollToPage(pagerState.currentPage)
+        }
         while (true) {
             yield()
             delay(autoScrollDuration)
