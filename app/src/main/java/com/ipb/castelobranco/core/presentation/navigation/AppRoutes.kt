@@ -10,6 +10,12 @@ object AppRoutes {
     const val LOG_VIEWER = "log_viewer"
     const val BIRTHDAYS = "birthdays"
 
+    // An event opened from the home carousel (`specs/events/spec.md` §3).
+    const val ARG_EVENT_ID = "eventId"
+    const val EVENT_DETAIL = "events/{$ARG_EVENT_ID}"
+
+    fun eventDetail(eventId: Int): String = "events/$eventId"
+
     // Nested graph parent routes
     const val AUTH_GRAPH        = "graph/auth"
     const val ADMIN_GRAPH       = "graph/admin"

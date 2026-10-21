@@ -21,10 +21,16 @@ import com.ipb.castelobranco.core.presentation.components.CustomButton
 import com.ipb.castelobranco.core.presentation.components.Highlight
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.presentation.components.HighlightBirthdays
+import com.ipb.castelobranco.core.presentation.components.HighlightEvent
+import com.ipb.castelobranco.core.presentation.components.HighlightEventUi
 import com.ipb.castelobranco.core.presentation.components.HighlightEvents
 import com.ipb.castelobranco.core.presentation.components.HighlightScheduleUnavailable
 import com.ipb.castelobranco.core.presentation.components.HighlightSundaySchedule
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import coil.ImageLoader
+import com.ipb.castelobranco.features.events.presentation.viewmodel.EventsHighlightViewModel
 import com.ipb.castelobranco.features.profile.presentation.viewmodel.ProfileViewModel
 import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
 import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleViewModel
@@ -58,10 +64,12 @@ fun CoreView(
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
     onNavigateToBirthdays: () -> Unit,
+    onNavigateToEvent: (Int) -> Unit,
     onLogoutSuccess: () -> Unit,
     viewModel: CoreViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
     scheduleViewModel: ScheduleViewModel = hiltViewModel(),
+    eventsViewModel: EventsHighlightViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) { viewModel.initialize() }
     LaunchedEffect(Unit) { profileViewModel.initialize() }
@@ -70,6 +78,12 @@ fun CoreView(
     val canOpenPanel    by viewModel.canOpenPanel.collectAsStateWithLifecycle()
     val nextSection     by scheduleViewModel.nextSection.collectAsStateWithLifecycle()
     val birthdays       by viewModel.birthdays.collectAsStateWithLifecycle()
+    val eventPages      by eventsViewModel.pages.collectAsStateWithLifecycle()
+
+    // Back from management (or anywhere) the carousel shows what changed; a login change swaps the
+    // members-only events in or out (`specs/events/spec.md` §2.1).
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { eventsViewModel.refresh() }
+    LaunchedEffect(isLoggedIn) { eventsViewModel.onLoginStateChanged(isLoggedIn) }
 
     val authState = UserAuthState(
         isLoggedIn   = isLoggedIn,
@@ -100,9 +114,12 @@ fun CoreView(
         onNavigateToSettings   = onNavigateToSettings,
         onNavigateToAdmin      = onNavigateToAdmin,
         onNavigateToBirthdays  = onNavigateToBirthdays,
+        onNavigateToEvent      = onNavigateToEvent,
         authState              = authState,
         nextSection            = nextSection,
         birthdays              = birthdays,
+        eventPages             = eventPages,
+        eventImageLoader       = eventsViewModel.imageLoader,
         onLogout               = viewModel::logout,
     )
 }
@@ -119,9 +136,12 @@ fun CoreScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
     onNavigateToBirthdays: () -> Unit,
+    onNavigateToEvent: (Int) -> Unit,
     authState: UserAuthState,
     nextSection: NextScheduleUi?,
     birthdays: List<Birthday>,
+    eventPages: List<HighlightEventUi>,
+    eventImageLoader: ImageLoader,
     onLogout: () -> Unit,
 ) {
     NavigationDrawer(
@@ -149,8 +169,11 @@ fun CoreScreen(
                     pages = buildHighlightPages(
                         nextSection      = nextSection,
                         birthdays        = birthdays,
+                        eventPages       = eventPages,
+                        eventImageLoader = eventImageLoader,
                         onBirthdaysClick = onNavigateToBirthdays,
                         onScheduleClick  = onNavigateToSchedule,
+                        onEventClick     = onNavigateToEvent,
                     )
                 )
 
@@ -170,9 +193,12 @@ fun CoreScreen(
 
 private fun buildHighlightPages(
     nextSection: NextScheduleUi?,
-    birthdays: List<Birthday> = emptyList(),
-    onBirthdaysClick: () -> Unit = {},
-    onScheduleClick: () -> Unit = {},
+    birthdays: List<Birthday>,
+    eventPages: List<HighlightEventUi>,
+    eventImageLoader: ImageLoader,
+    onBirthdaysClick: () -> Unit,
+    onScheduleClick: () -> Unit,
+    onEventClick: (Int) -> Unit,
 ): List<@Composable () -> Unit> = buildList {
     add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
 
@@ -182,7 +208,13 @@ private fun buildHighlightPages(
         add { HighlightScheduleUnavailable(onClick = onScheduleClick) }
     }
 
-    add { HighlightEvents() }
+    if (eventPages.isEmpty()) {
+        add { HighlightEvents() }
+    } else {
+        eventPages.forEach { page ->
+            add { HighlightEvent(page = page, imageLoader = eventImageLoader, onClick = { onEventClick(page.id) }) }
+        }
+    }
 }
 
 @Composable

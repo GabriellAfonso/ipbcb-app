@@ -12,6 +12,8 @@ import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.admin.panel.presentation.screens.AdminScreen
+import com.ipb.castelobranco.features.admin.events.presentation.navigation.EventsAdminRoutes
+import com.ipb.castelobranco.features.admin.events.presentation.navigation.eventsAdminGraph
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.membersGraph
 import com.ipb.castelobranco.features.admin.register.presentation.screens.MusicRegistrationScreen
@@ -27,6 +29,7 @@ data class AdminNav(
     val schedule: () -> Unit,
     val reports: () -> Unit,
     val members: () -> Unit,
+    val events: () -> Unit,
     val confirmSunday: (LocalDate) -> Unit = {},
 )
 
@@ -58,6 +61,7 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         schedule = { navController.navigate(AdminRoutes.SCHEDULE) },
         reports  = { navController.navigate(ReportsRoutes.GRAPH) },
         members  = { navController.navigate(MembersRoutes.GRAPH) },
+        events   = { navController.navigate(EventsAdminRoutes.GRAPH) },
         confirmSunday = { date -> navController.navigate(AdminRoutes.register(date)) },
     )
 
@@ -103,5 +107,8 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
 
         // Members is its own area too: list, profile, form and history.
         membersGraph(navController)
+
+        // Events too: list and form.
+        eventsAdminGraph(navController)
     }
 }

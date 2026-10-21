@@ -17,6 +17,6 @@ enum class PanelCard(val requirement: CardRequirement) {
     MEMBERS(AtLeast(Scope.MEMBERS, AccessLevel.VIEW)),
     NOTICES(AtLeast(Scope.NOTICES, AccessLevel.MANAGE)),
     REPORTS(AtLeast(Scope.HYMNAL_HISTORY_REPORT, AccessLevel.VIEW)),
-    EVENTS(AtLeast(Scope.EVENTS, AccessLevel.MANAGE)),
+    EVENTS(AtLeast(Scope.EVENTS, AccessLevel.VIEW)),
     NOTIFICATIONS(HasRole(Role.ADMIN)),
 }

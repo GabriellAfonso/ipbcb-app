@@ -62,7 +62,7 @@ class VisiblePanelCardsUseCaseTest {
     }
 
     @Test
-    fun `media sees only reports and the events and notices placeholders`() {
+    fun `media sees reports, events and the notices placeholder`() {
         assertEquals(listOf(NOTICES, REPORTS, EVENTS), visibleCards(media))
     }
 
@@ -91,5 +91,12 @@ class VisiblePanelCardsUseCaseTest {
 
         assertEquals(listOf(MEMBERS), visibleCards(viewer))
         assertTrue(ATTENDANCE !in visibleCards(viewer) && NOTIFICATIONS !in visibleCards(viewer))
+    }
+
+    @Test
+    fun `events needs only view`() {
+        val viewer = Access(roles = emptySet(), hasAnyRole = true, levels = mapOf(Scope.EVENTS to VIEW))
+
+        assertEquals(listOf(EVENTS), visibleCards(viewer))
     }
 }

@@ -19,12 +19,33 @@ import java.io.File
 
 private const val CROPPED_PREFIX = "cropped_"
 private const val CROPPED_SUFFIX = ".jpg"
-private const val MAX_SIDE_PX = 512
+private const val SQUARE_MAX_SIDE_PX = 512
 private const val IMAGE_MIME = "image/*"
-private const val CROP_TITLE = "Recortar Foto"
+private const val SQUARE_CROP_TITLE = "Recortar Foto"
 
 /**
- * Picks an image from the device, crops it square with UCrop and hands back the JPEG bytes.
+ * Picks an image from the device, crops it square and hands back the JPEG bytes. See
+ * [rememberCroppedPhotoPicker].
+ *
+ * @return the action that opens the picker
+ */
+@Composable
+fun rememberSquarePhotoPicker(
+    onPicked: (ByteArray) -> Unit,
+    onCancelled: () -> Unit = {},
+): () -> Unit = rememberCroppedPhotoPicker(
+    aspectX = 1f,
+    aspectY = 1f,
+    maxWidth = SQUARE_MAX_SIDE_PX,
+    maxHeight = SQUARE_MAX_SIDE_PX,
+    title = SQUARE_CROP_TITLE,
+    onPicked = onPicked,
+    onCancelled = onCancelled,
+)
+
+/**
+ * Picks an image from the device, crops it with UCrop locked to [aspectX]:[aspectY] (never larger than
+ * [maxWidth]×[maxHeight]; UCrop does not upscale a smaller image) and hands back the JPEG bytes.
  *
  * UCrop can only write its result to a file, so the crop lands in `cacheDir` for the instant
  * between the crop result and the read — then it is deleted. Leftovers from a process that died in
@@ -34,7 +55,12 @@ private const val CROP_TITLE = "Recortar Foto"
  * @return the action that opens the picker
  */
 @Composable
-fun rememberSquarePhotoPicker(
+fun rememberCroppedPhotoPicker(
+    aspectX: Float,
+    aspectY: Float,
+    maxWidth: Int,
+    maxHeight: Int,
+    title: String,
     onPicked: (ByteArray) -> Unit,
     onCancelled: () -> Unit = {},
 ): () -> Unit {
@@ -67,12 +93,12 @@ fun rememberSquarePhotoPicker(
             setStatusBarColor(Color.BLACK)
             setToolbarColor(Color.BLACK)
             setToolbarWidgetColor(Color.WHITE)
-            setToolbarTitle(CROP_TITLE)
+            setToolbarTitle(title)
             setHideBottomControls(false)
         }
         val intent = UCrop.of(uri, destination)
-            .withAspectRatio(1f, 1f)
-            .withMaxResultSize(MAX_SIDE_PX, MAX_SIDE_PX)
+            .withAspectRatio(aspectX, aspectY)
+            .withMaxResultSize(maxWidth, maxHeight)
             .withOptions(options)
             .getIntent(context)
 

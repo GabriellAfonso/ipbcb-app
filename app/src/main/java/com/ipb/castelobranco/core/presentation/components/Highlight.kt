@@ -28,6 +28,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.ImageLoader
+import coil.compose.AsyncImage
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.domain.model.Gender
 import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
@@ -47,8 +51,10 @@ fun Highlight(
         while (true) {
             yield()
             delay(autoScrollDuration)
-            if (pages.isNotEmpty()) {
-                val nextPage = (pagerState.currentPage + 1) % pages.size
+            // pageCount, not pages.size: this effect outlives the first list, and event pages come and go.
+            val pageCount = pagerState.pageCount
+            if (pageCount > 0) {
+                val nextPage = (pagerState.currentPage + 1) % pageCount
                 pagerState.animateScrollToPage(page = nextPage, animationSpec = tween(600))
             }
         }
@@ -301,6 +307,76 @@ fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
 }
 
 
+/** One carousel page per event (`specs/events/spec.md` §2): plain data, already formatted. */
+data class HighlightEventUi(
+    val id: Int,
+    val title: String,
+    val dateLabel: String,
+    val imageUrl: String,
+)
+
+private const val EVENT_GRADIENT_START = 0.45f
+private const val EVENT_GRADIENT_ALPHA = 0.75f
+private const val EVENT_TITLE_MAX_LINES = 2
+
+/**
+ * The event's flyer fills the page; title and date sit over a dark gradient at the bottom. Without the
+ * image (offline with no cache, refused, replaced) the neutral background keeps title and date legible.
+ */
+@Composable
+fun HighlightEvent(
+    page: HighlightEventUi,
+    imageLoader: ImageLoader,
+    onClick: () -> Unit = {},
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .clickable(onClick = onClick)
+    ) {
+        AsyncImage(
+            model = page.imageUrl,
+            imageLoader = imageLoader,
+            contentDescription = page.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        EVENT_GRADIENT_START to Color.Transparent,
+                        1f to Color.Black.copy(alpha = EVENT_GRADIENT_ALPHA),
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Text(
+                text = page.title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = EVENT_TITLE_MAX_LINES,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = page.dateLabel,
+                color = Color.White.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
 @Composable
 fun HighlightEvents() {
     HighlightPlaceholder(
@@ -355,6 +431,40 @@ private fun HighlightPreview() {
             { HighlightEvents() }
         )
     )
+}
+
+@Preview(showBackground = true, name = "Card - event (no image loaded)")
+@Composable
+private fun HighlightEventPreview() {
+    val imageLoader = ImageLoader(LocalContext.current)
+    Highlight(pages = listOf {
+        HighlightEvent(
+            page = HighlightEventUi(
+                id = 1,
+                title = "Congresso de Jovens",
+                dateLabel = "14 a 16 nov · 19:30",
+                imageUrl = "",
+            ),
+            imageLoader = imageLoader,
+        )
+    })
+}
+
+@Preview(showBackground = true, name = "Card - event, long title")
+@Composable
+private fun HighlightEventLongTitlePreview() {
+    val imageLoader = ImageLoader(LocalContext.current)
+    Highlight(pages = listOf {
+        HighlightEvent(
+            page = HighlightEventUi(
+                id = 2,
+                title = "Almoço de confraternização da família IPB Castelo Branco depois do culto de domingo",
+                dateLabel = "30 nov",
+                imageUrl = "",
+            ),
+            imageLoader = imageLoader,
+        )
+    })
 }
 
 @Preview(showBackground = true, name = "Card - schedule 4 rows (next = 9)")

@@ -88,12 +88,13 @@ fica guardada no código mas o card aparece cinza.
 | Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
 | Avisos             | Rosa     | `Send`          | Sem implementação              | `notices` ≥ `manage`                 |
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
-| Eventos            | Ciano    | `Event`         | Sem implementação              | `events` ≥ `manage`                  |
+| Eventos            | Ciano    | `Event`         | Navega para a área de eventos  | `events` ≥ `view`                    |
 | Notificações       | Pink     | `Notifications` | Sem implementação              | papel Admin                          |
 
 O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença e
 Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os oito; Liderança
-todos menos Presença e Notificações; Mídia Relatórios e os cinzas Eventos e Avisos.
+todos menos Presença e Notificações; Mídia Relatórios, Eventos e o cinza Avisos. A área de eventos (lista e
+formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4.
 
 A galeria não tem card: a gestão vive nas próprias telas dela, abertas pelo botão Galeria da tela inicial, e cada
 ação aparece conforme o nível em `gallery` (gallery spec §8.1).

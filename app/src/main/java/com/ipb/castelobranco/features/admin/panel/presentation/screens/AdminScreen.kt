@@ -265,8 +265,7 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
         description = "Criar e editar eventos",
         icon = Icons.Filled.Event,
         accentColor = Sky,
-        enabled = false,
-        onClick = { /* TODO */ }
+        onClick = nav.events
     )
     PanelCard.NOTIFICATIONS -> AdminAction(
         label = "Notificações",

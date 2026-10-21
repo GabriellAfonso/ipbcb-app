@@ -30,7 +30,8 @@ private val Green = BrandColors.Green
 fun DateFieldWithPicker(
     dateBr: String,
     onOpenPicker: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholder: String = "Selecionar data",
 ) {
     val hasDate = dateBr.isNotBlank()
 
@@ -45,7 +46,7 @@ fun DateFieldWithPicker(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = if (hasDate) dateBr else "Selecionar data",
+            text = if (hasDate) dateBr else placeholder,
             style = MaterialTheme.typography.bodyLarge,
             color = if (hasDate)
                 MaterialTheme.colorScheme.onSurface

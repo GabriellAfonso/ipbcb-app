@@ -22,6 +22,9 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.ipb.castelobranco.features.events.presentation.screens.EventDetailScreen
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.logEvent
@@ -118,6 +121,7 @@ fun AppNavHost(
                     onNavigateToSettings   = { navController.navigate(AppRoutes.SETTINGS) },
                     onNavigateToAdmin      = { navController.navigate(AppRoutes.ADMIN_GRAPH) },
                     onNavigateToBirthdays  = { navController.navigate(AppRoutes.BIRTHDAYS) },
+                    onNavigateToEvent      = { id -> navController.navigate(AppRoutes.eventDetail(id)) },
                     onLogoutSuccess        = {},
                     viewModel              = coreViewModel,
                 )
@@ -164,6 +168,13 @@ fun AppNavHost(
                     onBackClick      = { navController.safePopBackStack() },
                     onNavigateToAuth = { navController.navigate(AppRoutes.AUTH_GRAPH) },
                 )
+            }
+
+            composable(
+                route     = AppRoutes.EVENT_DETAIL,
+                arguments = listOf(navArgument(AppRoutes.ARG_EVENT_ID) { type = NavType.IntType }),
+            ) {
+                EventDetailScreen(onBackClick = { navController.safePopBackStack() })
             }
 
             composable(AppRoutes.SETTINGS) {

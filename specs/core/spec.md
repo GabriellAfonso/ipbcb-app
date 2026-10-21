@@ -464,10 +464,16 @@ Monitora conectividade WiFi via `ConnectivityManager` + `callbackFlow`.
 
 ### 5.6.1 Imagens — orcamento de memoria do Coil
 
-O app tem tres `ImageLoader`: o padrao (`MyApp` como `ImageLoaderFactory`: originais e capas da galeria, avatar
-da conta), `@GalleryThumbnailLoader` e `@MemberPhotoLoader`. Cada um tem seu cache de memoria, porque o logout
-esvazia os dois autenticados separadamente. O Coil daria 25% da memoria do app a cada um (75% so em bitmaps);
-`ImageMemoryBudget` (`core/data/image`) limita: padrao 15%, previews da galeria 10%, fotos de membros 5%.
+O app tem quatro `ImageLoader`: o padrao (`MyApp` como `ImageLoaderFactory`: originais e capas da galeria, avatar
+da conta), `@GalleryThumbnailLoader`, `@MemberPhotoLoader` e `@EventImageLoader`. Cada um tem seu cache de memoria,
+porque o logout esvazia os autenticados separadamente. O Coil daria 25% da memoria do app a cada um (100% so em
+bitmaps); `ImageMemoryBudget` (`core/data/image`) limita: padrao 15%, previews da galeria 10%, fotos de membros 5%,
+flyers de eventos 5%.
+
+`@EventImageLoader` (`core/di/EventImageLoaderModule.kt`) vive em `core/` porque a home (`features/events`) e a
+gestao (`features/admin/events`) usam o mesmo: client `@Client` (token so com sessao), `respectCacheHeaders(false)`
+(imagem trocada ganha URL nova) e cache de disco `event_images` de 50 MB. `EventImageCache` o esvazia no fim da
+sessao (`specs/events/spec.md` §2.3).
 
 ### 5.7 Constantes de Storage
 
@@ -566,8 +572,12 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 |--------|----------|
 | 1 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
 | 2 | Escala do proximo culto (tabela dia x membro) — clicavel, abre a tela de escala (`AppRoutes.SCHEDULE`) |
-| 3 | Eventos |
+| 3+ | Um card por evento ativo, no maximo 3 (`HighlightEvent`) — clicavel, abre o detalhe (`AppRoutes.EVENT_DETAIL`); sem evento, "Eventos — Nenhum evento esse mes" (`HighlightEvents`). Ver `specs/events/spec.md` §2 |
 | Fallback | "Escala indisponivel" (se dados nao carregaram) — tambem clicavel, abre a tela de escala |
+
+**Paginas de evento.** Vem do `EventsHighlightViewModel` (`features/events`), coletado na `CoreView` como o
+`ScheduleViewModel`. A `CoreView` pede a lista de novo em todo `ON_RESUME` e quando `isLoggedIn` muda: o logout fica
+na home, entao so a troca de login avisa que os eventos "Só membros" saem e a lista publica volta.
 
 **Card da escala.** Mostra a secao do proximo culto (`ScheduleViewModel.nextSection`, tipo `NextScheduleUi`):
 cabecalho com titulo + horario e uma linha por data do mes, sem cabecalho de colunas. Um dia da semana
@@ -626,7 +636,7 @@ tokens ja foram apagados e `isLoggedInFlow` leva o app ao estado deslogado.
 #### AppRoutes
 
 Telas individuais:
-- `CORE`, `SCHEDULE`, `SETTINGS`, `PROFILE`, `BIRTHDAYS`
+- `CORE`, `SCHEDULE`, `SETTINGS`, `PROFILE`, `BIRTHDAYS`, `EVENT_DETAIL` (`events/{eventId}`)
 
 Grafos de features:
 - `AUTH_GRAPH`, `ADMIN_GRAPH`, `WORSHIP_HUB_GRAPH`, `GALLERY_GRAPH`, `HYMNAL_GRAPH`, `BIBLE_GRAPH`, `STUDIES_GRAPH`
@@ -677,7 +687,8 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 |------------|-----------|
 | `TopBar` | Logo + tab name + back/menu + account image. Fundo ipbGreen, icones brancos |
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
-| `Highlight` | Carousel com auto-scroll, HorizontalPager, cards 250dp com shadow |
+| `Highlight` | Carousel com auto-scroll, HorizontalPager, cards 250dp com shadow. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
+| `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro |
 | `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight e pela `BirthdaysScreen` |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |
