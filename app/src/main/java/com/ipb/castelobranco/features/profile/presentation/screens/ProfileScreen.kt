@@ -2,10 +2,10 @@ package com.ipb.castelobranco.features.profile.presentation.screens
 
 import android.graphics.BitmapFactory
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,11 +29,11 @@ import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.auth.requestGoogleIdToken
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
-import com.ipb.castelobranco.features.profile.presentation.components.AccountActionsSection
-import com.ipb.castelobranco.features.profile.presentation.components.AccountSection
+import com.ipb.castelobranco.features.profile.presentation.components.AccountFooter
 import com.ipb.castelobranco.features.profile.presentation.components.ChangePasswordDialog
 import com.ipb.castelobranco.features.profile.presentation.components.DeleteAccountDialog
 import com.ipb.castelobranco.features.profile.presentation.components.EditNameDialog
+import com.ipb.castelobranco.features.profile.presentation.components.ProfileOverflowMenu
 import com.ipb.castelobranco.features.profile.presentation.components.ProfilePhotoSection
 import com.ipb.castelobranco.features.profile.presentation.components.RemovePhotoDialog
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiEvent
@@ -78,6 +79,13 @@ fun ProfileScreen(
         logoRes = R.drawable.ic_profile,
         showBackArrow = true,
         onBackClick = onBackClick,
+        extraActions = {
+            ProfileOverflowMenu(
+                hasPassword = uiState.hasPassword == true,
+                onEditName = viewModel::openNameDialog,
+                onChangePassword = viewModel::openPasswordDialog,
+            )
+        },
     ) { innerPadding ->
         ProfileContent(
             state = uiState,
@@ -86,10 +94,8 @@ fun ProfileScreen(
             onRemovePhoto = viewModel::requestRemovePhoto,
             onConfirmRemovePhoto = viewModel::confirmRemovePhoto,
             onDismissRemovePhoto = viewModel::dismissRemovePhoto,
-            onEditName = viewModel::openNameDialog,
             onSaveName = viewModel::saveName,
             onDismissName = viewModel::dismissNameDialog,
-            onChangePassword = viewModel::openPasswordDialog,
             onConfirmPassword = viewModel::changePassword,
             onDismissPassword = viewModel::dismissPasswordDialog,
             onDeleteAccount = viewModel::openDeleteDialog,
@@ -107,10 +113,8 @@ fun ProfileContent(
     onRemovePhoto: () -> Unit = {},
     onConfirmRemovePhoto: () -> Unit = {},
     onDismissRemovePhoto: () -> Unit = {},
-    onEditName: () -> Unit = {},
     onSaveName: (String) -> Unit = {},
     onDismissName: () -> Unit = {},
-    onChangePassword: () -> Unit = {},
     onConfirmPassword: (String, String, String) -> Unit = { _, _, _ -> },
     onDismissPassword: () -> Unit = {},
     onDeleteAccount: () -> Unit = {},
@@ -127,50 +131,44 @@ fun ProfileContent(
         photoFile?.absolutePath?.let { BitmapFactory.decodeFile(it) }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Spacer(Modifier.height(24.dp))
+    Column(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(24.dp))
 
-        ProfilePhotoSection(
-            bitmap = bitmap,
-            hasPhoto = photoFile != null,
-            isBusy = state.isPhotoBusy,
-            onChangePhoto = onChangePhoto,
-            onRemovePhoto = onRemovePhoto,
-        )
+            ProfilePhotoSection(
+                bitmap = bitmap,
+                hasPhoto = photoFile != null,
+                isBusy = state.isPhotoBusy,
+                onChangePhoto = onChangePhoto,
+                onRemovePhoto = onRemovePhoto,
+            )
 
-        Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(14.dp))
 
-        Text(text = userName, style = MaterialTheme.typography.titleLarge)
+            Text(text = userName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
 
-        AccountSection(
-            userName = userName,
-            username = state.username,
-            joinedSince = state.joinedSince,
-            onEditName = onEditName,
-        )
+            if (!state.error.isNullOrBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Erro: ${state.error}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
 
-        AccountActionsSection(
-            hasPassword = state.hasPassword,
+        AccountFooter(
             canDeleteAccount = state.canDeleteAccount,
-            onChangePassword = onChangePassword,
+            joinedSince = state.joinedSince,
             onDeleteAccount = onDeleteAccount,
         )
-
-        if (!state.error.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "Erro: ${state.error}",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
     }
 
     if (state.showRemovePhotoConfirm) {

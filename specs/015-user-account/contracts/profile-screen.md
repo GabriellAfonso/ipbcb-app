@@ -4,16 +4,17 @@ Backend endpoints are in `backend/specs/021-user-account/contracts/account-api.m
 
 ## Layout (top to bottom)
 
+Top bar: a three-dot menu with "Editar nome" (→ name dialog) and "Trocar senha" (only when
+`hasPassword == true`).
+
 1. **Foto** — 140 dp circle. Tap → menu: "Trocar foto" (crop + upload, unchanged) and, when a local photo exists,
-   "Remover foto". Progress over the circle while uploading or removing. Below it: the name (`titleLarge`).
-2. **Conta** (section title)
-   - "Nome" — value + pencil action → name dialog.
-   - "Login" — `username` (hidden when unknown).
-   - "No app desde {mês} de {ano}" (hidden when unknown).
-3. **Ações** (section title)
-   - "Trocar senha" — only when `hasPassword == true`.
+   "Remover foto". Progress over the circle while uploading or removing.
+2. **Nome** — `titleLarge` centered below the photo; edited from the top bar menu. Not repeated elsewhere;
+   the login (`username`) is not shown.
+3. Screen-level error line ("Erro: …") as today.
+4. **Footer** (pinned to the bottom of the screen)
    - "Excluir conta" — error color; disabled while `hasPassword` is unknown.
-4. Screen-level error line ("Erro: …") as today.
+   - "No app desde {mês} de {ano}" (hidden when unknown) — last line.
 
 "Membro: Ativo/Desativado" is gone.
 

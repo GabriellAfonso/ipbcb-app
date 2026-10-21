@@ -1,7 +1,7 @@
 # Perfil e conta — Spec
 
-A tela **Perfil** é a conta de quem está logado: foto, nome, login, desde quando usa o app, troca de senha e
-exclusão da conta. O perfil (`/me`) também alimenta o resto do app: os papéis e níveis de acesso (painel de gestão),
+A tela **Perfil** é a conta de quem está logado: foto, nome, desde quando usa o app, troca de senha e exclusão da
+conta. O perfil (`/me`) também alimenta o resto do app: os papéis e níveis de acesso (painel de gestão),
 o vínculo com o rol (`member_id`) e as flags do Louvor. A tela só existe com sessão; sem sessão, o ícone do topo leva
 ao login.
 
@@ -21,7 +21,7 @@ são redefinidos aqui.
 | Acesso | `roles`, `permissions` | ver `specs/006-role-scoped-permissions/` |
 | Membro vinculado | `member_id` | `null` sem vínculo |
 | Louvor | `is_worship_member`, `can_save_setlist` | ver `specs/011-sunday-setlist-push/` |
-| Login | `username` | só leitura; `null` = desconhecido |
+| Login | `username` | só leitura; não aparece na tela |
 | Tem senha | `has_password` | só leitura; `null` = desconhecido |
 | No app desde | `date_joined` (`AAAA-MM-DD`) | só leitura; data inválida ou ausente = desconhecida |
 
@@ -39,7 +39,8 @@ de propósito. Um `false` padrão em `has_password` mandaria uma conta com senha
 
 ## 3. Tela
 
-Três seções, de cima para baixo.
+De cima para baixo: foto, nome, e um rodapé fixo no fim da tela com "Excluir conta" e "No app desde". A edição do
+nome e a troca de senha ficam no menu de três pontos da barra do topo.
 
 ### 3.1 Foto
 
@@ -48,23 +49,21 @@ Três seções, de cima para baixo.
 - "Remover foto" pede confirmação. Depois apaga no servidor, apaga a cópia local, mostra o placeholder e atualiza o
   perfil. Aviso: "Foto removida".
 - Enquanto envia ou remove, há um progresso sobre o círculo e o toque fica desligado.
-- O nome aparece logo abaixo.
 
-### 3.2 Conta
+### 3.2 Nome
 
-- **Nome**, com ação de editar. Diálogo com um campo de até 100 caracteres. O nome é aparado (trim); vazio não
-  salva; o erro do servidor aparece no campo. Aviso: "Nome atualizado".
-- **Login**: o `username`. Escondido enquanto desconhecido.
-- **"No app desde {mês} de {ano}"**, com o mês por extenso em minúsculas ("março de 2025"). Escondido enquanto
-  desconhecido.
-- O e-mail não aparece e não é editável.
+- Centralizado logo abaixo da foto. O nome não se repete em outro lugar da tela.
+- **"Editar nome"**, no menu de três pontos da barra do topo (sempre presente), abre um diálogo com um campo de até
+  100 caracteres. O nome é aparado (trim); vazio não salva; o erro do servidor aparece no campo. Aviso: "Nome
+  atualizado".
+- O login (`username`) e o e-mail não aparecem; o e-mail não é editável.
 
 ### 3.3 Ações
 
-- **"Trocar senha"** — só quando a conta tem senha. Pede a senha atual, a nova e a confirmação. Se der certo, o app
-  grava o novo par de tokens da resposta antes de qualquer outra chamada e continua logado; os outros aparelhos caem
-  para deslogado. Aviso: "Senha alterada".
-- **"Excluir conta"** — confirmação forte:
+- **"Trocar senha"** — item do menu de três pontos da barra do topo, só quando a conta tem senha.
+  Pede a senha atual, a nova e a confirmação. Se der certo, o app grava o novo par de tokens da resposta antes de
+  qualquer outra chamada e continua logado; os outros aparelhos caem para deslogado. Aviso: "Senha alterada".
+- **"Excluir conta"** — botão em cor de erro no rodapé, acima de "No app desde". Confirmação forte:
   - texto explicando que é permanente e o que some;
   - conta com senha: senha atual + digitar **EXCLUIR**;
   - conta sem senha: digitar **EXCLUIR** e confirmar com um login Google novo, no mesmo seletor do login. Cancelar
@@ -73,6 +72,8 @@ Três seções, de cima para baixo.
   - depois do sucesso: a sessão e todos os caches da sessão são limpos exatamente como no logout, mas sem chamar o
     servidor (logout e cancelamento do registro do push já foram feitos lá). O app volta para a home deslogada e
     mostra "Conta excluída".
+- **"No app desde {mês} de {ano}"** — última linha da tela, com o mês por extenso em minúsculas ("março de 2025").
+  Escondido enquanto desconhecido.
 
 ### 3.4 Erros
 

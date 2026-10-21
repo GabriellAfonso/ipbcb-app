@@ -4,21 +4,21 @@ import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -95,76 +95,59 @@ fun ProfilePhotoSection(
     }
 }
 
-/** Name (editable), login name and how long the person has used the app; unknown lines are hidden. */
+/** Pinned to the bottom: "Excluir conta" (waits until the password state is known) and "No app desde". */
 @Composable
-fun AccountSection(
-    userName: String,
-    username: String?,
-    joinedSince: String?,
-    onEditName: () -> Unit,
-) {
-    SectionTitle("Conta")
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        AccountLine(label = "Nome", value = userName, modifier = Modifier.weight(1f))
-        TextButton(onClick = onEditName) { Text("Editar") }
-    }
-    if (username != null) {
-        AccountLine(label = "Login", value = username)
-    }
-    if (joinedSince != null) {
-        Text(
-            text = "No app desde $joinedSince",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(vertical = 6.dp),
-        )
-    }
-}
-
-/** "Trocar senha" only for an account with a password; "Excluir conta" waits until that is known. */
-@Composable
-fun AccountActionsSection(
-    hasPassword: Boolean?,
+fun AccountFooter(
     canDeleteAccount: Boolean,
-    onChangePassword: () -> Unit,
+    joinedSince: String?,
     onDeleteAccount: () -> Unit,
 ) {
-    SectionTitle("Ações")
-    if (hasPassword == true) {
-        OutlinedButton(onClick = onChangePassword, modifier = Modifier.fillMaxWidth()) {
-            Text("Trocar senha")
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TextButton(onClick = onDeleteAccount, enabled = canDeleteAccount) {
+            Text("Excluir conta", color = if (canDeleteAccount) MaterialTheme.colorScheme.error else Color.Unspecified)
+        }
+        if (joinedSince != null) {
+            Text(
+                text = "No app desde $joinedSince",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
-    TextButton(
-        onClick = onDeleteAccount,
-        enabled = canDeleteAccount,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("Excluir conta", color = if (canDeleteAccount) MaterialTheme.colorScheme.error else Color.Unspecified)
-    }
 }
 
+/** Top bar three-dot menu: "Editar nome" always, "Trocar senha" only for an account with a password. */
 @Composable
-private fun SectionTitle(text: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp)) {
-        Text(text = text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
-    }
-}
+fun ProfileOverflowMenu(
+    hasPassword: Boolean,
+    onEditName: () -> Unit,
+    onChangePassword: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
 
-@Composable
-private fun AccountLine(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(vertical = 6.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    IconButton(onClick = { expanded = true }) {
+        Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Mais opções")
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = { Text("Editar nome") },
+            onClick = {
+                expanded = false
+                onEditName()
+            },
         )
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        if (hasPassword) {
+            DropdownMenuItem(
+                text = { Text("Trocar senha") },
+                onClick = {
+                    expanded = false
+                    onChangePassword()
+                },
+            )
+        }
     }
 }
 

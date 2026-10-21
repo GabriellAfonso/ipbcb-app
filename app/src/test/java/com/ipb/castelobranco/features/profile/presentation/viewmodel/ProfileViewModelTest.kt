@@ -276,7 +276,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `observeProfile SnapshotState Data shows login and joined date`() = runTest {
+    fun `observeProfile SnapshotState Data shows the joined date`() = runTest {
         every { fetchProfileUseCase.observe() } returns flowOf(
             SnapshotState.Data(
                 fakeProfile.copy(username = "joao", hasPassword = true, dateJoined = LocalDate.of(2025, 3, 14))
@@ -287,7 +287,6 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals("joao", state.username)
         assertEquals("março de 2025", state.joinedSince)
         assertEquals(true, state.hasPassword)
         assertTrue(state.canDeleteAccount)
@@ -301,7 +300,6 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNull(state.username)
         assertNull(state.joinedSince)
         assertNull(state.hasPassword)
         assertFalse(state.canDeleteAccount)

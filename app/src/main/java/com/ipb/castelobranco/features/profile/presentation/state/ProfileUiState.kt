@@ -10,11 +10,9 @@ data class ProfileUiState(
     val localPhotoPath: String? = null,
     val localPhotoVersion: Int = 0,
     val userName: String? = null,
-    /** Login name; `null` while unknown (the line is hidden). */
-    val username: String? = null,
     /** "março de 2025"; `null` while unknown (the line is hidden). */
     val joinedSince: String? = null,
-    /** `null` while unknown: "Trocar senha" hidden and "Excluir conta" disabled. */
+    /** `null` while unknown: the top bar menu ("Trocar senha") hidden and "Excluir conta" disabled. */
     val hasPassword: Boolean? = null,
     val showRemovePhotoConfirm: Boolean = false,
     val nameDialog: NameDialogState? = null,

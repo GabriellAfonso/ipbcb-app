@@ -136,20 +136,20 @@ signs in and the new one does.
 
 ### User Story 3 - See and edit my account details (Priority: P2)
 
-The profile shows a "Conta" section with the name (editable), the login name and how long the person has used the
-app ("No app desde março de 2025").
+The profile shows the name under the photo (editable from the top bar menu) and, as the last line of the
+screen, how long the person has used the app ("No app desde março de 2025"). The login name is not shown.
 
 **Why this priority**: Makes the screen an account screen; the deletion and password actions live next to it.
 
-**Independent Test**: Open the profile; check login and "No app desde"; edit the name to "  Ana Maria  " and see
+**Independent Test**: Open the profile; check "No app desde"; edit the name to "  Ana Maria  " and see
 "Ana Maria" on the screen and on the next app start.
 
 **Acceptance Scenarios**:
 
-1. **Given** a profile from the server, **When** the screen opens, **Then** it shows the name, "Login" with the
-   username and "No app desde {mês} de {ano}" from the account creation date.
+1. **Given** a profile from the server, **When** the screen opens, **Then** it shows the name and "No app desde
+   {mês} de {ano}" from the account creation date.
 2. **Given** a profile cached before this feature (no username, no date), **When** the screen opens offline, **Then**
-   it opens without error; the login and date lines are hidden until the server answers.
+   it opens without error; the date line is hidden until the server answers.
 3. **Given** the name editor, **When** the person saves a name with spaces around it, **Then** the saved name is
    trimmed and the screen shows it.
 4. **Given** the name editor, **When** the name is empty or blank, **Then** saving is disabled; **When** it passes
@@ -195,13 +195,14 @@ Tapping the photo opens a menu with "Trocar foto" (the current crop-and-upload f
 
 ### Functional Requirements
 
-- **FR-001**: The profile screen MUST show three sections: photo, "Conta" and "Ações". "Membro: Ativo/Desativado"
+- **FR-001**: The profile screen MUST show the photo and the name, with "Excluir conta" and "No app desde" in a footer
+  pinned to the bottom and "Editar nome" and "Trocar senha" in the top bar's three-dot menu. "Membro: Ativo/Desativado"
   MUST NOT be shown.
 - **FR-002**: Tapping the photo MUST open a menu with "Trocar foto" and, only when a photo exists, "Remover foto".
 - **FR-003**: "Remover foto" MUST ask for confirmation, then delete the photo on the server, clear the local copy,
   show the placeholder and refresh the profile.
-- **FR-004**: "Conta" MUST show the name with an edit action, "Login: {username}" and "No app desde {mês} de {ano}";
-  login and date lines MUST be hidden while unknown.
+- **FR-004**: The name MUST be centered under the photo, edited from the top bar menu and not repeated; the login
+  MUST NOT be shown; "No app desde {mês} de {ano}" MUST be the last line and hidden while unknown.
 - **FR-005**: Editing the name MUST trim it, refuse blank, cap input at 100 characters, show the server's field
   message on refusal and refresh the profile on success.
 - **FR-006**: The three new profile fields MUST be optional when reading a stored profile, so a profile saved before

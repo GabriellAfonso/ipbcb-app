@@ -68,7 +68,6 @@ class ProfileViewModel @Inject constructor(
                             it.copy(
                                 userName = profile.name.trim().ifBlank { "Usuário" },
                                 photoUrl = profile.photoUrl,
-                                username = profile.username,
                                 joinedSince = profile.dateJoined?.let(::formatJoinedSince),
                                 hasPassword = profile.hasPassword,
                             )
