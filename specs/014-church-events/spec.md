@@ -219,7 +219,10 @@ refresh, from the carousel.
 - **FR-009**: The "Eventos" card in the management panel MUST appear for any level on `events` (`view` or higher) and
   MUST open the management list.
 - **FR-010**: The management list MUST show all events with a filter "Ativos" / "Passados" / "Todos" (default
-  "Todos"), most recent start date first, each with image, title, date label and a "Só membros" mark when applicable.
+  "Todos"), most recent start date first, each with image, title, date label, who announced it ("por Ana Paula",
+  only when the name is known) and a "Só membros" mark when applicable. The form of an existing event shows, read-only,
+  who created it and who last edited it, with the dates ("Criado por Ana Paula em 21/10/2026 · editado por Gabriel
+  em 22/10/2026").
 - **FR-011**: Users with `manage` or `owner` MUST be able to create an event with title (required, up to 120
   characters), start date (required), end date (optional, not before start date), start time (optional), location
   (optional, up to 200 characters), description (optional), visibility ("Público" default, or "Só membros") and image
@@ -241,8 +244,8 @@ refresh, from the carousel.
 ### Key Entities
 
 - **Event**: id, title, start date, optional end date, optional start time, optional location, optional description,
-  image address, visibility (public or members-only). Management records add who created it and when it was created
-  and updated.
+  image address, visibility (public or members-only). Management records add who created it, who last edited it and
+  when it was created and updated.
 - **Saved events list**: the last public list received for the current session state (logged out, or the logged-in
   user), with the moment it was received; replaced on each fetch, discarded on login and logout.
 

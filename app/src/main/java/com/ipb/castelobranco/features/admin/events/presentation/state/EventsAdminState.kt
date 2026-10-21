@@ -12,6 +12,8 @@ data class EventAdminItemUi(
     val imageUrl: String,
     val isMembersOnly: Boolean,
     val isPast: Boolean,
+    /** "por Ana Paula"; null when the name is unknown. */
+    val authorLabel: String? = null,
 )
 
 data class EventsAdminListUiState(
@@ -28,6 +30,7 @@ data class EventsAdminListUiState(
  * @param generalError a server refusal that names no known field.
  * @param imageUrl the event's current flyer; edit only.
  * @param pickedImage a cropped flyer, sent only when the user saves.
+ * @param historyLabel who created and last edited it, with dates; edit only.
  */
 data class EventFormUiState(
     val isEditing: Boolean = false,
@@ -43,6 +46,7 @@ data class EventFormUiState(
     val hasUnsavedChanges: Boolean = false,
     val imageUrl: String? = null,
     val pickedImage: ByteArray? = null,
+    val historyLabel: String? = null,
 )
 
 /** One-shot events shared by the events management screens. */

@@ -17,6 +17,7 @@ import com.ipb.castelobranco.features.admin.events.presentation.state.EventAdmin
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventsAdminEvent
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventsAdminListUiState
 import com.ipb.castelobranco.features.admin.events.presentation.util.FailureKind
+import com.ipb.castelobranco.features.admin.events.presentation.util.authorLabel
 import com.ipb.castelobranco.features.admin.events.presentation.util.toEventsAdminEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -96,4 +97,5 @@ internal fun EventRecord.toItemUi(today: LocalDate) = EventAdminItemUi(
     imageUrl = imageUrl,
     isMembersOnly = visibility == EventVisibility.MEMBERS,
     isPast = isPastOn(today),
+    authorLabel = authorLabel(),
 )

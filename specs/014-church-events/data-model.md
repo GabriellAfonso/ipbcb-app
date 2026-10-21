@@ -44,12 +44,13 @@ Snapshot body: `List<EventPublicDto>`, the bare array returned by `GET api/event
 
 ### `EventRecordDto`
 
-`EventPublicDto` plus `created_by: CreatedByDto?` (`id: String`, `name: String`), `created_at: String`,
-`updated_at: String`. The list body is `EventListDto(events: List<EventRecordDto>)`.
+`EventPublicDto` plus `created_by: EventAuthorDto?` and `updated_by: EventAuthorDto?` (`id: String`, `name: String`;
+`updated_by` is null until someone edits), `created_at: String`, `updated_at: String`. The list body is `EventListDto(events: List<EventRecordDto>)`.
 
 ### `EventRecord` (domain)
 
-The `Event` fields plus `createdByName: String?` (blank → `null`), `createdAt: Instant` and `updatedAt: Instant`.
+The `Event` fields plus `createdByName: String?` (blank → `null`), `wasEdited: Boolean` (`updated_by` present),
+`updatedByName: String?` (blank → `null`), `createdAt: Instant?` and `updatedAt: Instant?`.
 
 ### `EventStatusFilter`
 

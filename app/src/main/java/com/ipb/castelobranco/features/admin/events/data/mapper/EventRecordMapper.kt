@@ -23,6 +23,8 @@ fun EventRecordDto.toDomain(): EventRecord = EventRecord(
     imageUrl = imageUrl,
     visibility = EventVisibility.fromWire(visibility),
     createdByName = createdBy?.name?.takeIf { it.isNotBlank() },
+    wasEdited = updatedBy != null,
+    updatedByName = updatedBy?.name?.takeIf { it.isNotBlank() },
     createdAt = createdAt?.let(::parseInstant),
     updatedAt = updatedAt?.let(::parseInstant),
 )

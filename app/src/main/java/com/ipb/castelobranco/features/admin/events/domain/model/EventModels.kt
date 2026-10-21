@@ -21,7 +21,11 @@ enum class EventStatusFilter(val wireValue: String, val label: String) {
     ALL("all", "Todos"),
 }
 
-/** An event as management sees it: the public fields plus who made it and when. */
+/**
+ * An event as management sees it: the public fields plus who made it, who last edited it and when.
+ *
+ * @param wasEdited the server named a last editor; [updatedByName] can still be null (no profile name).
+ */
 data class EventRecord(
     val id: Int,
     val title: String,
@@ -33,6 +37,8 @@ data class EventRecord(
     val imageUrl: String,
     val visibility: EventVisibility,
     val createdByName: String?,
+    val wasEdited: Boolean,
+    val updatedByName: String?,
     val createdAt: Instant?,
     val updatedAt: Instant?,
 ) {

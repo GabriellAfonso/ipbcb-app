@@ -5,6 +5,7 @@ import com.ipb.castelobranco.features.admin.events.domain.model.EventRecord
 import com.ipb.castelobranco.features.admin.events.domain.model.EventStatusFilter
 import com.ipb.castelobranco.features.admin.events.domain.model.EventVisibility
 import com.ipb.castelobranco.features.admin.events.domain.repository.EventsAdminRepository
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -54,6 +55,11 @@ fun record(
     time: LocalTime? = LocalTime.of(19, 30),
     location: String? = "Templo",
     visibility: EventVisibility = EventVisibility.PUBLIC,
+    createdBy: String? = "Ana",
+    updatedBy: String? = null,
+    wasEdited: Boolean = updatedBy != null,
+    createdAt: Instant? = null,
+    updatedAt: Instant? = null,
 ) = EventRecord(
     id = id,
     title = title,
@@ -64,7 +70,9 @@ fun record(
     description = null,
     imageUrl = "https://host/ipbcb/media/events/$id.jpg",
     visibility = visibility,
-    createdByName = "Ana",
-    createdAt = null,
-    updatedAt = null,
+    createdByName = createdBy,
+    wasEdited = wasEdited,
+    updatedByName = updatedBy,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
 )

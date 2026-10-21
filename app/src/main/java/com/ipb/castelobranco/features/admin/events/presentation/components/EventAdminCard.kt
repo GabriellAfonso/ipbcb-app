@@ -75,6 +75,15 @@ fun EventAdminCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            item.authorLabel?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (item.isMembersOnly) {
                 AssistChip(onClick = onClick, label = { Text(MEMBERS_ONLY_LABEL) })
             }
@@ -93,6 +102,7 @@ private fun EventAdminCardPreview() {
             imageUrl = "",
             isMembersOnly = true,
             isPast = false,
+            authorLabel = "por Ana Paula",
         ),
         imageLoader = ImageLoader(LocalContext.current),
         onClick = {},

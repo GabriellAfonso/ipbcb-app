@@ -20,7 +20,10 @@ data class EventRecordDto(
     val imageUrl: String,
     val visibility: String,
     @SerialName("created_by")
-    val createdBy: CreatedByDto? = null,
+    val createdBy: EventAuthorDto? = null,
+    /** Who last edited it; null until someone edits (or once that account is gone). */
+    @SerialName("updated_by")
+    val updatedBy: EventAuthorDto? = null,
     @SerialName("created_at")
     val createdAt: String? = null,
     @SerialName("updated_at")
@@ -28,7 +31,7 @@ data class EventRecordDto(
 )
 
 @Serializable
-data class CreatedByDto(
+data class EventAuthorDto(
     val id: String,
     val name: String = "",
 )

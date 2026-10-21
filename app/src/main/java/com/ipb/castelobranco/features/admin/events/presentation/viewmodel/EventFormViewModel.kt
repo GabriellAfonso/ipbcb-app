@@ -23,6 +23,7 @@ import com.ipb.castelobranco.features.admin.events.presentation.navigation.Event
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventFormUiState
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventsAdminEvent
 import com.ipb.castelobranco.features.admin.events.presentation.util.FailureKind
+import com.ipb.castelobranco.features.admin.events.presentation.util.historyLabel
 import com.ipb.castelobranco.features.admin.events.presentation.util.toEventsAdminEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -93,6 +94,7 @@ class EventFormViewModel @Inject constructor(
                             draft = record.toDraft(),
                             imageUrl = record.imageUrl,
                             pickedImage = null,
+                            historyLabel = record.historyLabel(),
                             hasUnsavedChanges = false,
                         )
                     }

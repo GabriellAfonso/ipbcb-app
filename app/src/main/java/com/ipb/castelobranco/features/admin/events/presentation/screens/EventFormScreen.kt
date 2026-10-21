@@ -182,6 +182,13 @@ private fun FormFields(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
+        state.historyLabel?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         EventImageField(
             pickedImage = state.pickedImage,
             imageUrl = state.imageUrl,
@@ -252,7 +259,9 @@ private fun FormFields(
 private fun EventFormContentPreview() {
     EventFormContent(
         state = EventFormUiState(
+            isEditing = true,
             draft = EventDraft(title = "Congresso de Jovens", location = "Templo"),
+            historyLabel = "Criado por Ana Paula em 21/10/2026 · editado por Gabriel em 22/10/2026",
             fieldErrors = mapOf(EventField.START_DATE to "Informe a data de início."),
         ),
         imageLoader = ImageLoader(LocalContext.current),

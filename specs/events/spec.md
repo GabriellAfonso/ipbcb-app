@@ -93,13 +93,19 @@ nunca o nome do papel.
 ### 4.1 Lista
 
 - Filtro Ativos / Passados / Todos, padrão Todos. Os mais recentes primeiro, pela data de início.
-- Cada item mostra: miniatura 16:9, título, data e o selo "Só membros" quando é o caso. Evento passado aparece
+- Cada item mostra: miniatura 16:9, título, data, quem anunciou ("por Ana Paula") e o selo "Só membros" quando é
+  o caso. Sem nome (conta apagada ou perfil sem nome), a linha do autor não aparece. Evento passado aparece
   esmaecido.
 - O botão "Novo evento" aparece para `manage` ou mais.
 - Recarrega ao voltar para a tela e ao trocar o filtro.
 
 ### 4.2 Formulário (novo, editar, somente leitura)
 
+- Num evento que já existe, uma linha só de leitura no topo diz quem criou e quem editou por último, com as datas
+  em horário de Brasília: "Criado por Ana Paula em 21/10/2026 · editado por Gabriel em 22/10/2026".
+  - Sem nome, a parte fica sem ele: "Criado em 21/10/2026", "editado em 22/10/2026".
+  - A parte "editado" só aparece quando o servidor informa um editor (`updated_by`); o servidor guarda só o último.
+  - Num evento novo a linha não existe.
 - Campos do modelo (seção 1).
   - Data de fim e horário têm a ação "remover".
   - A visibilidade é um seletor Público / Só membros.
