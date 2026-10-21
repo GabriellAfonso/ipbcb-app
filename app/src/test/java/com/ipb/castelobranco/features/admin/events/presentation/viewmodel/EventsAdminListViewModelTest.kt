@@ -58,7 +58,7 @@ class EventsAdminListViewModelTest {
         repository.listResult = Result.success(
             listOf(
                 record(id = 1, start = LocalDate.of(2026, 12, 1), visibility = EventVisibility.MEMBERS),
-                record(id = 2, start = LocalDate.of(2026, 11, 1), time = null),
+                record(id = 2, start = LocalDate.of(2026, 11, 1), time = null, createdBy = null),
             )
         )
         val vm = viewModel()
@@ -71,6 +71,8 @@ class EventsAdminListViewModelTest {
         assertTrue(items[0].isMembersOnly && !items[0].isPast)
         assertTrue(items[1].isPast)
         assertEquals("1 nov", items[1].dateLabel)
+        assertEquals("por Ana", items[0].authorLabel)
+        assertEquals(null, items[1].authorLabel)
         assertFalse(vm.uiState.value.canCreate)
     }
 
