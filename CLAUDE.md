@@ -140,7 +140,7 @@ that commit, so the tag covers both.
 3. **Snapshot cache:** Offline features follow the `JsonSnapshotStorage` pattern (`HymnalSnapshotModule`, `ScheduleSnapshotModule`...).
 4. **UCropActivity** in Manifest — do not remove (profile photo upload).
 5. **Theme change:** `context.findActivity()?.recreate()` — called from Screen, never from ViewModel.
-6. **Auth/Logout:** Auth success via lambda `onAuthSuccess()` in `AppNavHost → authGraph`. Logout via `popUpTo(MAIN) { inclusive = true }`.
+6. **Auth/Logout:** Auth success via lambda `onAuthSuccess()` in `AppNavHost → authGraph`. Logout stays on the logged-out home (`CoreScreen` reacts to the session). Account deletion navigates with `popUpTo(CORE) { inclusive = true }`.
 7. **Share intents:** `navController.context.startActivity(Intent.createChooser(...))`.
 8. **worshiphub sub-graphs:** `worshipHubGraph` contains nested `chordChartsGraph` and `lyricsGraph` — add new screens inside the appropriate sub-graph, not directly in `worshipHubGraph`.
 9. **In-app updates:** `CoreActivity` enforces immediate Play Store updates on launch — if user cancels, app calls `finish()`. Do not remove `AppUpdateManager` logic.
