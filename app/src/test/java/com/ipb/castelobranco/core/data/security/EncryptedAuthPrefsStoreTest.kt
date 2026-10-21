@@ -100,4 +100,23 @@ class EncryptedAuthPrefsStoreTest {
         withStorage { it.save(tokens) }
         assertEquals(tokens, withStorage { it.read() })
     }
+
+    @Test
+    fun `swapIfRefresh replaces or clears only the pair it expects`() = runTest {
+        val renewed = AuthTokens(access = "access-2", refresh = "refresh-2")
+        val passwordPair = AuthTokens(access = "access-pw", refresh = "refresh-pw")
+
+        withStorage { storage ->
+            storage.save(tokens)
+            assertEquals(renewed, storage.swapIfRefresh(tokens.refresh, renewed))
+
+            storage.save(passwordPair)
+            assertEquals(passwordPair, storage.swapIfRefresh(renewed.refresh, null))
+            assertEquals(passwordPair, storage.swapIfRefresh(renewed.refresh, renewed))
+            assertEquals(passwordPair, storage.read())
+
+            assertNull(storage.swapIfRefresh(passwordPair.refresh, null))
+            assertNull(storage.read())
+        }
+    }
 }

@@ -1,7 +1,12 @@
 package com.ipb.castelobranco.features.profile.data.api
 
+import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
+import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
 import com.ipb.castelobranco.features.profile.data.dto.ProfilePhotoResponseDto
+import com.ipb.castelobranco.features.profile.data.dto.SessionTokensDto
+import com.ipb.castelobranco.features.profile.data.dto.UpdateProfileRequest
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -13,8 +18,8 @@ import retrofit2.Response
 import java.io.IOException
 
 /**
- * Scriptable [ProfileApi] for the profile photo download. Only [downloadFile] is supported; the
- * other endpoints fail loudly so a test cannot reach them by accident.
+ * Scriptable [ProfileApi] for the profile photo download and the account endpoints. An endpoint
+ * without a script fails loudly so a test cannot reach it by accident.
  */
 class FakeProfileApi : ProfileApi {
 
@@ -51,6 +56,39 @@ class FakeProfileApi : ProfileApi {
         lastIfNoneMatch = ifNoneMatch
         return script()
     }
+
+    /** Account endpoints: each call is recorded, then answered by its script. */
+    var updateProfileScript: (() -> Response<MeProfileDto>)? = null
+    var changePasswordScript: (() -> Response<SessionTokensDto>)? = null
+    var deleteAccountScript: (() -> Response<Unit>)? = null
+
+    val updateProfileBodies = mutableListOf<UpdateProfileRequest>()
+    val changePasswordBodies = mutableListOf<ChangePasswordRequest>()
+    val deleteWithPasswordBodies = mutableListOf<DeleteAccountWithPasswordRequest>()
+    val deleteWithGoogleBodies = mutableListOf<DeleteAccountWithGoogleRequest>()
+
+    override suspend fun updateMeProfile(body: UpdateProfileRequest): Response<MeProfileDto> {
+        updateProfileBodies += body
+        return scripted(updateProfileScript, "updateMeProfile")
+    }
+
+    override suspend fun changePassword(body: ChangePasswordRequest): Response<SessionTokensDto> {
+        changePasswordBodies += body
+        return scripted(changePasswordScript, "changePassword")
+    }
+
+    override suspend fun deleteAccountWithPassword(body: DeleteAccountWithPasswordRequest): Response<Unit> {
+        deleteWithPasswordBodies += body
+        return scripted(deleteAccountScript, "deleteAccountWithPassword")
+    }
+
+    override suspend fun deleteAccountWithGoogle(body: DeleteAccountWithGoogleRequest): Response<Unit> {
+        deleteWithGoogleBodies += body
+        return scripted(deleteAccountScript, "deleteAccountWithGoogle")
+    }
+
+    private fun <T> scripted(script: (() -> Response<T>)?, name: String): Response<T> =
+        script?.invoke() ?: throw UnsupportedOperationException("$name is not scripted in FakeProfileApi")
 
     override suspend fun uploadProfilePhoto(photo: MultipartBody.Part): Response<ProfilePhotoResponseDto> =
         throw UnsupportedOperationException("uploadProfilePhoto is not scripted in FakeProfileApi")

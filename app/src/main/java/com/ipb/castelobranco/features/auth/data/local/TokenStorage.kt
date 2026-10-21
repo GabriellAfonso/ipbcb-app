@@ -32,8 +32,7 @@ class TokenStorage @Inject constructor(
 
     val tokensFlow: Flow<AuthTokens?> =
         dataStore.data.map { prefs ->
-            val raw = prefs[Keys.TOKENS] ?: return@map null
-            runCatching { json.decodeFromString(AuthTokens.serializer(), raw) }.getOrNull()
+            prefs[Keys.TOKENS]?.let(::decodeOrNull)
         }
 
     val tokensState: StateFlow<AuthTokens?> =
@@ -52,6 +51,30 @@ class TokenStorage @Inject constructor(
     }
 
     suspend fun loadOrNull(): AuthTokens? = tokensState.value
+
+    /**
+     * Atomic compare-and-set on the stored pair: writes [replacement] — or removes the pair when it is `null` —
+     * only if the stored refresh token is still [expectedRefresh]. Returns the pair stored after the edit.
+     *
+     * A token renewal started from a pair that was replaced meanwhile (a password change hands the app a new pair and
+     * revokes every old refresh token) must neither clear nor overwrite the newer pair.
+     */
+    suspend fun swapIfRefresh(expectedRefresh: String, replacement: AuthTokens?): AuthTokens? {
+        val prefs = dataStore.edit { prefs ->
+            val current = prefs[Keys.TOKENS]?.let(::decodeOrNull)
+            if (current?.refresh == expectedRefresh) {
+                if (replacement == null) {
+                    prefs.remove(Keys.TOKENS)
+                } else {
+                    prefs[Keys.TOKENS] = json.encodeToString(AuthTokens.serializer(), replacement)
+                }
+            }
+        }
+        return prefs[Keys.TOKENS]?.let(::decodeOrNull)
+    }
+
+    private fun decodeOrNull(raw: String): AuthTokens? =
+        runCatching { json.decodeFromString(AuthTokens.serializer(), raw) }.getOrNull()
 
     suspend fun clear() {
         dataStore.edit { it.remove(Keys.TOKENS) }

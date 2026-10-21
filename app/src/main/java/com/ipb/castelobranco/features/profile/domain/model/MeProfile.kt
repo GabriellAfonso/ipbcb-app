@@ -1,6 +1,10 @@
 package com.ipb.castelobranco.features.profile.domain.model
 
 import com.ipb.castelobranco.core.domain.access.Access
+import java.time.LocalDate
+
+/** The server refuses a longer name. */
+const val PROFILE_NAME_MAX_LENGTH = 100
 
 data class MeProfile(
     val name: String,
@@ -11,4 +15,10 @@ data class MeProfile(
     val memberId: Long? = null,
     val isWorshipMember: Boolean = false,
     val canSaveSetlist: Boolean = false,
+    /** Login name, `null` when unknown. */
+    val username: String? = null,
+    /** Whether the account has a password, `null` when unknown. */
+    val hasPassword: Boolean? = null,
+    /** When the account was created, `null` when unknown. */
+    val dateJoined: LocalDate? = null,
 )

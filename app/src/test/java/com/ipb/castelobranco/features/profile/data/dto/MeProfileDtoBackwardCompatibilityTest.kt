@@ -140,4 +140,28 @@ class MeProfileDtoBackwardCompatibilityTest {
         assertEquals(true, dto.isWorshipMember)
         assertEquals(true, dto.canSaveSetlist)
     }
+
+    @Test
+    fun `account fields absent decode as unknown`() {
+        val raw = """{"name":"Ana","is_member":true,"roles":[],"permissions":{}}"""
+
+        val dto = json.decodeFromString<MeProfileDto>(raw)
+
+        assertNull(dto.username)
+        assertNull(dto.hasPassword)
+        assertNull(dto.dateJoined)
+    }
+
+    @Test
+    fun `account fields present are read`() {
+        val raw = """
+            {"name":"Ana","is_member":true,"username":"ana","has_password":false,"date_joined":"2025-03-14"}
+        """.trimIndent()
+
+        val dto = json.decodeFromString<MeProfileDto>(raw)
+
+        assertEquals("ana", dto.username)
+        assertEquals(false, dto.hasPassword)
+        assertEquals("2025-03-14", dto.dateJoined)
+    }
 }

@@ -189,10 +189,20 @@ fun AppNavHost(
             }
 
             composable(AppRoutes.PROFILE) {
-                ProfileScreen(onBackClick = { navController.safePopBackStack() })
+                ProfileScreen(
+                    onBackClick = { navController.safePopBackStack() },
+                    // A limpeza da sessão já roda no CoreViewModel (AuthEventBus.AccountDeleted); aqui só a volta.
+                    onAccountDeleted = {
+                        navController.navigate(AppRoutes.CORE) {
+                            popUpTo(AppRoutes.CORE) { inclusive = true }
+                        }
+                        Toast.makeText(context, ACCOUNT_DELETED_MESSAGE, Toast.LENGTH_SHORT).show()
+                    },
+                )
             }
         }
     }
 }
 
 private const val NO_REGISTER_ACCESS_MESSAGE = "Você não tem mais acesso ao registro de músicas."
+private const val ACCOUNT_DELETED_MESSAGE = "Conta excluída"

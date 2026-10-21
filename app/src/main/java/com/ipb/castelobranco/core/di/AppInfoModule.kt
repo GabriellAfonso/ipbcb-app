@@ -3,10 +3,12 @@ package com.ipb.castelobranco.core.di
 import android.os.SystemClock
 import com.ipb.castelobranco.BuildConfig
 import com.ipb.castelobranco.core.data.auth.AuthSessionStatusProvider
+import com.ipb.castelobranco.core.data.auth.TokenStorageSessionTokensWriter
 import com.ipb.castelobranco.core.data.local.DataStoreDeviceIdProvider
 import com.ipb.castelobranco.core.data.local.DeviceIdProvider
 import com.ipb.castelobranco.core.domain.auth.AuthStatusProvider
 import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
+import com.ipb.castelobranco.core.domain.auth.SessionTokensWriter
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.util.MonotonicClock
 import com.ipb.castelobranco.core.domain.util.WallClock
@@ -30,7 +32,8 @@ annotation class PlatformName
 
 /**
  * Ambient app facts and small cross-cutting primitives: the running version, the platform name,
- * a monotonic clock, the device identifier, and a read-only view of the session.
+ * a monotonic clock, the device identifier, a read-only view of the session and the one write a feature may make to
+ * it (installing a pair the server handed back).
  *
  * These live here so `domain/` code can depend on plain values and interfaces instead of on
  * `BuildConfig`, `SystemClock`, or another feature's session class.
@@ -50,6 +53,10 @@ abstract class AppInfoModule {
     @Binds
     @Singleton
     abstract fun bindSessionPresenceProvider(impl: AuthSessionStatusProvider): SessionPresenceProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSessionTokensWriter(impl: TokenStorageSessionTokensWriter): SessionTokensWriter
 
     companion object {
 

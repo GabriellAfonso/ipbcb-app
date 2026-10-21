@@ -4,7 +4,17 @@ import com.ipb.castelobranco.core.domain.snapshot.RefreshResult
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.profile.domain.model.MeProfile
+import com.ipb.castelobranco.core.domain.auth.AuthEventBus
+import com.ipb.castelobranco.features.profile.domain.model.AccountDeletionProof
+import com.ipb.castelobranco.features.profile.domain.repository.ProfileRepository
+import com.ipb.castelobranco.features.profile.domain.usecase.ChangePasswordUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.DeleteAccountUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.FakeAccountRepository
 import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.RecordingAuthEventBus
+import com.ipb.castelobranco.features.profile.domain.usecase.RemoveProfilePhotoUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.UpdateProfileNameUseCase
+import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiEvent
 import com.ipb.castelobranco.features.profile.domain.usecase.UploadProfilePhotoUseCase
 import app.cash.turbine.test
 import io.mockk.coEvery
@@ -29,6 +39,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProfileViewModelTest {
@@ -38,6 +49,13 @@ class ProfileViewModelTest {
     private lateinit var fetchProfileUseCase: FetchProfileUseCase
     private lateinit var uploadProfilePhotoUseCase: UploadProfilePhotoUseCase
     private lateinit var viewModel: ProfileViewModel
+
+    private val accountRepository = FakeAccountRepository()
+    private val authEventBus = RecordingAuthEventBus()
+    private val profileRepository = mockk<ProfileRepository> {
+        coEvery { refreshMeProfile() } returns RefreshResult.Updated
+        coEvery { deleteProfilePhoto() } returns Result.success(Unit)
+    }
 
     private val fakeProfile = MeProfile(
         name = "João Silva",
@@ -55,7 +73,14 @@ class ProfileViewModelTest {
         every { fetchProfileUseCase.getLocalPhoto() } returns null
         coEvery { fetchProfileUseCase.refresh() } returns RefreshResult.NotModified
 
-        viewModel = ProfileViewModel(fetchProfileUseCase, uploadProfilePhotoUseCase)
+        viewModel = ProfileViewModel(
+            fetchProfileUseCase,
+            uploadProfilePhotoUseCase,
+            RemoveProfilePhotoUseCase(profileRepository),
+            UpdateProfileNameUseCase(accountRepository, profileRepository),
+            ChangePasswordUseCase(accountRepository),
+            DeleteAccountUseCase(accountRepository, authEventBus),
+        )
     }
 
     @After
@@ -251,17 +276,35 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `observeProfile SnapshotState Data updates isMember`() = runTest {
+    fun `observeProfile SnapshotState Data shows login and joined date`() = runTest {
         every { fetchProfileUseCase.observe() } returns flowOf(
             SnapshotState.Data(
-                fakeProfile.copy(isMember = false)
+                fakeProfile.copy(username = "joao", hasPassword = true, dateJoined = LocalDate.of(2025, 3, 14))
             )
         )
 
         viewModel.initialize()
         advanceUntilIdle()
 
-        assertEquals(false, viewModel.uiState.value.isMember)
+        val state = viewModel.uiState.value
+        assertEquals("joao", state.username)
+        assertEquals("março de 2025", state.joinedSince)
+        assertEquals(true, state.hasPassword)
+        assertTrue(state.canDeleteAccount)
+    }
+
+    @Test
+    fun `a profile cached before the account fields leaves them unknown`() = runTest {
+        every { fetchProfileUseCase.observe() } returns flowOf(SnapshotState.Data(fakeProfile))
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.username)
+        assertNull(state.joinedSince)
+        assertNull(state.hasPassword)
+        assertFalse(state.canDeleteAccount)
     }
 
     @Test
@@ -350,6 +393,290 @@ class ProfileViewModelTest {
         viewModel.clearError()
 
         assertNull(viewModel.uiState.value.error)
+    }
+
+    // endregion
+
+    // region account
+
+    private fun passwordAccount(hasPassword: Boolean? = true) {
+        every { fetchProfileUseCase.observe() } returns flowOf(
+            SnapshotState.Data(fakeProfile.copy(hasPassword = hasPassword))
+        )
+    }
+
+    private fun validationError(field: String, message: String) = AppError.Server(
+        code = 400,
+        errorCode = "VALIDATION_ERROR",
+        fieldErrors = mapOf(field to listOf(message)),
+        userMessage = "Dados inválidos.",
+    )
+
+    private val invalidPassword =
+        AppError.Server(code = 400, errorCode = "INVALID_PASSWORD", userMessage = "Senha incorreta.")
+
+    @Test
+    fun `saveName closes the dialog and confirms`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openNameDialog()
+
+        viewModel.events.test {
+            viewModel.saveName("  Ana  ")
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.ShowMessage("Nome atualizado"), awaitItem())
+        }
+        assertEquals(listOf("Ana"), accountRepository.names)
+        assertNull(viewModel.uiState.value.nameDialog)
+    }
+
+    @Test
+    fun `saveName refused shows the server message on the field`() = runTest {
+        accountRepository.updateNameResult =
+            Result.failure(validationError("name", "O nome pode ter no máximo 100 caracteres."))
+        viewModel.openNameDialog()
+
+        viewModel.saveName("Ana")
+        advanceUntilIdle()
+
+        val dialog = viewModel.uiState.value.nameDialog!!
+        assertFalse(dialog.isSaving)
+        assertEquals("O nome pode ter no máximo 100 caracteres.", dialog.nameError)
+        assertNull(dialog.error)
+    }
+
+    @Test
+    fun `password dialog is not offered to an account without password`() = runTest {
+        passwordAccount(hasPassword = false)
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        viewModel.openPasswordDialog()
+
+        assertNull(viewModel.uiState.value.passwordDialog)
+    }
+
+    @Test
+    fun `changePassword success closes the dialog and confirms`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openPasswordDialog()
+
+        viewModel.events.test {
+            viewModel.changePassword("atual", "nova123", "nova123")
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.ShowMessage("Senha alterada"), awaitItem())
+        }
+        assertEquals(listOf(Triple("atual", "nova123", "nova123")), accountRepository.passwordChanges)
+        assertNull(viewModel.uiState.value.passwordDialog)
+    }
+
+    @Test
+    fun `changePassword with wrong current password marks that field only`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openPasswordDialog()
+        accountRepository.changePasswordResult = Result.failure(invalidPassword)
+
+        viewModel.changePassword("errada", "nova123", "nova123")
+        advanceUntilIdle()
+
+        val dialog = viewModel.uiState.value.passwordDialog!!
+        assertEquals("Senha incorreta.", dialog.currentError)
+        assertNull(dialog.error)
+        assertFalse(dialog.isSaving)
+    }
+
+    @Test
+    fun `changePassword mismatch shows the message on the confirmation`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openPasswordDialog()
+        accountRepository.changePasswordResult =
+            Result.failure(validationError("new_password_confirm", "As senhas não coincidem."))
+
+        viewModel.changePassword("atual", "nova123", "outra")
+        advanceUntilIdle()
+
+        assertEquals("As senhas não coincidem.", viewModel.uiState.value.passwordDialog!!.confirmError)
+    }
+
+    @Test
+    fun `changePassword lockout shows a dialog message`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openPasswordDialog()
+        accountRepository.changePasswordResult = Result.failure(
+            AppError.Server(code = 429, errorCode = "ACCOUNT_LOCKED", userMessage = "Muitas tentativas de login.")
+        )
+
+        viewModel.changePassword("atual", "nova123", "nova123")
+        advanceUntilIdle()
+
+        assertEquals("Muitas tentativas de login.", viewModel.uiState.value.passwordDialog!!.error)
+    }
+
+    @Test
+    fun `delete dialog waits until it is known whether the account has a password`() = runTest {
+        viewModel.openDeleteDialog()
+
+        assertNull(viewModel.uiState.value.deleteDialog)
+    }
+
+    @Test
+    fun `delete with password announces the deletion and leaves`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+        assertEquals(true, viewModel.uiState.value.deleteDialog!!.requiresPassword)
+
+        viewModel.events.test {
+            viewModel.confirmDelete("segredo")
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.AccountDeleted, awaitItem())
+        }
+        assertEquals(
+            listOf<AccountDeletionProof>(AccountDeletionProof.Password("segredo")),
+            accountRepository.deletions,
+        )
+        assertEquals(listOf<AuthEventBus.Event>(AuthEventBus.Event.AccountDeleted), authEventBus.emitted)
+        assertNull(viewModel.uiState.value.deleteDialog)
+    }
+
+    @Test
+    fun `delete with a wrong password keeps the session and marks the field`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+        accountRepository.deleteResult = Result.failure(invalidPassword)
+
+        viewModel.events.test {
+            viewModel.confirmDelete("errada")
+            advanceUntilIdle()
+            expectNoEvents()
+        }
+        val dialog = viewModel.uiState.value.deleteDialog!!
+        assertEquals("Senha incorreta.", dialog.passwordError)
+        assertFalse(dialog.isDeleting)
+        assertTrue(authEventBus.emitted.isEmpty())
+    }
+
+    @Test
+    fun `delete blocked tells the person to talk to the leadership`() = runTest {
+        passwordAccount()
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+        val message = "Esta conta não pode ser excluída pelo app. Fale com a liderança da igreja."
+        accountRepository.deleteResult = Result.failure(
+            AppError.Server(code = 409, errorCode = "ACCOUNT_DELETION_BLOCKED", userMessage = message)
+        )
+
+        viewModel.confirmDelete("segredo")
+        advanceUntilIdle()
+
+        assertEquals(message, viewModel.uiState.value.deleteDialog!!.error)
+        assertTrue(authEventBus.emitted.isEmpty())
+    }
+
+    @Test
+    fun `delete without password asks for a Google token and deletes with it`() = runTest {
+        passwordAccount(hasPassword = false)
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+
+        viewModel.events.test {
+            viewModel.confirmDelete("")
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.RequestGoogleIdToken, awaitItem())
+            assertTrue(viewModel.uiState.value.deleteDialog!!.isDeleting)
+
+            viewModel.onGoogleIdToken("google-token")
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.AccountDeleted, awaitItem())
+        }
+        assertEquals(
+            listOf<AccountDeletionProof>(AccountDeletionProof.Google("google-token")),
+            accountRepository.deletions,
+        )
+    }
+
+    @Test
+    fun `cancelling the Google picker leaves the dialog without a message`() = runTest {
+        passwordAccount(hasPassword = false)
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+        viewModel.confirmDelete("")
+        advanceUntilIdle()
+
+        viewModel.onGoogleIdToken(null)
+
+        val dialog = viewModel.uiState.value.deleteDialog!!
+        assertFalse(dialog.isDeleting)
+        assertNull(dialog.error)
+        assertNull(dialog.passwordError)
+        assertTrue(accountRepository.deletions.isEmpty())
+    }
+
+    @Test
+    fun `another Google account shows the mismatch message`() = runTest {
+        passwordAccount(hasPassword = false)
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.openDeleteDialog()
+        accountRepository.deleteResult = Result.failure(
+            AppError.Auth(code = 403, userMessage = "A conta Google não corresponde a esta conta.")
+        )
+        viewModel.confirmDelete("")
+        advanceUntilIdle()
+
+        viewModel.onGoogleIdToken("other-account")
+        advanceUntilIdle()
+
+        assertEquals("A conta Google não corresponde a esta conta.", viewModel.uiState.value.deleteDialog!!.error)
+    }
+
+    @Test
+    fun `removing the photo refreshes the local photo and confirms`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+        viewModel.requestRemovePhoto()
+        assertTrue(viewModel.uiState.value.showRemovePhotoConfirm)
+
+        viewModel.events.test {
+            viewModel.confirmRemovePhoto()
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.ShowMessage("Foto removida"), awaitItem())
+        }
+        val state = viewModel.uiState.value
+        assertFalse(state.showRemovePhotoConfirm)
+        assertFalse(state.isRemovingPhoto)
+        assertNull(state.localPhotoPath)
+        coVerify { profileRepository.refreshMeProfile() }
+    }
+
+    @Test
+    fun `a failed photo removal shows the error`() = runTest {
+        coEvery { profileRepository.deleteProfilePhoto() } returns Result.failure(AppError.Network())
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        viewModel.confirmRemovePhoto()
+        advanceUntilIdle()
+
+        assertEquals(
+            "Sem conexão com a internet. Verifique sua rede e tente novamente.",
+            viewModel.uiState.value.error,
+        )
+        assertFalse(viewModel.uiState.value.isRemovingPhoto)
     }
 
     // endregion

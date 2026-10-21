@@ -59,15 +59,18 @@ class RegisterDeviceUseCase @Inject constructor(
 /**
  * Asks the server to forget this device. Runs at logout, before the session is cleared, so the call is
  * still authenticated. Nothing here may stop the logout: failures and slowness are swallowed.
+ *
+ * With `notifyServer = false` (the account was deleted, and the server already dropped its devices) only the
+ * local side is undone: the scheduled registration and the stored token.
  */
 class UnregisterDeviceUseCase @Inject constructor(
     private val scheduler: PushRegistrationScheduler,
     private val devices: DevicesRepository,
     private val store: RegisteredTokenStore,
 ) {
-    suspend operator fun invoke() {
+    suspend operator fun invoke(notifyServer: Boolean = true) {
         runCatching { scheduler.cancel() }
-        val token = runCatching { store.get() }.getOrNull()
+        val token = if (notifyServer) runCatching { store.get() }.getOrNull() else null
         if (token != null) {
             val result = withTimeoutOrNull(UNREGISTER_TIMEOUT_MS) {
                 runCatching { devices.unregister(token) }.getOrElse { Result.failure(it) }

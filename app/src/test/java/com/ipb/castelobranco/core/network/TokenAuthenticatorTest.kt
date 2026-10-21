@@ -8,7 +8,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.coJustRun
 import kotlinx.coroutines.test.runTest
 import okhttp3.Protocol
 import okhttp3.Request
@@ -29,6 +28,7 @@ class TokenAuthenticatorTest {
 
     private val storedTokens = AuthTokens(access = "old-access", refresh = "valid-refresh")
     private val newTokens = AuthTokens(access = "new-access", refresh = "new-refresh")
+    private val passwordChangeTokens = AuthTokens(access = "pw-access", refresh = "pw-refresh")
 
     @Before
     fun setUp() {
@@ -119,13 +119,13 @@ class TokenAuthenticatorTest {
         every { tokenStorage.peekOrNull() } returns storedTokens
         coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
                 buildRetrofitResponse(code = 401)
-        coJustRun { tokenStorage.clear() }
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", null) } returns null
 
         val request = buildRequest(authHeader = "Bearer old-access")
         val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
 
         assertNull(result)
-        coVerify { tokenStorage.clear() }
+        coVerify { tokenStorage.swapIfRefresh("valid-refresh", null) }
     }
 
     @Test
@@ -133,13 +133,13 @@ class TokenAuthenticatorTest {
         every { tokenStorage.peekOrNull() } returns storedTokens
         coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
                 buildRetrofitResponse(code = 400)
-        coJustRun { tokenStorage.clear() }
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", null) } returns null
 
         val request = buildRequest(authHeader = "Bearer old-access")
         val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
 
         assertNull(result)
-        coVerify { tokenStorage.clear() }
+        coVerify { tokenStorage.swapIfRefresh("valid-refresh", null) }
     }
 
     @Test
@@ -152,7 +152,7 @@ class TokenAuthenticatorTest {
         val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
 
         assertNull(result)
-        coVerify(exactly = 0) { tokenStorage.clear() }
+        coVerify(exactly = 0) { tokenStorage.swapIfRefresh(any(), any()) }
     }
 
     // endregion
@@ -176,14 +176,64 @@ class TokenAuthenticatorTest {
         every { tokenStorage.peekOrNull() } returns storedTokens
         coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
                 buildRetrofitResponse(code = 200, body = newTokens)
-        coJustRun { tokenStorage.save(newTokens) }
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", newTokens) } returns newTokens
 
         val request = buildRequest(authHeader = "Bearer old-access")
         val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
 
         assertNotNull(result)
         assertEquals("Bearer new-access", result!!.header("Authorization"))
-        coVerify { tokenStorage.save(newTokens) }
+        coVerify { tokenStorage.swapIfRefresh("valid-refresh", newTokens) }
+    }
+
+    // endregion
+
+    // region password change racing a refresh
+
+    @Test
+    fun `a revoked refresh does not sign out when a new pair is already stored`() = runTest {
+        // The request failed with the old access; while it renewed, a password change stored its own pair.
+        every { tokenStorage.peekOrNull() } returns storedTokens
+        coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
+                buildRetrofitResponse(code = 401)
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", null) } returns passwordChangeTokens
+
+        val request = buildRequest(authHeader = "Bearer old-access")
+        val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
+
+        assertNotNull(result)
+        assertEquals("Bearer pw-access", result!!.header("Authorization"))
+        coVerify(exactly = 0) { tokenStorage.clear() }
+        coVerify(exactly = 0) { tokenStorage.save(any()) }
+    }
+
+    @Test
+    fun `a renewed pair arriving after the password change pair does not overwrite it`() = runTest {
+        // The renewal answered 200 just before the server revoked it; the password change pair was saved first.
+        every { tokenStorage.peekOrNull() } returns storedTokens
+        coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
+                buildRetrofitResponse(code = 200, body = newTokens)
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", newTokens) } returns passwordChangeTokens
+
+        val request = buildRequest(authHeader = "Bearer old-access")
+        val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
+
+        assertNotNull(result)
+        assertEquals("Bearer pw-access", result!!.header("Authorization"))
+        coVerify(exactly = 0) { tokenStorage.save(any()) }
+    }
+
+    @Test
+    fun `a renewal finishing after a logout does not bring the session back`() = runTest {
+        every { tokenStorage.peekOrNull() } returns storedTokens
+        coEvery { authApi.refresh(RefreshRequest(refresh = "valid-refresh")) } returns
+                buildRetrofitResponse(code = 200, body = newTokens)
+        coEvery { tokenStorage.swapIfRefresh("valid-refresh", newTokens) } returns null
+
+        val request = buildRequest(authHeader = "Bearer old-access")
+        val result = authenticator.authenticate(null, buildUnauthorizedResponse(request))
+
+        assertNull(result)
     }
 
     // endregion

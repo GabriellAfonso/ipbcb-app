@@ -61,23 +61,33 @@ class TokenAuthenticator @Inject constructor(
                 if (!refreshResponse.isSuccessful) {
                     Timber.w("Token refresh failed: HTTP %d", refreshResponse.code())
                     if (refreshResponse.code() == 401 || refreshResponse.code() == 400) {
-                        Timber.w("Clearing tokens due to %d on refresh", refreshResponse.code())
-                        tokenStorage.clear()
+                        // Só limpa se o par guardado ainda é o que falhou: uma troca de senha pode ter gravado um
+                        // par novo enquanto este refresh (já revogado) estava no ar.
+                        val stored = tokenStorage.swapIfRefresh(expectedRefresh = refresh, replacement = null)
+                        if (stored != null) {
+                            Timber.d("Refresh revoked but a newer pair is stored, retrying with it")
+                            return@runBlocking response.request.withBearer(stored.access)
+                        }
+                        Timber.w("Cleared tokens due to %d on refresh", refreshResponse.code())
                     }
                     return@runBlocking null
                 }
 
                 val newTokens = refreshResponse.body() ?: return@runBlocking null
 
-                tokenStorage.save(newTokens)
+                // O par renovado só entra se ninguém trocou o par no meio tempo; senão vale o mais novo.
+                val stored = tokenStorage.swapIfRefresh(expectedRefresh = refresh, replacement = newTokens)
+                    ?: return@runBlocking null
+                if (stored != newTokens) Timber.d("A newer pair was stored during refresh, keeping it")
                 Timber.d("Token refresh successful")
 
-                return@runBlocking response.request.newBuilder()
-                    .header("Authorization", "Bearer ${newTokens.access}")
-                    .build()
+                return@runBlocking response.request.withBearer(stored.access)
             }
         }
     }
+
+    private fun Request.withBearer(access: String): Request =
+        newBuilder().header("Authorization", "Bearer $access").build()
 
     private fun responseCount(response: Response): Int {
         var r: Response? = response

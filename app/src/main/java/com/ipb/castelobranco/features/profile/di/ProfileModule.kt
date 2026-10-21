@@ -9,8 +9,10 @@ import com.ipb.castelobranco.features.profile.data.access.ProfileAccessRepositor
 import com.ipb.castelobranco.features.profile.data.access.ProfileCurrentMemberRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileWorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
+import com.ipb.castelobranco.features.profile.data.repository.AccountRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.repository.ProfileRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
+import com.ipb.castelobranco.features.profile.domain.repository.AccountRepository
 import com.ipb.castelobranco.features.profile.domain.repository.ProfileRepository
 import dagger.Binds
 import dagger.Module
@@ -28,6 +30,10 @@ abstract class ProfileModule {
     @Binds
     @Singleton
     abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAccountRepository(impl: AccountRepositoryImpl): AccountRepository
 
     @Binds
     @Singleton

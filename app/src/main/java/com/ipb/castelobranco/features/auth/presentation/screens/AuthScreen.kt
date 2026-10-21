@@ -1,7 +1,6 @@
 // app/src/main/java/com/gabrielafonso/ipb/castelobranco/ui/screens/auth/AuthView.kt
 package com.ipb.castelobranco.features.auth.presentation.screens
 
-import timber.log.Timber
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,18 +45,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import com.ipb.castelobranco.BuildConfig
 import com.ipb.castelobranco.R
+import com.ipb.castelobranco.core.presentation.auth.requestGoogleIdToken
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.auth.presentation.viewmodel.AuthViewModel
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import androidx.credentials.CustomCredential
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,42 +90,10 @@ fun AuthScreen(
     }
 
     suspend fun launchGoogleSignIn() {
-        Timber.d("Starting Google Sign-In flow")
         isCredentialPending = true
-        val credentialManager = CredentialManager.create(context)
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(false)
-            .setServerClientId(BuildConfig.GOOGLE_CLIENT_ID)
-            .build()
-
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
-
-        try {
-            Timber.d("Calling credentialManager.getCredential...")
-            val response = credentialManager.getCredential(context, request)
-            val credential = response.credential
-            Timber.d("Credential received: %s - type: %s", credential::class.simpleName, credential.type)
-
-            if (credential is GoogleIdTokenCredential) {
-                isCredentialPending = false
-                viewModel.signInWithGoogle(credential.idToken)
-            } else if (credential is CustomCredential &&
-                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-            ) {
-                val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                if (BuildConfig.DEBUG) Timber.d("idToken extracted: %s", googleCredential.idToken.take(20))
-                isCredentialPending = false
-                viewModel.signInWithGoogle(googleCredential.idToken)
-            } else {
-                Timber.w("Unrecognized credential type: %s", credential.type)
-                isCredentialPending = false
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Google Sign-In failed")
-            isCredentialPending = false
-        }
+        val idToken = requestGoogleIdToken(context)
+        isCredentialPending = false
+        if (idToken != null) viewModel.signInWithGoogle(idToken)
     }
 
     BaseScreen(

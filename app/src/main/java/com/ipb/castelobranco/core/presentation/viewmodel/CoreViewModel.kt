@@ -149,6 +149,7 @@ class CoreViewModel @Inject constructor(
                         runCatching { refreshAccess() }
                             .onFailure { Timber.w(it, "Access refresh after 403 failed") }
                     }
+                    AuthEventBus.Event.AccountDeleted -> launch { endSession(notifyServer = false) }
                 }
             }
         }
@@ -263,18 +264,27 @@ class CoreViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             Timber.d("Logout started")
-            // Antes de tudo: a chamada ainda precisa do token de acesso. Nunca impede o logout.
-            unregisterDevice()
-            fetchProfileUseCase.clearLocalPhoto()
-            fetchProfileUseCase.clearSnapshot()
-            scheduleRepository.clearScheduleCache()
-            membersRepository.clearBirthdaysCache()
-            galleryAutoDownload.clearOnLogout()
-            clearSessionScopedCaches()
-            logoutUseCase()
+            endSession(notifyServer = true)
             Timber.d("Logout completed")
             _events.trySend(CoreEvent.LogoutSuccess)
         }
+    }
+
+    /**
+     * Everything that ends a session, shared by logout and account deletion so a cache added later cannot be
+     * forgotten in one of them. Only the server unregister differs: after a deletion the server already dropped the
+     * device and the access token no longer authenticates.
+     */
+    private suspend fun endSession(notifyServer: Boolean) {
+        // Antes de tudo: a chamada ainda precisa do token de acesso. Nunca impede o logout.
+        unregisterDevice(notifyServer = notifyServer)
+        fetchProfileUseCase.clearLocalPhoto()
+        fetchProfileUseCase.clearSnapshot()
+        scheduleRepository.clearScheduleCache()
+        membersRepository.clearBirthdaysCache()
+        galleryAutoDownload.clearOnLogout()
+        clearSessionScopedCaches()
+        logoutUseCase()
     }
 
     private suspend fun clearSessionScopedCaches() {

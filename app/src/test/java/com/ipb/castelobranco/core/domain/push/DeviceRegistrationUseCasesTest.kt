@@ -98,4 +98,15 @@ class DeviceRegistrationUseCasesTest {
 
         assertTrue(devices.unregistered.isEmpty())
     }
+
+    @Test
+    fun `local-only unregister forgets the device without calling the server`() = runTest {
+        store.token = "token-1"
+
+        UnregisterDeviceUseCase(scheduler, devices, store)(notifyServer = false)
+
+        assertTrue(devices.unregistered.isEmpty())
+        assertEquals(1, scheduler.cancelCalls)
+        assertNull(store.token)
+    }
 }

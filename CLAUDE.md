@@ -204,5 +204,5 @@ specs/                          # project root, outside server/
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/014-church-events/plan.md`
+at `specs/015-user-account/plan.md`
 <!-- SPECKIT END -->

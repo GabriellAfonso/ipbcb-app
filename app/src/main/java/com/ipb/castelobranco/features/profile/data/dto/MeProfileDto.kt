@@ -22,6 +22,15 @@ data class MeProfileDto(
     @SerialName("is_worship_member") val isWorshipMember: Boolean = false,
     /** Worship member with `manage` on `songs`; `false` when absent (cached before backend 017). */
     @SerialName("can_save_setlist") val canSaveSetlist: Boolean = false,
+    /** Login name; `null` when cached before backend 021. */
+    @SerialName("username") val username: String? = null,
+    /**
+     * The account has a usable password. `null` (cached before backend 021) means unknown, never `false`: a `false`
+     * default would send a password account to the Google confirmation.
+     */
+    @SerialName("has_password") val hasPassword: Boolean? = null,
+    /** Account creation date, `YYYY-MM-DD` in Brasília time; `null` when cached before backend 021. */
+    @SerialName("date_joined") val dateJoined: String? = null,
 )
 
 @Serializable

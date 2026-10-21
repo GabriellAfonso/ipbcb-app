@@ -15,6 +15,12 @@ interface AuthEventBus {
 
         /** A scoped endpoint refused the user (403 `PERMISSION_DENIED`): the profile may be stale. */
         data object PermissionDenied : Event()
+
+        /**
+         * The server deleted the account: the session must end locally, like a logout, but the server already
+         * signed out and forgot the push device.
+         */
+        data object AccountDeleted : Event()
     }
 
     val events: SharedFlow<Event>

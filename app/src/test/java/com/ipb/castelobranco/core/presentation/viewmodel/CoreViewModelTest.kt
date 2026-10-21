@@ -510,6 +510,60 @@ class CoreViewModelTest {
         )
     }
 
+    @Test
+    fun `logout asks the server to forget the device`() = runTest {
+        viewModel.logout()
+        advanceUntilIdle()
+
+        assertEquals(listOf("token-1"), devices.unregistered)
+        assertNull(tokenStore.token)
+    }
+
+    // endregion
+
+    // region account deleted
+
+    @Test
+    fun `AccountDeleted runs every logout step without the server unregister`() = runTest {
+        val order = mutableListOf<String>()
+        coEvery { fetchProfileUseCase.clearLocalPhoto() } coAnswers {
+            order.add("clearPhoto")
+            Result.success(Unit)
+        }
+        coEvery { fetchProfileUseCase.clearSnapshot() } coAnswers { order.add("clearProfile") }
+        coEvery { scheduleRepository.clearScheduleCache() } coAnswers { order.add("clearSchedule") }
+        coEvery { membersRepository.clearBirthdaysCache() } coAnswers { order.add("clearBirthdays") }
+        coEvery { galleryAutoDownload.clearOnLogout() } coAnswers { order.add("clearGallery") }
+        coEvery { logoutUseCase() } coAnswers { order.add("clearTokens") }
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        authEventsFlow.emit(AuthEventBus.Event.AccountDeleted)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("clearPhoto", "clearProfile", "clearSchedule", "clearBirthdays", "clearGallery", "clearTokens"),
+            order,
+        )
+        assertEquals(1, sessionCacheClears)
+        assertTrue(devices.unregistered.isEmpty())
+        assertNull(tokenStore.token)
+        assertEquals(1, pushScheduler.cancelCalls)
+    }
+
+    @Test
+    fun `AccountDeleted does not emit LogoutSuccess`() = runTest {
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        viewModel.events.test {
+            authEventsFlow.emit(AuthEventBus.Event.AccountDeleted)
+            advanceUntilIdle()
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // endregion
 
     // region session-scoped caches
