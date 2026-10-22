@@ -86,15 +86,14 @@ fica guardada no código mas o card aparece cinza.
 | Marcar Presença    | Teal     | `Person`        | Sem implementação              | papel Admin                          |
 | Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`    | `schedule` ≥ `manage`                |
 | Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
-| Avisos             | Rosa     | `Send`          | Sem implementação              | `notices` ≥ `manage`                 |
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
 | Eventos            | Ciano    | `Event`         | Navega para a área de eventos  | `events` ≥ `view`                    |
-| Notificações       | Pink     | `Notifications` | Sem implementação              | papel Admin                          |
 | Perfis             | Âmbar    | `ManageAccounts`| Navega para Perfis (§8)        | `profiles` ≥ `view`                  |
 
-O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença e
-Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os nove; Liderança
-todos menos Presença e Notificações; Mídia Relatórios, Eventos e o cinza Avisos. A área de eventos (lista e
+O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença
+não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os sete; Liderança todos menos
+Presença; Mídia Relatórios e Eventos. Avisos e Notificações (push manual) não vão existir no app: não há card para
+eles, e o escopo `notices` que o backend ainda manda é ignorado pelo painel. A área de eventos (lista e
 formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4.
 
 A galeria não tem card: a gestão vive nas próprias telas dela, abertas pelo botão Galeria da tela inicial, e cada

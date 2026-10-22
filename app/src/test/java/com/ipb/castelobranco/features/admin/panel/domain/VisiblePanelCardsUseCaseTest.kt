@@ -9,8 +9,6 @@ import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.ATTENDANCE
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.EVENTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.MEMBERS
-import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTICES
-import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTIFICATIONS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.PROFILES
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.REPORTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.SCHEDULE
@@ -55,16 +53,16 @@ class VisiblePanelCardsUseCaseTest {
     }
 
     @Test
-    fun `leader sees everything but the admin-only placeholders`() {
+    fun `leader sees everything but the admin-only attendance placeholder`() {
         assertEquals(
-            listOf(WORSHIP, SCHEDULE, MEMBERS, NOTICES, REPORTS, EVENTS, PROFILES),
+            listOf(WORSHIP, SCHEDULE, MEMBERS, REPORTS, EVENTS, PROFILES),
             visibleCards(leader),
         )
     }
 
     @Test
-    fun `media sees reports, events and the notices placeholder`() {
-        assertEquals(listOf(NOTICES, REPORTS, EVENTS), visibleCards(media))
+    fun `media sees reports and events`() {
+        assertEquals(listOf(REPORTS, EVENTS), visibleCards(media))
     }
 
     @Test
@@ -91,7 +89,7 @@ class VisiblePanelCardsUseCaseTest {
         val viewer = Access(roles = emptySet(), hasAnyRole = true, levels = mapOf(Scope.MEMBERS to VIEW))
 
         assertEquals(listOf(MEMBERS), visibleCards(viewer))
-        assertTrue(ATTENDANCE !in visibleCards(viewer) && NOTIFICATIONS !in visibleCards(viewer))
+        assertTrue(ATTENDANCE !in visibleCards(viewer))
     }
 
     @Test

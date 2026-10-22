@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,13 +30,11 @@ private val Orange = Color(0xFFF2A300)
 private val Teal = Color(0xFF1A9E8A)
 private val Blue = Color(0xFF2563EB)
 private val Purple = Color(0xFF7C3AED)
-private val Rose = Color(0xFFE11D48)
 private val Indigo = Color(0xFF4F46E5)
 private val Amber = Color(0xFFD97706)
 private val Emerald = Color(0xFF059669)
 private val Sky = Color(0xFF0EA5E9)
 private val Slate = Color(0xFF475569)
-private val Pink = Color(0xFFDB2777)
 
 private data class AdminItem(
     val label: String,
@@ -53,12 +50,10 @@ private val allItems = listOf(
     AdminItem("Gerar Escala", "Criar escala mensal", Icons.Filled.DateRange, Green),
     AdminItem("Membros", "Gerenciar cadastro", Icons.Filled.People, Blue, badge = "142"),
     AdminItem("Financeiro", "Dizimos e ofertas", Icons.Filled.AccountBalance, Purple),
-    AdminItem("Avisos", "Publicar comunicados", Icons.AutoMirrored.Filled.Send, Rose, badge = "3"),
     AdminItem("Relatorios", "Estatisticas gerais", Icons.Filled.BarChart, Indigo),
     AdminItem("Galeria", "Gerenciar fotos e albuns", Icons.Filled.PhotoLibrary, Amber),
     AdminItem("Eventos", "Criar e editar eventos", Icons.Filled.Event, Sky, badge = "2"),
     AdminItem("Grupos", "Celulas e ministerios", Icons.Filled.Groups, Emerald),
-    AdminItem("Notificacoes", "Enviar push notification", Icons.Filled.Notifications, Pink),
     AdminItem("Configuracoes", "Ajustes do aplicativo", Icons.Filled.Settings, Slate),
 )
 

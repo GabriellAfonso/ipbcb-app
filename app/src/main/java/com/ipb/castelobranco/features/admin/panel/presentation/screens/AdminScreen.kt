@@ -18,14 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -65,10 +63,8 @@ import com.ipb.castelobranco.features.admin.panel.presentation.viewmodel.AdminPa
  * da igreja ([BrandColors]), servem só para diferenciar as áreas administrativas entre si.
  */
 private val Blue = Color(0xFF2563EB)
-private val Rose = Color(0xFFE11D48)
 private val Indigo = Color(0xFF4F46E5)
 private val Sky = Color(0xFF0EA5E9)
-private val Pink = Color(0xFFDB2777)
 private val Amber = Color(0xFFD97706)
 
 /** Cinza aplicado no lugar do [AdminAction.accentColor] enquanto a ação não tem implementação. */
@@ -247,14 +243,6 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
         badge = memberCount?.toString(),
         onClick = nav.members
     )
-    PanelCard.NOTICES -> AdminAction(
-        label = "Avisos",
-        description = "Publicar comunicados",
-        icon = Icons.AutoMirrored.Filled.Send,
-        accentColor = Rose,
-        enabled = false,
-        onClick = { /* TODO */ }
-    )
     PanelCard.REPORTS -> AdminAction(
         label = "Relatórios",
         description = "Estatísticas gerais",
@@ -268,14 +256,6 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
         icon = Icons.Filled.Event,
         accentColor = Sky,
         onClick = nav.events
-    )
-    PanelCard.NOTIFICATIONS -> AdminAction(
-        label = "Notificações",
-        description = "Enviar push notification",
-        icon = Icons.Filled.Notifications,
-        accentColor = Pink,
-        enabled = false,
-        onClick = { /* TODO */ }
     )
     PanelCard.PROFILES -> AdminAction(
         label = "Perfis",
