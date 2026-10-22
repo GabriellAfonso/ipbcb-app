@@ -109,7 +109,7 @@ fun Highlight(
                         addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(cr, cr)))
                     }
                     clipPath(clip) {
-                        drawInsetEdges(inset = inset, cornerPx = cr)
+                        drawInsetEdges(inset = inset)
                     }
                 }
         )
@@ -601,36 +601,40 @@ private fun HighlightBirthdays13Preview() {
 
 // ─── Edge drawing ─────────────────────────────────────────────────────────────
 
-private fun DrawScope.drawInsetEdges(inset: Float, cornerPx: Float) {
+/**
+ * Plain rects: the caller's rounded clip already shapes the corners. A rounded rect here would turn each
+ * thin strip into a pill (corner radius > half the strip) and leave light wedges at the corners.
+ */
+private fun DrawScope.drawInsetEdges(inset: Float) {
     val edgeColor = Color(0x2A000000)
     val transparent = Color.Transparent
 
-    drawRoundRect(
+    drawRect(
         brush = Brush.verticalGradient(listOf(edgeColor, transparent), 0f, inset),
         topLeft = Offset(0f, 0f), size = Size(size.width, inset),
-        cornerRadius = CornerRadius(cornerPx), blendMode = BlendMode.Multiply
+        blendMode = BlendMode.Multiply
     )
-    drawRoundRect(
+    drawRect(
         brush = Brush.verticalGradient(listOf(transparent, edgeColor), size.height - inset, size.height),
         topLeft = Offset(0f, size.height - inset), size = Size(size.width, inset),
-        cornerRadius = CornerRadius(cornerPx), blendMode = BlendMode.Multiply
+        blendMode = BlendMode.Multiply
     )
-    drawRoundRect(
+    drawRect(
         brush = Brush.horizontalGradient(listOf(edgeColor, transparent), 0f, inset),
         topLeft = Offset(0f, 0f), size = Size(inset, size.height),
-        cornerRadius = CornerRadius(cornerPx), blendMode = BlendMode.Multiply
+        blendMode = BlendMode.Multiply
     )
-    drawRoundRect(
+    drawRect(
         brush = Brush.horizontalGradient(listOf(transparent, edgeColor), size.width - inset, size.width),
         topLeft = Offset(size.width - inset, 0f), size = Size(inset, size.height),
-        cornerRadius = CornerRadius(cornerPx), blendMode = BlendMode.Multiply
+        blendMode = BlendMode.Multiply
     )
-    drawRoundRect(
+    drawRect(
         brush = Brush.radialGradient(
             listOf(Color(0x14FFFFFF), Color.Transparent),
             center = Offset(size.width * 0.5f, size.height * 0.5f),
             radius = size.minDimension * 0.75f
         ),
-        cornerRadius = CornerRadius(cornerPx), blendMode = BlendMode.Screen
+        blendMode = BlendMode.Screen
     )
 }
