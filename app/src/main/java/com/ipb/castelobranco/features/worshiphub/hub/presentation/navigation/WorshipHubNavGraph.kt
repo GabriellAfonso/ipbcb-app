@@ -5,13 +5,16 @@ import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.components.InDevelopmentScreen
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.navigation.chordChartsGraph
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.navigation.lyricsGraph
+import com.ipb.castelobranco.features.worshiphub.register.presentation.screens.SundayRegistrationScreen
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.navigation.SongsRoutes
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.navigation.songsGraph
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.screens.WorshipHubScreen
@@ -70,8 +73,23 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
             WorshipSongsTableScreen(
                 onBackClick = { navController.safePopBackStack() },
                 onSongClick = { songId -> navController.navigate(SongsRoutes.detail(songId)) },
+                onRegisterSundayClick = { navController.navigate(AppRoutes.sundayRegister()) },
                 viewModel   = viewModel,
             )
+        }
+
+        // "Registrar domingo": from the Tables menu, or pre-filled from administration (pending Sunday, push).
+        composable(
+            route = AppRoutes.SUNDAY_REGISTER,
+            arguments = listOf(
+                navArgument(AppRoutes.ARG_SUNDAY_DATE) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            SundayRegistrationScreen(onBackClick = { navController.safePopBackStack() })
         }
 
         songsGraph(navController)

@@ -17,6 +17,9 @@ import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SaveReper
 import com.ipb.castelobranco.core.domain.setlist.setlistDateFor
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.di.DefaultDispatcher
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.SearchSundaysUseCase
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SaveSetlistResult
@@ -81,11 +84,17 @@ class SongsTableViewModel @Inject constructor(
     private val saveDraft: SaveRepertoireDraftUseCase,
     private val clearDraft: ClearRepertoireDraftUseCase,
     observeWorshipAccess: ObserveWorshipAccessUseCase,
+    observeAccess: ObserveAccessUseCase,
     private val dateProvider: DateProvider,
     private val saveSetlist: SaveSundaySetlistUseCase,
     private val searchSundays: SearchSundaysUseCase,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
+
+    /** `songs` ≥ `manage`: the menu with "Registrar domingo". */
+    val canRegisterSunday: StateFlow<Boolean> = observeAccess()
+        .map { it.allows(Scope.SONGS, AccessLevel.MANAGE) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val allSongs: StateFlow<List<Song>> = repository.observeAllSongs()
         .map { state -> if (state is SnapshotState.Data) state.value else emptyList() }

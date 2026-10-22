@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -213,13 +212,6 @@ fun AdminPanelContent(
 // Cards com `enabled = false` estão cinzas por falta de implementação. Ao implementar, apague o
 // `enabled = false` — o `accentColor` de cada um já é a cor definitiva do card e volta a valer sozinho.
 internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {
-    PanelCard.WORSHIP -> AdminAction(
-        label = "Gestão do Louvor",
-        description = "Músicas, domingos e cifras",
-        icon = Icons.Filled.MusicNote,
-        accentColor = BrandColors.Orange,
-        onClick = nav.register
-    )
     PanelCard.ATTENDANCE -> AdminAction(
         label = "Marcar Presença",
         description = "Presença dos membros",

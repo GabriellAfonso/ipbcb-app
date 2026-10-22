@@ -4,8 +4,6 @@ import android.content.Intent
 import androidx.compose.runtime.Stable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
@@ -18,7 +16,6 @@ import com.ipb.castelobranco.features.admin.members.presentation.navigation.Memb
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.membersGraph
 import com.ipb.castelobranco.features.admin.profiles.presentation.navigation.ProfilesRoutes
 import com.ipb.castelobranco.features.admin.profiles.presentation.navigation.profilesGraph
-import com.ipb.castelobranco.features.admin.register.presentation.screens.MusicRegistrationScreen
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.ReportsRoutes
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.reportsGraph
 import com.ipb.castelobranco.features.admin.schedule.presentation.screens.AdminScheduleScreen
@@ -27,7 +24,6 @@ import java.time.LocalDate
 @Stable
 data class AdminNav(
     val back: () -> Unit,
-    val register: () -> Unit,
     val schedule: () -> Unit,
     val reports: () -> Unit,
     val members: () -> Unit,
@@ -38,23 +34,16 @@ data class AdminNav(
 
 object AdminRoutes {
     const val ADMIN    = "AdminMain"
-    const val REGISTER = "AdminRegister"
     const val SCHEDULE = "AdminSchedule"
-
-    /** Optional `YYYY-MM-DD`: opens "Registrar domingo" pre-filled with that Sunday's setlist. */
-    const val ARG_DATE = "date"
-    const val REGISTER_ROUTE = "$REGISTER?$ARG_DATE={$ARG_DATE}"
-
-    fun register(date: LocalDate) = "$REGISTER?$ARG_DATE=$date"
 }
 
 /**
- * Opens the pre-filled register screen from outside administration (a notification tap). Goes through
- * the panel so back lands there.
+ * Opens the pre-filled "Registrar domingo" (worship hub) from a notification tap. Goes through the panel so back
+ * lands there, as it does from the pending card.
  */
 fun NavController.navigateToSundayConfirmation(date: LocalDate) {
     navigate(AppRoutes.ADMIN_GRAPH)
-    navigate(AdminRoutes.register(date))
+    navigate(AppRoutes.sundayRegister(date))
 }
 
 /** Opens "Perfis" (on Pendentes) from outside administration (a notification tap), through the panel. */
@@ -66,13 +55,12 @@ fun NavController.navigateToProfilesPending() {
 fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     fun nav() = AdminNav(
         back     = { navController.safePopBackStack() },
-        register = { navController.navigate(AdminRoutes.REGISTER) },
         schedule = { navController.navigate(AdminRoutes.SCHEDULE) },
         reports  = { navController.navigate(ReportsRoutes.GRAPH) },
         members  = { navController.navigate(MembersRoutes.GRAPH) },
         events   = { navController.navigate(EventsAdminRoutes.GRAPH) },
         profiles = { navController.navigate(ProfilesRoutes.GRAPH) },
-        confirmSunday = { date -> navController.navigate(AdminRoutes.register(date)) },
+        confirmSunday = { date -> navController.navigate(AppRoutes.sundayRegister(date)) },
     )
 
     navigation(
@@ -81,19 +69,6 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     ) {
         composable(AdminRoutes.ADMIN) {
             AdminScreen(nav = nav())
-        }
-
-        composable(
-            route = AdminRoutes.REGISTER_ROUTE,
-            arguments = listOf(
-                navArgument(AdminRoutes.ARG_DATE) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                },
-            ),
-        ) {
-            MusicRegistrationScreen(nav())
         }
 
         composable(AdminRoutes.SCHEDULE) {

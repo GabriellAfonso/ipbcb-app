@@ -20,10 +20,10 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMember
 import com.ipb.castelobranco.features.admin.members.domain.usecase.RefreshMembersUseCase
 import com.ipb.castelobranco.features.admin.panel.domain.VisiblePanelCardsUseCase
 import com.ipb.castelobranco.features.admin.panel.presentation.state.PendingConfirmationsUi
-import com.ipb.castelobranco.features.admin.register.domain.FakeSetlistConfirmationRepository
+import com.ipb.castelobranco.core.domain.setlist.FakeSetlistConfirmationRepository
 import com.ipb.castelobranco.features.admin.panel.presentation.state.AdminPanelEvent
-import com.ipb.castelobranco.features.admin.register.domain.usecase.DeletePendingSetlistUseCase
-import com.ipb.castelobranco.features.admin.register.domain.usecase.GetPendingConfirmationsUseCase
+import com.ipb.castelobranco.core.domain.setlist.DeletePendingSetlistUseCase
+import com.ipb.castelobranco.core.domain.setlist.GetPendingConfirmationsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

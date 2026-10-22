@@ -11,7 +11,6 @@ import com.ipb.castelobranco.features.admin.panel.domain.CardRequirement.HasRole
  * (`specs/admin/spec.md` §2.1). Whether a card is enabled or grey is presentation, not here.
  */
 enum class PanelCard(val requirement: CardRequirement) {
-    WORSHIP(AtLeast(Scope.SONGS, AccessLevel.MANAGE)),
     ATTENDANCE(HasRole(Role.ADMIN)),
     SCHEDULE(AtLeast(Scope.SCHEDULE, AccessLevel.MANAGE)),
     MEMBERS(AtLeast(Scope.MEMBERS, AccessLevel.VIEW)),

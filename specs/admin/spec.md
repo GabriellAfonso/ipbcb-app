@@ -14,7 +14,6 @@ implementação — elas já aparecem no painel como cards inativos.
 | Tela                     | Rota                        | Origem                          |
 |--------------------------|-----------------------------|---------------------------------|
 | Painel                   | `AdminMain`                 | `CoreScreen → Painel de Gestão` |
-| Registro de louvor       | `AdminRegister`             | Card "Gestão do Louvor"         |
 | Geração de escala        | `AdminSchedule`             | Card "Gerar Escala"             |
 | Hub de relatórios        | `ReportsHub`                | Card "Relatórios"               |
 | Histórico do hinário     | `ReportsHymnalReport`       | Item do hub                     |
@@ -26,8 +25,8 @@ implementação — elas já aparecem no painel como cards inativos.
 | Formulário do membro     | `MembersForm?memberId=`     | "Novo membro" / editar no perfil|
 | Histórico do membro      | `MembersHistory/{memberId}` | Card de histórico no perfil     |
 
-As três primeiras vivem em `adminGraph` (`AdminNavGraph.kt`). A navegação chega às telas pelo
-`data class` `AdminNav` (`back`, `register`, `schedule`, `reports`, `members`), montado no grafo e
+As duas primeiras vivem em `adminGraph` (`AdminNavGraph.kt`). A navegação chega às telas pelo
+`data class` `AdminNav` (`back`, `schedule`, `reports`, `members`, `events`, `profiles`, `confirmSunday`), montado no grafo e
 repassado como parâmetro — o painel não conhece o `NavController`.
 
 As cinco de relatório vivem em `reportsGraph` (`ReportsNavGraph.kt`), **aninhado dentro de**
@@ -82,7 +81,6 @@ fica guardada no código mas o card aparece cinza.
 
 | Ação               | Destaque | Ícone           | Estado                         | Requisito para aparecer              |
 |--------------------|----------|-----------------|--------------------------------|--------------------------------------|
-| Gestão do Louvor   | Laranja  | `MusicNote`     | Navega para `AdminRegister`    | `songs` ≥ `manage`                   |
 | Marcar Presença    | Teal     | `Person`        | Sem implementação              | papel Admin                          |
 | Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`    | `schedule` ≥ `manage`                |
 | Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
@@ -91,7 +89,7 @@ fica guardada no código mas o card aparece cinza.
 | Perfis             | Âmbar    | `ManageAccounts`| Navega para Perfis (§8)        | `profiles` ≥ `view`                  |
 
 O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença
-não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os sete; Liderança todos menos
+não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os seis; Liderança todos menos
 Presença; Mídia Relatórios e Eventos. Avisos e Notificações (push manual) não vão existir no app: não há card para
 eles, e o escopo `notices` que o backend ainda manda é ignorado pelo painel. A área de eventos (lista e
 formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4.
@@ -104,7 +102,7 @@ comunica isso ao usuário.
 
 **Confirmar músicas de domingo (spec 011):** acima da grade, para quem tem `songs` ≥ `manage`, um card lista os
 domingos com repertório salvo cujas músicas tocadas ainda não foram registradas (`GET api/setlists/pending-confirmation/`,
-mais recente primeiro), como "Domingo dd/MM". Tocar num domingo abre o registro pré-preenchido (seção 3). Lista vazia,
+mais recente primeiro), como "Domingo dd/MM". Tocar num domingo abre "Registrar domingo" pré-preenchido (seção 3). Lista vazia,
 sem acesso ou recusa 403 escondem o card; enquanto a primeira leitura não volta o card não aparece (quase sempre não
 há pendência, e um card que surge e some empurra a grade à toa); falha mostra o texto do erro e
 "Tentar novamente". A lista é lida de novo sempre que o painel volta à tela (`ON_RESUME`), então um domingo recém
@@ -119,52 +117,21 @@ deixa de ver o repertório quando o app relê o repertório atual.
 Nenhum card mostra badge com contador. Contadores só entram quando houver dado real por trás;
 número fixo no código seria informação falsa para a liderança.
 
-### 2.2 Nomenclatura
+## 3. Confirmação de domingos
 
-"Gestão do Louvor" cobre os três usos da tela de registro — cadastrar música no hinário,
-registrar as músicas tocadas no domingo e, futuramente, cadastrar cifra e letra. O nome
-"Ministério de Louvor" **não** pode ser usado aqui: `WorshipHubScreen` já se apresenta como
-"Min. Louvor" no lado de consumo (cifras, letras, tabelas). O par é intencional — o hub consome,
-a administração gerencia.
+O registro das músicas tocadas e o cadastro de música não vivem na administração: "Registrar domingo" fica no menu
+das Tabelas do Worship Hub e "Adicionar Música" no menu da lista de Músicas (worshiphub spec §2.6 e §3.3). A
+administração só tem as duas entradas que abrem "Registrar domingo" pré-preenchido com um domingo pendente
+(`AppRoutes.sundayRegister(date)`):
 
-## 3. Registro de louvor
+- O card "Confirmar músicas de domingo" do painel (§2.1). Voltar cai no painel.
+- A notificação "Confirmar músicas de domingo", que passa pelo `CoreActivity` e chama
+  `navigateToSundayConfirmation(date)` (painel e depois o registro, então voltar também cai no painel). Sem
+  `songs` ≥ `manage` ou sem sessão, a notificação deixa o app na home com "Você não tem mais acesso ao registro de
+  músicas.".
 
-`MusicRegistrationScreen` + `MusicRegistrationViewModel`. Um seletor (`RegistrationTypeSelect`)
-escolhe entre os dois tipos de `RegistrationType`:
-
-- `SUNDAY` — "Registrar domingo": data do culto e as músicas tocadas, em linhas ordenadas. O tom de cada linha
-  sai de uma lista com os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
-- `MUSIC` — "Registrar música": cadastro de uma música nova no catálogo de músicas (o mesmo do Worship Hub).
-
-**Registrar música:** o form tem "Título" e "Artista", os dois obrigatórios (o botão só habilita com os dois
-preenchidos). Enviar faz `POST api/songs/` com `{ title, artist }` já sem espaços nas pontas
-(`RegisterSongUseCase`, `WorshipRegisterRepository`). Categoria e link do YouTube não entram pelo app.
-
-- Sucesso: snackbar "Música cadastrada.", o form volta vazio e o catálogo é relido, então a música já aparece no
-  registro de domingo e no Repertório do Worship Hub.
-- `409` (mesmo título e artista, ignorando maiúsculas): "Essa música já está cadastrada." O form fica como está.
-- `400` (campo vazio, ou com mais de 100 caracteres): "Título ou artista inválido. Use até 100 caracteres."
-- Outras falhas (rede, `403` sem `songs` `manage`, 5xx): o texto genérico da categoria do erro.
-- Enquanto envia, um segundo toque em enviar é ignorado.
-
-**Catálogo ao abrir:** toda vez que a tela abre, o catálogo de músicas é atualizado (`GET songs/`, via
-`AllSongsRepository`, o mesmo catálogo do Worship Hub), para que uma música recém-cadastrada apareça nas linhas
-sem reiniciar o app. Falha mantém o catálogo já carregado; sem catálogo nenhum, "Falha ao carregar músicas.".
-
-Cadastro de cifra e de letra ainda não existe no app. O backend já tem os endpoints (`POST`/`PATCH` em
-`api/chord-charts/` e `api/lyrics/`, com `songs` `manage`); falta só a tela.
-
-Eventos de uma vez (sucesso, erro de envio) saem por `MusicRegistrationEvent`.
-
-**Domingo pré-preenchido (spec 011):** a rota aceita `AdminRegister?date=YYYY-MM-DD`. Com data, a tela abre em
-`SUNDAY` com a data fixa (o seletor de data não abre) e lê o repertório desse domingo
-(`GET api/setlists/{date}/`, `SetlistConfirmationRepository`): uma linha por item na ordem das posições (no mínimo
-as 4 de sempre), com música e tom, todas editáveis — o que é registrado é o que a tela mostra. 404 deixa as linhas
-vazias com o aviso "Repertório de dd/MM não encontrado. Preencha as músicas."; outra falha mostra o erro com
-"Tentar novamente" sem bloquear o preenchimento manual. Sem data, a tela é a de sempre. Entradas: o card de
-pendentes (seção 2.1) e a notificação "Confirmar músicas de domingo", que passa pelo `CoreActivity` e chama
-`navigateToSundayConfirmation(date)` (painel e depois o registro, então voltar cai no painel). Sem `songs` ≥
-`manage` ou sem sessão, a notificação deixa o app na home com "Você não tem mais acesso ao registro de músicas.".
+A leitura dos pendentes, a remoção de um repertório e a leitura de um domingo ficam em
+`SetlistConfirmationRepository` (core §4.2.4), compartilhado com o worship hub.
 
 ## 4. Geração de escala
 

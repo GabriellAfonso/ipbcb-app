@@ -12,7 +12,6 @@ import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.MEMBERS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.PROFILES
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.REPORTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.SCHEDULE
-import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.WORSHIP
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -55,7 +54,7 @@ class VisiblePanelCardsUseCaseTest {
     @Test
     fun `leader sees everything but the admin-only attendance placeholder`() {
         assertEquals(
-            listOf(WORSHIP, SCHEDULE, MEMBERS, REPORTS, EVENTS, PROFILES),
+            listOf(SCHEDULE, MEMBERS, REPORTS, EVENTS, PROFILES),
             visibleCards(leader),
         )
     }

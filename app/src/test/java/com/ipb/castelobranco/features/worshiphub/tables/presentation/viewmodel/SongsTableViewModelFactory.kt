@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
 import com.ipb.castelobranco.core.testing.FakeSundaySetlistRepository
 import com.ipb.castelobranco.core.testing.FakeWallClock
 import com.ipb.castelobranco.core.testing.FakeWorshipAccessRepository
@@ -26,6 +28,7 @@ fun songsTableViewModel(
     draftRepository: FakeRepertoireDraftRepository = FakeRepertoireDraftRepository(),
     clock: FakeWallClock = FakeWallClock(),
     worshipAccess: FakeWorshipAccessRepository = FakeWorshipAccessRepository(),
+    access: FakeAccessRepository = FakeAccessRepository(),
     today: LocalDate = LocalDate.of(2026, 9, 30),
     saveRepository: FakeSetlistSaveRepository = FakeSetlistSaveRepository(),
     sundaySetlist: FakeSundaySetlistRepository = FakeSundaySetlistRepository(),
@@ -36,6 +39,7 @@ fun songsTableViewModel(
     saveDraft = SaveRepertoireDraftUseCase(draftRepository, clock),
     clearDraft = ClearRepertoireDraftUseCase(draftRepository),
     observeWorshipAccess = ObserveWorshipAccessUseCase(worshipAccess),
+    observeAccess = ObserveAccessUseCase(access),
     dateProvider = DateProvider { today },
     saveSetlist = SaveSundaySetlistUseCase(saveRepository, sundaySetlist),
     searchSundays = SearchSundaysUseCase(),

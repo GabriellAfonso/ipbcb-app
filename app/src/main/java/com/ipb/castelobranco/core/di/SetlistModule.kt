@@ -1,8 +1,11 @@
 package com.ipb.castelobranco.core.di
 
+import com.ipb.castelobranco.core.data.setlist.SetlistAdminApi
 import com.ipb.castelobranco.core.data.setlist.SetlistApi
+import com.ipb.castelobranco.core.data.setlist.SetlistConfirmationRepositoryImpl
 import com.ipb.castelobranco.core.data.setlist.SundaySetlistRepositoryImpl
 import com.ipb.castelobranco.core.domain.session.SessionScopedCache
+import com.ipb.castelobranco.core.domain.setlist.SetlistConfirmationRepository
 import com.ipb.castelobranco.core.domain.setlist.SundaySetlistRepository
 import com.ipb.castelobranco.core.domain.startup.Preloadable
 import dagger.Binds
@@ -22,11 +25,22 @@ abstract class SetlistModule {
     @Singleton
     abstract fun bindSundaySetlistRepository(impl: SundaySetlistRepositoryImpl): SundaySetlistRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindSetlistConfirmationRepository(
+        impl: SetlistConfirmationRepositoryImpl,
+    ): SetlistConfirmationRepository
+
     companion object {
         @Provides
         @Singleton
         fun provideSetlistApi(@AuthedRetrofit retrofit: Retrofit): SetlistApi =
             retrofit.create(SetlistApi::class.java)
+
+        @Provides
+        @Singleton
+        fun provideSetlistAdminApi(@AuthedRetrofit retrofit: Retrofit): SetlistAdminApi =
+            retrofit.create(SetlistAdminApi::class.java)
 
         // Offline from boot: the worship hub lists read it before any network call.
         @Provides @IntoSet

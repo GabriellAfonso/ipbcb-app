@@ -21,7 +21,8 @@ Navegacao: `CoreScreen → WorshipHubScreen → [Tabelas | Musicas | Cifras | Le
 
 ## 2. Tabelas
 
-Tela com 4 tabs horizontais e busca global via FAB.
+Tela com 4 tabs horizontais e busca global via FAB. Quem tem `songs` ≥ `manage` ve menu overflow (⋮) na TopBar
+com "Registrar domingo" (§2.6).
 
 **Tab selecionada:** abre em Ultimos Domingos. Ao voltar de `SongDetailScreen` (ou apos rotacao / morte do
 processo), a tela reabre na tab de onde o usuario saiu.
@@ -72,7 +73,7 @@ O seletor de tom oferece os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, 
 **Catalogo ao abrir:** entrar na aba Repertorio atualiza o catalogo de musicas (`GET songs/`), para que
 uma musica recem-cadastrada apareca no select sem reiniciar o app. Falha e silenciosa: o select continua com o
 catalogo que ja estava carregado. O catalogo e um so no app (`SongsRepositoryImpl` e `@Singleton`): lista de
-musicas, repertorio, cifras, letras e o registro de domingo (admin) leem a mesma instancia em memoria.
+musicas, repertorio, cifras, letras e o registro de domingo leem a mesma instancia em memoria.
 
 **Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
 
@@ -131,6 +132,42 @@ opcoes, a musica pode repetir no repertorio.
 - Busca accent-insensitive usando `normalize()`
 - Ativa apenas na tab "Ultimos Domingos" (demais tabs nao filtram)
 
+### 2.6 Registrar domingo (`songs` ≥ `manage`)
+
+Registra as musicas tocadas num culto de domingo (`POST api/played/register/`). Tela `SundayRegistrationScreen` +
+`SundayRegistrationViewModel` (`worshiphub/register/`), rota `AppRoutes.SUNDAY_REGISTER`
+(`sunday_register?date=YYYY-MM-DD`, data opcional) registrada em `worshipHubGraph`. A rota fica em `AppRoutes`
+porque a administracao tambem abre a tela (admin spec §3).
+
+Entradas:
+- Menu ⋮ das Tabelas → "Registrar domingo": sem data. Voltar cai nas Tabelas.
+- Card "Confirmar músicas de domingo" do painel de gestao e notificacao "Confirmar músicas de domingo": com a data
+  do domingo pendente (pre-preenchido, abaixo). Voltar cai no painel.
+
+**Tela:** titulo "Registrar domingo", campo de data (abre o seletor; hoje por padrao) e as musicas tocadas em
+linhas ordenadas (no minimo 4; "adicionar mais" cria a 5a em diante, que pode ser removida). Cada linha tem musica
+(busca no catalogo) e tom, que sai de uma lista com os 12 tons (`MUSIC_TONES`, core). O botao "Enviar ao servidor"
+so habilita com data, nenhuma linha incompleta (musica sem tom ou tom sem musica) e ao menos uma linha completa.
+Linha incompleta mostra "Posição N incompleta: preencha música e tom.".
+
+- Sucesso: snackbar "Enviado com sucesso." e Ultimos Domingos, Mais tocadas e Top tons sao relidos
+  (`RefreshPlayedTablesUseCase`), entao as Tabelas ja mostram o domingo ao voltar. Falha dessa releitura e
+  silenciosa.
+- Falha de validacao no envio: "Existem posições incompletas. Corrija antes de enviar." e as linhas marcadas.
+- Outras falhas: a mensagem do erro (ou "Erro inesperado ao enviar.").
+
+**Catalogo ao abrir:** toda vez que a tela abre, o catalogo de musicas e atualizado (`GET songs/`), para que uma
+musica recem-cadastrada apareca nas linhas sem reiniciar o app. Falha mantem o catalogo ja carregado; sem catalogo
+nenhum, "Falha ao carregar músicas.".
+
+**Domingo pre-preenchido (spec 011):** com data, a tela abre com a data fixa (o seletor de data nao abre) e le o
+repertorio desse domingo (`GET api/setlists/{date}/`, `SetlistConfirmationRepository`, core §4.2.4): uma linha por
+item na ordem das posicoes (no minimo as 4 de sempre), com musica e tom, todas editaveis — o que e registrado e o
+que a tela mostra. 404 deixa as linhas vazias com o aviso "Repertório de dd/MM não encontrado. Preencha as
+músicas."; outra falha mostra o erro com "Tentar novamente" sem bloquear o preenchimento manual.
+
+Eventos de uma vez (sucesso, erro de envio) saem por `SundayRegistrationEvent`.
+
 ---
 
 ## 3. Musicas
@@ -142,8 +179,8 @@ Lista de todas as musicas cadastradas no sistema. Cada item mostra titulo e arti
 **Busca:** campo de busca no topo, filtra por titulo e artista (accent-insensitive via `normalize()`).
 
 **Tela:** mesma `SongContentListScreen` de Cifras e Letras — nao e "mesmo padrao visual", e o
-mesmo componente. Musicas passa `onTogglePin = null` (sem pin) e nao passa `canEdit`, entao nao
-tem nem o marcador de fixado nem o menu de adicionar. O artista vai como chip unico; artista em
+mesmo componente. Musicas passa `onTogglePin = null` (sem pin), entao nao tem o marcador de fixado. Quem
+tem `songs` ≥ `manage` (`canEdit`) ve o menu overflow (⋮) com "Adicionar Música" (§3.3). O artista vai como chip unico; artista em
 branco nao vira chip. Estados de loading, erro e vazio: identicos aos da secao 4.1.
 
 **Dados:** reutiliza `GET songs/` (snapshot ja existente em `AllSongsSnapshotRepository`).
@@ -248,6 +285,22 @@ acima dos campos:
   em 7 domingos…"). Sem `detail`: "Essa música já foi usada em domingos ou setlists e não pode ser excluída."
 - **`403`:** "Você não tem permissão para excluir músicas." · **`404`:** "Essa música não existe mais." ·
   rede / outros: mensagem generica — todos no mesmo dialog. A musica continua na tela.
+
+### 3.3 Criacao de Musica (`songs` ≥ `manage`)
+
+"Adicionar Música" no menu da lista navega para `SongCreateScreen` ("Nova Música", `SongCreateViewModel`).
+
+**Tela:** campos "Título" e "Artista", os dois obrigatorios (o botao "Salvar" so habilita com os dois
+preenchidos). Salvar faz `POST api/songs/` com `{ title, artist }` ja sem espacos nas pontas
+(`RegisterSongUseCase`, `WorshipRegisterRepository`). Categoria e link do YouTube nao entram pelo app (o link se
+edita depois no detalhe, §3.2).
+
+- Sucesso: o catalogo e relido e a tela volta para a lista, que ja mostra a musica (assim como o registro de
+  domingo e o Repertorio).
+- `409` (mesmo titulo e artista, ignorando maiusculas): "Essa música já está cadastrada." O form fica como esta.
+- `400` (campo vazio, ou com mais de 100 caracteres): "Título ou artista inválido. Use até 100 caracteres."
+- Outras falhas (rede, `403` sem `songs` `manage`, 5xx): o texto generico da categoria do erro.
+- O erro aparece acima do botao e some ao editar um campo. Enquanto salva, os campos travam e o botao vira spinner.
 
 ---
 
@@ -456,8 +509,10 @@ content: String             // texto puro
 worshipHubGraph (AppRoutes.WORSHIP_HUB_GRAPH)
 ├── WorshipHubScreen (hub com botoes)
 ├── Tables (tela unica, inline)
+├── SundayRegistrationScreen (`AppRoutes.SUNDAY_REGISTER` — `songs` ≥ `manage`)
 ├── songsGraph (sub-graph novo)
 │   ├── SongsListScreen (lista com busca)
+│   ├── SongCreateScreen (criacao de musica — `songs` ≥ `manage`)
 │   └── SongDetailScreen (detalhe da musica)
 ├── chordChartsGraph (sub-graph existente)
 │   ├── ChordChartsScreen (lista com busca)
@@ -502,9 +557,12 @@ feature nao importa `features/profile`:
 | PATCH | `chord-charts/{id}/` | Atualiza `content` de uma cifra |
 | POST | `lyrics/` | Cria nova letra |
 | PATCH | `lyrics/{id}/` | Atualiza `content` de uma letra existente |
+| POST | `api/songs/` | Cadastra musica (`title`, `artist`) |
 | PATCH | `api/songs/{id}/` | Edita `title`, `artist`, `youtube_link` de uma musica (backend 018) |
 | DELETE | `api/songs/{id}/` | Exclui musica sem uso em domingos/setlists — nivel `owner`; `409` com `detail` se em uso |
 | PUT | `api/setlists/{date}/` | Salva o repertorio do domingo (`manage` em `songs` + membro do Louvor; spec 011) |
+| POST | `api/played/register/` | Registra as musicas tocadas num domingo (§2.6) |
+| GET | `api/setlists/{date}/` | Repertorio que pre-preenche o registro de domingo (spec 011) |
 
 O contrato do repertorio e do backend: `backend/specs/017-sunday-setlist-push/contracts/setlist-api.md`.
 

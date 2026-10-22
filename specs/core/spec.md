@@ -215,6 +215,13 @@ atual no aparelho), `setlistDateFor(today)` (hoje se domingo, senao o proximo do
 tambem pelo salvar do repertorio (worshiphub §2.4). `SetlistDto` e o mapper sao compartilhados com worshiphub e
 admin.
 
+`SetlistConfirmationRepository` (`core/data/setlist/SetlistConfirmationRepositoryImpl` + `SetlistAdminApi`, nunca
+guardado no aparelho) e o lado de quem registra as musicas tocadas (`songs` ≥ `manage`): `GET api/setlists/{date}/`
+(404 = sem repertorio), `GET api/setlists/pending-confirmation/` e `DELETE api/setlists/{date}/`. Use cases:
+`GetSetlistForDateUseCase` (pre-preenche "Registrar domingo", worshiphub §2.6), `GetPendingConfirmationsUseCase`
+(datas distintas, mais recente primeiro) e `DeletePendingSetlistUseCase` (404 conta como removido) — os dois
+ultimos para o card de pendentes do painel (admin §2.1). Fica no core porque admin e worshiphub usam.
+
 Sincroniza: no boot (depois do refresh do perfil, sem segurar o fim do boot), em `onAppForeground()` e no push
 `setlist_saved` (secao 4.2.5). Quando `isWorshipMember` passa de `true` para `false`, limpa.
 

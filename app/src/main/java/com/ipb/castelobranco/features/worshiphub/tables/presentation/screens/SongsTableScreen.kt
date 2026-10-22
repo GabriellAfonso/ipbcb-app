@@ -64,8 +64,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -85,6 +89,7 @@ data class WorshipSongsUiState(
     val isRefreshingSuggestions: Boolean = false,
     val isRefreshing: Boolean = false,
     val save: RepertoireSaveState = RepertoireSaveState(),
+    val canRegisterSunday: Boolean = false,
 )
 
 
@@ -102,12 +107,14 @@ data class WorshipSongsActions(
     val onRepertoireOpen: () -> Unit = {},
     val onSongClick: (songId: Int) -> Unit = {},
     val onSearchQueryChange: (query: String) -> Unit = {},
+    val onRegisterSundayClick: () -> Unit = {},
 )
 
 @Composable
 fun WorshipSongsTableScreen(
     onBackClick: () -> Unit,
     onSongClick: (songId: Int) -> Unit,
+    onRegisterSundayClick: () -> Unit,
     viewModel: SongsTableViewModel
 ) {
     val state = WorshipSongsUiState(
@@ -120,6 +127,7 @@ fun WorshipSongsTableScreen(
         isRefreshingSuggestions = viewModel.isRefreshingSuggestedSongs.collectAsStateWithLifecycle().value,
         isRefreshing = viewModel.isRefreshing.collectAsStateWithLifecycle().value,
         save = viewModel.saveState.collectAsStateWithLifecycle().value,
+        canRegisterSunday = viewModel.canRegisterSunday.collectAsStateWithLifecycle().value,
     )
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -147,6 +155,7 @@ fun WorshipSongsTableScreen(
         onRepertoireOpen = viewModel::refreshAllSongs,
         onSongClick = onSongClick,
         onSearchQueryChange = viewModel::onSearchQueryChange,
+        onRegisterSundayClick = onRegisterSundayClick,
     )
 
     WorshipSongsTableContent(
@@ -195,7 +204,10 @@ fun WorshipSongsTableContent(
         tabName = "Tabelas",
         logoRes = R.drawable.ic_table,
         showBackArrow = true,
-        onBackClick = actions.onBackClick
+        onBackClick = actions.onBackClick,
+        extraActions = {
+            if (state.canRegisterSunday) TablesOverflowMenu(onRegisterSundayClick = actions.onRegisterSundayClick)
+        },
     ) { innerPadding ->
         ElasticPullToRefresh(
             isRefreshing = state.isRefreshing,
@@ -415,3 +427,24 @@ private fun AutoSizeTabText(
 }
 
 private const val REPERTOIRE_TAB_INDEX = 3
+
+@Composable
+private fun TablesOverflowMenu(onRegisterSundayClick: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Menu",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Registrar domingo") },
+                leadingIcon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
+                onClick = { expanded = false; onRegisterSundayClick() },
+            )
+        }
+    }
+}

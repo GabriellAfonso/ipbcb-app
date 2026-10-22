@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.core.presentation.navigation
 
 import java.net.URLEncoder
+import java.time.LocalDate
 
 object AppRoutes {
     const val CORE = "core"
@@ -15,6 +16,15 @@ object AppRoutes {
     const val EVENT_DETAIL = "events/{$ARG_EVENT_ID}"
 
     fun eventDetail(eventId: Int): String = "events/$eventId"
+
+    // "Registrar domingo" (`specs/worshiphub/spec.md` §2.6). Registered in worshipHubGraph; administration opens it
+    // too, pre-filled, for a pending Sunday. Optional `YYYY-MM-DD` date.
+    const val ARG_SUNDAY_DATE = "date"
+    private const val SUNDAY_REGISTER_PATH = "sunday_register"
+    const val SUNDAY_REGISTER = "$SUNDAY_REGISTER_PATH?$ARG_SUNDAY_DATE={$ARG_SUNDAY_DATE}"
+
+    fun sundayRegister(date: LocalDate? = null): String =
+        if (date == null) SUNDAY_REGISTER_PATH else "$SUNDAY_REGISTER_PATH?$ARG_SUNDAY_DATE=$date"
 
     // Nested graph parent routes
     const val AUTH_GRAPH        = "graph/auth"

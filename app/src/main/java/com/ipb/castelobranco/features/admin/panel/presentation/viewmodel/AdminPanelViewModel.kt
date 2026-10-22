@@ -16,8 +16,8 @@ import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.domain.worship.ObserveWorshipAccessUseCase
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.admin.panel.presentation.state.PendingConfirmationsUi
-import com.ipb.castelobranco.features.admin.register.domain.usecase.DeletePendingSetlistUseCase
-import com.ipb.castelobranco.features.admin.register.domain.usecase.GetPendingConfirmationsUseCase
+import com.ipb.castelobranco.core.domain.setlist.DeletePendingSetlistUseCase
+import com.ipb.castelobranco.core.domain.setlist.GetPendingConfirmationsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
