@@ -128,7 +128,7 @@ class CoreViewModelTest {
         coEvery { galleryAutoDownload.onAppForeground() } just runs
         coEvery { galleryAutoDownload.onLoginSuccess() } just runs
         coEvery { galleryAutoDownload.clearOnLogout() } just runs
-        every { bibleAutoDownload.triggerIfNeeded() } just runs
+        coEvery { bibleAutoDownload.triggerIfNeeded() } just runs
         coEvery { bibleRepository.preload() } just runs
         every { getMonthlyBirthdaysUseCase.observe() } returns emptyFlow()
         coEvery { getMonthlyBirthdaysUseCase.refresh() } returns

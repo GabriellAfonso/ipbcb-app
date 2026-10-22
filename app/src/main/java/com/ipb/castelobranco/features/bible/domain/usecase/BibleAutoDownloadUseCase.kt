@@ -10,17 +10,26 @@ class BibleAutoDownloadUseCase @Inject constructor(
     private val repository: BibleRepository,
 ) {
     /**
-     * Enfileira o download (WiFi only) se ainda falta alguma tradução em cache.
+     * Enfileira o download (WiFi only) se ainda falta alguma tradução em cache e o download automático
+     * não foi pausado por "Apagar Bíblia".
      * Deve rodar APÓS [BibleRepository.preload] para que `cachedTranslationsFlow` reflita o disco.
      */
-    fun triggerIfNeeded() {
+    suspend fun triggerIfNeeded() {
+        if (repository.isAutoDownloadPaused()) return
         val cached = repository.cachedTranslationsFlow.value
         val missing = BibleTranslation.entries.any { it !in cached }
         if (missing) scheduler.enqueueWifiOnly()
     }
 
-    fun enqueueWifiOnly(replaceExisting: Boolean = false, force: Boolean = false) =
+    /** Download manual (botões do leitor): tira a pausa deixada por "Apagar Bíblia". */
+    suspend fun enqueueWifiOnly(replaceExisting: Boolean = false, force: Boolean = false) {
+        repository.setAutoDownloadPaused(false)
         scheduler.enqueueWifiOnly(replaceExisting, force)
+    }
 
-    fun enqueueAnyNetwork(force: Boolean = false) = scheduler.enqueueAnyNetwork(force)
+    /** Download manual com qualquer rede: tira a pausa deixada por "Apagar Bíblia". */
+    suspend fun enqueueAnyNetwork(force: Boolean = false) {
+        repository.setAutoDownloadPaused(false)
+        scheduler.enqueueAnyNetwork(force)
+    }
 }

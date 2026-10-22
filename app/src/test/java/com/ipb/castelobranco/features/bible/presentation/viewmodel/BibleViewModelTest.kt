@@ -285,16 +285,18 @@ class BibleViewModelTest {
     fun `retryDownloadOnMobileData calls enqueueAnyNetwork`() = runTest {
         val vm = buildViewModel()
         vm.retryDownloadOnMobileData()
+        advanceUntilIdle()
 
-        verify { autoDownload.enqueueAnyNetwork() }
+        coVerify { autoDownload.enqueueAnyNetwork() }
     }
 
     @Test
     fun `retryDownloadWifi calls enqueueWifiOnly with REPLACE policy`() = runTest {
         val vm = buildViewModel()
         vm.retryDownloadWifi()
+        advanceUntilIdle()
 
-        verify { autoDownload.enqueueWifiOnly(replaceExisting = true) }
+        coVerify { autoDownload.enqueueWifiOnly(replaceExisting = true) }
     }
 
     // endregion

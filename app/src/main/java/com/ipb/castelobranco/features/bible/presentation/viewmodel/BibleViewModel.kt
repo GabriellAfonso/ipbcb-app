@@ -232,10 +232,10 @@ class BibleViewModel @Inject constructor(
     }
 
     fun retryDownloadOnMobileData() {
-        autoDownload.enqueueAnyNetwork()
+        viewModelScope.launch { autoDownload.enqueueAnyNetwork() }
     }
 
     fun retryDownloadWifi() {
-        autoDownload.enqueueWifiOnly(replaceExisting = true)
+        viewModelScope.launch { autoDownload.enqueueWifiOnly(replaceExisting = true) }
     }
 }

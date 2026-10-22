@@ -23,8 +23,8 @@ Lista em seções, separadas por divisor:
 | Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
-| Dados        | Resetar galeria   | Mostra o espaço ocupado (2.4). Pede confirmação; apaga as fotos e mostra "Cache apagado". |
-| Dados        | Resetar Bíblia    | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia local e mostra "Baixando novamente…". |
+| Dados        | Apagar galeria    | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a galeria do aparelho e mostra "Galeria apagada" (2.5). |
+| Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
 | Diagnóstico  | Logs do app       | Abre a tela de logs.                                                        |
 | Sobre        | Versão            | `versionName` do build, só leitura.                                         |
 
@@ -68,18 +68,32 @@ seguem o tempo de tela do sistema.
 
 ### 2.4 Espaço ocupado
 
-Cada item de Dados mostra quanto ocupa no aparelho o que o reset vai apagar:
+Cada item de Dados mostra quanto ocupa no aparelho o que vai ser apagado:
 
 | Item            | O que é somado                                                              | Texto                              |
 |-----------------|-----------------------------------------------------------------------------|------------------------------------|
-| Resetar galeria | Arquivos da galeria no aparelho (originais, capas, fila de envio)            | `Apaga as fotos em cache · 312 MB` |
-| Resetar Bíblia  | Arquivos das traduções baixadas                                               | `Apaga e baixa novamente · 8,4 MB` |
+| Apagar galeria  | Arquivos da galeria no aparelho (originais, capas, fila de envio)            | `Apaga as fotos do aparelho · 312 MB` |
+| Apagar Bíblia   | Arquivos das traduções baixadas                                               | `Apaga a Bíblia do aparelho · 8,4 MB` |
 
-- Calculado fora da thread principal ao abrir a tela e de novo depois de cada reset.
+- Calculado fora da thread principal ao abrir a tela e de novo depois de cada "Apagar".
 - Enquanto calcula, o texto aparece sem o tamanho.
 - Formato: B, KB, MB ou GB (base 1024), uma casa decimal abaixo de 10 e vírgula decimal (`8,4 MB`, `312 MB`).
 - Tamanho zero: "nada no aparelho" no lugar do tamanho.
-- Depois do reset vale o texto do reset ("Cache apagado" / "Baixando novamente…").
+- Depois de apagar vale o texto de conclusão ("Galeria apagada" / "Bíblia apagada").
+
+### 2.5 Apagar não baixa de novo
+
+O download automático no WiFi (galeria depois do login, Bíblia no boot) vale só até a pessoa apagar. Depois de
+"Apagar", nada volta sozinho: a galeria e a Bíblia ficam vazias até a pessoa tocar no botão de baixar dentro da
+própria feature (galeria: `specs/gallery/spec.md` 3.3; Bíblia: `specs/bible/spec.md` 5). A escolha fica gravada no
+aparelho e sobrevive a fechar o app e ao logout.
+
+| Item           | Diálogo                                                                                              |
+|----------------|------------------------------------------------------------------------------------------------------|
+| Apagar galeria | "Apaga a galeria do aparelho. Ela só volta a ser baixada quando você tocar em "Baixar galeria" na Galeria. Deseja continuar?" |
+| Apagar Bíblia  | "Apaga a Bíblia do aparelho. Ela só volta a ser baixada quando você tocar em baixar na Bíblia. Deseja continuar?" |
+
+Botões: "Apagar" e "Cancelar".
 
 ---
 

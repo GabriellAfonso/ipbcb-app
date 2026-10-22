@@ -126,6 +126,12 @@ class BibleRepositoryImpl @Inject constructor(
         _cachedTranslations.value = emptySet()
     }
 
+    override suspend fun isAutoDownloadPaused(): Boolean = preferences.isAutoDownloadPaused()
+
+    override suspend fun setAutoDownloadPaused(paused: Boolean) {
+        preferences.setAutoDownloadPaused(paused)
+    }
+
     override suspend fun diskUsageBytes(): Long =
         BibleTranslation.entries.sumOf { storage.sizeBytes(it.snapshotKey) }
 

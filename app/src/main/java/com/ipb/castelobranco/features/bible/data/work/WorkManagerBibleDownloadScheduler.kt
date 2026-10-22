@@ -45,6 +45,10 @@ class WorkManagerBibleDownloadScheduler @Inject constructor(
         )
     }
 
+    override fun cancel() {
+        workManager.cancelUniqueWork(BibleDownloadWorker.WORK_NAME)
+    }
+
     private fun forceData(force: Boolean): Data =
         workDataOf(BibleDownloadWorker.INPUT_FORCE to force)
 }

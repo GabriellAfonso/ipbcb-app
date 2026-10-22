@@ -36,6 +36,14 @@ interface BibleRepository {
     /** Apaga JSON cacheado de TODAS as traduções e reseta a posição/preferência. */
     suspend fun clearAll()
 
+    /**
+     * Pausa do download automático, gravada por "Apagar Bíblia": enquanto existir, o boot não baixa nada.
+     * Sobrevive a [clearAll]; só um download manual a tira.
+     */
+    suspend fun isAutoDownloadPaused(): Boolean
+
+    suspend fun setAutoDownloadPaused(paused: Boolean)
+
     /** Bytes que as traduções baixadas ocupam no aparelho. */
     suspend fun diskUsageBytes(): Long
 }

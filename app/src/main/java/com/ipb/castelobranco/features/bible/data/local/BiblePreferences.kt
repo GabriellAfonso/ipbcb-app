@@ -2,6 +2,7 @@ package com.ipb.castelobranco.features.bible.data.local
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -10,6 +11,7 @@ import com.ipb.castelobranco.core.di.SettingsPrefs
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -27,6 +29,9 @@ class BiblePreferences @Inject constructor(
     private val lastChapterKey  = intPreferencesKey("bible_last_chapter")
     private val lastVerseKey    = intPreferencesKey("bible_last_verse")
     private val fontSizeKey     = floatPreferencesKey("bible_font_size")
+
+    // Outside resetAll(): deleting the Bible must not undo its own pause.
+    private val autoDownloadPausedKey = booleanPreferencesKey("bible_auto_download_paused")
 
     val translationFlow: Flow<BibleTranslation> =
         dataStore.data.map { prefs ->
@@ -59,6 +64,12 @@ class BiblePreferences @Inject constructor(
 
     suspend fun setFontSize(size: Float) {
         dataStore.edit { prefs -> prefs[fontSizeKey] = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE) }
+    }
+
+    suspend fun isAutoDownloadPaused(): Boolean = dataStore.data.first()[autoDownloadPausedKey] ?: false
+
+    suspend fun setAutoDownloadPaused(paused: Boolean) {
+        dataStore.edit { prefs -> prefs[autoDownloadPausedKey] = paused }
     }
 
     suspend fun resetAll() {

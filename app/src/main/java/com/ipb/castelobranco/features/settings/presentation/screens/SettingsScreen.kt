@@ -113,15 +113,19 @@ fun SettingsContent(
 ) {
     if (pendingConfirmation != null) {
         val (title, message) = when (pendingConfirmation) {
-            ResetAction.GALLERY -> "Resetar galeria" to "Apaga todas as fotos em cache. Deseja continuar?"
-            ResetAction.BIBLE   -> "Resetar Bíblia"  to "Apaga e baixa novamente a Bíblia. Deseja continuar?"
+            ResetAction.GALLERY -> "Apagar galeria" to
+                "Apaga a galeria do aparelho. Ela só volta a ser baixada quando você tocar em " +
+                "\"Baixar galeria\" na Galeria. Deseja continuar?"
+            ResetAction.BIBLE   -> "Apagar Bíblia" to
+                "Apaga a Bíblia do aparelho. Ela só volta a ser baixada quando você tocar em baixar " +
+                "na Bíblia. Deseja continuar?"
         }
         AlertDialog(
             onDismissRequest = onDismissConfirmation,
             title            = { Text(title) },
             text             = { Text(message) },
             confirmButton    = {
-                TextButton(onClick = onConfirmReset) { Text("Confirmar") }
+                TextButton(onClick = onConfirmReset) { Text("Apagar") }
             },
             dismissButton    = {
                 TextButton(onClick = onDismissConfirmation) { Text("Cancelar") }
@@ -171,11 +175,11 @@ fun SettingsContent(
             SettingsSectionHeader("Dados")
             SettingsActionRow(
                 icon        = Icons.Filled.Image,
-                title       = "Resetar galeria",
+                title       = "Apagar galeria",
                 description = if (galleryCleared) {
-                    "Cache apagado"
+                    "Galeria apagada"
                 } else {
-                    withDiskUsage("Apaga as fotos em cache", galleryBytes)
+                    withDiskUsage("Apaga as fotos do aparelho", galleryBytes)
                 },
                 tint        = MaterialTheme.colorScheme.error,
                 done        = galleryCleared,
@@ -183,11 +187,11 @@ fun SettingsContent(
             )
             SettingsActionRow(
                 icon        = Icons.Filled.AutoStories,
-                title       = "Resetar Bíblia",
+                title       = "Apagar Bíblia",
                 description = if (bibleCleared) {
-                    "Baixando novamente…"
+                    "Bíblia apagada"
                 } else {
-                    withDiskUsage("Apaga e baixa novamente", bibleBytes)
+                    withDiskUsage("Apaga a Bíblia do aparelho", bibleBytes)
                 },
                 tint        = MaterialTheme.colorScheme.error,
                 done        = bibleCleared,

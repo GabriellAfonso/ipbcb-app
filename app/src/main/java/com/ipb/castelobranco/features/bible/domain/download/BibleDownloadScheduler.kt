@@ -9,4 +9,5 @@ package com.ipb.castelobranco.features.bible.domain.download
 interface BibleDownloadScheduler {
     fun enqueueWifiOnly(replaceExisting: Boolean = false, force: Boolean = false)
     fun enqueueAnyNetwork(force: Boolean = false)
+    fun cancel()
 }

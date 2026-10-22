@@ -2,8 +2,9 @@ package com.ipb.castelobranco.features.settings.presentation.viewmodel
 
 import androidx.appcompat.app.AppCompatDelegate
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
-import com.ipb.castelobranco.features.bible.domain.usecase.DeleteAndRedownloadBibleUseCase
+import com.ipb.castelobranco.features.bible.domain.usecase.DeleteBibleUseCase
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.usecase.DeleteGalleryUseCase
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.domain.repository.SettingsRepository
 import app.cash.turbine.test
@@ -39,7 +40,8 @@ class SettingsViewModelTest {
 
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var galleryRepository: GalleryRepository
-    private lateinit var deleteAndRedownloadBible: DeleteAndRedownloadBibleUseCase
+    private lateinit var deleteGallery: DeleteGalleryUseCase
+    private lateinit var deleteBible: DeleteBibleUseCase
     private lateinit var bibleRepository: BibleRepository
     private lateinit var viewModel: SettingsViewModel
 
@@ -52,7 +54,8 @@ class SettingsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         settingsRepository = mockk(relaxed = true)
         galleryRepository = mockk(relaxed = true)
-        deleteAndRedownloadBible = mockk(relaxed = true)
+        deleteGallery = mockk(relaxed = true)
+        deleteBible = mockk(relaxed = true)
         bibleRepository = mockk(relaxed = true)
         every { settingsRepository.themeModeFlow } returns themeModeFlow
         every { settingsRepository.birthdayNotificationsFlow } returns birthdayNotificationsFlow
@@ -62,7 +65,8 @@ class SettingsViewModelTest {
         viewModel = SettingsViewModel(
             settingsRepository,
             galleryRepository,
-            deleteAndRedownloadBible,
+            deleteGallery,
+            deleteBible,
             bibleRepository,
         )
     }
@@ -203,6 +207,20 @@ class SettingsViewModelTest {
             assertEquals(0L, state.galleryBytes)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `confirming each delete runs its use case`() = runTest {
+        viewModel.requestReset(ResetAction.GALLERY)
+        viewModel.confirmReset()
+        advanceUntilIdle()
+        viewModel.requestReset(ResetAction.BIBLE)
+        viewModel.confirmReset()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { deleteGallery() }
+        coVerify(exactly = 1) { deleteBible() }
+        coVerify(exactly = 0) { galleryRepository.clear() }
     }
 
     // endregion

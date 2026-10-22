@@ -67,6 +67,16 @@ presentes no disco), `positionFlow` e `fontSizeFlow`.
 (`exists()`; com `force`, todas) como JSON cru, sem parse, e grava direto no snapshot. No fim chama `preload()`
 para a UI ver os livros sem reabrir o app. Retry até 3 tentativas; 401/403 falha na hora.
 
-- **Automático:** no boot, depois do `preload()`, se falta alguma tradução — só WiFi (`UNMETERED`).
-- **Manual:** pelo banner (WiFi ou qualquer rede) e por `DeleteAndRedownloadBibleUseCase` (`clearAll()` + download
-  forçado em qualquer rede).
+- **Automático:** no boot, depois do `preload()`, se falta alguma tradução e o download automático não está
+  pausado — só WiFi (`UNMETERED`).
+- **Manual:** pelos botões do leitor ("Baixar via WiFi", "Baixar com dados móveis", "Tentar novamente", "Usar dados
+  móveis"). Todo download manual tira a pausa.
+
+### 5.1 Apagar
+
+"Apagar Bíblia" nas configurações (`DeleteBibleUseCase`) cancela o trabalho `bible_auto_download`, **pausa** o
+download automático e chama `clearAll()`. Nada é baixado de novo: o leitor mostra "Bíblia ainda não baixada." com os
+botões de download, e o boot não enfileira mais nada enquanto a pausa existir.
+
+A pausa é a preferência `bible_auto_download_paused` (`@SettingsPrefs`), fora do que `clearAll()` reseta. Sobrevive a
+fechar o app; só um download manual a tira.

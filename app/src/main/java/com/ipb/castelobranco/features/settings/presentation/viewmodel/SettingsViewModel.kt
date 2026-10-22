@@ -4,8 +4,9 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
-import com.ipb.castelobranco.features.bible.domain.usecase.DeleteAndRedownloadBibleUseCase
+import com.ipb.castelobranco.features.bible.domain.usecase.DeleteBibleUseCase
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.usecase.DeleteGalleryUseCase
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +47,8 @@ private data class ExtraState(
 class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
     private val galleryRepository: GalleryRepository,
-    private val deleteAndRedownloadBible: DeleteAndRedownloadBibleUseCase,
+    private val deleteGallery: DeleteGalleryUseCase,
+    private val deleteBible: DeleteBibleUseCase,
     private val bibleRepository: BibleRepository,
 ) : ViewModel() {
 
@@ -95,11 +97,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             when (action) {
                 ResetAction.GALLERY -> {
-                    galleryRepository.clear()
+                    deleteGallery()
                     _extra.update { it.copy(galleryCleared = true) }
                 }
                 ResetAction.BIBLE -> {
-                    deleteAndRedownloadBible()
+                    deleteBible()
                     _extra.update { it.copy(bibleCleared = true) }
                 }
             }
