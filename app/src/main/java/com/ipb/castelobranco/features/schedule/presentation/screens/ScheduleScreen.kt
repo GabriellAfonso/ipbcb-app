@@ -27,10 +27,13 @@ package com.ipb.castelobranco.features.schedule.presentation.screens
     import com.ipb.castelobranco.features.schedule.presentation.components.MonthScheduleTable
     import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleSectionUi
     import com.ipb.castelobranco.core.presentation.components.PermissionErrorPlaceholder
+    import com.ipb.castelobranco.core.presentation.components.access.MembersOnlyPlaceholder
     import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleUiState
     import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleViewModel
 
     // Removi o data class MonthScheduleUiState antigo, pois agora usamos o ScheduleUiState do ViewModel
+
+    private const val HTTP_FORBIDDEN = 403
 
     data class MonthScheduleActions(
         val onShare: (String) -> Unit,
@@ -100,12 +103,13 @@ package com.ipb.castelobranco.features.schedule.presentation.screens
                         )
                     }
 
-                    is ScheduleUiState.Error -> {
+                    is ScheduleUiState.Error -> if (uiState.httpCode == HTTP_FORBIDDEN) {
+                        MembersOnlyPlaceholder(message = uiState.message, modifier = Modifier.align(Alignment.Center))
+                    } else {
                         PermissionErrorPlaceholder(
                             message = uiState.message,
                             onLoginClick = onNavigateToAuth,
                             modifier = Modifier.align(Alignment.Center),
-                            showLoginButton = uiState.httpCode != 403,
                         )
                     }
                 }

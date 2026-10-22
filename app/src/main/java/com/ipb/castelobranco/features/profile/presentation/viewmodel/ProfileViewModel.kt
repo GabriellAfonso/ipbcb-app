@@ -2,21 +2,30 @@ package com.ipb.castelobranco.features.profile.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.domain.access.AccessRequestType
+import com.ipb.castelobranco.core.domain.access.RequestAccessUseCase
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.RefreshResult
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
+import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDialogState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.profile.domain.model.AccountDeletionProof
+import com.ipb.castelobranco.features.profile.domain.model.OwnMember
 import com.ipb.castelobranco.features.profile.domain.usecase.ChangePasswordUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.DeleteAccountUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.GetOwnMemberUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.RemoveProfilePhotoUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.UpdateProfileNameUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.UploadProfilePhotoUseCase
+import com.ipb.castelobranco.features.profile.presentation.format.formatBaptism
+import com.ipb.castelobranco.features.profile.presentation.format.formatBirthday
+import com.ipb.castelobranco.features.profile.presentation.format.formatGender
 import com.ipb.castelobranco.features.profile.presentation.format.formatJoinedSince
 import com.ipb.castelobranco.features.profile.presentation.state.DeleteDialogState
 import com.ipb.castelobranco.features.profile.presentation.state.NameDialogState
+import com.ipb.castelobranco.features.profile.presentation.state.OwnMemberSection
 import com.ipb.castelobranco.features.profile.presentation.state.PasswordDialogState
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiEvent
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiState
@@ -40,6 +49,8 @@ class ProfileViewModel @Inject constructor(
     private val updateProfileNameUseCase: UpdateProfileNameUseCase,
     private val changePasswordUseCase: ChangePasswordUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
+    private val getOwnMemberUseCase: GetOwnMemberUseCase,
+    private val requestAccessUseCase: RequestAccessUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -47,6 +58,10 @@ class ProfileViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<ProfileUiEvent>(extraBufferCapacity = EVENT_BUFFER)
     val events: SharedFlow<ProfileUiEvent> = _events.asSharedFlow()
+
+    /** The roll link last seen, so the roll data is read again only when it changes. */
+    private var loadedMemberId: Long? = null
+    private var ownMemberLoaded = false
 
     fun initialize() {
         observeProfile()
@@ -70,7 +85,13 @@ class ProfileViewModel @Inject constructor(
                                 photoUrl = profile.photoUrl,
                                 joinedSince = profile.dateJoined?.let(::formatJoinedSince),
                                 hasPassword = profile.hasPassword,
+                                access = profile.memberAccessInfo,
                             )
+                        }
+                        if (!ownMemberLoaded || profile.memberId != loadedMemberId) {
+                            ownMemberLoaded = true
+                            loadedMemberId = profile.memberId
+                            loadOwnMember()
                         }
                         if (!profile.photoUrl.isNullOrBlank()) {
                             fetchProfileUseCase.downloadAndPersistPhoto(profile.photoUrl)
@@ -89,6 +110,69 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    fun retryOwnMember() = loadOwnMember()
+
+    private fun loadOwnMember() {
+        if (loadedMemberId == null) {
+            _uiState.update { it.copy(ownMember = OwnMemberSection.Hidden) }
+            return
+        }
+        _uiState.update { it.copy(ownMember = OwnMemberSection.Loading) }
+        viewModelScope.launch {
+            getOwnMemberUseCase()
+                .onSuccess { member ->
+                    val section = member?.let { OwnMemberSection.Loaded(it.toLines()) } ?: OwnMemberSection.Hidden
+                    _uiState.update { it.copy(ownMember = section) }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(ownMember = OwnMemberSection.Error(OWN_MEMBER_ERROR)) }
+                }
+        }
+    }
+
+    private fun OwnMember.toLines(): List<Pair<String, String>> = listOfNotNull(
+        role?.let { "Cargo" to it },
+        ministries.takeIf { it.isNotEmpty() }?.let { "Ministérios" to it.joinToString(", ") },
+        formatBirthday(birthDay, birthMonth)?.let { "Aniversário" to it },
+        baptismDate?.let { "Batismo" to formatBaptism(it) },
+        formatGender(gender)?.let { "Gênero" to it },
+    )
+
+    fun openAccessRequest() = openRequest(AccessRequestType.ACCESS)
+
+    fun openCorrectionRequest() = openRequest(AccessRequestType.DATA_CORRECTION)
+
+    private fun openRequest(type: AccessRequestType) {
+        _uiState.update { it.copy(requestDialog = AccessRequestDialogState(type = type)) }
+    }
+
+    fun dismissRequestDialog() {
+        if (_uiState.value.requestDialog?.isSending == true) return
+        _uiState.update { it.copy(requestDialog = null) }
+    }
+
+    fun sendRequest(message: String) {
+        val dialog = _uiState.value.requestDialog ?: return
+        if (dialog.isSending) return
+        _uiState.update { it.copy(requestDialog = dialog.copy(isSending = true, error = null)) }
+        viewModelScope.launch {
+            requestAccessUseCase(dialog.type, message)
+                .onSuccess {
+                    _uiState.update { it.copy(requestDialog = null) }
+                    val text = if (dialog.type == AccessRequestType.ACCESS) REQUEST_SENT else CORRECTION_SENT
+                    _events.tryEmit(ProfileUiEvent.ShowMessage(text))
+                }
+                .onFailure { error ->
+                    _uiState.update { state ->
+                        state.copy(requestDialog = state.requestDialog?.copy(
+                            isSending = false,
+                            error = error.toAppError().toUserMessage(),
+                        ))
+                    }
+                }
         }
     }
 
@@ -317,6 +401,9 @@ class ProfileViewModel @Inject constructor(
 
     private companion object {
         const val EVENT_BUFFER = 8
+        const val REQUEST_SENT = "Pedido enviado"
+        const val CORRECTION_SENT = "Correção solicitada"
+        const val OWN_MEMBER_ERROR = "Não foi possível carregar seus dados."
 
         const val ERROR_INVALID_PASSWORD = "INVALID_PASSWORD"
         const val FIELD_NAME = "name"

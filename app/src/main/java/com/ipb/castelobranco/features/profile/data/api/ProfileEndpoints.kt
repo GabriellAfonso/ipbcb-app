@@ -11,4 +11,9 @@ object ProfileEndpoints {
 
     /** `POST`, not `DELETE`: the password or Google token travels in the body. */
     const val ME_DELETE_PATH = "${ApiConstants.BASE_PATH}me/delete/"
+
+    const val ME_ACCESS_REQUESTS_PATH = "${ApiConstants.BASE_PATH}me/access-requests/"
+
+    /** The person's own roll record; `no-store` on the server, memory only here. */
+    const val ME_MEMBER_PATH = "${ApiConstants.BASE_PATH}me/member/"
 }

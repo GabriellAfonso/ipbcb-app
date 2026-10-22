@@ -37,6 +37,7 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.BirthdayEntry
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.PermissionErrorPlaceholder
+import com.ipb.castelobranco.core.presentation.components.access.MembersOnlyPlaceholder
 import com.ipb.castelobranco.core.presentation.viewmodel.BirthdayMonthUi
 import com.ipb.castelobranco.core.presentation.viewmodel.BirthdaysUiState
 import com.ipb.castelobranco.core.presentation.viewmodel.BirthdaysViewModel
@@ -83,6 +84,13 @@ fun BirthdaysContent(
                 .padding(innerPadding)
         ) {
             when {
+                uiState.error != null && uiState.isMembersOnly -> MembersOnlyPlaceholder(
+                    message = uiState.error,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                )
+
                 uiState.error != null -> PermissionErrorPlaceholder(
                     message = uiState.error,
                     onLoginClick = onNavigateToAuth,

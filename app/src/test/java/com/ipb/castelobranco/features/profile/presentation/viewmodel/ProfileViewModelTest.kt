@@ -5,7 +5,16 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.profile.domain.model.MeProfile
 import com.ipb.castelobranco.core.domain.auth.AuthEventBus
+import com.ipb.castelobranco.core.domain.access.AccessRequestType
+import com.ipb.castelobranco.core.domain.access.AccessStatus
+import com.ipb.castelobranco.core.domain.access.MemberAccess
+import com.ipb.castelobranco.core.domain.access.RequestAccessUseCase
+import com.ipb.castelobranco.core.testing.FakeMemberAccessRepository
 import com.ipb.castelobranco.features.profile.domain.model.AccountDeletionProof
+import com.ipb.castelobranco.features.profile.domain.model.OwnMember
+import com.ipb.castelobranco.features.profile.domain.repository.OwnMemberRepository
+import com.ipb.castelobranco.features.profile.domain.usecase.GetOwnMemberUseCase
+import com.ipb.castelobranco.features.profile.presentation.state.OwnMemberSection
 import com.ipb.castelobranco.features.profile.domain.repository.ProfileRepository
 import com.ipb.castelobranco.features.profile.domain.usecase.ChangePasswordUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.DeleteAccountUseCase
@@ -57,9 +66,19 @@ class ProfileViewModelTest {
         coEvery { deleteProfilePhoto() } returns Result.success(Unit)
     }
 
+    private var ownMemberResult: Result<OwnMember?> = Result.success(null)
+    private val ownMemberRepository = object : OwnMemberRepository {
+        var calls = 0
+        override suspend fun get(): Result<OwnMember?> {
+            calls++
+            return ownMemberResult
+        }
+    }
+    private val memberAccessRepository = FakeMemberAccessRepository()
+
     private val fakeProfile = MeProfile(
         name = "João Silva",
-        isMember = true,
+        memberAccess = true,
         photoUrl = null
     )
 
@@ -80,6 +99,8 @@ class ProfileViewModelTest {
             UpdateProfileNameUseCase(accountRepository, profileRepository),
             ChangePasswordUseCase(accountRepository),
             DeleteAccountUseCase(accountRepository, authEventBus),
+            GetOwnMemberUseCase(ownMemberRepository),
+            RequestAccessUseCase(memberAccessRepository),
         )
     }
 
@@ -675,6 +696,103 @@ class ProfileViewModelTest {
             viewModel.uiState.value.error,
         )
         assertFalse(viewModel.uiState.value.isRemovingPhoto)
+    }
+
+    // endregion
+
+    // region access requests (spec 016)
+
+    @Test
+    fun `the access card follows the profile`() = runTest {
+        val access = MemberAccess(false, AccessStatus.PENDING, requestsBlocked = false, correctionPending = false)
+        every { fetchProfileUseCase.observe() } returns flowOf(
+            SnapshotState.Data(fakeProfile.copy(memberAccessInfo = access))
+        )
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(AccessStatus.PENDING, viewModel.uiState.value.access.status)
+    }
+
+    @Test
+    fun `a linked account loads the roll data into memory`() = runTest {
+        ownMemberResult = Result.success(
+            OwnMember(
+                role = "Diaconisa", ministries = listOf("Louvor", "Infantil"), birthDay = 14, birthMonth = 3,
+                baptismDate = LocalDate.of(2001, 5, 20), gender = "F",
+            )
+        )
+        every { fetchProfileUseCase.observe() } returns flowOf(SnapshotState.Data(fakeProfile.copy(memberId = 12)))
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        val section = viewModel.uiState.value.ownMember as OwnMemberSection.Loaded
+        assertEquals(
+            listOf(
+                "Cargo" to "Diaconisa",
+                "Ministérios" to "Louvor, Infantil",
+                "Aniversário" to "14 de março",
+                "Batismo" to "20/05/2001",
+                "Gênero" to "Feminino",
+            ),
+            section.lines,
+        )
+    }
+
+    @Test
+    fun `an account without a link never asks for roll data`() = runTest {
+        every { fetchProfileUseCase.observe() } returns flowOf(SnapshotState.Data(fakeProfile))
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertEquals(OwnMemberSection.Hidden, viewModel.uiState.value.ownMember)
+        assertEquals(0, ownMemberRepository.calls)
+    }
+
+    @Test
+    fun `a failed roll read shows the error and can be retried`() = runTest {
+        ownMemberResult = Result.failure(AppError.Network())
+        every { fetchProfileUseCase.observe() } returns flowOf(SnapshotState.Data(fakeProfile.copy(memberId = 12)))
+        viewModel.initialize()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.ownMember is OwnMemberSection.Error)
+
+        ownMemberResult = Result.success(null)
+        viewModel.retryOwnMember()
+        advanceUntilIdle()
+
+        assertEquals(OwnMemberSection.Hidden, viewModel.uiState.value.ownMember)
+    }
+
+    @Test
+    fun `a correction request is sent and confirmed`() = runTest {
+        viewModel.events.test {
+            viewModel.openCorrectionRequest()
+            viewModel.sendRequest("Meu batismo foi em 2002.")
+            advanceUntilIdle()
+
+            assertEquals(ProfileUiEvent.ShowMessage("Correção solicitada"), awaitItem())
+        }
+        assertEquals(
+            listOf(AccessRequestType.DATA_CORRECTION to "Meu batismo foi em 2002."),
+            memberAccessRepository.requests,
+        )
+        assertNull(viewModel.uiState.value.requestDialog)
+    }
+
+    @Test
+    fun `a refused request keeps the dialog with the server message`() = runTest {
+        memberAccessRepository.requestResult =
+            Result.failure(AppError.Server(code = 429, userMessage = "Tente novamente amanhã."))
+
+        viewModel.openAccessRequest()
+        viewModel.sendRequest("")
+        advanceUntilIdle()
+
+        assertEquals("Tente novamente amanhã.", viewModel.uiState.value.requestDialog?.error)
     }
 
     // endregion

@@ -1,9 +1,11 @@
 package com.ipb.castelobranco.features.profile.data.api
 
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.CreateAccessRequestBody
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
+import com.ipb.castelobranco.features.profile.data.dto.OwnMemberDto
 import com.ipb.castelobranco.features.profile.data.dto.ProfilePhotoResponseDto
 import com.ipb.castelobranco.features.profile.data.dto.SessionTokensDto
 import com.ipb.castelobranco.features.profile.data.dto.UpdateProfileRequest
@@ -48,6 +50,12 @@ interface ProfileApi {
 
     @POST(ProfileEndpoints.ME_DELETE_PATH)
     suspend fun deleteAccountWithGoogle(@Body body: DeleteAccountWithGoogleRequest): Response<Unit>
+
+    @POST(ProfileEndpoints.ME_ACCESS_REQUESTS_PATH)
+    suspend fun createAccessRequest(@Body body: CreateAccessRequestBody): Response<Unit>
+
+    @GET(ProfileEndpoints.ME_MEMBER_PATH)
+    suspend fun getOwnMember(): Response<OwnMemberDto>
 
     @Streaming
     @GET

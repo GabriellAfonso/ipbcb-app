@@ -28,8 +28,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.auth.requestGoogleIdToken
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDialog
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
+import com.ipb.castelobranco.features.profile.presentation.components.AccessCard
 import com.ipb.castelobranco.features.profile.presentation.components.AccountFooter
+import com.ipb.castelobranco.features.profile.presentation.components.OwnMemberCard
 import com.ipb.castelobranco.features.profile.presentation.components.ChangePasswordDialog
 import com.ipb.castelobranco.features.profile.presentation.components.DeleteAccountDialog
 import com.ipb.castelobranco.features.profile.presentation.components.EditNameDialog
@@ -101,6 +104,11 @@ fun ProfileScreen(
             onDeleteAccount = viewModel::openDeleteDialog,
             onConfirmDelete = viewModel::confirmDelete,
             onDismissDelete = viewModel::dismissDeleteDialog,
+            onRequestAccess = viewModel::openAccessRequest,
+            onRequestCorrection = viewModel::openCorrectionRequest,
+            onSendRequest = viewModel::sendRequest,
+            onDismissRequest = viewModel::dismissRequestDialog,
+            onRetryOwnMember = viewModel::retryOwnMember,
         )
     }
 }
@@ -120,6 +128,11 @@ fun ProfileContent(
     onDeleteAccount: () -> Unit = {},
     onConfirmDelete: (String) -> Unit = {},
     onDismissDelete: () -> Unit = {},
+    onRequestAccess: () -> Unit = {},
+    onRequestCorrection: () -> Unit = {},
+    onSendRequest: (String) -> Unit = {},
+    onDismissRequest: () -> Unit = {},
+    onRetryOwnMember: () -> Unit = {},
 ) {
     val userName = state.userName?.takeIf { it.isNotBlank() } ?: DEFAULT_USER_NAME
     val photoFile: File? = state.localPhotoPath
@@ -154,6 +167,15 @@ fun ProfileContent(
 
             Text(text = userName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
 
+            AccessCard(access = state.access, onRequestAccess = onRequestAccess)
+
+            OwnMemberCard(
+                section = state.ownMember,
+                access = state.access,
+                onRequestCorrection = onRequestCorrection,
+                onRetry = onRetryOwnMember,
+            )
+
             if (!state.error.isNullOrBlank()) {
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -187,5 +209,8 @@ fun ProfileContent(
     }
     state.deleteDialog?.let { dialog ->
         DeleteAccountDialog(state = dialog, onConfirm = onConfirmDelete, onDismiss = onDismissDelete)
+    }
+    state.requestDialog?.let { dialog ->
+        AccessRequestDialog(state = dialog, onSend = onSendRequest, onDismiss = onDismissRequest)
     }
 }

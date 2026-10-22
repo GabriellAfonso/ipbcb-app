@@ -1,9 +1,11 @@
 package com.ipb.castelobranco.features.profile.data.api
 
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.CreateAccessRequestBody
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
+import com.ipb.castelobranco.features.profile.data.dto.OwnMemberDto
 import com.ipb.castelobranco.features.profile.data.dto.ProfilePhotoResponseDto
 import com.ipb.castelobranco.features.profile.data.dto.SessionTokensDto
 import com.ipb.castelobranco.features.profile.data.dto.UpdateProfileRequest
@@ -61,11 +63,14 @@ class FakeProfileApi : ProfileApi {
     var updateProfileScript: (() -> Response<MeProfileDto>)? = null
     var changePasswordScript: (() -> Response<SessionTokensDto>)? = null
     var deleteAccountScript: (() -> Response<Unit>)? = null
+    var accessRequestScript: (() -> Response<Unit>)? = null
+    var ownMemberScript: (() -> Response<OwnMemberDto>)? = null
 
     val updateProfileBodies = mutableListOf<UpdateProfileRequest>()
     val changePasswordBodies = mutableListOf<ChangePasswordRequest>()
     val deleteWithPasswordBodies = mutableListOf<DeleteAccountWithPasswordRequest>()
     val deleteWithGoogleBodies = mutableListOf<DeleteAccountWithGoogleRequest>()
+    val accessRequestBodies = mutableListOf<CreateAccessRequestBody>()
 
     override suspend fun updateMeProfile(body: UpdateProfileRequest): Response<MeProfileDto> {
         updateProfileBodies += body
@@ -86,6 +91,13 @@ class FakeProfileApi : ProfileApi {
         deleteWithGoogleBodies += body
         return scripted(deleteAccountScript, "deleteAccountWithGoogle")
     }
+
+    override suspend fun createAccessRequest(body: CreateAccessRequestBody): Response<Unit> {
+        accessRequestBodies += body
+        return scripted(accessRequestScript, "createAccessRequest")
+    }
+
+    override suspend fun getOwnMember(): Response<OwnMemberDto> = scripted(ownMemberScript, "getOwnMember")
 
     private fun <T> scripted(script: (() -> Response<T>)?, name: String): Response<T> =
         script?.invoke() ?: throw UnsupportedOperationException("$name is not scripted in FakeProfileApi")

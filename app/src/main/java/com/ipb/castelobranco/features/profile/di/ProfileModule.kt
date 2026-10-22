@@ -2,17 +2,21 @@ package com.ipb.castelobranco.features.profile.di
 
 import com.ipb.castelobranco.core.di.AuthedRetrofit
 import com.ipb.castelobranco.core.domain.access.AccessRepository
+import com.ipb.castelobranco.core.domain.access.MemberAccessRepository
 import com.ipb.castelobranco.core.domain.member.CurrentMemberRepository
 import com.ipb.castelobranco.core.domain.startup.Preloadable
 import com.ipb.castelobranco.core.domain.worship.WorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileCurrentMemberRepository
+import com.ipb.castelobranco.features.profile.data.access.ProfileMemberAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileWorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
 import com.ipb.castelobranco.features.profile.data.repository.AccountRepositoryImpl
+import com.ipb.castelobranco.features.profile.data.repository.OwnMemberRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.repository.ProfileRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepository
 import com.ipb.castelobranco.features.profile.domain.repository.AccountRepository
+import com.ipb.castelobranco.features.profile.domain.repository.OwnMemberRepository
 import com.ipb.castelobranco.features.profile.domain.repository.ProfileRepository
 import dagger.Binds
 import dagger.Module
@@ -36,8 +40,15 @@ abstract class ProfileModule {
     abstract fun bindAccountRepository(impl: AccountRepositoryImpl): AccountRepository
 
     @Binds
+    abstract fun bindOwnMemberRepository(impl: OwnMemberRepositoryImpl): OwnMemberRepository
+
+    @Binds
     @Singleton
     abstract fun bindAccessRepository(impl: ProfileAccessRepository): AccessRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMemberAccessRepository(impl: ProfileMemberAccessRepository): MemberAccessRepository
 
     @Binds
     @Singleton

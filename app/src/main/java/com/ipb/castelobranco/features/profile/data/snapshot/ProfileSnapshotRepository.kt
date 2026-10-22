@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.profile.data.snapshot
 
 
+import com.ipb.castelobranco.core.domain.access.AccessStatus
+import com.ipb.castelobranco.core.domain.access.MemberAccess
 import com.ipb.castelobranco.core.domain.snapshot.BaseSnapshotRepository
 import com.ipb.castelobranco.core.domain.snapshot.Logger
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
@@ -24,7 +26,7 @@ class ProfileSnapshotRepository @Inject constructor(
     mapper = { dto ->
         MeProfile(
             name = dto.name,
-            isMember = dto.isMember,
+            memberAccess = dto.memberAccess ?: dto.isMember,
             photoUrl = dto.photoUrl,
             access = dto.toAccess(),
             memberId = dto.memberId,
@@ -33,10 +35,18 @@ class ProfileSnapshotRepository @Inject constructor(
             username = dto.username?.takeIf { it.isNotBlank() },
             hasPassword = dto.hasPassword,
             dateJoined = dto.dateJoined.toLocalDateOrNull(),
+            memberAccessInfo = dto.toMemberAccess(),
         )
     },
     logger = logger,
     tag = "ProfileSnapshot"
+)
+
+internal fun MeProfileDto.toMemberAccess(): MemberAccess = MemberAccess(
+    hasAccess = memberAccess ?: isMember,
+    status = AccessStatus.fromWire(accessStatus),
+    requestsBlocked = accessRequestsBlocked == true,
+    correctionPending = dataCorrectionPending == true,
 )
 
 /** An unparseable date is "unknown", never a failure: a throw here would lose the whole cached profile. */

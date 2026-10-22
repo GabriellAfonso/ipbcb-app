@@ -37,6 +37,8 @@ data class BirthdaysUiState(
     val currentMonth: Int = 1,
     val error: String? = null,
     val showLoginButton: Boolean = false,
+    /** Signed in without member access (403): the screen offers an access request. */
+    val isMembersOnly: Boolean = false,
 )
 
 @HiltViewModel
@@ -74,6 +76,7 @@ class BirthdaysViewModel @Inject constructor(
             is SnapshotState.Error -> base.copy(
                 error = error.toUserMessage(),
                 showLoginButton = error.let { it is AppError.Auth && it.code != HTTP_FORBIDDEN },
+                isMembersOnly = error.let { it is AppError.Auth && it.code == HTTP_FORBIDDEN },
             )
         }
     }

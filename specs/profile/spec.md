@@ -16,7 +16,10 @@ são redefinidos aqui.
 | Campo | Origem | Observação |
 |-------|--------|------------|
 | Nome | `name` | editável |
-| Membro | `is_member` | não aparece mais na tela (o próximo passo é um card de acesso) |
+| Acesso de membro | `member_access` (fallback `is_member`) | acesso efetivo; ver core §4.2.1.1 |
+| Situação do acesso | `access_status` | `granted` / `pending` / `none`; ausente = desconhecido |
+| Pedidos bloqueados | `access_requests_blocked` | só leitura |
+| Correção pendente | `data_correction_pending` | só leitura |
 | Foto | `photo_url` | mídia protegida (JWT) |
 | Acesso | `roles`, `permissions` | ver `specs/006-role-scoped-permissions/` |
 | Membro vinculado | `member_id` | `null` sem vínculo |
@@ -57,6 +60,24 @@ nome e a troca de senha ficam no menu de três pontos da barra do topo.
   100 caracteres. O nome é aparado (trim); vazio não salva; o erro do servidor aparece no campo. Aviso: "Nome
   atualizado".
 - O login (`username`) e o e-mail não aparecem; o e-mail não é editável.
+
+### 3.2.1 Acesso
+
+- Card "Acesso" logo abaixo do nome: "Liberado" / "Aguardando" / "Não liberado". Escondido com situação
+  desconhecida.
+- "Não liberado" e não bloqueado: botão "Pedir acesso" (mesmo diálogo das telas bloqueadas, core §4.2.1.1).
+  Bloqueado: "Pedidos de acesso indisponíveis. Fale com a liderança." e nenhum botão.
+
+### 3.2.2 Meus dados na igreja
+
+- Só quando a conta está vinculada a um membro do rol (`member_id`). `GET api/me/member/` ao abrir a tela;
+  `404 MEMBER_NOT_LINKED` esconde a seção.
+- Cargo, ministérios (separados por vírgula), aniversário ("14 de março"), batismo ("20/05/2001") e gênero
+  ("Feminino" / "Masculino"); linha sem valor some.
+- **Só em memória**: no estado da tela, nunca no snapshot, em arquivo ou em log.
+- "Solicitar correção": diálogo com mensagem obrigatória de até 1000 caracteres (pedido `data_correction`). Com
+  correção pendente o botão vira "Correção solicitada", desligado. Bloqueado: sem botão.
+- Falha de rede: "Não foi possível carregar seus dados." e "Tentar novamente".
 
 ### 3.3 Ações
 

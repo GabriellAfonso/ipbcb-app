@@ -1,7 +1,10 @@
 package com.ipb.castelobranco.features.profile.data.dto
 
+import com.ipb.castelobranco.core.domain.access.AccessStatus
+import com.ipb.castelobranco.features.profile.data.snapshot.toMemberAccess
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -163,5 +166,51 @@ class MeProfileDtoBackwardCompatibilityTest {
         assertEquals("ana", dto.username)
         assertEquals(false, dto.hasPassword)
         assertEquals("2025-03-14", dto.dateJoined)
+    }
+
+    @Test
+    fun `an old cache with only is_member falls back to it and leaves the status unknown`() {
+        val raw = """{"name":"Ana","is_member":true}"""
+
+        val dto = json.decodeFromString<MeProfileDto>(raw)
+        val access = dto.toMemberAccess()
+
+        assertNull(dto.memberAccess)
+        assertTrue(access.hasAccess)
+        assertEquals(AccessStatus.UNKNOWN, access.status)
+        assertFalse(access.requestsBlocked)
+        assertFalse(access.correctionPending)
+    }
+
+    @Test
+    fun `the backend 022 access fields are read`() {
+        val raw = """
+            {"name":"Ana","is_member":false,"member_access":false,"access_status":"pending",
+             "access_requests_blocked":true,"data_correction_pending":true}
+        """.trimIndent()
+
+        val access = json.decodeFromString<MeProfileDto>(raw).toMemberAccess()
+
+        assertFalse(access.hasAccess)
+        assertEquals(AccessStatus.PENDING, access.status)
+        assertTrue(access.requestsBlocked)
+        assertTrue(access.correctionPending)
+    }
+
+    @Test
+    fun `member_access wins over is_member`() {
+        val raw = """{"name":"Ana","is_member":false,"member_access":true,"access_status":"granted"}"""
+
+        val access = json.decodeFromString<MeProfileDto>(raw).toMemberAccess()
+
+        assertTrue(access.hasAccess)
+        assertEquals(AccessStatus.GRANTED, access.status)
+    }
+
+    @Test
+    fun `an unknown access status is unknown`() {
+        val raw = """{"name":"Ana","member_access":false,"access_status":"waiting"}"""
+
+        assertEquals(AccessStatus.UNKNOWN, json.decodeFromString<MeProfileDto>(raw).toMemberAccess().status)
     }
 }

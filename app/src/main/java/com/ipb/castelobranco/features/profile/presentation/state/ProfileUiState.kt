@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.profile.presentation.state
 
+import com.ipb.castelobranco.core.domain.access.MemberAccess
+import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDialogState
 import com.ipb.castelobranco.features.profile.domain.model.isDeletionConfirmationTyped
 
 data class ProfileUiState(
@@ -18,9 +20,24 @@ data class ProfileUiState(
     val nameDialog: NameDialogState? = null,
     val passwordDialog: PasswordDialogState? = null,
     val deleteDialog: DeleteDialogState? = null,
+    /** Drives the access card and which request buttons exist. */
+    val access: MemberAccess = MemberAccess.NONE,
+    /** "Meus dados na igreja": memory only, never saved. */
+    val ownMember: OwnMemberSection = OwnMemberSection.Hidden,
+    val requestDialog: AccessRequestDialogState? = null,
 ) {
     val isPhotoBusy: Boolean get() = isUploading || isRemovingPhoto
     val canDeleteAccount: Boolean get() = hasPassword != null
+}
+
+/** The roll section's states are exclusive: hidden (not linked), loading, failed or shown. */
+sealed interface OwnMemberSection {
+    data object Hidden : OwnMemberSection
+    data object Loading : OwnMemberSection
+    data class Error(val message: String) : OwnMemberSection
+
+    /** [lines] are label → value, unknown values already left out. */
+    data class Loaded(val lines: List<Pair<String, String>>) : OwnMemberSection
 }
 
 data class NameDialogState(

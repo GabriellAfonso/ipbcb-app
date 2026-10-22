@@ -154,7 +154,7 @@ Vocabulario em `core/domain/access/` (sem Android):
 | Tipo | Conteudo |
 |------|----------|
 | `AccessLevel` | `VIEW` < `MANAGE` < `OWNER` (ordem do enum = hierarquia) |
-| `Scope` | `MEMBERS`, `SCHEDULE`, `SONGS`, `GALLERY`, `EVENTS`, `NOTICES`, `HYMNAL_HISTORY_REPORT` (`reports.hymnal_history`) |
+| `Scope` | `MEMBERS`, `SCHEDULE`, `SONGS`, `GALLERY`, `EVENTS`, `NOTICES`, `HYMNAL_HISTORY_REPORT` (`reports.hymnal_history`), `PROFILES` |
 | `Role` | `ADMIN`, `LEADER`, `MEDIA` |
 | `Access` | `roles`, `hasAnyRole`, `levels`; `allows(scope, minimo)`, `holds(role)`; `Access.NONE` |
 | `AccessRepository` | `access: Flow<Access>`, `refresh()` |
@@ -168,6 +168,25 @@ Vocabulario em `core/domain/access/` (sem Android):
   `error_code: "PERMISSION_DENIED"` e emite `AuthEventBus.Event.PermissionDenied`; o `CoreViewModel` chama
   `RefreshAccessUseCase`, que refaz o `/me` com uma unica requisicao em voo por vez. As telas recalculam o que
   mostram.
+
+### 4.2.1.1 Acesso de membro e pedidos de acesso
+
+`core/domain/access/MemberAccess.kt` (spec 016): `MemberAccess(hasAccess, status, requestsBlocked,
+correctionPending)`, com `AccessStatus` `GRANTED` / `PENDING` / `NONE` / `UNKNOWN` (`access_status` do `/me`; ausente
+= `UNKNOWN`) e `AccessRequestType` `ACCESS` / `DATA_CORRECTION`. `hasAccess` e o `member_access` do `/me` — o acesso
+efetivo (marcacao **ou** papel Admin/Lideranca), com fallback para `is_member` de servidor antigo.
+
+- `MemberAccessRepository` (`memberAccess: Flow<MemberAccess>`, `request(type, message)`) e implementado em
+  `features/profile` (`ProfileMemberAccessRepository`) pelo snapshot do `/me`. `request` faz
+  `POST api/me/access-requests/` e, com sucesso ou recusa, relê o `/me` (uma recusa quase sempre quer dizer que o
+  estado mudou: bloqueado, ja pendente, ja liberado).
+- `accessPromptFor(MemberAccess)`: bloqueado → `Blocked`; `PENDING` → `Pending`; `NONE` → `CanRequest`;
+  `GRANTED`/`UNKNOWN` → `None`. `UNKNOWN` nunca oferece pedido (servidor antigo nao aceitaria).
+- **Telas so para membros:** galeria, escala e aniversariantes trocam o ramo 403 (logado) por
+  `MembersOnlyPlaceholder` (`core/presentation/components/access/`): a mensagem da tela e, conforme o prompt,
+  "Pedir acesso" (dialogo com mensagem opcional de ate 1000 caracteres), "Pedido enviado. Aguardando a lideranca."
+  ou "Pedidos de acesso indisponiveis. Fale com a lideranca.". Recusa do servidor aparece no dialogo com o `detail`;
+  nenhuma desloga. 401/deslogado continua com "Conectar a sua conta".
 
 ### 4.2.2 Membro do usuario
 
@@ -217,9 +236,14 @@ Sincroniza: no boot (depois do refresh do perfil, sem segurar o fim do boot), em
   por refresh falho nunca foi removido). `setlist_saved` (so membro do Louvor): agenda `SetlistRefreshWorker` e,
   fora do primeiro plano (`AppForegroundState`), notifica "Repertorio de domingo dd/MM disponivel".
   `confirm_plays`: notifica "Confirmar musicas de domingo" sempre; o acesso e decidido no toque.
+  `access_request_created` / `_approved` / `_denied` (spec 016, `request_type` `access` | `data_correction`,
+  `reason` opcional): notifica sempre; aprovado e negado tambem releem o `/me` (`RefreshAccessUseCase`).
 - **Notificacoes:** `SetlistNotifications`, canal `sunday_setlist` ("Repertorio"), id fixo por tipo (a nova
   substitui a anterior), so com permissao (Android 13+ ja pedida no launch). O toque abre o `CoreActivity` com
-  `NotificationTarget` nos extras (secao 6.1).
+  `NotificationTarget` nos extras (secao 6.1). Pedidos de acesso: `AccessRequestNotifications`, canal
+  `access_requests` ("Pedidos de acesso"), um id por tipo; o toque do lider abre Gestao > Perfis (Pendentes)
+  quando ele pode ver `profiles` (senao um aviso), e o de quem pediu abre o Perfil. Textos em
+  `specs/016-access-requests/contracts/ui.md`.
 
 ### 4.3 Sistema de Snapshot Cache
 
@@ -731,7 +755,11 @@ O core depende de interfaces/classes de features auth para funcionar:
 | Campo JSON | Campo Kotlin | Tipo | Obrigatorio |
 |------------|--------------|------|-------------|
 | `name` | `name` | `String` | sim |
-| `is_member` | `isMember` | `Boolean` | sim |
+| `member_access` | `memberAccess` | `Boolean` | nao (fallback `is_member`) |
+| `is_member` | — | `Boolean` | nao (default `false`; so fallback, removido quando o servidor parar de enviar) |
+| `access_status` | `memberAccessInfo.status` | `String?` | nao (`null` = desconhecido) |
+| `access_requests_blocked` | `memberAccessInfo.requestsBlocked` | `Boolean?` | nao |
+| `data_correction_pending` | `memberAccessInfo.correctionPending` | `Boolean?` | nao |
 | `roles` | `roles` | `List<RoleDto>` (`id`, `name`) | nao (default vazio) |
 | `permissions` | `permissions` | `Map<String, String?>` | nao (default vazio) |
 | `photo_url` | `photoUrl` | `String?` | nao (default `null`) |

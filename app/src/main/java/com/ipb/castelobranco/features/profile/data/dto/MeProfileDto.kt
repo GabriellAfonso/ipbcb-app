@@ -12,7 +12,14 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MeProfileDto(
     @SerialName("name") val name: String,
-    @SerialName("is_member") val isMember: Boolean,
+    /** Old name of [memberAccess], same value; still sent for older apps. Only a fallback here. */
+    @SerialName("is_member") val isMember: Boolean = false,
+    /** Effective member access (flag or leadership role); `null` from a server before backend 022. */
+    @SerialName("member_access") val memberAccess: Boolean? = null,
+    /** `granted` | `pending` | `none`; `null` before backend 022 (unknown: no request offered). */
+    @SerialName("access_status") val accessStatus: String? = null,
+    @SerialName("access_requests_blocked") val accessRequestsBlocked: Boolean? = null,
+    @SerialName("data_correction_pending") val dataCorrectionPending: Boolean? = null,
     @SerialName("photo_url") val photoUrl: String? = null,
     @SerialName("roles") val roles: List<RoleDto> = emptyList(),
     @SerialName("permissions") val permissions: Map<String, String?> = emptyMap(),

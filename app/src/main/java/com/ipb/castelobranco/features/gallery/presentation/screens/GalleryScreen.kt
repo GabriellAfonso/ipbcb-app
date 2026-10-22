@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.PermissionErrorPlaceholder
+import com.ipb.castelobranco.core.presentation.components.access.MembersOnlyPlaceholder
 import com.ipb.castelobranco.features.gallery.presentation.components.AlbumItem
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogActions
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
@@ -263,11 +264,7 @@ fun GalleryContent(
                                 onLoginClick = onNavigateToAuth,
                                 showLoginButton = true,
                             )
-                            HTTP_FORBIDDEN -> PermissionErrorPlaceholder(
-                                message = state.syncError,
-                                onLoginClick = onNavigateToAuth,
-                                showLoginButton = false,
-                            )
+                            HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = state.syncError)
                             else -> ErrorPlaceholder(message = state.syncError, onRetryClick = onRetrySync)
                         }
                     }
@@ -279,11 +276,7 @@ fun GalleryContent(
                                 onLoginClick = onNavigateToAuth,
                                 showLoginButton = true,
                             )
-                            HTTP_FORBIDDEN -> PermissionErrorPlaceholder(
-                                message = download.error,
-                                onLoginClick = onNavigateToAuth,
-                                showLoginButton = false,
-                            )
+                            HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = download.error)
                             else -> ErrorPlaceholder(message = download.error, onRetryClick = onRetryDownload)
                         }
                     }
