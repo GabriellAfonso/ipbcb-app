@@ -11,6 +11,7 @@ import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.EVENTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.MEMBERS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTICES
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.NOTIFICATIONS
+import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.PROFILES
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.REPORTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.SCHEDULE
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.WORSHIP
@@ -35,7 +36,7 @@ class VisiblePanelCardsUseCaseTest {
         levels = mapOf(
             Scope.MEMBERS to MANAGE, Scope.SCHEDULE to MANAGE, Scope.SONGS to MANAGE,
             Scope.GALLERY to MANAGE, Scope.EVENTS to MANAGE, Scope.NOTICES to MANAGE,
-            Scope.HYMNAL_HISTORY_REPORT to VIEW,
+            Scope.HYMNAL_HISTORY_REPORT to VIEW, Scope.PROFILES to MANAGE,
         ),
     )
 
@@ -56,7 +57,7 @@ class VisiblePanelCardsUseCaseTest {
     @Test
     fun `leader sees everything but the admin-only placeholders`() {
         assertEquals(
-            listOf(WORSHIP, SCHEDULE, MEMBERS, NOTICES, REPORTS, EVENTS),
+            listOf(WORSHIP, SCHEDULE, MEMBERS, NOTICES, REPORTS, EVENTS, PROFILES),
             visibleCards(leader),
         )
     }

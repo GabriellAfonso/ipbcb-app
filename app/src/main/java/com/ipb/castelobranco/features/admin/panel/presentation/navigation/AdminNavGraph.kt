@@ -16,6 +16,8 @@ import com.ipb.castelobranco.features.admin.events.presentation.navigation.Event
 import com.ipb.castelobranco.features.admin.events.presentation.navigation.eventsAdminGraph
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.membersGraph
+import com.ipb.castelobranco.features.admin.profiles.presentation.navigation.ProfilesRoutes
+import com.ipb.castelobranco.features.admin.profiles.presentation.navigation.profilesGraph
 import com.ipb.castelobranco.features.admin.register.presentation.screens.MusicRegistrationScreen
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.ReportsRoutes
 import com.ipb.castelobranco.features.admin.reports.presentation.navigation.reportsGraph
@@ -30,6 +32,7 @@ data class AdminNav(
     val reports: () -> Unit,
     val members: () -> Unit,
     val events: () -> Unit,
+    val profiles: () -> Unit = {},
     val confirmSunday: (LocalDate) -> Unit = {},
 )
 
@@ -54,6 +57,12 @@ fun NavController.navigateToSundayConfirmation(date: LocalDate) {
     navigate(AdminRoutes.register(date))
 }
 
+/** Opens "Perfis" (on Pendentes) from outside administration (a notification tap), through the panel. */
+fun NavController.navigateToProfilesPending() {
+    navigate(AppRoutes.ADMIN_GRAPH)
+    navigate(ProfilesRoutes.GRAPH)
+}
+
 fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     fun nav() = AdminNav(
         back     = { navController.safePopBackStack() },
@@ -62,6 +71,7 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         reports  = { navController.navigate(ReportsRoutes.GRAPH) },
         members  = { navController.navigate(MembersRoutes.GRAPH) },
         events   = { navController.navigate(EventsAdminRoutes.GRAPH) },
+        profiles = { navController.navigate(ProfilesRoutes.GRAPH) },
         confirmSunday = { date -> navController.navigate(AdminRoutes.register(date)) },
     )
 
@@ -110,5 +120,8 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
 
         // Events too: list and form.
         eventsAdminGraph(navController)
+
+        // "Perfis": app accounts and their access requests.
+        profilesGraph(navController)
     }
 }

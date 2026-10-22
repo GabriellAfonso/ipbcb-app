@@ -90,9 +90,10 @@ fica guardada no código mas o card aparece cinza.
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
 | Eventos            | Ciano    | `Event`         | Navega para a área de eventos  | `events` ≥ `view`                    |
 | Notificações       | Pink     | `Notifications` | Sem implementação              | papel Admin                          |
+| Perfis             | Âmbar    | `ManageAccounts`| Navega para Perfis (§8)        | `profiles` ≥ `view`                  |
 
 O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença e
-Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os oito; Liderança
+Notificações não têm escopo no backend, por isso dependem do papel Admin. Na prática: Admin vê os nove; Liderança
 todos menos Presença e Notificações; Mídia Relatórios, Eventos e o cinza Avisos. A área de eventos (lista e
 formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4.
 
@@ -366,3 +367,36 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
 uso puros: idade, validação, frases do histórico, checagem da foto, confirmação de exclusão) →
 `presentation/` (uma ViewModel por tela com `hiltViewModel()`; o estado compartilhado entre telas é o
 do repositório, não de uma ViewModel escopada ao grafo).
+
+## 8. Perfis
+
+Contas do app vistas pela liderança (spec 016) — diferente de "Membros", que é o rol da igreja. Fonte da verdade
+dos endpoints e erros: `backend/specs/022-access-requests/contracts/access-api.md`. Nenhuma tela mostra ou edita
+e-mail.
+
+### 8.1 Telas
+
+- **Lista** (`ProfilesListScreen`): abas "Pendentes" (contas com pedido pendente, o mais antigo primeiro) e "Todos"
+  (todas as contas ativas, por nome). Linha: foto, nome, selo "Pedido de acesso" / "Pedido de correção" quando há
+  pendente e "Bloqueado" quando bloqueado. Puxar para atualizar. Vazio: "Nenhum pedido pendente." / "Nenhuma conta.".
+- **Detalhe** (`ProfileDetailScreen`): foto, nome, "@login", "No app desde {mês} de {ano}"; acesso "Liberado" /
+  "Não liberado" (a marcação gravada) e "Acesso pelo papel" quando um papel libera; membro do rol vinculado ou
+  "Sem vínculo"; pedidos pendentes (tipo, mensagem, data) e histórico (tipo, situação, quem decidiu, quando,
+  motivo). Correção aprovada aparece como "Resolvida".
+
+### 8.2 Ações (só com `profiles` ≥ `manage`)
+
+- **Aprovar** / **Negar** cada pedido pendente; negar abre um diálogo com "Motivo (opcional)", até 500 caracteres.
+- **Revogar acesso** — só com a marcação ligada; confirmação "Revogar o acesso de {nome}?"; quando um papel libera,
+  o texto acrescenta "O papel continua liberando o acesso.".
+- **Bloquear pedidos** — chave liga/desliga; pedidos pendentes continuam pendentes.
+- **Vincular ao rol** / **Trocar vínculo** — diálogo com busca sobre a lista de Membros (§7, mesmo repositório);
+  **Remover vínculo** pede confirmação.
+- Toda ação devolve o detalhe atualizado, que substitui o da tela e atualiza (ou tira de Pendentes) a linha nas
+  listas. Recusa do servidor aparece como aviso com o `detail`; num 409 o detalhe é relido.
+
+### 8.3 Camadas
+
+`features/admin/profiles/`: `ProfilesAdminApi` → `ProfilesAdminRepositoryImpl` (listas em memória por aba, sem
+disco) → use cases → `ProfilesListViewModel` / `ProfileDetailViewModel`. Fotos pelo `@ProfilePhotoLoader` (Coil
+sobre o `@Client`, só cache em memória). Grafo `profilesGraph` dentro do `adminGraph`.
