@@ -54,6 +54,7 @@ import com.ipb.castelobranco.features.bible.presentation.components.BibleFontSiz
 import com.ipb.castelobranco.features.bible.presentation.components.BiblePendingWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.BibleReaderToolbar
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumn
+import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumnPlaceholder
 import com.ipb.castelobranco.features.bible.presentation.components.BibleWaitingForWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.VerseRowData
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleUiEvent
@@ -88,22 +89,17 @@ fun BibleReaderScreen(
                 is BibleUiEvent.ShowMessage -> {
                     Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
                 }
-                BibleUiEvent.ScrollToCurrentVerse -> {
-                    val verse = state.position.verse
-                    val target = (verse - 1).coerceAtLeast(0) + 1 // +1 = item header
-                    runCatching { listState.scrollToItem(target) }
-                }
             }
         }
     }
 
     val pendingScroll by viewModel.pendingScroll.collectAsStateWithLifecycle()
-    LaunchedEffect(pendingScroll, state.isBibleReady, state.position) {
+    LaunchedEffect(pendingScroll, state.isChapterReady, state.position) {
         val target = pendingScroll ?: return@LaunchedEffect
         val position = state.position
         val onTarget = position.bookAbbrev.equals(target.bookAbbrev, ignoreCase = true) &&
             position.chapter == target.chapter
-        if (!state.isBibleReady || !onTarget) return@LaunchedEffect
+        if (!state.isChapterReady || !onTarget) return@LaunchedEffect
         val index = (target.verse - 1).coerceAtLeast(0) + 1 // +1 = item header
         runCatching { listState.scrollToItem(index) }
         viewModel.consumePendingScroll()
@@ -164,8 +160,12 @@ fun BibleReaderScreen(
             if (book == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     when {
-                        state.isLoadingBooks || download.isDownloading || download.isPending ->
-                            CircularProgressIndicator()
+                        download.isDownloading || download.isPending -> CircularProgressIndicator()
+                        state.isLoadingBooks -> BibleVerseColumnPlaceholder(
+                            title = null,
+                            fontSizeSp = state.fontSize,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                         download.error != null -> Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -191,21 +191,30 @@ fun BibleReaderScreen(
 
             Box(modifier = Modifier.fillMaxSize()) {
                 val verses = state.currentChapterVerses
-                val rows = remember(verses, state.selectedVerses, state.position) {
-                    verses.mapIndexed { idx, text ->
-                        val ref = VerseRef(book.abbrev, state.position.chapter, idx + 1)
-                        VerseRowData(ref = ref, text = text, isSelected = ref in state.selectedVerses)
+                if (verses == null) {
+                    // Same header and line height as the chapter: nothing jumps when the text arrives.
+                    BibleVerseColumnPlaceholder(
+                        title = "${book.name} ${state.position.chapter}",
+                        fontSizeSp = state.fontSize,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    val rows = remember(verses, state.selectedVerses, state.position) {
+                        verses.mapIndexed { idx, text ->
+                            val ref = VerseRef(book.abbrev, state.position.chapter, idx + 1)
+                            VerseRowData(ref = ref, text = text, isSelected = ref in state.selectedVerses)
+                        }
                     }
+                    BibleVerseColumn(
+                        bookName = book.name,
+                        chapter = state.position.chapter,
+                        verses = rows,
+                        fontSizeSp = state.fontSize,
+                        onVerseClick = { ref -> viewModel.toggleVerseSelection(ref) },
+                        listState = listState,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
-                BibleVerseColumn(
-                    bookName = book.name,
-                    chapter = state.position.chapter,
-                    verses = rows,
-                    fontSizeSp = state.fontSize,
-                    onVerseClick = { ref -> viewModel.toggleVerseSelection(ref) },
-                    listState = listState,
-                    modifier = Modifier.fillMaxSize(),
-                )
 
                 // Setas flutuantes para navegar capítulos.
                 ChapterChevrons(

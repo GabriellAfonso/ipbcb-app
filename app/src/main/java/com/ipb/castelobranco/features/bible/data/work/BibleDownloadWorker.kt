@@ -6,10 +6,8 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.ipb.castelobranco.core.data.local.SnapshotStorage
-import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
 import com.ipb.castelobranco.features.bible.data.api.BibleApi
-import com.ipb.castelobranco.features.bible.data.dto.BibleBookDto
+import com.ipb.castelobranco.features.bible.data.local.BibleLocalStore
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import dagger.assisted.Assisted
@@ -18,15 +16,13 @@ import com.ipb.castelobranco.core.network.error.parseApiError
 import org.json.JSONObject
 
 /**
- * Baixa o JSON de cada [BibleTranslation] e persiste via [SnapshotStorage].
+ * Baixa o JSON de cada [BibleTranslation] e o divide por livro via [BibleLocalStore].
  *
- * Skip por tradução: se já existe arquivo para a chave, não rebaixa
- * (a menos que [INPUT_FORCE] esteja true — usado pelo botão "Apagar Bíblia").
+ * Skip por tradução: se a tradução já está no disco, não rebaixa (a menos que [INPUT_FORCE] esteja true).
  *
- * Importante: o worker grava o JSON **bruto** retornado pelo servidor, sem
- * fazer parse → re-encode. Cada tradução tem ~4 MB e ~31 mil strings; o
- * round-trip via kotlinx.serialization causava OOM e GC longa na emulação,
- * fazendo o worker travar e voltar como RETRY indefinidamente.
+ * Importante: a resposta é lida em fluxo, um livro por vez — nunca a tradução inteira em memória. Cada tradução
+ * tem ~4 MB e ~31 mil strings; decodificar tudo de uma vez causava OOM e GC longa na emulação, fazendo o worker
+ * travar e voltar como RETRY indefinidamente.
  *
  * Progresso é reportado em incrementos por tradução (0 / N → 1 / N → 2 / N).
  */
@@ -35,8 +31,7 @@ class BibleDownloadWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val api: BibleApi,
-    private val caches: Map<BibleTranslation, @JvmSuppressWildcards SnapshotCache<List<BibleBookDto>>>,
-    private val storage: SnapshotStorage,
+    private val store: BibleLocalStore,
     private val repository: BibleRepository,
 ) : CoroutineWorker(context, params) {
 
@@ -47,11 +42,13 @@ class BibleDownloadWorker @AssistedInject constructor(
             val total = translations.size
             var done = 0
 
+            // Converts an old single-file translation instead of downloading it again.
+            repository.preload()
+
             setProgressAsync(workDataOf(KEY_DOWNLOADED to 0, KEY_TOTAL to total))
 
             for (translation in translations) {
-                val cache = caches[translation] ?: continue
-                val alreadyCached = !force && cache.exists()
+                val alreadyCached = !force && store.exists(translation)
                 if (!alreadyCached) {
                     val response = api.getBibleRaw(translation.code, ifNoneMatch = null)
                     if (!response.isSuccessful) {
@@ -77,11 +74,7 @@ class BibleDownloadWorker @AssistedInject constructor(
                     val body = response.body() ?: return Result.failure(
                         workDataOf(KEY_ERROR to "Resposta vazia", KEY_ERROR_CODE to response.code())
                     )
-                    // Lê e grava como string crua, sem parse/re-encode.
-                    val rawJson = body.use { it.string() }
-                    val etag = response.headers()["ETag"]
-                    storage.save(translation.snapshotKey, rawJson)
-                    if (etag != null) storage.saveETag(translation.snapshotKey, etag)
+                    body.use { store.import(translation, it.byteStream()) }
                 }
                 done++
                 setProgressAsync(workDataOf(KEY_DOWNLOADED to done, KEY_TOTAL to total))

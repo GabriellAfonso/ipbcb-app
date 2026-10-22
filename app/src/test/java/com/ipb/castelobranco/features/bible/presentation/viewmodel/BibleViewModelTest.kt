@@ -2,6 +2,7 @@ package com.ipb.castelobranco.features.bible.presentation.viewmodel
 
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
@@ -40,20 +41,15 @@ class BibleViewModelTest {
     private val workManager: WorkManager = mockk(relaxed = true)
     private val connectivityObserver: NetworkConnectivityObserver = mockk(relaxed = true)
 
-    private val genesis = BibleBook(
+    private val genesis = BibleBook(abbrev = "gn", name = "Gênesis", verseCounts = listOf(2, 2))
+
+    private val exodus = BibleBook(abbrev = "ex", name = "Êxodo", verseCounts = listOf(1))
+
+    private val genesisText = BibleBookText(
         abbrev = "gn",
-        name = "Gênesis",
         chapters = listOf(
             listOf("No princípio criou Deus os céus e a terra.", "A terra era sem forma e vazia."),
             listOf("Assim foram acabados os céus e a terra.", "E no sétimo dia Deus descansou."),
-        ),
-    )
-
-    private val exodus = BibleBook(
-        abbrev = "ex",
-        name = "Êxodo",
-        chapters = listOf(
-            listOf("Estes são os nomes dos filhos de Israel."),
         ),
     )
 
@@ -61,6 +57,7 @@ class BibleViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         every { repository.booksFlow } returns MutableStateFlow(listOf(genesis, exodus))
+        every { repository.currentBookFlow } returns MutableStateFlow(genesisText)
         every { repository.activeTranslationFlow } returns MutableStateFlow(BibleTranslation.NAA)
         every { repository.cachedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.NAA))
         every { repository.positionFlow } returns MutableStateFlow(BibleReadingPosition("gn", 1, 1))
@@ -134,9 +131,33 @@ class BibleViewModelTest {
         val vm = buildViewModel()
         val job = subscribeAndAdvance(vm)
 
-        val verses = vm.uiState.value.currentChapterVerses
+        val verses = vm.uiState.value.currentChapterVerses!!
         assertEquals(2, verses.size)
         assertEquals("No princípio criou Deus os céus e a terra.", verses[0])
+        assertTrue(vm.uiState.value.isChapterReady)
+        job.cancel()
+    }
+
+    @Test
+    fun `chapter is not ready while the book's text is on its way`() = runTest {
+        every { repository.currentBookFlow } returns MutableStateFlow(null)
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertEquals(genesis, vm.uiState.value.currentBook)
+        assertEquals(null, vm.uiState.value.currentChapterVerses)
+        assertFalse(vm.uiState.value.isChapterReady)
+        job.cancel()
+    }
+
+    @Test
+    fun `the previous book's text does not stand in for the new book`() = runTest {
+        every { repository.positionFlow } returns MutableStateFlow(BibleReadingPosition("ex", 1, 1))
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertEquals(exodus, vm.uiState.value.currentBook)
+        assertFalse(vm.uiState.value.isChapterReady)
         job.cancel()
     }
 
@@ -165,6 +186,7 @@ class BibleViewModelTest {
         advanceUntilIdle()
 
         coVerify { repository.savePosition("ex", 1, 1) }
+        assertEquals(VerseRef("ex", 1, 1), vm.pendingScroll.value)
         job.cancel()
     }
 

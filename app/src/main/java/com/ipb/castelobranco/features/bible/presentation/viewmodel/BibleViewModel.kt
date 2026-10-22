@@ -7,9 +7,11 @@ import androidx.work.WorkManager
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
+import com.ipb.castelobranco.features.bible.domain.model.resolve
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.BibleAutoDownloadUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,9 +39,12 @@ data class BibleDownloadStatus(
 )
 
 data class BibleUiState(
+    /** Index of the active translation: every book without its text. */
     val books: List<BibleBook> = emptyList(),
-    /** The active translation is on its way into memory: not the same as "not downloaded". */
+    /** The index is on its way into memory: not the same as "not downloaded". */
     val isLoadingBooks: Boolean = true,
+    /** Text of the book being read; may still be the previous book while the new one is read. */
+    val bookText: BibleBookText? = null,
     val activeTranslation: BibleTranslation = BibleTranslation.Default,
     val cachedTranslations: Set<BibleTranslation> = emptySet(),
     val position: BibleReadingPosition = BibleReadingPosition.default(),
@@ -49,23 +54,25 @@ data class BibleUiState(
 ) {
     /** Livro indicado pela posição atual; null se a Bíblia ainda não foi baixada. */
     val currentBook: BibleBook?
-        get() = books.firstOrNull { it.abbrev.equals(position.bookAbbrev, ignoreCase = true) }
-            ?: books.firstOrNull()
+        get() = books.resolve(position.bookAbbrev)
 
-    val currentChapterVerses: List<String>
+    /** Versículos do capítulo atual; null enquanto o texto do livro está a caminho. */
+    val currentChapterVerses: List<String>?
         get() {
-            val book = currentBook ?: return emptyList()
-            return book.chapter(position.chapter) ?: book.chapter(1).orEmpty()
+            val book = currentBook ?: return null
+            val text = bookText?.takeIf { it.abbrev == book.abbrev } ?: return null
+            return text.chapter(position.chapter) ?: text.chapter(1).orEmpty()
         }
 
     val isBibleReady: Boolean get() = books.isNotEmpty()
+
+    val isChapterReady: Boolean get() = currentChapterVerses != null
 }
 
 sealed interface BibleUiEvent {
     data class CopiedToClipboard(val text: String) : BibleUiEvent
     data class ShareText(val text: String) : BibleUiEvent
     data class ShowMessage(val text: String) : BibleUiEvent
-    data object ScrollToCurrentVerse : BibleUiEvent
 }
 
 @HiltViewModel
@@ -105,13 +112,15 @@ class BibleViewModel @Inject constructor(
     val uiState: StateFlow<BibleUiState> = combine(
         combine(
             repository.booksFlow,
+            repository.currentBookFlow,
             repository.activeTranslationFlow,
             repository.cachedTranslationsFlow,
             repository.positionFlow,
-        ) { books, active, cached, position ->
+        ) { books, bookText, active, cached, position ->
             BibleUiState(
                 books = books.orEmpty(),
                 isLoadingBooks = books == null,
+                bookText = bookText,
                 activeTranslation = active,
                 cachedTranslations = cached,
                 position = position,
@@ -132,10 +141,10 @@ class BibleViewModel @Inject constructor(
     }
 
     fun navigateTo(bookAbbrev: String, chapter: Int, verse: Int = 1) {
+        _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
         viewModelScope.launch {
             repository.savePosition(bookAbbrev, chapter, verse)
             _selectedVerses.value = emptySet()
-            _events.trySend(BibleUiEvent.ScrollToCurrentVerse)
         }
     }
 
@@ -143,7 +152,7 @@ class BibleViewModel @Inject constructor(
 
     /**
      * Verse to bring on screen once its chapter is shown. A plain event would fire before the saved
-     * position comes back from the preferences and before the translation is decoded.
+     * position comes back from the preferences and before the book's text is read.
      */
     val pendingScroll: StateFlow<VerseRef?> = _pendingScroll.asStateFlow()
 
@@ -216,7 +225,7 @@ class BibleViewModel @Inject constructor(
     private fun formatSelected(): String? {
         val state = uiState.value
         val book = state.currentBook ?: return null
-        val verses = state.currentChapterVerses
+        val verses = state.currentChapterVerses ?: return null
         val selected = _selectedVerses.value
             .filter { it.bookAbbrev.equals(book.abbrev, ignoreCase = true) && it.chapter == state.position.chapter }
             .map { it.verse }

@@ -4,7 +4,7 @@ package com.ipb.castelobranco.features.bible.domain.model
  * Traduções da Bíblia disponíveis para download.
  *
  * - [code]: identificador usado na URL da API ("NAA", "ARA").
- * - [snapshotKey]: chave usada pelo SnapshotStorage / DataStore.
+ * - [snapshotKey]: nome do arquivo único que versões anteriores gravavam (convertido por `BibleLocalStore`).
  */
 enum class BibleTranslation(val code: String, val snapshotKey: String, val displayName: String) {
     NAA(code = "NAA", snapshotKey = "bible_naa", displayName = "NAA"),

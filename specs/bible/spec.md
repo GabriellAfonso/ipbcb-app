@@ -25,6 +25,11 @@ O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar a fonte
 copiar/compartilhar os versículos selecionados.
 Sem a tradução ativa no aparelho, mostra o banner de download (tentar de novo no WiFi ou nos dados móveis).
 
+**Carregando.** Enquanto o texto do capítulo não chegou, o leitor mostra um placeholder com o mesmo layout do
+capítulo: o título real ("Gênesis 1", vindo do índice) e barras pulsando no lugar dos versículos, na altura de
+linha da fonte atual. A toolbar já mostra o livro e o capítulo. Quando o texto chega, ocupa o mesmo espaço — nada
+pula. Mudar de capítulo rola para o versículo 1 só depois que o texto do novo capítulo está na tela.
+
 ## 2. Endpoint
 
 `GET /api/bible/{translation}/` — `translation` = `NAA` | `ARA`. Lista de 66 livros:
@@ -38,34 +43,49 @@ espaço. ~3,9 MB por tradução.
 
 ## 3. Armazenamento
 
-- Cada tradução é um snapshot em `filesDir/snapshots/bible_naa.json` / `bible_ara.json` (+ ETag), via
-  `SnapshotCache` (ver `core` 4.3).
-- `BiblePreferences` (DataStore): tradução ativa, última posição (livro, capítulo, versículo) e tamanho da fonte.
+Cada tradução vive dividida por livro em `filesDir/bible/{naa,ara}/`:
+
+- `index.json`: os 66 livros na ordem canônica — `abbrev`, `name` e `verseCounts` (versículos por capítulo).
+  Poucos KB.
+- `00.json` … `65.json`: os capítulos de cada livro (`[["v1", "v2"], ...]`), na posição do livro no índice. Os
+  versículos já vêm juntados (sem arrays de partes). O maior (Salmos) tem ~250 KB.
+
+A tradução conta como presente quando `index.json` existe. `BiblePreferences` (DataStore) guarda a tradução ativa,
+a última posição (livro, capítulo, versículo) e o tamanho da fonte.
+
+**Arquivo antigo.** Versões anteriores gravavam a tradução inteira em `filesDir/snapshots/bible_{naa,ara}.json`
+(+ `_etag.txt`). O repositório converte esse arquivo para o formato por livro na primeira checagem do disco e o
+apaga, sem baixar de novo; se a conversão falhar, apaga do mesmo jeito e a tradução conta como ausente.
 
 ## 4. Repositório (`BibleRepository`, `@Singleton`)
 
-Expõe `booksFlow` (livros da tradução ativa), `activeTranslationFlow`, `cachedTranslationsFlow` (traduções
-presentes no disco), `positionFlow` e `fontSizeFlow`.
+Expõe `booksFlow` (índice da tradução ativa), `currentBookFlow` (texto do livro da posição atual),
+`activeTranslationFlow`, `cachedTranslationsFlow` (traduções presentes no disco), `positionFlow` e `fontSizeFlow`.
 
-- **Traduções no disco sem decodificar.** `cachedTranslationsFlow` olha só a existência dos arquivos
-  (`SnapshotCache.exists()`). O repositório checa ao nascer, e `preload()` (boot, fim do download) checa de novo.
-- **Livros só em memória enquanto a Bíblia está aberta.** Uma tradução inteira pesa vários MB no heap, então
-  `booksFlow` não carrega nada no boot: decodifica a tradução ativa quando alguém coleta (o `BibleViewModel` do
-  `bibleGraph`) e solta 5 s depois do último coletor sair — o valor volta a `null`, nada fica retido pelo resto
-  da sessão. Os 5 s cobrem rotação de tela sem decodificar de novo.
-- **Só a tradução ativa é decodificada, uma vez.** Decodifica de novo apenas quando a tradução ativa muda ou chega
-  ao disco (download com a Bíblia aberta).
-- `booksFlow`: `null` = decodificando (tela mostra carregando); vazio = tradução não está no aparelho (tela
-  oferece o download); lista = pronto.
-- `clearAll()`: apaga os snapshots das duas traduções, reseta as preferências e esvazia `cachedTranslationsFlow`
-  (e, com isso, `booksFlow`).
-- Arquivo corrompido: o `load()` apaga e devolve vazio; a tradução passa a contar como ausente.
+- **Traduções no disco sem decodificar.** `cachedTranslationsFlow` olha só a existência do `index.json`. O
+  repositório checa ao nascer, e `preload()` (boot, fim do download) checa de novo; as duas checagens convertem
+  antes o arquivo antigo (3), se houver.
+- **Índice sempre em memória.** `booksFlow` lê o `index.json` da tradução ativa assim que ela está no disco e o
+  mantém pela sessão inteira: nomes, capítulos e versículos por capítulo ficam disponíveis antes de qualquer
+  texto — a toolbar, o índice e a navegação entre livros não esperam nada. `null` = ainda lendo; vazio = tradução
+  não está no aparelho (tela oferece o download); lista = pronto. Ao trocar de tradução, o índice anterior fica
+  até o novo chegar.
+- **Só um livro de texto em memória.** `currentBookFlow` lê o arquivo do livro da posição atual (o livro de
+  `abbrev` igual, sem diferenciar maiúsculas; se não existir, o primeiro do índice) enquanto alguém coleta (o
+  `BibleViewModel` do `bibleGraph`) e o solta 5 s depois do último coletor sair. Mudar de capítulo no mesmo livro
+  não lê nada; mudar de livro ou de tradução lê o novo arquivo, e o anterior continua no flow até ele chegar.
+- `clearAll()`: apaga as duas traduções (e o arquivo antigo), reseta as preferências e esvazia
+  `cachedTranslationsFlow` (e, com isso, `booksFlow` e `currentBookFlow`).
+- Arquivo corrompido (índice ou livro): apaga a pasta da tradução, que passa a contar como ausente.
 
 ## 5. Download
 
 `BibleDownloadWorker` (WorkManager, trabalho único `bible_auto_download`) baixa cada tradução ausente
-(`exists()`; com `force`, todas) como JSON cru, sem parse, e grava direto no snapshot. No fim chama `preload()`
-para a UI ver os livros sem reabrir o app. Retry até 3 tentativas; 401/403 falha na hora.
+(`exists()`; com `force`, todas). A resposta é lida em fluxo, um livro por vez, e dividida no formato da seção 3
+numa pasta temporária que só substitui a da tradução quando o último livro e o índice estão gravados — nunca há a
+tradução inteira na memória nem uma tradução pela metade no lugar. Antes de começar chama `preload()` (converte o
+arquivo antigo em vez de baixar de novo) e no fim chama de novo, para a UI ver os livros sem reabrir o app. Retry
+até 3 tentativas; 401/403 falha na hora.
 
 - **Automático:** no boot, depois do `preload()`, se falta alguma tradução e o download automático não está
   pausado — só WiFi (`UNMETERED`).

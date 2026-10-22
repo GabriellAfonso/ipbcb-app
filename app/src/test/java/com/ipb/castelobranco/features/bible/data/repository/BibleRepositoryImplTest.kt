@@ -1,9 +1,9 @@
 package com.ipb.castelobranco.features.bible.data.repository
 
-import com.ipb.castelobranco.core.data.local.SnapshotStorage
-import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
-import com.ipb.castelobranco.features.bible.data.dto.BibleBookDto
+import com.ipb.castelobranco.features.bible.data.local.BibleLocalStore
 import com.ipb.castelobranco.features.bible.data.local.BiblePreferences
+import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import io.mockk.coEvery
@@ -35,31 +35,25 @@ class BibleRepositoryImplTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val naaCache: SnapshotCache<List<BibleBookDto>> = mockk(relaxed = true)
-    private val araCache: SnapshotCache<List<BibleBookDto>> = mockk(relaxed = true)
+    private val store: BibleLocalStore = mockk(relaxed = true)
     private val preferences: BiblePreferences = mockk(relaxed = true)
-    private val storage: SnapshotStorage = mockk(relaxed = true)
     private val translation = MutableStateFlow(BibleTranslation.NAA)
+    private val position = MutableStateFlow(BibleReadingPosition.default())
 
-    private val caches = mapOf(
-        BibleTranslation.NAA to naaCache,
-        BibleTranslation.ARA to araCache,
-    )
-
-    private val genesisDto = BibleBookDto(
-        abbrev = "gn",
-        name = "Gênesis",
-        chapters = listOf(listOf("No princípio...", "A terra era sem forma...")),
-    )
-
-    private val exodusDto = BibleBookDto(abbrev = "ex", name = "Êxodo", chapters = listOf(listOf("Estes são...")))
+    private val genesis = BibleBook(abbrev = "gn", name = "Gênesis", verseCounts = listOf(2, 1))
+    private val exodus = BibleBook(abbrev = "ex", name = "Êxodo", verseCounts = listOf(1))
+    private val genesisText = BibleBookText("gn", listOf(listOf("No princípio...", "A terra..."), listOf("Assim...")))
+    private val exodusText = BibleBookText("ex", listOf(listOf("Estes são...")))
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         every { preferences.translationFlow } returns translation
-        every { preferences.positionFlow } returns flowOf(BibleReadingPosition.default())
+        every { preferences.positionFlow } returns position
         every { preferences.fontSizeFlow } returns flowOf(BiblePreferences.DEFAULT_FONT_SIZE)
+        coEvery { store.loadIndex(any()) } returns listOf(genesis, exodus)
+        coEvery { store.loadBook(any(), 0, "gn") } returns genesisText
+        coEvery { store.loadBook(any(), 1, "ex") } returns exodusText
     }
 
     @After
@@ -69,29 +63,38 @@ class BibleRepositoryImplTest {
 
     // The repository's scope runs on the test scheduler, so virtual time drives its sharing timeouts.
     private fun buildRepository(): BibleRepositoryImpl =
-        BibleRepositoryImpl(caches, preferences, storage, testDispatcher)
+        BibleRepositoryImpl(store, preferences, testDispatcher)
 
     private fun onDisk(vararg translations: BibleTranslation) {
-        coEvery { naaCache.exists() } returns (BibleTranslation.NAA in translations)
-        coEvery { araCache.exists() } returns (BibleTranslation.ARA in translations)
+        BibleTranslation.entries.forEach { t -> coEvery { store.exists(t) } returns (t in translations) }
     }
 
-    /** Stands in for the Bible graph's ViewModel collecting the books. */
-    private fun TestScope.collectBooks(repo: BibleRepositoryImpl) =
-        backgroundScope.launch { repo.booksFlow.collect {} }
+    /** Stands in for the Bible graph's ViewModel collecting the current book. */
+    private fun TestScope.collectBook(repo: BibleRepositoryImpl) =
+        backgroundScope.launch { repo.currentBookFlow.collect {} }
 
     // region cached translations
 
     @Test
-    fun `cached translations are known without preload or decoding`() = runTest {
+    fun `cached translations are known without reading any book`() = runTest {
         onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
 
         val repo = buildRepository()
         advanceUntilIdle()
 
         assertEquals(setOf(BibleTranslation.NAA, BibleTranslation.ARA), repo.cachedTranslationsFlow.value)
-        coVerify(exactly = 0) { naaCache.load() }
-        coVerify(exactly = 0) { araCache.load() }
+        coVerify(exactly = 0) { store.loadBook(any(), any(), any()) }
+    }
+
+    @Test
+    fun `checking the disk converts the old single file first`() = runTest {
+        onDisk()
+        val repo = buildRepository()
+        advanceUntilIdle()
+
+        repo.preload()
+
+        coVerify(atLeast = 2) { store.migrateLegacy() }
     }
 
     @Test
@@ -109,126 +112,185 @@ class BibleRepositoryImplTest {
 
     // endregion
 
-    // region booksFlow
+    // region index
 
     @Test
-    fun `books are not decoded while nobody collects`() = runTest {
+    fun `the index of the active translation is loaded without collectors`() = runTest {
         onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
 
         val repo = buildRepository()
-        repo.preload()
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { naaCache.load() }
-        assertNull(repo.booksFlow.value)
+        assertEquals(listOf(genesis, exodus), repo.booksFlow.value)
+        coVerify(exactly = 1) { store.loadIndex(BibleTranslation.NAA) }
+        coVerify(exactly = 0) { store.loadIndex(BibleTranslation.ARA) }
     }
 
     @Test
-    fun `collecting decodes only the active translation, once`() = runTest {
-        onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-
-        val repo = buildRepository()
-        collectBooks(repo)
-        repo.preload()
-        advanceUntilIdle()
-
-        assertEquals("gn", repo.booksFlow.value?.single()?.abbrev)
-        coVerify(exactly = 1) { naaCache.load() }
-        coVerify(exactly = 0) { araCache.load() }
-    }
-
-    @Test
-    fun `books are empty when the active translation is not on disk`() = runTest {
+    fun `the index is empty when the active translation is not on disk`() = runTest {
         onDisk()
 
         val repo = buildRepository()
-        collectBooks(repo)
         advanceUntilIdle()
 
-        assertEquals(emptyList<Any>(), repo.booksFlow.value)
-        coVerify(exactly = 0) { naaCache.load() }
+        assertEquals(emptyList<BibleBook>(), repo.booksFlow.value)
+        coVerify(exactly = 0) { store.loadIndex(any()) }
     }
 
     @Test
-    fun `books are released after the last collector leaves`() = runTest {
-        onDisk(BibleTranslation.NAA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-
-        val repo = buildRepository()
-        val collector = collectBooks(repo)
-        advanceUntilIdle()
-        assertTrue(repo.booksFlow.value!!.isNotEmpty())
-
-        collector.cancel()
-        advanceTimeBy(6_000)
-        runCurrent()
-
-        assertNull(repo.booksFlow.value)
-    }
-
-    @Test
-    fun `books survive a short gap between collectors`() = runTest {
-        onDisk(BibleTranslation.NAA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-
-        val repo = buildRepository()
-        collectBooks(repo).also { advanceUntilIdle() }.cancel()
-        advanceTimeBy(1_000)
-        collectBooks(repo)
-        advanceUntilIdle()
-
-        coVerify(exactly = 1) { naaCache.load() }
-    }
-
-    @Test
-    fun `changing translation decodes the new one`() = runTest {
-        onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-        coEvery { araCache.load() } returns listOf(exodusDto)
-
-        val repo = buildRepository()
-        collectBooks(repo)
-        advanceUntilIdle()
-        translation.value = BibleTranslation.ARA
-        advanceUntilIdle()
-
-        assertEquals("ex", repo.booksFlow.value?.single()?.abbrev)
-    }
-
-    @Test
-    fun `a download of the active translation fills the open reader`() = runTest {
+    fun `a download of the active translation fills the index`() = runTest {
         onDisk()
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-
         val repo = buildRepository()
-        collectBooks(repo)
         advanceUntilIdle()
-        assertTrue(repo.booksFlow.value!!.isEmpty())
 
         onDisk(BibleTranslation.NAA)
         repo.preload()
         advanceUntilIdle()
 
-        assertEquals("gn", repo.booksFlow.value?.single()?.abbrev)
+        assertEquals(listOf(genesis, exodus), repo.booksFlow.value)
     }
 
     @Test
-    fun `a corrupt active translation counts as missing`() = runTest {
+    fun `a corrupt index counts as missing`() = runTest {
         onDisk(BibleTranslation.NAA)
-        // load() deletes a corrupt file and returns null.
-        coEvery { naaCache.load() } answers {
+        // loadIndex() deletes a corrupt translation and returns null.
+        coEvery { store.loadIndex(BibleTranslation.NAA) } answers {
             onDisk()
             null
         }
 
         val repo = buildRepository()
-        collectBooks(repo)
         advanceUntilIdle()
 
         assertTrue(repo.booksFlow.value!!.isEmpty())
         assertTrue(repo.cachedTranslationsFlow.value.isEmpty())
+    }
+
+    // endregion
+
+    // region current book
+
+    @Test
+    fun `no book is read while nobody collects`() = runTest {
+        onDisk(BibleTranslation.NAA)
+
+        val repo = buildRepository()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { store.loadBook(any(), any(), any()) }
+        assertNull(repo.currentBookFlow.value)
+    }
+
+    @Test
+    fun `collecting reads only the book of the position`() = runTest {
+        onDisk(BibleTranslation.NAA)
+
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        assertEquals(genesisText, repo.currentBookFlow.value)
+        coVerify(exactly = 1) { store.loadBook(BibleTranslation.NAA, 0, "gn") }
+        coVerify(exactly = 0) { store.loadBook(any(), 1, any()) }
+    }
+
+    @Test
+    fun `a chapter change in the same book reads nothing`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        position.value = BibleReadingPosition("gn", 2, 1)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { store.loadBook(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a book change reads the new book by its place in the index`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        position.value = BibleReadingPosition("EX", 1, 1)
+        advanceUntilIdle()
+
+        assertEquals(exodusText, repo.currentBookFlow.value)
+    }
+
+    @Test
+    fun `an unknown book falls back to the first of the index`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        position.value = BibleReadingPosition("xyz", 1, 1)
+
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        assertEquals(genesisText, repo.currentBookFlow.value)
+    }
+
+    @Test
+    fun `changing translation reads the book from the new one`() = runTest {
+        onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        translation.value = BibleTranslation.ARA
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { store.loadIndex(BibleTranslation.ARA) }
+        coVerify(exactly = 1) { store.loadBook(BibleTranslation.ARA, 0, "gn") }
+    }
+
+    @Test
+    fun `the book is released after the last collector leaves`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        val collector = collectBook(repo)
+        advanceUntilIdle()
+        assertEquals(genesisText, repo.currentBookFlow.value)
+
+        collector.cancel()
+        advanceTimeBy(6_000)
+        runCurrent()
+
+        assertNull(repo.currentBookFlow.value)
+        // The index stays: names are needed before any text.
+        assertEquals(listOf(genesis, exodus), repo.booksFlow.value)
+    }
+
+    @Test
+    fun `the book survives a short gap between collectors`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo).also { advanceUntilIdle() }.cancel()
+        advanceTimeBy(1_000)
+        collectBook(repo)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { store.loadBook(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a corrupt book counts its translation as missing`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        // loadBook() deletes a corrupt translation and returns null.
+        coEvery { store.loadBook(BibleTranslation.NAA, 0, "gn") } answers {
+            onDisk()
+            null
+        }
+
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        assertNull(repo.currentBookFlow.value)
+        assertTrue(repo.cachedTranslationsFlow.value.isEmpty())
+        assertTrue(repo.booksFlow.value!!.isEmpty())
     }
 
     // endregion
@@ -264,29 +326,28 @@ class BibleRepositoryImplTest {
     // region clearAll
 
     @Test
-    fun `clearAll clears all caches and resets preferences`() = runTest {
+    fun `clearAll clears both translations and resets preferences`() = runTest {
         val repo = buildRepository()
         repo.clearAll()
 
-        coVerify { naaCache.clear() }
-        coVerify { araCache.clear() }
+        coVerify { store.clear(BibleTranslation.NAA) }
+        coVerify { store.clear(BibleTranslation.ARA) }
         coVerify { preferences.resetAll() }
     }
 
     @Test
-    fun `clearAll empties booksFlow and cachedTranslationsFlow`() = runTest {
+    fun `clearAll empties the index, the book and cachedTranslationsFlow`() = runTest {
         onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
-        coEvery { naaCache.load() } returns listOf(genesisDto)
-
         val repo = buildRepository()
-        collectBooks(repo)
+        collectBook(repo)
         advanceUntilIdle()
-        assertTrue(repo.booksFlow.value!!.isNotEmpty())
+        assertEquals(genesisText, repo.currentBookFlow.value)
 
         repo.clearAll()
         advanceUntilIdle()
 
         assertTrue(repo.booksFlow.value!!.isEmpty())
+        assertNull(repo.currentBookFlow.value)
         assertTrue(repo.cachedTranslationsFlow.value.isEmpty())
     }
 

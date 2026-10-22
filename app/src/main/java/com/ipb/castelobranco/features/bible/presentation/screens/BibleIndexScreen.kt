@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.resolve
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
 
 private enum class IndexTab(val label: String, val key: String) {
@@ -72,10 +73,7 @@ fun BibleIndexScreen(
     var pendingBookAbbrev by rememberSaveable { mutableStateOf(state.position.bookAbbrev) }
     var pendingChapter by rememberSaveable { mutableStateOf(state.position.chapter) }
 
-    val pendingBook = remember(state.books, pendingBookAbbrev) {
-        state.books.firstOrNull { it.abbrev.equals(pendingBookAbbrev, ignoreCase = true) }
-            ?: state.books.firstOrNull()
-    }
+    val pendingBook = remember(state.books, pendingBookAbbrev) { state.books.resolve(pendingBookAbbrev) }
 
     BaseScreen(
         tabName = "Bíblia",
@@ -264,8 +262,8 @@ private fun VerseGrid(
     chapter: Int,
     onVerseClick: (Int) -> Unit,
 ) {
-    val verses = book?.chapter(chapter)
-    if (book == null || verses == null) {
+    val verseCount = book?.verseCount(chapter)
+    if (book == null || verseCount == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Selecione um capítulo primeiro.")
         }
@@ -278,7 +276,7 @@ private fun VerseGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items((1..verses.size).toList()) { v ->
+        items((1..verseCount).toList()) { v ->
             GridCell(text = v.toString(), onClick = { onVerseClick(v) })
         }
     }

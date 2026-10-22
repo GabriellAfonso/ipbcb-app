@@ -1,17 +1,19 @@
 package com.ipb.castelobranco.features.bible.domain.model
 
 /**
- * Livro da Bíblia já mapeado para o domínio.
+ * Entrada do índice da Bíblia: o livro sem o texto, sempre em memória.
  *
  * - [abbrev] vem da API em minúsculo ("gn"). Use [displayAbbrev] para UI.
- * - [chapters] é a lista de capítulos, cada um com a lista de versículos (texto cru).
+ * - [verseCounts] tem a quantidade de versículos de cada capítulo (posição `i` = capítulo `i + 1`).
  */
 data class BibleBook(
     val abbrev: String,
     val name: String,
-    val chapters: List<List<String>>,
+    val verseCounts: List<Int>,
 ) {
-    val chapterCount: Int get() = chapters.size
+    val chapterCount: Int get() = verseCounts.size
+
+    fun verseCount(chapter: Int): Int? = verseCounts.getOrNull(chapter - 1)
 
     /** "gn" → "Gn", "1co" → "1Co", "at" → "At". Mantém dígitos no início. */
     val displayAbbrev: String
@@ -31,7 +33,16 @@ data class BibleBook(
             }
             return sb.toString()
         }
-
-    fun chapter(chapter: Int): List<String>? =
-        chapters.getOrNull(chapter - 1)
 }
+
+/** Texto de um livro: [chapters] é a lista de capítulos, cada um com a lista de versículos. */
+data class BibleBookText(
+    val abbrev: String,
+    val chapters: List<List<String>>,
+) {
+    fun chapter(chapter: Int): List<String>? = chapters.getOrNull(chapter - 1)
+}
+
+/** Livro de [abbrev] (sem diferenciar maiúsculas); se não existir, o primeiro do índice. */
+fun List<BibleBook>.resolve(abbrev: String): BibleBook? =
+    firstOrNull { it.abbrev.equals(abbrev, ignoreCase = true) } ?: firstOrNull()
