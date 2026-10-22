@@ -98,6 +98,11 @@ class CoreViewModel @Inject constructor(
         .map { it.allows(Scope.SONGS, AccessLevel.MANAGE) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    /** Opens "Perfis" from a "Novo pedido de acesso" notification. */
+    private val canViewProfiles: StateFlow<Boolean> = observeAccess()
+        .map { it.allows(Scope.PROFILES, AccessLevel.VIEW) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     private var initialized = false
 
     /**
@@ -249,6 +254,9 @@ class CoreViewModel @Inject constructor(
 
     /** Whether a "Confirmar músicas de domingo" tap may open the register screen. */
     suspend fun canOpenSundayConfirmation(): Boolean = authSession.isLoggedIn() && canManageSongs.value
+
+    /** A "new access request" tap: "Perfis" needs `view` on `profiles`. */
+    suspend fun canOpenProfiles(): Boolean = authSession.isLoggedIn() && canViewProfiles.value
 
     /** Activity `ON_STOP`: notifications are shown again for messages that arrive now. */
     fun onAppBackground() {

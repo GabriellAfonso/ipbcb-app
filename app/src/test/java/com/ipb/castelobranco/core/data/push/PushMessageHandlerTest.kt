@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.core.data.push
 
 import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.domain.access.AccessRequestType
 import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
 import com.ipb.castelobranco.core.domain.worship.WorshipAccess
 import com.ipb.castelobranco.core.testing.FakeWorshipAccessRepository
 import com.ipb.castelobranco.core.testing.WORSHIP_MEMBER
@@ -24,6 +26,22 @@ class PushMessageHandlerTest {
         }
     }
 
+    private class FakeAccessNotifier : AccessRequestNotifier {
+        val shown = mutableListOf<String>()
+        override fun showCreated(type: AccessRequestType) {
+            shown += "created $type"
+        }
+        override fun showApproved(type: AccessRequestType) {
+            shown += "approved $type"
+        }
+        override fun showDenied(type: AccessRequestType, reason: String?) {
+            shown += "denied $type $reason"
+        }
+    }
+
+    private val accessNotifier = FakeAccessNotifier()
+    private val profileAccess = FakeAccessRepository()
+
     private val sunday = LocalDate.of(2026, 10, 4)
     private val setlistSaved = mapOf("type" to "setlist_saved", "date" to "2026-10-04")
     private val confirmPlays = mapOf("type" to "confirm_plays", "date" to "2026-10-04")
@@ -38,6 +56,8 @@ class PushMessageHandlerTest {
         foreground = foreground,
         notifier = notifier,
         refreshScheduler = SetlistRefreshScheduler { refreshes++ },
+        accessNotifier = accessNotifier,
+        accessRepository = profileAccess,
     )
 
     @Test
@@ -91,5 +111,35 @@ class PushMessageHandlerTest {
         handler().handle(mapOf("type" to "other", "date" to "2026-10-04"))
 
         assertEquals(0, refreshes)
+    }
+
+    @Test
+    fun `a new request notifies without reading the profile`() = runTest {
+        handler().handle(mapOf("type" to "access_request_created", "request_type" to "access"))
+
+        assertEquals(listOf("created ACCESS"), accessNotifier.shown)
+        assertEquals(0, profileAccess.refreshCalls)
+    }
+
+    @Test
+    fun `a decision notifies the requester and reads the profile again`() = runTest {
+        handler().handle(mapOf("type" to "access_request_approved", "request_type" to "access"))
+        handler().handle(
+            mapOf("type" to "access_request_denied", "request_type" to "data_correction", "reason" to "Já está certo.")
+        )
+
+        assertEquals(
+            listOf("approved ACCESS", "denied DATA_CORRECTION Já está certo."),
+            accessNotifier.shown,
+        )
+        assertEquals(2, profileAccess.refreshCalls)
+    }
+
+    @Test
+    fun `access request messages are ignored while logged out`() = runTest {
+        handler(loggedIn = false).handle(mapOf("type" to "access_request_approved", "request_type" to "access"))
+
+        assertTrue(accessNotifier.shown.isEmpty())
+        assertEquals(0, profileAccess.refreshCalls)
     }
 }

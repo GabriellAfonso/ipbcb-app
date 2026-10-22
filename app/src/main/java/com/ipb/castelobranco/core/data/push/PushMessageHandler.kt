@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.core.data.push
 
 import com.ipb.castelobranco.core.data.app.AppForegroundState
+import com.ipb.castelobranco.core.domain.access.AccessRepository
 import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
 import com.ipb.castelobranco.core.domain.push.PushMessage
 import com.ipb.castelobranco.core.domain.worship.WorshipAccessRepository
@@ -22,6 +23,8 @@ class PushMessageHandler @Inject constructor(
     private val foreground: AppForegroundState,
     private val notifier: SetlistNotifier,
     private val refreshScheduler: SetlistRefreshScheduler,
+    private val accessNotifier: AccessRequestNotifier,
+    private val accessRepository: AccessRepository,
 ) {
 
     suspend fun handle(data: Map<String, String>) {
@@ -40,6 +43,17 @@ class PushMessageHandler @Inject constructor(
             }
             // Access to the register screen is decided on tap, with the profile of that moment.
             is PushMessage.ConfirmPlays -> notifier.showConfirmPlays(message.date)
+            // Leaders only get it from the server; the tap checks the scope again.
+            is PushMessage.AccessRequestCreated -> accessNotifier.showCreated(message.requestType)
+            // Shown first, then the profile is read again so the locked screens follow.
+            is PushMessage.AccessRequestApproved -> {
+                accessNotifier.showApproved(message.requestType)
+                accessRepository.refresh()
+            }
+            is PushMessage.AccessRequestDenied -> {
+                accessNotifier.showDenied(message.requestType, message.reason)
+                accessRepository.refresh()
+            }
         }
     }
 }

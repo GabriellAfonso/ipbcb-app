@@ -6,6 +6,8 @@ import com.ipb.castelobranco.core.data.push.FcmTokenSource
 import com.ipb.castelobranco.core.data.push.PushTokenStore
 import com.ipb.castelobranco.core.data.push.SetlistNotifications
 import com.ipb.castelobranco.core.data.push.SetlistNotifier
+import com.ipb.castelobranco.core.data.push.AccessRequestNotifications
+import com.ipb.castelobranco.core.data.push.AccessRequestNotifier
 import com.ipb.castelobranco.core.data.push.SetlistRefreshScheduler
 import com.ipb.castelobranco.core.data.push.WorkManagerPushRegistrationScheduler
 import com.ipb.castelobranco.core.data.push.WorkManagerSetlistRefreshScheduler
@@ -44,6 +46,10 @@ abstract class PushModule {
     @Binds
     @Singleton
     abstract fun bindSetlistNotifier(impl: SetlistNotifications): SetlistNotifier
+
+    @Binds
+    @Singleton
+    abstract fun bindAccessRequestNotifier(impl: AccessRequestNotifications): AccessRequestNotifier
 
     @Binds
     @Singleton

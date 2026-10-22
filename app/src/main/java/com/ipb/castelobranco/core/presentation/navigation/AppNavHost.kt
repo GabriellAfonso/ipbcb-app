@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ipb.castelobranco.features.admin.panel.presentation.navigation.navigateToProfilesPending
 import com.ipb.castelobranco.features.admin.panel.presentation.navigation.navigateToSundayConfirmation
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.navigation.navigateToLyrics
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,6 +76,14 @@ fun AppNavHost(
                 } else {
                     Toast.makeText(context, NO_REGISTER_ACCESS_MESSAGE, Toast.LENGTH_LONG).show()
                 }
+            NotificationTarget.ProfilesPending ->
+                if (coreViewModel.canOpenProfiles()) {
+                    navController.navigateToProfilesPending()
+                } else {
+                    Toast.makeText(context, NO_PROFILES_ACCESS_MESSAGE, Toast.LENGTH_LONG).show()
+                }
+            NotificationTarget.Profile ->
+                if (coreViewModel.isLoggedIn.value) navController.navigate(AppRoutes.PROFILE)
         }
         onNotificationTargetHandled()
     }
@@ -205,4 +214,5 @@ fun AppNavHost(
 }
 
 private const val NO_REGISTER_ACCESS_MESSAGE = "Você não tem mais acesso ao registro de músicas."
+private const val NO_PROFILES_ACCESS_MESSAGE = "Você não tem acesso aos pedidos de acesso."
 private const val ACCOUNT_DELETED_MESSAGE = "Conta excluída"
