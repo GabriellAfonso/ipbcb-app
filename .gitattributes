@@ -1,0 +1,10 @@
+# Store text with LF in the repository; each checkout uses its platform line ending.
+* text=auto
+
+# Shell scripts run in the Linux container and in Git Bash: always LF.
+*.sh text eol=lf
+gradlew text eol=lf
+
+# Windows batch files need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
