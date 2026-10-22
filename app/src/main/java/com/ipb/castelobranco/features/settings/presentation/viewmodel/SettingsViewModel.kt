@@ -33,7 +33,11 @@ data class SettingsUiState(
     /** Bytes on disk; `null` while still being measured. */
     val galleryBytes: Long? = null,
     val bibleBytes: Long? = null,
+    /** "Logs do app" stays hidden until "Versão" is tapped [DIAGNOSTICS_UNLOCK_TAPS] times. */
+    val showDiagnostics: Boolean = false,
 )
+
+const val DIAGNOSTICS_UNLOCK_TAPS = 5
 
 private data class ExtraState(
     val pendingConfirmation: ResetAction? = null,
@@ -41,6 +45,7 @@ private data class ExtraState(
     val bibleCleared: Boolean = false,
     val galleryBytes: Long? = null,
     val bibleBytes: Long? = null,
+    val versionTaps: Int = 0,
 )
 
 @HiltViewModel
@@ -73,6 +78,7 @@ class SettingsViewModel @Inject constructor(
             bibleCleared = extra.bibleCleared,
             galleryBytes = extra.galleryBytes,
             bibleBytes = extra.bibleBytes,
+            showDiagnostics = extra.versionTaps >= DIAGNOSTICS_UNLOCK_TAPS,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -82,6 +88,10 @@ class SettingsViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<Unit>()
     val events = _events.asSharedFlow()
+
+    fun onVersionTap() {
+        _extra.update { it.copy(versionTaps = (it.versionTaps + 1).coerceAtMost(DIAGNOSTICS_UNLOCK_TAPS)) }
+    }
 
     fun requestReset(action: ResetAction) {
         _extra.update { it.copy(pendingConfirmation = action) }

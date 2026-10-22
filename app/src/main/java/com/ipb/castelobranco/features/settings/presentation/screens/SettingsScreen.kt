@@ -88,6 +88,8 @@ fun SettingsScreen(
         galleryBytes                 = uiState.galleryBytes,
         bibleBytes                   = uiState.bibleBytes,
         onNavigateToLogViewer        = onNavigateToLogViewer,
+        showDiagnostics              = uiState.showDiagnostics,
+        onVersionClick               = viewModel::onVersionTap,
     )
 }
 
@@ -110,6 +112,8 @@ fun SettingsContent(
     galleryBytes: Long? = null,
     bibleBytes: Long? = null,
     onNavigateToLogViewer: () -> Unit = {},
+    showDiagnostics: Boolean = false,
+    onVersionClick: () -> Unit = {},
 ) {
     if (pendingConfirmation != null) {
         val (title, message) = when (pendingConfirmation) {
@@ -198,15 +202,17 @@ fun SettingsContent(
                 onClick     = onRequestResetBible,
             )
 
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            if (showDiagnostics) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-            SettingsSectionHeader("Diagnóstico")
-            SettingsActionRow(
-                icon        = Icons.Filled.BugReport,
-                title       = "Logs do app",
-                description = "Visualizar logs em tempo real",
-                onClick     = onNavigateToLogViewer,
-            )
+                SettingsSectionHeader("Diagnóstico")
+                SettingsActionRow(
+                    icon        = Icons.Filled.BugReport,
+                    title       = "Logs do app",
+                    description = "Visualizar logs em tempo real",
+                    onClick     = onNavigateToLogViewer,
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -215,6 +221,7 @@ fun SettingsContent(
                 icon  = Icons.Filled.Info,
                 title = "Versão",
                 value = BuildConfig.VERSION_NAME,
+                onClick = onVersionClick,
             )
         }
     }
@@ -332,8 +339,10 @@ private fun SettingsInfoRow(
     icon: ImageVector,
     title: String,
     value: String,
+    onClick: () -> Unit,
 ) {
     ListItem(
+        modifier        = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(title) },
         leadingContent  = {
             Icon(

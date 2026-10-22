@@ -225,6 +225,33 @@ class SettingsViewModelTest {
 
     // endregion
 
+    // region diagnostics
+
+    @Test
+    fun `diagnostics stay hidden until the version is tapped five times`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            advanceUntilIdle()
+            assertFalse(expectMostRecentItem().showDiagnostics)
+
+            repeat(DIAGNOSTICS_UNLOCK_TAPS - 1) { viewModel.onVersionTap() }
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.showDiagnostics)
+
+            viewModel.onVersionTap()
+            advanceUntilIdle()
+            assertTrue(expectMostRecentItem().showDiagnostics)
+
+            viewModel.onVersionTap()
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.showDiagnostics)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // endregion
+
     // region keepScreenOn
 
     @Test

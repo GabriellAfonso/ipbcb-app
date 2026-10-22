@@ -10,7 +10,7 @@ Preferências do aparelho e ferramentas de diagnóstico. Nada aqui fala com o se
 | Tela          | Origem                                  |
 |---------------|-----------------------------------------|
 | Configurações | Tela inicial (`CoreScreen`)             |
-| Logs do app   | Configurações → Diagnóstico → "Logs do app" |
+| Logs do app   | Configurações → Diagnóstico → "Logs do app" (seção escondida, 2.6) |
 
 ---
 
@@ -25,8 +25,8 @@ Lista em seções, separadas por divisor:
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
 | Dados        | Apagar galeria    | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a galeria do aparelho e mostra "Galeria apagada" (2.5). |
 | Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
-| Diagnóstico  | Logs do app       | Abre a tela de logs.                                                        |
-| Sobre        | Versão            | `versionName` do build, só leitura.                                         |
+| Diagnóstico  | Logs do app       | Abre a tela de logs. Seção escondida até destravar (2.6).                   |
+| Sobre        | Versão            | `versionName` do build. Tocável: 5 toques destravam o Diagnóstico (2.6).    |
 
 ### 2.1 Acesso a notificações ao ligar Aniversários
 
@@ -94,6 +94,14 @@ aparelho e sobrevive a fechar o app e ao logout.
 | Apagar Bíblia  | "Apaga a Bíblia do aparelho. Ela só volta a ser baixada quando você tocar em baixar na Bíblia. Deseja continuar?" |
 
 Botões: "Apagar" e "Cancelar".
+
+### 2.6 Diagnóstico escondido
+
+A seção Diagnóstico (com "Logs do app") não aparece por padrão. Tocar 5 vezes em "Versão" faz a seção aparecer;
+toques além do quinto não fazem nada. Sem aviso nem contagem visível.
+
+O destravamento vive só no `SettingsViewModel`: vale enquanto Configurações estiver na pilha (ir aos logs e voltar
+mantém a seção) e some ao sair de Configurações ou fechar o app.
 
 ---
 
