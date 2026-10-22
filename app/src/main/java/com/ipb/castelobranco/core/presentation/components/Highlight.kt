@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.core.presentation.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -10,11 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -64,58 +61,124 @@ fun Highlight(
         }
     }
 
-    val corner = 16.dp
+    val shape = RoundedCornerShape(HighlightCorner)
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(250.dp)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            // 1. Sombra suave no container externo
-            .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(corner),
-                ambientColor = Color.Black.copy(alpha = 0.15f),
-                spotColor = Color.Black.copy(alpha = 0.15f)
-            )
-            // 2. Container externo arredondado age como máscara (clip)
-            .clip(RoundedCornerShape(corner))
-            .background(MaterialTheme.colorScheme.surface),
-        contentAlignment = Alignment.Center
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1
-        ) { page ->
-            // 3. Cards internos são totalmente quadrados — sem clip, sem arredondamento
-            Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .shadow(
+                    elevation = HighlightElevation,
+                    shape = shape,
+                    ambientColor = Color.Black.copy(alpha = SHADOW_AMBIENT_ALPHA),
+                    spotColor = Color.Black.copy(alpha = SHADOW_SPOT_ALPHA)
+                )
+                .clip(shape)
+                .background(highlightCardColor()),
+            contentAlignment = Alignment.Center
+        ) {
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                pages[page]()
+                beyondViewportPageCount = 1
+            ) { page ->
+                // Pages are plain rects: the card's clip rounds the corners.
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    pages[page]()
+                }
             }
         }
 
-        // 4. Efeito de borda interna sutil (opcional, substitui o drawInsetEdges)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithContent {
-                    drawContent()
-                    val cr = corner.toPx()
-                    val inset = 32f
-                    val clip = Path().apply {
-                        addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(cr, cr)))
-                    }
-                    clipPath(clip) {
-                        drawInsetEdges(inset = inset)
-                    }
-                }
-        )
+        if (pagerState.pageCount > 1) {
+            HighlightPageIndicator(pageCount = pagerState.pageCount, currentPage = pagerState.currentPage)
+        }
     }
 }
 
+private val HighlightCorner = 20.dp
+private val HighlightElevation = 12.dp
+private const val SHADOW_AMBIENT_ALPHA = 0.08f
+private const val SHADOW_SPOT_ALPHA = 0.12f
+private const val DARK_SURFACE_LUMINANCE = 0.5f
+
+private val DotSize = 6.dp
+private val ActiveDotWidth = 18.dp
+private val DotGap = 6.dp
+
+/** The card stands out from the screen: white on the light background, a lighter gray on the dark one. */
+@Composable
+private fun highlightCardColor(): Color {
+    val scheme = MaterialTheme.colorScheme
+    return if (scheme.surface.luminance() < DARK_SURFACE_LUMINANCE) scheme.surfaceContainerHigh
+    else scheme.surfaceContainerLowest
+}
+
+@Composable
+private fun HighlightPageIndicator(pageCount: Int, currentPage: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(DotGap, Alignment.CenterHorizontally)
+    ) {
+        repeat(pageCount) { page ->
+            val isCurrent = page == currentPage
+            val width by animateDpAsState(if (isCurrent) ActiveDotWidth else DotSize, label = "dotWidth")
+            Box(
+                modifier = Modifier
+                    .size(width = width, height = DotSize)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.outlineVariant
+                    )
+            )
+        }
+    }
+}
+
+/** Title (with an optional leading emoji) and an optional chip, over a thin divider. */
+@Composable
+private fun HighlightHeader(title: String, leading: String? = null, chip: String? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leading != null) {
+            Text(text = leading, fontSize = 18.sp, modifier = Modifier.padding(end = 8.dp))
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (!chip.isNullOrBlank()) {
+            Text(
+                text = chip,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = CHIP_ALPHA))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
+    }
+    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = DIVIDER_ALPHA))
+}
+
+private const val CHIP_ALPHA = 0.06f
+private const val DIVIDER_ALPHA = 0.08f
 private const val PAST_ROW_ALPHA = 0.45f
 
 @Composable
@@ -129,35 +192,16 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) 
             .clickable(onClick = onClick)
     ) {
 
-        // Title + time
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (section.time.isNotBlank()) {
-                Text(
-                    text = section.time,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-        }
+        HighlightHeader(title = section.title, chip = section.time)
 
         // Schedule rows: each takes an equal share of the remaining height, so 4 or 5 rows fill the card
-        Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            rows.forEachIndexed { index, row ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            rows.forEach { row ->
                 val isNext = row.day == schedule.nextDay
                 val isPast = schedule.nextDay == null || row.day < schedule.nextDay
                 val color = when {
@@ -165,11 +209,19 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) 
                     isPast -> MaterialTheme.colorScheme.onSurface.copy(alpha = PAST_ROW_ALPHA)
                     else -> MaterialTheme.colorScheme.onSurface
                 }
+                val rowModifier = if (isNext) {
+                    Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                } else {
+                    Modifier
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(horizontal = 16.dp),
+                        .then(rowModifier)
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -187,12 +239,6 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) 
                         color = color,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (index != rows.lastIndex) {
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                     )
                 }
             }
@@ -265,25 +311,7 @@ fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
             .fillMaxSize()
             .clickable(onClick = onClick)
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "\uD83C\uDF82",
-                fontSize = 18.sp,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Text(
-                text = "Aniversariantes do M\u00EAs",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        HighlightHeader(title = "Aniversariantes do M\u00EAs", leading = "\uD83C\uDF82")
 
         // Adaptive grid
         Row(
@@ -408,7 +436,7 @@ private fun HighlightPlaceholder(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = title,
-            color = Color(0xFFFFFFFF),
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             textAlign = TextAlign.Center
@@ -416,7 +444,7 @@ private fun HighlightPlaceholder(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = message,
-            color = Color(0xFF9E9E9E),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
             textAlign = TextAlign.Center
         )
@@ -597,44 +625,4 @@ private fun HighlightBirthdays13Preview() {
             )
         )
     })
-}
-
-// ─── Edge drawing ─────────────────────────────────────────────────────────────
-
-/**
- * Plain rects: the caller's rounded clip already shapes the corners. A rounded rect here would turn each
- * thin strip into a pill (corner radius > half the strip) and leave light wedges at the corners.
- */
-private fun DrawScope.drawInsetEdges(inset: Float) {
-    val edgeColor = Color(0x2A000000)
-    val transparent = Color.Transparent
-
-    drawRect(
-        brush = Brush.verticalGradient(listOf(edgeColor, transparent), 0f, inset),
-        topLeft = Offset(0f, 0f), size = Size(size.width, inset),
-        blendMode = BlendMode.Multiply
-    )
-    drawRect(
-        brush = Brush.verticalGradient(listOf(transparent, edgeColor), size.height - inset, size.height),
-        topLeft = Offset(0f, size.height - inset), size = Size(size.width, inset),
-        blendMode = BlendMode.Multiply
-    )
-    drawRect(
-        brush = Brush.horizontalGradient(listOf(edgeColor, transparent), 0f, inset),
-        topLeft = Offset(0f, 0f), size = Size(inset, size.height),
-        blendMode = BlendMode.Multiply
-    )
-    drawRect(
-        brush = Brush.horizontalGradient(listOf(transparent, edgeColor), size.width - inset, size.width),
-        topLeft = Offset(size.width - inset, 0f), size = Size(inset, size.height),
-        blendMode = BlendMode.Multiply
-    )
-    drawRect(
-        brush = Brush.radialGradient(
-            listOf(Color(0x14FFFFFF), Color.Transparent),
-            center = Offset(size.width * 0.5f, size.height * 0.5f),
-            radius = size.minDimension * 0.75f
-        ),
-        blendMode = BlendMode.Screen
-    )
 }

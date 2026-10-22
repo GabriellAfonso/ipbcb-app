@@ -612,7 +612,15 @@ calculado no ViewModel (`nextDay`):
 - **datas passadas** (dia < `nextDay`, ou todas quando `nextDay` e nulo): texto esmaecido;
 - escala de mes futuro: nenhuma data passada, a primeira e a proxima; escala de mes anterior: todas passadas.
 
-HorizontalPager com auto-scroll (tween 600ms), cards com rounded corners (16dp) e shadow (6dp).
+HorizontalPager com auto-scroll (tween 600ms) dentro de um card elevado: cantos de 20dp, sombra externa suave
+e fundo que se destaca da tela (`surfaceContainerLowest` no claro, `surfaceContainerHigh` no escuro); sem sombra
+interna. Abaixo do card, um indicador de pagina (pontos; o da pagina atual alongado, cor `primaryContainer`),
+escondido quando ha uma pagina so.
+
+Cabecalho das paginas de escala e aniversariantes: sem faixa colorida — titulo (e o emoji, nos aniversariantes) e,
+na escala, o horario num chip, separados do conteudo por um divisor fino. Na escala, a proxima data fica numa faixa
+arredondada `secondaryContainer`, sem rotulo, com dia e nome alinhados as outras linhas; as linhas nao tem
+divisores. Placeholders (escala indisponivel, sem evento, sem aniversariante) usam `onSurface`/`onSurfaceVariant`.
 Ao voltar para a home, o carousel sempre mostra uma pagina inteira: sair da home no meio da animacao cancela o
 scroll e o estado salvo guarda o deslocamento parcial, entao o auto-scroll encaixa na pagina atual antes do loop.
 
@@ -713,7 +721,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 |------------|-----------|
 | `TopBar` | Logo + tab name + back/menu + account image. Fundo ipbGreen, icones brancos |
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
-| `Highlight` | Carousel com auto-scroll, HorizontalPager, cards 250dp com shadow. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
+| `Highlight` | Carousel com auto-scroll, HorizontalPager, card elevado de 250dp + indicador de pagina. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
 | `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro |
 | `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight e pela `BirthdaysScreen` |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |

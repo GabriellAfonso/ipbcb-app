@@ -177,7 +177,8 @@ fun CoreScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(60.dp))
+                // The highlight's page dots take 6dp: the grid stays where it was.
+                Spacer(modifier = Modifier.height(54.dp))
                 ButtonGrid(
                     onNavigateToWorshipHub = onNavigateToWorshipHub,
                     onNavigateToSchedule   = onNavigateToSchedule,
