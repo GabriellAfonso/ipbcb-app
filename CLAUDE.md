@@ -41,7 +41,7 @@ features/
 - Every screen must handle the three states — loading, success, error. The default representation is a
   `data class` UI state with flags (`isLoading: Boolean`, `error: String?`), which pairs with the
   `SnapshotState` returned by `BaseSnapshotRepository` — that is the project's real sealed hierarchy.
-  Use `sealed` for one-shot events (`MusicRegistrationEvent`, `AdminScheduleEvent`, `SaveResult`) and
+  Use `sealed` for one-shot events (`SundayRegistrationEvent`, `AdminScheduleEvent`, `SaveResult`) and
   where a screen's states are genuinely exclusive (`ScheduleViewModel`).
 - ViewModel exposes `StateFlow<UiState>`; Screen collects with `collectAsStateWithLifecycle()`.
 - Composables are **dumb**: receive state, emit events via lambdas. Zero logic.
