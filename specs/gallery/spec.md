@@ -187,7 +187,7 @@ removidas e os órfãos da migração.
 | "Tentar novamente" (sem índice) | tela da galeria |
 
 O periódico é agendado no login e em cada `onAppForeground` (idempotente). Voltar à tela da galeria dentro do app não
-dispara sync — a volta do background já cobre.
+dispara sync — a volta do background já cobre. Com a galeria apagada (3.3), todo gatilho desta tabela é ignorado.
 
 Depois de cada sync bem-sucedido, se há fotos sem original no aparelho, o download é enfileirado **só no WiFi**
 (`KEEP`: não mexe num download já na fila ou rodando; um trabalho já terminado é substituído).
@@ -201,6 +201,27 @@ originais de fotos que o servidor não tem mais. Cada passo é idempotente: uma 
 
 Limitação aceita: quem atualiza o app sem conexão vê "sem conexão" até o primeiro sync, embora as fotos estejam no
 aparelho.
+
+### 3.3 Galeria apagada (pausa)
+
+"Apagar galeria" nas configurações (`DeleteGalleryUseCase`) **pausa** a galreria e então apaga tudo o que ela tem no
+aparelho:
+
+1. Cancela o download dos originais.
+2. Grava a pausa (`gallery_sync_paused` em `GalleryPreferences`, `@SettingsPrefs`).
+3. `GallerySyncer.clear()`: cancela o sync em andamento, apaga índice, cursor, originais e capas.
+4. Apaga o cache de previews.
+
+A fila de envio não é tocada. Com a pausa, `GallerySyncer` responde `Paused` a todo sync (`sync`, `syncAfterWrite`,
+inclusive o do download sem índice) sem falar com o servidor: nenhum gatilho de 3.1 nem o download do login baixa
+nada. O download sem índice que recebe `Paused` termina com `success`, sem nova tentativa.
+
+A pausa sobrevive a fechar o app e ao logout (o logout apaga a galeria, mas não tira a pausa; um novo login continua
+sem baixar). Só sai pelo botão "Baixar galeria" da tela (seção 6), que tira a pausa e roda um sync; daí em diante tudo
+volta a ser como antes — inclusive os originais faltando, enfileirados só no WiFi.
+
+`GallerySyncStatus.isPaused` reflete a pausa: lida do disco junto com o índice (`load`) e em `clear()`, atualizada a
+cada mudança.
 
 ---
 
@@ -288,18 +309,19 @@ pelo sync e pelo download.
 Ordem de decisão:
 
 1. **Deslogado** → "Faça login para acessar a galeria." + botão de login.
-2. **Banner** (independe da grid): feed respondeu `403` com a galeria no aparelho → "Disponível apenas para membros."
+2. **Galeria apagada** (3.3) → "A galeria foi apagada deste aparelho." + "Baixar galeria". Sem banner, sem grid.
+3. **Banner** (independe da grid): feed respondeu `403` com a galeria no aparelho → "Disponível apenas para membros."
    (sem botão) / download `403` com álbuns → mesmo aviso / baixando (progresso) / pausado ("Download pausado. Continua
    automaticamente em instantes.") / aguardando WiFi (com "Usar dados móveis") / aguardando WiFi já no WiFi.
-3. **Com álbuns** → grid.
-4. **Sem índice e o primeiro sync ainda não respondeu** → `CircularProgressIndicator` (nunca o estado vazio).
-5. **Sem índice e o sync falhou**:
+4. **Com álbuns** → grid.
+5. **Sem índice e o primeiro sync ainda não respondeu** → `CircularProgressIndicator` (nunca o estado vazio).
+6. **Sem índice e o sync falhou**:
    - `401` → "Sua sessão expirou. Entre novamente para acessar a galeria." + "Conectar à sua conta"
    - `403` → "Disponível apenas para membros.", **sem** botão de login
    - rede → "Não foi possível carregar a galeria. Verifique sua conexão." + "Tentar novamente" (novo sync)
    - outro → texto genérico da categoria + "Tentar novamente"
-6. **Download falhou sem álbuns** → mesmas regras de `401`/`403`, "Tentar novamente" re-enfileira o download.
-7. **Índice sem álbuns** → "Nenhum álbum disponível."
+7. **Download falhou sem álbuns** → mesmas regras de `401`/`403`, "Tentar novamente" re-enfileira o download.
+8. **Índice sem álbuns** → "Nenhum álbum disponível."
 
 O botão de login aparece **somente** em `401`. Falha de rede não é problema de sessão, e `403` não se resolve logando
 de novo.
@@ -311,7 +333,7 @@ de novo.
 Cancela a fila de envio (antes de tudo: nada pode ser enviado como o próximo usuário), cancela o download e o sync
 periódico, cancela um sync em andamento e apaga a fila, índice, cursor, originais, capas e o cache de previews
 (`GalleryAutoDownloadUseCase.clearOnLogout()`). O acervo é restrito a membros e não sobrevive ao fim da
-sessão. "Resetar galeria" nas configurações apaga índice e arquivos; o próximo sync reconstrói tudo. As marcações
+sessão. "Apagar galeria" nas configurações é a seção 3.3: apaga e pausa até "Baixar galeria". As marcações
 moram no índice (apagado junto); a lista do seletor de pessoas só existe em memória.
 
 ---

@@ -24,8 +24,11 @@ interface GalleryRepository {
     suspend fun applyLocal(change: GalleryLocalChange, afterApply: suspend () -> Unit = {}): Boolean
     suspend fun refreshLocalFiles()
 
-    /** Deletes the index, the cursor and every gallery file. */
+    /** Deletes the index, the cursor and every gallery file. Keeps the pause. */
     suspend fun clear()
+
+    /** While paused every sync answers [GallerySyncResult.Paused] without asking the server. */
+    suspend fun setSyncPaused(paused: Boolean)
 
     /** Bytes the gallery files take on disk — what [clear] frees. */
     suspend fun diskUsageBytes(): Long

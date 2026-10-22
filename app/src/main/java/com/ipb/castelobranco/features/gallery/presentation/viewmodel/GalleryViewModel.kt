@@ -186,12 +186,14 @@ class GalleryViewModel @Inject constructor(
         manageView,
     ) { view, status, download, wifi, manageView ->
         val index = view?.local?.index
-        val isLoading = view == null || (index == null && (!status.hasAnswered || status.isRunning))
-        val error = status.lastError.takeIf { index == null && !isLoading }
+        val isPaused = status.isPaused && index == null
+        val isLoading = !isPaused && (view == null || (index == null && (!status.hasAnswered || status.isRunning)))
+        val error = status.lastError.takeIf { index == null && !isLoading && !isPaused }
         val session = manageView.organize?.takeIf { it.albumId == null }
         val albums = view?.tree?.roots()?.map { GalleryUiMapper.albumTile(it, view.local) }.orEmpty()
         GalleryRootUiState(
             isLoading = isLoading,
+            isPaused = isPaused,
             hasIndex = index != null,
             albums = session?.let { albums.inOrder(it.albumIds) { tile -> tile.id } } ?: albums,
             download = download,
@@ -264,6 +266,11 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun retrySync() = sync()
+
+    /** "Baixar galeria" after the gallery was deleted from settings. */
+    fun downloadGallery() {
+        viewModelScope.launch { autoDownload.downloadAfterDelete() }
+    }
 
     fun downloadWithMobileData() {
         autoDownload.enqueueAnyNetwork()

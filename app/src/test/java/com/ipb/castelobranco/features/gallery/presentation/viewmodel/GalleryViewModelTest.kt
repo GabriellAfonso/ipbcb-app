@@ -190,6 +190,24 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `deleted gallery - paused state, neither loading nor error`() = runTest(dispatcher) {
+        syncStatus.value = GallerySyncStatus(isPaused = true)
+        val root = observe(viewModel.rootState)
+
+        assertTrue(root().isPaused)
+        assertFalse(root().isLoading)
+        assertNull(root().syncError)
+    }
+
+    @Test
+    fun `download gallery lifts the pause through the use case`() = runTest(dispatcher) {
+        viewModel.downloadGallery()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { autoDownload.downloadAfterDelete() }
+    }
+
+    @Test
     fun `download actions delegate to the use case`() {
         viewModel.downloadWithMobileData()
         viewModel.retryDownload()

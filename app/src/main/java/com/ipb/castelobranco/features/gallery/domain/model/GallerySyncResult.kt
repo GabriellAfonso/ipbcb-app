@@ -9,6 +9,9 @@ sealed interface GallerySyncResult {
     /** Another sync was running, there is no session, or the sync was cancelled by logout. */
     data object Skipped : GallerySyncResult
 
+    /** The user deleted the gallery: nothing syncs until they ask for it again. */
+    data object Paused : GallerySyncResult
+
     /** Nothing changed on the device. */
     data class Failed(val error: AppError) : GallerySyncResult
 }
@@ -19,4 +22,6 @@ data class GallerySyncStatus(
     val lastError: AppError? = null,
     /** At least one sync finished (successfully or not) in this process. */
     val hasAnswered: Boolean = false,
+    /** The user deleted the gallery from settings: every sync answers [GallerySyncResult.Paused]. */
+    val isPaused: Boolean = false,
 )

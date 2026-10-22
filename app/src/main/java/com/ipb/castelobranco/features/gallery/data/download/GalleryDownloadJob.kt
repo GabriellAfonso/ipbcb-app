@@ -9,7 +9,8 @@ import javax.inject.Inject
  * One run of the original-download work, kept free of WorkManager types so it is unit-testable.
  *
  * The photo list is the index, in tree order. With no index yet (login on WiFi before any sync
- * answered) it syncs first, and a failed sync is treated like the old failed photo list.
+ * answered) it syncs first, and a failed sync is treated like the old failed photo list. A paused
+ * gallery ("Apagar galeria") ends the run without retrying.
  */
 class GalleryDownloadJob @Inject constructor(
     private val repository: GalleryRepository,
@@ -28,6 +29,8 @@ class GalleryDownloadJob @Inject constructor(
                     return result.error.toListFailureDecision(runAttemptCount, maxRetries)
                 GallerySyncResult.Skipped ->
                     return if (runAttemptCount < maxRetries) WorkDecision.Retry else WorkDecision.Success
+                // The gallery was deleted: only "Baixar galeria" brings it back.
+                GallerySyncResult.Paused -> return WorkDecision.Success
                 is GallerySyncResult.Synced -> Unit
             }
         }

@@ -66,6 +66,23 @@ class GalleryAutoDownloadUseCaseTest {
     }
 
     @Test
+    fun `downloadAfterDelete lifts the pause, then syncs`() = runTest {
+        useCase.downloadAfterDelete()
+
+        coVerifyOrder {
+            repository.setSyncPaused(false)
+            syncGallery()
+        }
+    }
+
+    @Test
+    fun `clearOnLogout keeps the pause of a deleted gallery`() = runTest {
+        useCase.clearOnLogout()
+
+        coVerify(exactly = 0) { repository.setSyncPaused(any()) }
+    }
+
+    @Test
     fun `enqueueAnyNetwork delegates to the scheduler`() {
         useCase.enqueueAnyNetwork()
 

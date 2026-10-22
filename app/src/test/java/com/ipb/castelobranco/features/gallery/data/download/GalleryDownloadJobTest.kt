@@ -88,6 +88,15 @@ class GalleryDownloadJobTest {
         assertEquals(WorkDecision.Fail("Falha ao baixar galeria", 0), run(attempt = MAX_RETRIES))
     }
 
+    @Test
+    fun `no index and the gallery was deleted - ends without retrying or downloading`() = runTest {
+        coEvery { repository.sync() } returns GallerySyncResult.Paused
+
+        assertEquals(WorkDecision.Success, run(attempt = 0))
+
+        coVerify(exactly = 0) { downloader.download(any(), any(), any()) }
+    }
+
     private companion object {
         const val MAX_RETRIES = 3
     }

@@ -31,5 +31,7 @@ class GalleryRepositoryImpl @Inject constructor(
 
     override suspend fun clear() = syncer.clear()
 
+    override suspend fun setSyncPaused(paused: Boolean) = syncer.setPaused(paused)
+
     override suspend fun diskUsageBytes(): Long = syncer.diskUsageBytes()
 }

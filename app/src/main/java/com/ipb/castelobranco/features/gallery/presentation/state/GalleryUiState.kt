@@ -30,6 +30,8 @@ data class GalleryDownloadState(
 data class GalleryRootUiState(
     /** No index yet and the first sync has not answered. */
     val isLoading: Boolean = true,
+    /** The user deleted the gallery from settings: only "Baixar galeria" brings it back. */
+    val isPaused: Boolean = false,
     val hasIndex: Boolean = false,
     val albums: List<AlbumTile> = emptyList(),
     val download: GalleryDownloadState = GalleryDownloadState(),

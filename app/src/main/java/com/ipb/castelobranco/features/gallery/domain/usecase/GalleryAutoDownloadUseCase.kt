@@ -34,6 +34,15 @@ class GalleryAutoDownloadUseCase @Inject constructor(
         syncGallery()
     }
 
+    /**
+     * "Baixar galeria" after "Apagar galeria": lifts the pause and syncs. Missing originals then queue on
+     * WiFi, as after any sync.
+     */
+    suspend fun downloadAfterDelete() {
+        repository.setSyncPaused(false)
+        syncGallery()
+    }
+
     /** Download manual via botão — WiFi only, mantém se já estiver rodando. */
     fun enqueueWifiOnly(replaceExisting: Boolean = false) = downloadScheduler.enqueueWifiOnly(replaceExisting)
 

@@ -73,6 +73,8 @@ private const val RESUMING_MESSAGE = "Download pausado. Continua automaticamente
 private const val NO_ACCESS_MESSAGE = "Disponível apenas para membros."
 private const val NO_ALBUMS_MESSAGE = "Nenhum álbum disponível."
 private const val RETRY_LABEL = "Tentar novamente"
+private const val DELETED_MESSAGE = "A galeria foi apagada deste aparelho."
+private const val DOWNLOAD_GALLERY_LABEL = "Baixar galeria"
 private const val ORGANIZE_TITLE = "Organizar"
 private const val ORGANIZE_LABEL = "Organizar"
 private const val NEW_ALBUM_LABEL = "Novo álbum"
@@ -103,6 +105,7 @@ fun GalleryScreen(
             onRetrySync = viewModel::retrySync,
             onRetryDownload = viewModel::retryDownload,
             onDownloadWithMobileData = viewModel::downloadWithMobileData,
+            onDownloadGallery = viewModel::downloadGallery,
             manage = RootManageActions(
                 onNewAlbum = { viewModel.openCreateAlbum(null) },
                 onOrganize = { viewModel.startOrganize(null) },
@@ -198,6 +201,7 @@ fun GalleryContent(
     onRetrySync: () -> Unit,
     onRetryDownload: () -> Unit,
     onDownloadWithMobileData: () -> Unit,
+    onDownloadGallery: () -> Unit,
     manage: RootManageActions,
 ) {
     val download = state.download
@@ -234,6 +238,12 @@ fun GalleryContent(
                             showLoginButton = true,
                         )
                     }
+                    return@Column
+                }
+
+                // Apagada nas configurações: nada sincroniza até a pessoa pedir.
+                if (state.isPaused) {
+                    CenteredBox { DeletedPlaceholder(onDownloadGallery) }
                     return@Column
                 }
 
@@ -413,6 +423,21 @@ private fun WaitingForWifiBanner(onDownloadWithMobileData: () -> Unit) {
             TextButton(onClick = onDownloadWithMobileData) {
                 Text("Usar dados móveis")
             }
+        }
+    }
+}
+
+@Composable
+private fun DeletedPlaceholder(onDownloadClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = DELETED_MESSAGE,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        OutlinedButton(onClick = onDownloadClick) {
+            Text(DOWNLOAD_GALLERY_LABEL)
         }
     }
 }

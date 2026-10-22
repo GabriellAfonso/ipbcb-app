@@ -64,6 +64,7 @@ class GallerySyncerTest {
     private lateinit var galleryDir: File
     private var layoutVersion = GalleryLegacyMigration.FLAT_LAYOUT_VERSION
     private var loggedIn = true
+    private var paused = false
     private lateinit var syncer: GallerySyncer
 
     @Before
@@ -76,12 +77,15 @@ class GallerySyncerTest {
         val preferences = mockk<GalleryPreferences> {
             coEvery { layoutVersion() } answers { layoutVersion }
             coEvery { setLayoutVersion(any()) } answers { layoutVersion = firstArg() }
+            coEvery { isSyncPaused() } answers { paused }
+            coEvery { setSyncPaused(any()) } answers { paused = firstArg() }
         }
         syncer = GallerySyncer(
             api = api,
             snapshotCache = snapshot,
             mediaStore = media,
             migration = GalleryLegacyMigration(context, preferences),
+            preferences = preferences,
             session = { loggedIn },
             ioDispatcher = dispatcher,
         )
@@ -392,6 +396,31 @@ class GallerySyncerTest {
         assertEquals(GallerySyncResult.Skipped, running.await())
         assertNull(snapshot.value)
         assertNull(syncer.state.value.index)
+    }
+
+    @Test
+    fun `paused - no sync asks the server, and clear keeps the pause`() = test {
+        syncer.setPaused(true)
+        syncer.clear()
+
+        assertEquals(GallerySyncResult.Paused, syncer.sync())
+        assertEquals(GallerySyncResult.Paused, syncer.syncAfterWrite())
+        assertTrue(api.sinceReceived.isEmpty())
+        assertTrue(syncer.status.value.isPaused)
+        assertTrue(paused)
+    }
+
+    @Test
+    fun `pause saved on disk is read on load, and lifting it syncs again`() = test {
+        paused = true
+        syncer.load()
+        assertTrue(syncer.status.value.isPaused)
+
+        syncer.setPaused(false)
+        api.enqueueChanges(changes("c1", albums = listOf(albumDto(1))))
+
+        assertTrue(syncer.sync() is GallerySyncResult.Synced)
+        assertFalse(paused)
     }
 
     @Test

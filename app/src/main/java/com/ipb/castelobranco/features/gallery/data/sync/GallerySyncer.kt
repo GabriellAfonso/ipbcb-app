@@ -13,6 +13,7 @@ import com.ipb.castelobranco.features.gallery.data.dto.toDomain
 import com.ipb.castelobranco.features.gallery.data.dto.toSnapshot
 import com.ipb.castelobranco.features.gallery.data.local.GalleryLegacyMigration
 import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
+import com.ipb.castelobranco.features.gallery.data.local.GalleryPreferences
 import com.ipb.castelobranco.features.gallery.data.snapshot.GalleryIndexSnapshot
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
@@ -48,6 +49,8 @@ import javax.inject.Singleton
  * After every successful sync the disk is reconciled against the index: originals and covers no
  * longer in it are deleted, and missing covers are downloaded. That single rule covers deletions,
  * `full_sync_required`, replaced covers and the orphans left by the legacy migration.
+ *
+ * While paused ("Apagar galeria"), every sync answers [GallerySyncResult.Paused] without a request.
  */
 @Singleton
 class GallerySyncer @Inject constructor(
@@ -55,6 +58,7 @@ class GallerySyncer @Inject constructor(
     private val snapshotCache: SnapshotCache<GalleryIndexSnapshot>,
     private val mediaStore: GalleryMediaStore,
     private val migration: GalleryLegacyMigration,
+    private val preferences: GalleryPreferences,
     private val session: SessionPresenceProvider,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -123,7 +127,7 @@ class GallerySyncer @Inject constructor(
             do {
                 rerunRequested.set(false)
                 last = syncOnce()
-            } while (rerunRequested.get() && last !is GallerySyncResult.Skipped)
+            } while (rerunRequested.get() && last !is GallerySyncResult.Skipped && last !is GallerySyncResult.Paused)
             last
         } finally {
             running = null
@@ -154,7 +158,16 @@ class GallerySyncer @Inject constructor(
 
     suspend fun diskUsageBytes(): Long = withContext(ioDispatcher) { mediaStore.totalBytes() }
 
-    /** Sign-out: cancels the running sync, then deletes the index, the cursor and every file. */
+    /** Saved before anything else, so a sync started right after already sees it. */
+    suspend fun setPaused(paused: Boolean) {
+        preferences.setSyncPaused(paused)
+        _status.update { it.copy(isPaused = paused) }
+    }
+
+    /**
+     * Sign-out and "Apagar galeria": cancels the running sync, then deletes the index, the cursor and
+     * every file. The pause stays as it is.
+     */
     suspend fun clear() {
         rerunRequested.set(false)
         running?.cancel()
@@ -165,12 +178,13 @@ class GallerySyncer @Inject constructor(
             }
             loaded = true
             _state.value = GalleryLocalState.EMPTY
-            _status.value = GallerySyncStatus()
+            _status.value = GallerySyncStatus(isPaused = preferences.isSyncPaused())
         }
     }
 
     private suspend fun syncLocked(): GallerySyncResult {
         ensureLoaded()
+        if (_status.value.isPaused) return GallerySyncResult.Paused
         if (!session.isLoggedIn()) return finish(GallerySyncResult.Skipped)
 
         val current = _state.value.index
@@ -254,6 +268,8 @@ class GallerySyncer @Inject constructor(
         migration.runIfNeeded()
         val index = snapshotCache.load()?.toDomain()
         _state.value = withFiles(index)
+        val paused = preferences.isSyncPaused()
+        _status.update { it.copy(isPaused = paused) }
         loaded = true
     }
 
