@@ -1,6 +1,12 @@
 package com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Role
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.snapshot.RefreshResult
+import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.core.testing.accessOf
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.model.Song
@@ -33,6 +39,7 @@ class SongsListViewModelTest {
 
     private lateinit var songsRepository: SongsRepository
     private lateinit var viewModel: SongsListViewModel
+    private val accessRepository = FakeAccessRepository()
 
     private val fakeSongs = listOf(
         Song(id = 1, title = "Oceans", artist = "Hillsong", categoryName = "Louvor"),
@@ -46,7 +53,7 @@ class SongsListViewModelTest {
         songsRepository = mockk()
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Loading)
         coEvery { songsRepository.refreshAllSongs() } returns RefreshResult.Updated
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
     }
 
     @After
@@ -68,7 +75,7 @@ class SongsListViewModelTest {
     @Test
     fun `uiState populates songs from repository`() = runTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         subscribeAndAdvance()
 
@@ -80,7 +87,7 @@ class SongsListViewModelTest {
     @Test
     fun `onQueryChange filters by title`() = runTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         val job = launch { viewModel.uiState.collect { } }
         advanceUntilIdle()
@@ -97,7 +104,7 @@ class SongsListViewModelTest {
     @Test
     fun `onQueryChange filters by artist`() = runTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         val job = launch { viewModel.uiState.collect { } }
         advanceUntilIdle()
@@ -114,7 +121,7 @@ class SongsListViewModelTest {
     @Test
     fun `onQueryChange is accent-insensitive`() = runTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         val job = launch { viewModel.uiState.collect { } }
         advanceUntilIdle()
@@ -131,7 +138,7 @@ class SongsListViewModelTest {
     @Test
     fun `blank query returns all songs`() = runTest {
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         val job = launch { viewModel.uiState.collect { } }
         advanceUntilIdle()
@@ -161,7 +168,7 @@ class SongsListViewModelTest {
     fun `uiState sets error when observe emits Error`() = runTest {
         every { songsRepository.observeAllSongs() } returns
             flowOf(SnapshotState.Error(AppError.Network(message = "network error")))
-        viewModel = SongsListViewModel(songsRepository)
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
 
         subscribeAndAdvance()
 
@@ -169,5 +176,24 @@ class SongsListViewModelTest {
             "Sem conexão com a internet. Verifique sua rede e tente novamente.",
             viewModel.uiState.value.error,
         )
+    }
+
+    @Test
+    fun `canEdit only with manage on songs`() = runTest {
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        viewModel = SongsListViewModel(songsRepository, ObserveAccessUseCase(accessRepository))
+        val job = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.canEdit)
+
+        accessRepository.state.value = accessOf(Role.LEADER, Scope.SONGS to AccessLevel.MANAGE)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.canEdit)
+
+        accessRepository.state.value = accessOf(Role.MEDIA, Scope.SONGS to AccessLevel.VIEW)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.canEdit)
+        job.cancel()
     }
 }

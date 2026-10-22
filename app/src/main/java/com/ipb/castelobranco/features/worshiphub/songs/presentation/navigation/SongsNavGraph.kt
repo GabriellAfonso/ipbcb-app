@@ -9,14 +9,17 @@ import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation.WorshipHubRoutes
+import com.ipb.castelobranco.features.worshiphub.songs.presentation.screens.SongCreateScreen
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.screens.SongDetailScreen
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.screens.SongsListScreen
+import com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel.SongCreateViewModel
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel.SongDetailViewModel
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel.SongsListViewModel
 
 internal object SongsRoutes {
     const val List   = "songs_list"
     const val Detail = "song_detail/{songId}"
+    const val Create = "song_create"
 
     fun detail(id: Int) = "song_detail/$id"
 }
@@ -30,7 +33,16 @@ fun NavGraphBuilder.songsGraph(navController: NavHostController) {
             val viewModel: SongsListViewModel = hiltViewModel()
             SongsListScreen(
                 viewModel   = viewModel,
-                onSongClick = { id -> navController.navigate(SongsRoutes.detail(id)) },
+                onSongClick   = { id -> navController.navigate(SongsRoutes.detail(id)) },
+                onCreateClick = { navController.navigate(SongsRoutes.Create) },
+                onBackClick   = { navController.safePopBackStack() },
+            )
+        }
+
+        composable(SongsRoutes.Create) {
+            val viewModel: SongCreateViewModel = hiltViewModel()
+            SongCreateScreen(
+                viewModel   = viewModel,
                 onBackClick = { navController.safePopBackStack() },
             )
         }

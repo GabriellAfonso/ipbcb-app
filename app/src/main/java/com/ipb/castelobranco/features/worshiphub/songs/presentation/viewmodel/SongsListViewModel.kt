@@ -2,6 +2,9 @@ package com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.domain.access.AccessLevel
+import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
+import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.util.normalize
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
@@ -23,6 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SongsListViewModel @Inject constructor(
     private val songsRepository: SongsRepository,
+    observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -46,10 +50,12 @@ class SongsListViewModel @Inject constructor(
     val uiState: StateFlow<SongsListUiState> = combine(
         songsRepository.observeAllSongs(),
         _query,
-    ) { songsState, query ->
+        observeAccess(),
+    ) { songsState, query, access ->
+        val canEdit = access.allows(Scope.SONGS, AccessLevel.MANAGE)
         when (songsState) {
-            is SnapshotState.Loading -> SongsListUiState(isLoading = true)
-            is SnapshotState.Error   -> SongsListUiState(error = songsState.error.toUserMessage())
+            is SnapshotState.Loading -> SongsListUiState(isLoading = true, canEdit = canEdit)
+            is SnapshotState.Error   -> SongsListUiState(error = songsState.error.toUserMessage(), canEdit = canEdit)
             is SnapshotState.Data    -> {
                 val all = songsState.value.map { song ->
                     SongListItem(
@@ -72,6 +78,7 @@ class SongsListViewModel @Inject constructor(
                     songs         = all,
                     filteredSongs = filtered,
                     query         = query,
+                    canEdit       = canEdit,
                 )
             }
         }

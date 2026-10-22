@@ -6,6 +6,8 @@ data class SongsListUiState(
     val query: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
+    /** `songs` ≥ `manage`: shows the menu with "Adicionar Música". */
+    val canEdit: Boolean = false,
 )
 
 data class SongListItem(

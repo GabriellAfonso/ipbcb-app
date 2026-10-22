@@ -20,6 +20,7 @@ private val Accent = BrandColors.DarkGreen
 fun SongsListScreen(
     viewModel: SongsListViewModel,
     onSongClick: (id: Int) -> Unit,
+    onCreateClick: () -> Unit,
     onBackClick: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -30,6 +31,7 @@ fun SongsListScreen(
     SongContentListScreen(
         tabName           = "Músicas",
         searchPlaceholder = "Pesquisar músicas...",
+        addItemLabel      = "Adicionar Música",
         accentColor       = Accent,
         leadingIcon       = Icons.Default.LibraryMusic,
         rows              = state.filteredSongs.map { it.toRow(secondary) },
@@ -41,6 +43,8 @@ fun SongsListScreen(
         onItemClick       = onSongClick,
         onRefresh         = viewModel::refresh,
         onBackClick       = onBackClick,
+        canEdit           = state.canEdit,
+        onCreateClick     = onCreateClick,
     )
 }
 
