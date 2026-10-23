@@ -105,6 +105,12 @@ Paths are relative to `app/src/main/java/com/ipb/castelobranco/` (main) and `app
   ProfileDetailViewModel.kt, ProfileDetailScreen.kt, ProfilesDialogs.kt (features/admin/profiles/presentation/)
 - [X] T026 [P] [US4] Test revoke, block, link, unlink and 409 MEMBER_ALREADY_LINKED in
   features/admin/profiles/presentation/viewmodel/ProfileDetailViewModelTest.kt (test)
+- [X] T034 [US4] "Acesso de membro" switch (grant with confirmation, revoke with confirmation) and the "Liberado por
+  {nome} em {data}" note: `grant-access/` in ProfilesAdminApi.kt, repository and `GrantMemberAccessUseCase`,
+  `access_granted_by` / `access_granted_at` in the DTO and `ManagedAccount`, `ConfirmAction.GRANT` in
+  ProfileDetailViewModel.kt, ProfileDetailScreen.kt, ProfilesDialogs.kt
+- [X] T035 [P] [US4] Test grant (confirm, call, message), grant-record mapping in
+  ProfileDetailViewModelTest.kt and ProfilesAdminRepositoryImplTest.kt (test)
 
 ## Phase 7: User Story 5 — Push notifications (P3)
 

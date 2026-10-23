@@ -346,15 +346,19 @@ e-mail.
   (todas as contas ativas, por nome). Linha: foto, nome, selo "Pedido de acesso" / "Pedido de correção" quando há
   pendente e "Bloqueado" quando bloqueado. Puxar para atualizar. Vazio: "Nenhum pedido pendente." / "Nenhuma conta.".
 - **Detalhe** (`ProfileDetailScreen`): foto, nome, "@login", "No app desde {mês} de {ano}"; acesso "Liberado" /
-  "Não liberado" (a marcação gravada) e "Acesso pelo papel" quando um papel libera; membro do rol vinculado ou
+  "Não liberado" (a marcação gravada), "Liberado por {nome} em {data}" quando o servidor sabe quem liberou e
+  "Acesso pelo papel" quando um papel libera; membro do rol vinculado ou
   "Sem vínculo"; pedidos pendentes (tipo, mensagem, data) e histórico (tipo, situação, quem decidiu, quando,
   motivo). Correção aprovada aparece como "Resolvida".
 
 ### 8.2 Ações (só com `profiles` ≥ `manage`)
 
 - **Aprovar** / **Negar** cada pedido pendente; negar abre um diálogo com "Motivo (opcional)", até 500 caracteres.
-- **Revogar acesso** — só com a marcação ligada; confirmação "Revogar o acesso de {nome}?"; quando um papel libera,
-  o texto acrescenta "O papel continua liberando o acesso.".
+- **Acesso de membro** — chave sobre a marcação gravada, como atribuir um papel.
+  - Ligar libera o acesso sem pedido. A confirmação diz "Liberar o acesso de {nome}? A pessoa recebe uma
+    notificação.". Um pedido de acesso pendente sai de Pendentes como aprovado.
+  - Desligar revoga, com a confirmação "Revogar o acesso de {nome}?". Quando um papel libera, o texto acrescenta
+    "O papel continua liberando o acesso.".
 - **Bloquear pedidos** — chave liga/desliga; pedidos pendentes continuam pendentes.
 - **Vincular ao rol** / **Trocar vínculo** — diálogo com busca sobre a lista de Membros (§7, mesmo repositório);
   **Remover vínculo** pede confirmação.

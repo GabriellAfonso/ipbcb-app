@@ -54,6 +54,8 @@ data class ManagedAccount(
     val id: String, val name: String, val username: String?, val photoUrl: String?,
     val memberAccess: Boolean,          // stored flag
     val accessViaRole: Boolean,
+    val accessGrantedBy: String?,       // grant record: leader's name; null when unknown
+    val accessGrantedAt: OffsetDateTime?,
     val requestsBlocked: Boolean,
     val member: LinkedMember?,          // LinkedMember(id: Int, name: String)
     val dateJoined: LocalDate?,
@@ -66,7 +68,7 @@ enum class ProfilesTab(val wire: String) { PENDING("pending"), ALL("all") }
 `ProfilesAdminRepository`:
 - `observe(tab): Flow<List<ManagedAccount>?>`, `refresh(tab): Result<Unit>`
 - `detail(id): Result<ManagedAccount>`
-- `approve(requestId)`, `deny(requestId, reason?)`, `revoke(userId)`, `setBlocked(userId, Boolean)`,
+- `approve(requestId)`, `deny(requestId, reason?)`, `grantAccess(userId)`, `revokeAccess(userId)`, `setBlocked(userId, Boolean)`,
   `link(userId, memberId: Int?)` — each `Result<ManagedAccount>` and updates the cached lists.
 
 No e-mail field exists in any of these types.

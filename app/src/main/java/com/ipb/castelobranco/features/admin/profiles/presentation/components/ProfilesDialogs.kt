@@ -69,6 +69,11 @@ fun ConfirmActionDialog(
     onDismiss: () -> Unit,
 ) {
     val (title, text, button) = when (action) {
+        ConfirmAction.GRANT -> Triple(
+            "Liberar acesso",
+            "Liberar o acesso de $accountName? A pessoa recebe uma notificação.",
+            "Liberar",
+        )
         ConfirmAction.REVOKE -> Triple(
             "Revogar acesso",
             "Revogar o acesso de $accountName?" + if (accessViaRole) " O papel continua liberando o acesso." else "",
@@ -80,13 +85,18 @@ fun ConfirmActionDialog(
             "Remover",
         )
     }
+    // Only the destructive actions are red.
+    val buttonColor = when (action) {
+        ConfirmAction.GRANT -> MaterialTheme.colorScheme.primary
+        ConfirmAction.REVOKE, ConfirmAction.UNLINK -> MaterialTheme.colorScheme.error
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = busy(isBusy),
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isBusy) { Text(button, color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = onConfirm, enabled = !isBusy) { Text(button, color = buttonColor) }
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !isBusy) { Text("Cancelar") } },
     )

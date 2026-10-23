@@ -21,6 +21,9 @@ interface ProfilesAdminRepository {
 
     suspend fun deny(requestId: Long, reason: String?): Result<ManagedAccount>
 
+    /** Sets the stored flag without a request; a pending access request is approved with it. */
+    suspend fun grantAccess(userId: String): Result<ManagedAccount>
+
     suspend fun revokeAccess(userId: String): Result<ManagedAccount>
 
     suspend fun setRequestsBlocked(userId: String, blocked: Boolean): Result<ManagedAccount>

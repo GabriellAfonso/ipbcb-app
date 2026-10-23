@@ -28,6 +28,10 @@ class DenyAccessRequestUseCase @Inject constructor(private val repository: Profi
         repository.deny(requestId, reason?.trim()?.takeIf { it.isNotEmpty() })
 }
 
+class GrantMemberAccessUseCase @Inject constructor(private val repository: ProfilesAdminRepository) {
+    suspend operator fun invoke(userId: String): Result<ManagedAccount> = repository.grantAccess(userId)
+}
+
 class RevokeMemberAccessUseCase @Inject constructor(private val repository: ProfilesAdminRepository) {
     suspend operator fun invoke(userId: String): Result<ManagedAccount> = repository.revokeAccess(userId)
 }

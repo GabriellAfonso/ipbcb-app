@@ -16,6 +16,7 @@ import com.ipb.castelobranco.features.admin.profiles.domain.model.ManagedAccount
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.ApproveAccessRequestUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.DenyAccessRequestUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.GetManagedAccountUseCase
+import com.ipb.castelobranco.features.admin.profiles.domain.usecase.GrantMemberAccessUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.LinkAccountToMemberUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.RevokeMemberAccessUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.SetAccessRequestsBlockedUseCase
@@ -47,6 +48,7 @@ class ProfileDetailViewModel @Inject constructor(
     private val getAccount: GetManagedAccountUseCase,
     private val approveRequest: ApproveAccessRequestUseCase,
     private val denyRequest: DenyAccessRequestUseCase,
+    private val grantAccess: GrantMemberAccessUseCase,
     private val revokeAccess: RevokeMemberAccessUseCase,
     private val setRequestsBlocked: SetAccessRequestsBlockedUseCase,
     private val linkToMember: LinkAccountToMemberUseCase,
@@ -110,8 +112,9 @@ class ProfileDetailViewModel @Inject constructor(
         act(DENIED_MESSAGE) { denyRequest(dialog.requestId, reason) }
     }
 
-    fun askRevoke() {
-        _uiState.update { it.copy(confirm = ConfirmAction.REVOKE) }
+    /** The "Acesso de membro" switch: on grants, off revokes; both ask first. */
+    fun askSetAccess(granted: Boolean) {
+        _uiState.update { it.copy(confirm = if (granted) ConfirmAction.GRANT else ConfirmAction.REVOKE) }
     }
 
     fun askUnlink() {
@@ -125,6 +128,7 @@ class ProfileDetailViewModel @Inject constructor(
 
     fun confirm() {
         when (_uiState.value.confirm) {
+            ConfirmAction.GRANT -> act(GRANTED_MESSAGE) { grantAccess(userId) }
             ConfirmAction.REVOKE -> act(REVOKED_MESSAGE) { revokeAccess(userId) }
             ConfirmAction.UNLINK -> act(UNLINKED_MESSAGE) { linkToMember(userId, null) }
             null -> Unit
@@ -210,6 +214,7 @@ class ProfileDetailViewModel @Inject constructor(
 
         const val APPROVED_MESSAGE = "Pedido aprovado"
         const val DENIED_MESSAGE = "Pedido negado"
+        const val GRANTED_MESSAGE = "Acesso liberado"
         const val REVOKED_MESSAGE = "Acesso revogado"
         const val BLOCKED_MESSAGE = "Pedidos bloqueados"
         const val UNBLOCKED_MESSAGE = "Pedidos desbloqueados"

@@ -20,6 +20,7 @@ object ProfilesAdminEndpoints {
 
     const val ACCOUNTS_PATH = ROOT
     const val ACCOUNT_PATH = "${ROOT}{id}/"
+    const val GRANT_PATH = "${ROOT}{id}/grant-access/"
     const val REVOKE_PATH = "${ROOT}{id}/revoke-access/"
     const val APPROVE_PATH = "${ROOT}requests/{id}/approve/"
     const val DENY_PATH = "${ROOT}requests/{id}/deny/"
@@ -48,6 +49,9 @@ interface ProfilesAdminApi {
         @Path(ProfilesAdminEndpoints.ID) id: String,
         @Body body: JsonObject,
     ): Response<ManagedAccountDto>
+
+    @POST(ProfilesAdminEndpoints.GRANT_PATH)
+    suspend fun grantAccess(@Path(ProfilesAdminEndpoints.ID) id: String): Response<ManagedAccountDto>
 
     @POST(ProfilesAdminEndpoints.REVOKE_PATH)
     suspend fun revokeAccess(@Path(ProfilesAdminEndpoints.ID) id: String): Response<ManagedAccountDto>

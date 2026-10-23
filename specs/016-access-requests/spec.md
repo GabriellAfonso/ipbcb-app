@@ -43,7 +43,11 @@ data. This feature brings all three to the app.
   cached by the server, and only when the account is linked to a roll member.
 - **Perfis** lists app accounts (not the church roll). Viewing needs `view` on `profiles`; acting needs `manage`.
   Admin and Liderança have it; Mídia does not. In Perfis, access shows the **stored flag** plus whether a **role
-  grants it anyway** (revoking changes nothing for them).
+  grants it anyway** (revoking changes nothing for them), plus who set the flag and when (the grant record, empty
+  for flags set in the Django admin).
+- Leaders can **grant** access directly, without a request: it sets the flag, records the grant, approves the
+  account's pending access request in the same step and sends the person the same "Acesso liberado" push as an
+  approval. Granting an account already flagged changes nothing. Revoking clears the grant record.
 - "Approve" on a data correction only closes it (shown as **resolvida**). Blocking and revoking do not cancel pending
   requests. Revoke, block and link send no push.
 - Push: leaders on a new request; the requester on approval and on denial (with the reason, when given). No name,
@@ -159,26 +163,32 @@ check that nothing of the roll data is written to the device.
 
 ---
 
-### User Story 4 - Manage an account: revoke, block, link (Priority: P2)
+### User Story 4 - Manage an account: grant, revoke, block, link (Priority: P2)
 
-Pr. João opens Carlos's account in Perfis. Carlos left the church: he taps "Revogar acesso" and confirms. Another
+Pr. João welcomed Marta last Sunday; she installed the app but never opened a locked screen. He opens her account in
+Perfis, turns on "Acesso de membro" and confirms: her phone shows "Acesso liberado". Carlos left the church: he turns
+his switch off and confirms. Another
 account keeps sending requests: he turns on "Bloquear pedidos". For Ana he taps "Vincular ao rol", searches "Ana" in
 the roll and picks "Ana Souza".
 
 **Why this priority**: Day-to-day upkeep; less frequent than deciding requests.
 
-**Independent Test**: With `manage`, revoke, block/unblock and link/unlink on test accounts; check that a role-granted
-account explains why revoking changes nothing.
+**Independent Test**: With `manage`, grant, revoke, block/unblock and link/unlink on test accounts; check the grant
+note ("Liberado por …"), that granting clears a pending access request and that a role-granted account explains why
+revoking changes nothing.
 
 **Acceptance Scenarios**:
 
-1. **Given** an account whose stored flag is on, **When** the leader taps "Revogar acesso" and confirms, **Then** the
-   flag is cleared and the detail refreshes.
-2. **Given** an account whose access comes from a role, **Then** "Revogar acesso" explains that the role grants
-   access anyway.
-3. **Given** an account, **When** the leader toggles "Bloquear pedidos", **Then** the block is saved and the detail
+1. **Given** an account whose stored flag is off, **When** the leader turns "Acesso de membro" on and confirms,
+   **Then** the access is granted, the detail shows "Liberado por {líder} em {data}" and a pending access request
+   leaves Pendentes as approved.
+2. **Given** an account whose stored flag is on, **When** the leader turns "Acesso de membro" off and confirms,
+   **Then** the flag and the grant note are cleared and the detail refreshes.
+3. **Given** an account whose access comes from a role, **Then** the revoke confirmation explains that the role
+   grants access anyway.
+4. **Given** an account, **When** the leader toggles "Bloquear pedidos", **Then** the block is saved and the detail
    refreshes; pending requests stay pending.
-4. **Given** an account, **When** the leader taps "Vincular ao rol" and picks a member, **Then** the link is saved; a
+5. **Given** an account, **When** the leader taps "Vincular ao rol" and picks a member, **Then** the link is saved; a
    member already linked to another account shows the server's message; "Remover vínculo" unlinks after
    confirmation.
 
@@ -199,7 +209,8 @@ notifications, the tap destination and the refreshed access.
 
 1. **Given** a leader's device, **When** a request is created, **Then** it shows "Novo pedido de acesso" (or "Novo
    pedido de correção" for a data correction); a tap opens Perfis on Pendentes.
-2. **Given** the requester's device, **When** the request is approved, **Then** it shows "Acesso liberado" (or
+2. **Given** the requester's device, **When** the request is approved (or a leader grants access directly),
+   **Then** it shows "Acesso liberado" (or
    "Correção resolvida") and the profile is refreshed.
 3. **Given** the requester's device, **When** the request is denied, **Then** it shows "Pedido de acesso negado" (or
    "Pedido de correção negado") with the reason as body when there is one, and the profile is refreshed.
@@ -246,10 +257,12 @@ notifications, the tap destination and the refreshed access.
 - **FR-009**: Roll data MUST be held in memory only — never written to disk (snapshot, cache, files) and never
   logged.
 - **FR-010**: Gestão MUST offer "Perfis" only with `view` on `profiles`, with the tabs Pendentes and Todos.
-- **FR-011**: The account detail MUST show photo, name, login, "No app desde", access (stored flag + "Acesso pelo
-  papel"), the linked member, pending requests and the history; it MUST NOT show or edit an e-mail.
+- **FR-011**: The account detail MUST show photo, name, login, "No app desde", access (stored flag, "Liberado por
+  {nome} em {data}" when the grant record exists, and "Acesso pelo papel"), the linked member, pending requests and the history; it MUST NOT show or edit an e-mail.
 - **FR-012**: With `manage` on `profiles`, the detail MUST offer: approve and deny (optional reason up to 500
-  characters) per pending request; revoke access (with confirmation; explained when access comes from a role);
+  characters) per pending request; an "Acesso de membro" switch over the stored flag — on grants access directly
+  (confirmation saying the person is notified), off revokes it (confirmation; explained when access comes from a
+  role);
   block/unblock requests; link to a roll member (picker over the existing roll with search) and unlink (with
   confirmation). With `view` only, no action is offered.
 - **FR-013**: After each management action the detail and the lists MUST reflect the server's answer; server refusals

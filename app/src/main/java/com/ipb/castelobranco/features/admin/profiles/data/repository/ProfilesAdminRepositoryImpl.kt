@@ -65,6 +65,9 @@ class ProfilesAdminRepositoryImpl @Inject constructor(
         account { api.denyRequest(requestId, DenyRequestBody(reason = reason)) }
             .onSuccess { Timber.i("Access request %d denied", requestId) }
 
+    override suspend fun grantAccess(userId: String): Result<ManagedAccount> =
+        account { api.grantAccess(userId) }
+
     override suspend fun revokeAccess(userId: String): Result<ManagedAccount> =
         account { api.revokeAccess(userId) }
 
@@ -119,6 +122,8 @@ internal fun ManagedAccountDto.toDomain() = ManagedAccount(
     photoUrl = photoUrl?.takeIf { it.isNotBlank() },
     memberAccess = memberAccess,
     accessViaRole = accessViaRole,
+    accessGrantedBy = accessGrantedBy?.name?.takeIf { it.isNotBlank() },
+    accessGrantedAt = accessGrantedAt.toDateTimeOrNull(),
     requestsBlocked = accessRequestsBlocked,
     member = member?.let { LinkedMember(it.id, it.name) },
     dateJoined = dateJoined?.let { runCatching { LocalDate.parse(it) }.getOrNull() },

@@ -47,6 +47,7 @@ import com.ipb.castelobranco.features.admin.profiles.presentation.components.Mem
 import com.ipb.castelobranco.features.admin.profiles.presentation.state.ProfileDetailUiState
 import com.ipb.castelobranco.features.admin.profiles.presentation.state.ProfilesEvent
 import com.ipb.castelobranco.features.admin.profiles.presentation.util.formatDateTime
+import com.ipb.castelobranco.features.admin.profiles.presentation.util.grantedLabel
 import com.ipb.castelobranco.features.admin.profiles.presentation.util.joinedSinceLabel
 import com.ipb.castelobranco.features.admin.profiles.presentation.util.requestStatusLabel
 import com.ipb.castelobranco.features.admin.profiles.presentation.util.requestTypeLabel
@@ -60,7 +61,7 @@ data class ProfileDetailActions(
     val onOpenDeny: (Long) -> Unit = {},
     val onDeny: (String) -> Unit = {},
     val onDismissDeny: () -> Unit = {},
-    val onAskRevoke: () -> Unit = {},
+    val onAskSetAccess: (Boolean) -> Unit = {},
     val onAskUnlink: () -> Unit = {},
     val onConfirm: () -> Unit = {},
     val onDismissConfirm: () -> Unit = {},
@@ -101,7 +102,7 @@ fun ProfileDetailScreen(
                 onOpenDeny = viewModel::openDeny,
                 onDeny = viewModel::deny,
                 onDismissDeny = viewModel::dismissDeny,
-                onAskRevoke = viewModel::askRevoke,
+                onAskSetAccess = viewModel::askSetAccess,
                 onAskUnlink = viewModel::askUnlink,
                 onConfirm = viewModel::confirm,
                 onDismissConfirm = viewModel::dismissConfirm,
@@ -183,14 +184,21 @@ private fun AccountDetail(
         Header(account, imageLoader)
 
         Section("Acesso") {
-            Text(if (account.memberAccess) "Liberado" else "Não liberado", style = MaterialTheme.typography.bodyLarge)
+            if (state.canManage) {
+                // A switch over the stored flag, like assigning a role; the ViewModel asks before acting.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Acesso de membro", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Switch(checked = account.memberAccess, onCheckedChange = actions.onAskSetAccess, enabled = enabled)
+                }
+            } else {
+                val status = if (account.memberAccess) "Liberado" else "Não liberado"
+                Text(status, style = MaterialTheme.typography.bodyLarge)
+            }
+            if (account.memberAccess) {
+                grantedLabel(account.accessGrantedBy, account.accessGrantedAt)?.let { Note(it) }
+            }
             if (account.accessViaRole) Note("Acesso pelo papel")
             if (state.canManage) {
-                if (account.memberAccess) {
-                    TextButton(onClick = actions.onAskRevoke, enabled = enabled) {
-                        Text("Revogar acesso", color = MaterialTheme.colorScheme.error)
-                    }
-                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Bloquear pedidos", modifier = Modifier.weight(1f))
                     Switch(checked = account.requestsBlocked, onCheckedChange = actions.onSetBlocked, enabled = enabled)
@@ -315,6 +323,8 @@ private fun ProfileDetailContentPreview() {
                     photoUrl = null,
                     memberAccess = false,
                     accessViaRole = false,
+                    accessGrantedBy = null,
+                    accessGrantedAt = null,
                     requestsBlocked = false,
                     member = LinkedMember(12, "Ana Souza"),
                     dateJoined = LocalDate.of(2025, 3, 14),

@@ -17,7 +17,9 @@ Needs backend 022 deployed (dev) and three accounts: A (no access), L (Lideranç
 2. A sends again from the profile within 24 h → the server's limit message in the dialog; still signed in.
 3. L gets "Novo pedido de acesso"; tap → Perfis › Pendentes lists A.
 4. L opens A, taps "Aprovar" → A leaves Pendentes; A gets "Acesso liberado"; A's Galeria loads.
-5. L revokes A (confirm) → A's next refresh shows locked screens with "Pedir acesso".
+5. L revokes A (switch off, confirm) → A's next refresh shows locked screens with "Pedir acesso".
+5a. L grants access to an account B that never asked (switch on, confirm) → B gets "Acesso liberado", its locked
+    screens open; B's detail shows "Liberado por L em …".
 6. L blocks A → A sees the blocked text, no buttons, on locked screens and the profile.
 7. L links A to a roll member → A's profile shows "Meus dados na igreja"; "Solicitar correção" sends; L denies with a
    reason → A gets "Pedido de correção negado" with the reason.

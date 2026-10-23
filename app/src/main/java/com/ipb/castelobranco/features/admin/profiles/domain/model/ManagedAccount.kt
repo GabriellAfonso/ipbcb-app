@@ -37,6 +37,9 @@ data class ManagedAccount(
     val memberAccess: Boolean,
     /** Admin/Liderança grants access anyway: revoking the flag changes nothing for them. */
     val accessViaRole: Boolean,
+    /** Who set the stored flag (name), when the server knows; `null` for flags set in the Django admin. */
+    val accessGrantedBy: String?,
+    val accessGrantedAt: OffsetDateTime?,
     val requestsBlocked: Boolean,
     val member: LinkedMember?,
     val dateJoined: LocalDate?,

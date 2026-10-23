@@ -28,6 +28,14 @@ fun requestStatusLabel(type: AccessRequestType, status: RequestStatus): String =
     RequestStatus.DENIED -> "Negado"
 }
 
+/** "Liberado por Pr. João em 22/10/2026 às 14:03"; `null` when the server does not know who granted it. */
+fun grantedLabel(grantedBy: String?, grantedAt: OffsetDateTime?): String? = when {
+    grantedBy != null && grantedAt != null -> "Liberado por $grantedBy em ${formatDateTime(grantedAt)}"
+    grantedBy != null -> "Liberado por $grantedBy"
+    grantedAt != null -> "Liberado em ${formatDateTime(grantedAt)}"
+    else -> null
+}
+
 /** "No app desde março de 2025". */
 fun joinedSinceLabel(date: LocalDate): String =
     "No app desde ${MONTH_YEAR.format(date).lowercase(Locale.ROOT)}"

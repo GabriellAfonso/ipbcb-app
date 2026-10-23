@@ -36,7 +36,7 @@ data class ProfileDetailUiState(
 
 data class DenyDialogState(val requestId: Long)
 
-enum class ConfirmAction { REVOKE, UNLINK }
+enum class ConfirmAction { GRANT, REVOKE, UNLINK }
 
 data class MemberPickerState(
     val query: String = "",
