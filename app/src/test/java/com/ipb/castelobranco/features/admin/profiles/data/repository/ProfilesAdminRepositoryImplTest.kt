@@ -7,6 +7,7 @@ import com.ipb.castelobranco.features.admin.profiles.data.dto.AccessRequestDto
 import com.ipb.castelobranco.features.admin.profiles.data.dto.DenyRequestBody
 import com.ipb.castelobranco.features.admin.profiles.data.dto.ManagedAccountDto
 import com.ipb.castelobranco.features.admin.profiles.data.dto.ManagedAccountListDto
+import com.ipb.castelobranco.features.admin.profiles.data.dto.PersonRefDto
 import com.ipb.castelobranco.features.admin.profiles.domain.model.ProfilesTab
 import com.ipb.castelobranco.features.admin.profiles.domain.model.RequestStatus
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
+import java.time.OffsetDateTime
 
 class ProfilesAdminRepositoryImplTest {
 
@@ -38,6 +40,7 @@ class ProfilesAdminRepositoryImplTest {
             patches += body
             return accountAnswer()
         }
+        override suspend fun grantAccess(id: String) = accountAnswer()
         override suspend fun revokeAccess(id: String) = accountAnswer()
         override suspend fun approveRequest(requestId: Long) = accountAnswer()
         override suspend fun denyRequest(requestId: Long, body: DenyRequestBody): Response<ManagedAccountDto> {
@@ -80,6 +83,36 @@ class ProfilesAdminRepositoryImplTest {
         assertTrue(result.getOrThrow().memberAccess)
         assertEquals(emptyList<String>(), repository.observe(ProfilesTab.PENDING).first()?.map { it.id })
         assertTrue(repository.observe(ProfilesTab.ALL).first()!!.first { it.id == "u-1" }.memberAccess)
+    }
+
+    @Test
+    fun `granting maps who granted and when`() = runTest {
+        api.accountAnswer = {
+            Response.success(
+                ana.copy(
+                    memberAccess = true,
+                    accessGrantedBy = PersonRefDto(id = "l-1", name = "Pr. João"),
+                    accessGrantedAt = "2026-10-22T14:03:00-03:00",
+                    pendingRequests = emptyList(),
+                )
+            )
+        }
+
+        val account = repository.grantAccess("u-1").getOrThrow()
+
+        assertTrue(account.memberAccess)
+        assertEquals("Pr. João", account.accessGrantedBy)
+        assertEquals(OffsetDateTime.parse("2026-10-22T14:03:00-03:00"), account.accessGrantedAt)
+    }
+
+    @Test
+    fun `an account without a grant record maps to nulls`() = runTest {
+        api.accountAnswer = { Response.success(ana) }
+
+        val account = repository.detail("u-1").getOrThrow()
+
+        assertNull(account.accessGrantedBy)
+        assertNull(account.accessGrantedAt)
     }
 
     @Test

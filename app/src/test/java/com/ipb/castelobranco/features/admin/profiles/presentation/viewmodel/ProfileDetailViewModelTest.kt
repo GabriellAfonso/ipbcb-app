@@ -23,6 +23,7 @@ import com.ipb.castelobranco.features.admin.profiles.domain.usecase.ApproveAcces
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.DenyAccessRequestUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.GetManagedAccountUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.LinkAccountToMemberUseCase
+import com.ipb.castelobranco.features.admin.profiles.domain.usecase.GrantMemberAccessUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.RevokeMemberAccessUseCase
 import com.ipb.castelobranco.features.admin.profiles.domain.usecase.SetAccessRequestsBlockedUseCase
 import com.ipb.castelobranco.features.admin.profiles.presentation.state.ConfirmAction
@@ -63,6 +64,7 @@ class ProfileDetailViewModelTest {
         GetManagedAccountUseCase(repository),
         ApproveAccessRequestUseCase(repository),
         DenyAccessRequestUseCase(repository),
+        GrantMemberAccessUseCase(repository),
         RevokeMemberAccessUseCase(repository),
         SetAccessRequestsBlockedUseCase(repository),
         LinkAccountToMemberUseCase(repository),
@@ -139,7 +141,7 @@ class ProfileDetailViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        vm.askRevoke()
+        vm.askSetAccess(false)
         assertEquals(ConfirmAction.REVOKE, vm.uiState.value.confirm)
         vm.confirm()
         advanceUntilIdle()
@@ -149,6 +151,39 @@ class ProfileDetailViewModelTest {
 
         assertEquals(listOf("revoke u-1", "link u-1 null"), repository.actions)
         assertNull(vm.uiState.value.confirm)
+    }
+
+    @Test
+    fun `turning access on asks first, then grants and confirms`() = runTest {
+        repository.actionResult = Result.success(account(memberAccess = true, pending = emptyList()))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.askSetAccess(true)
+        assertEquals(ConfirmAction.GRANT, vm.uiState.value.confirm)
+        assertEquals(emptyList<String>(), repository.actions)
+        vm.events.test {
+            vm.confirm()
+            advanceUntilIdle()
+            assertEquals(ProfilesEvent.ShowMessage(ProfileDetailViewModel.GRANTED_MESSAGE), awaitItem())
+        }
+
+        assertEquals(listOf("grant u-1"), repository.actions)
+        assertTrue(vm.uiState.value.account!!.memberAccess)
+        assertNull(vm.uiState.value.confirm)
+    }
+
+    @Test
+    fun `dismissing the grant confirmation changes nothing`() = runTest {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.askSetAccess(true)
+        vm.dismissConfirm()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.confirm)
+        assertEquals(emptyList<String>(), repository.actions)
     }
 
     @Test

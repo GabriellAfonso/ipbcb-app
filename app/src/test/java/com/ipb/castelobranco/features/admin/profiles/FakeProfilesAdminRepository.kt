@@ -35,6 +35,7 @@ class FakeProfilesAdminRepository : ProfilesAdminRepository {
 
     override suspend fun approve(requestId: Long) = record("approve $requestId")
     override suspend fun deny(requestId: Long, reason: String?) = record("deny $requestId $reason")
+    override suspend fun grantAccess(userId: String) = record("grant $userId")
     override suspend fun revokeAccess(userId: String) = record("revoke $userId")
     override suspend fun setRequestsBlocked(userId: String, blocked: Boolean) = record("block $userId $blocked")
     override suspend fun linkMember(userId: String, memberId: Int?) = record("link $userId $memberId")
@@ -73,6 +74,8 @@ fun account(
     photoUrl = null,
     memberAccess = memberAccess,
     accessViaRole = false,
+    accessGrantedBy = null,
+    accessGrantedAt = null,
     requestsBlocked = blocked,
     member = null,
     dateJoined = null,
