@@ -44,7 +44,7 @@ import com.ipb.castelobranco.features.events.presentation.viewmodel.EventDetailV
 private const val SCREEN_TITLE = "Evento"
 private const val GONE_MESSAGE = "Este evento não está mais disponível."
 private const val MEMBERS_ONLY_LABEL = "Só membros"
-private const val IMAGE_ASPECT_RATIO = 16f / 9f
+private const val IMAGE_ASPECT_RATIO = 3f / 2f
 
 @Composable
 fun EventDetailScreen(

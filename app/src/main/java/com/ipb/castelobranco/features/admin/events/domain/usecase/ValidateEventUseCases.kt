@@ -34,7 +34,7 @@ class ValidateEventDraftUseCase @Inject constructor() {
     }
 }
 
-/** The server refuses flyers under 640×360; the crop never upscales, so a small source is caught here. */
+/** The server refuses flyers under 600×400; the crop never upscales, so a small source is caught here. */
 class ValidateEventImageUseCase @Inject constructor(
     private val boundsReader: ImageBoundsReader,
 ) {
@@ -45,9 +45,9 @@ class ValidateEventImageUseCase @Inject constructor(
     }
 
     companion object {
-        const val MIN_WIDTH = 640
-        const val MIN_HEIGHT = 360
-        const val TOO_SMALL = "A imagem precisa ter pelo menos 640×360 pixels."
+        const val MIN_WIDTH = 600
+        const val MIN_HEIGHT = 400
+        const val TOO_SMALL = "A imagem precisa ter pelo menos 600×400 pixels."
         const val UNREADABLE = "Não foi possível ler esta imagem."
     }
 }

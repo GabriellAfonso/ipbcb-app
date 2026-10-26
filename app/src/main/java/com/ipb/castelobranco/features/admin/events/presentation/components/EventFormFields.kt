@@ -51,7 +51,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 
-private const val IMAGE_ASPECT = 16f / 9f
+private const val IMAGE_ASPECT = 3f / 2f
 private const val CLEAR_LABEL = "Remover"
 
 @Composable
@@ -123,7 +123,7 @@ fun EventImageField(
                 )
                 else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
-                    Text("Escolher imagem (16:9)", style = MaterialTheme.typography.bodyMedium)
+                    Text("Escolher imagem (3:2)", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

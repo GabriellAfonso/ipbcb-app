@@ -29,10 +29,10 @@ import coil.compose.AsyncImage
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventAdminItemUi
 
 private const val PAST_ALPHA = 0.55f
-private const val THUMB_ASPECT = 16f / 9f
+private const val THUMB_ASPECT = 3f / 2f
 private const val MEMBERS_ONLY_LABEL = "Só membros"
 
-/** A row of the management list: 16:9 thumbnail, title, date and the members-only mark. Past rows fade. */
+/** A row of the management list: 3:2 thumbnail, title, date and the members-only mark. Past rows fade. */
 @Composable
 fun EventAdminCard(
     item: EventAdminItemUi,

@@ -20,7 +20,7 @@ erros e as regras de acesso às imagens não são redefinidos aqui.
 | Horário | não | `HH:MM`, horário de Brasília |
 | Local | não | até 200 caracteres |
 | Descrição | não | texto livre |
-| Imagem | sim | sempre 16:9 (o app recorta antes de enviar) |
+| Imagem | sim | sempre 3:2 (o app recorta antes de enviar) |
 | Visibilidade | — | `public` (padrão) ou `members` ("Só membros") |
 
 **Ativo**: do momento em que é criado até o fim do seu último dia (data de fim, ou de início quando não há fim). Não
@@ -34,8 +34,9 @@ aparece apenas na gestão.
 - Páginas do carrossel, nesta ordem: aniversariantes, escala e, em seguida, **uma página por evento ativo**, no
   máximo **3** (os primeiros da lista pública, que vem ordenada por data e horário de início).
 - Sem evento para mostrar, entra a página "Eventos — Nenhum evento esse mês" (`HighlightEvents`).
-- Página de evento (`HighlightEvent`): a imagem preenche o card; título (até 2 linhas) e data sobre um gradiente na
-  base. Sem imagem (falha, 404, offline sem cache), fica um fundo neutro com título e data.
+- Página de evento (`HighlightEvent`): a imagem preenche o card, também 3:2, então aparece inteira; título (até 2
+  linhas) e data sobre um gradiente na base. Sem imagem (falha, 404, offline sem cache), fica um fundo neutro com
+  título e data. Imagem antiga em 16:9 (enviada antes da troca para 3:2) perde um pouco das laterais no card.
 - Formatos de data (`EventDateLabel`):
   - um dia: "14 nov" ou "14 nov · 19:30";
   - vários dias: "14 a 16 nov"; entre meses, "30 nov a 2 dez"; entre anos, "30 dez 2026 a 2 jan 2027".
@@ -70,7 +71,7 @@ aparece apenas na gestão.
 ## 3. Detalhe
 
 - Rota `AppRoutes.EVENT_DETAIL` (`events/{eventId}`): uma única tela, `composable` inline no `AppNavHost`.
-- Mostra a imagem inteira (16:9), o título, a data por extenso ("Sábado, 14 de novembro" / "14 a 16 de novembro") e,
+- Mostra a imagem inteira (3:2), o título, a data por extenso ("Sábado, 14 de novembro" / "14 a 16 de novembro") e,
   só quando existem, o horário, o local e a descrição.
 - Lê o evento da lista ativa em memória, por isso funciona offline. Se o evento não está mais na lista (venceu ou
   foi apagado), mostra "Este evento não está mais disponível.".
@@ -93,7 +94,7 @@ nunca o nome do papel.
 ### 4.1 Lista
 
 - Filtro Ativos / Passados / Todos, padrão Todos. Os mais recentes primeiro, pela data de início.
-- Cada item mostra: miniatura 16:9, título, data, quem anunciou ("por Ana Paula") e o selo "Só membros" quando é
+- Cada item mostra: miniatura 3:2, título, data, quem anunciou ("por Ana Paula") e o selo "Só membros" quando é
   o caso. Sem nome (conta apagada ou perfil sem nome), a linha do autor não aparece. Evento passado aparece
   esmaecido.
 - O botão "Novo evento" aparece para `manage` ou mais.
@@ -109,13 +110,13 @@ nunca o nome do papel.
 - Campos do modelo (seção 1).
   - Data de fim e horário têm a ação "remover".
   - A visibilidade é um seletor Público / Só membros.
-  - A imagem passa pelo recorte travado em 16:9 (até 1920×1080).
+  - A imagem passa pelo recorte travado em 3:2 (até 1800×1200).
 - Regras locais, conferidas antes de enviar:
   - título obrigatório, até 120 caracteres;
   - data de início obrigatória;
   - fim ≥ início;
   - local até 200 caracteres;
-  - imagem obrigatória ao criar, com pelo menos 640×360.
+  - imagem obrigatória ao criar, com pelo menos 600×400.
 - Envio só em multipart. Na criação vão todos os campos preenchidos. Na edição vão só os campos alterados: um campo
   opcional limpo vai como string vazia, e a imagem só vai quando foi trocada.
 - Erros do servidor (`field_errors`) aparecem embaixo do campo correspondente, e os valores digitados são mantidos.

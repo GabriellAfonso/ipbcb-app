@@ -83,12 +83,12 @@ class EventDraftRulesTest {
     }
 
     @Test
-    fun `image under 640x360 or unreadable is refused`() {
+    fun `image under 600x400 or unreadable is refused`() {
         fun check(bounds: ImageBounds?) = ValidateEventImageUseCase { bounds }(ByteArray(1))
 
-        assertEquals(ValidateEventImageUseCase.TOO_SMALL, check(ImageBounds(639, 360)))
-        assertEquals(ValidateEventImageUseCase.TOO_SMALL, check(ImageBounds(1920, 359)))
+        assertEquals(ValidateEventImageUseCase.TOO_SMALL, check(ImageBounds(599, 400)))
+        assertEquals(ValidateEventImageUseCase.TOO_SMALL, check(ImageBounds(1800, 399)))
         assertEquals(ValidateEventImageUseCase.UNREADABLE, check(null))
-        assertNull(check(ImageBounds(1920, 1080)))
+        assertNull(check(ImageBounds(1800, 1200)))
     }
 }

@@ -45,7 +45,7 @@ class EventFormViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val repository = FakeEventsAdminRepository()
     private val access = FakeAccessRepository(accessOf(Role.ADMIN, Scope.EVENTS to AccessLevel.OWNER))
-    private var bounds: ImageBounds? = ImageBounds(1920, 1080)
+    private var bounds: ImageBounds? = ImageBounds(1800, 1200)
 
     @Before
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -115,7 +115,7 @@ class EventFormViewModelTest {
             AppError.Server(
                 code = 400,
                 errorCode = "VALIDATION_ERROR",
-                fieldErrors = mapOf("image" to listOf("Imagem fora de 16:9."), "other" to listOf("Algo.")),
+                fieldErrors = mapOf("image" to listOf("Imagem fora de 3:2."), "other" to listOf("Algo.")),
             )
         )
         val vm = viewModel(eventId = 1)
@@ -126,7 +126,7 @@ class EventFormViewModelTest {
         advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals("Imagem fora de 16:9.", state.fieldErrors[EventField.IMAGE])
+        assertEquals("Imagem fora de 3:2.", state.fieldErrors[EventField.IMAGE])
         assertEquals("Algo.", state.generalError)
         assertEquals("Novo título", state.draft.title)
     }

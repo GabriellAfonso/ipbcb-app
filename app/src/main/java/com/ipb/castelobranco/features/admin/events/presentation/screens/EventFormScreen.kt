@@ -53,10 +53,10 @@ import com.ipb.castelobranco.features.admin.events.presentation.state.EventFormU
 import com.ipb.castelobranco.features.admin.events.presentation.state.EventsAdminEvent
 import com.ipb.castelobranco.features.admin.events.presentation.viewmodel.EventFormViewModel
 
-private const val CROP_ASPECT_X = 16f
-private const val CROP_ASPECT_Y = 9f
-private const val CROP_MAX_WIDTH = 1920
-private const val CROP_MAX_HEIGHT = 1080
+private const val CROP_ASPECT_X = 3f
+private const val CROP_ASPECT_Y = 2f
+private const val CROP_MAX_WIDTH = 1800
+private const val CROP_MAX_HEIGHT = 1200
 private const val CROP_TITLE = "Recortar imagem"
 
 @Composable
