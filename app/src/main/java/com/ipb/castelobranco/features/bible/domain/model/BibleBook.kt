@@ -35,13 +35,26 @@ data class BibleBook(
         }
 }
 
-/** Texto de um livro: [chapters] é a lista de capítulos, cada um com a lista de versículos. */
+/**
+ * Texto de um livro: [chapters] é a lista de capítulos, cada um com a lista de versículos.
+ * [headings] é paralelo a [chapters] (títulos de seção de cada capítulo); vazio quando a tradução no disco não tem.
+ */
 data class BibleBookText(
     val abbrev: String,
     val chapters: List<List<String>>,
+    val headings: List<List<BibleHeading>> = emptyList(),
 ) {
     fun chapter(chapter: Int): List<String>? = chapters.getOrNull(chapter - 1)
+
+    fun headings(chapter: Int): List<BibleHeading> = headings.getOrNull(chapter - 1).orEmpty()
 }
+
+/** Título de seção mostrado antes do versículo [verse]. [level] vai de 1 (seção) a 3 (subseção da subseção). */
+data class BibleHeading(
+    val verse: Int,
+    val level: Int,
+    val title: String,
+)
 
 /** Livro de [abbrev] (sem diferenciar maiúsculas); se não existir, o primeiro do índice. */
 fun List<BibleBook>.resolve(abbrev: String): BibleBook? =

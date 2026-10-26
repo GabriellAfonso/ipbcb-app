@@ -9,5 +9,8 @@ package com.ipb.castelobranco.features.bible.domain.download
 interface BibleDownloadScheduler {
     fun enqueueWifiOnly(replaceExisting: Boolean = false, force: Boolean = false)
     fun enqueueAnyNetwork(force: Boolean = false)
+
+    /** WiFi-only re-download of old-layout translations; keeps a job already queued and shows no banner. */
+    fun enqueueFormatUpgrade()
     fun cancel()
 }

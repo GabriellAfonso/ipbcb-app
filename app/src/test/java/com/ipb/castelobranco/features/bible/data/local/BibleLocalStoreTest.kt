@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.bible.data.local
 
+import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -36,7 +37,11 @@ class BibleLocalStoreTest {
           {
             "abbrev": "gn",
             "name": "Gênesis",
-            "chapters": [["No princípio...", ["A terra", "era sem forma."]], ["Assim..."]]
+            "chapters": [["No princípio...", ["A terra", "era sem forma."]], ["Assim..."]],
+            "headings": [
+              [{"verse": 1, "level": 1, "title": "A criação do Universo"}],
+              []
+            ]
           },
           {"abbrev": "ex", "name": "Êxodo", "chapters": [["Estes são os nomes..."]]}
         ]
@@ -61,7 +66,47 @@ class BibleLocalStoreTest {
         val index = store.loadIndex(BibleTranslation.NAA)!!
         assertEquals(listOf("gn", "ex"), index.map { it.abbrev })
         assertEquals(listOf(2, 1), index.first().verseCounts)
-        assertEquals(setOf("index.json", "00.json", "01.json"), File(rootDir, "naa").list()!!.toSet())
+        assertEquals(
+            setOf("index.json", "format", "00.json", "00.headings.json", "01.json", "01.headings.json"),
+            File(rootDir, "naa").list()!!.toSet(),
+        )
+        assertTrue(store.isCurrent(BibleTranslation.NAA))
+    }
+
+    @Test
+    fun `a book is read with its headings, a book without them reads empty`() = runTest(testDispatcher) {
+        importNaa()
+
+        val genesis = store.loadBook(BibleTranslation.NAA, position = 0, abbrev = "gn")!!
+        val exodus = store.loadBook(BibleTranslation.NAA, position = 1, abbrev = "ex")!!
+
+        assertEquals(listOf(BibleHeading(verse = 1, level = 1, title = "A criação do Universo")), genesis.headings(1))
+        assertEquals(emptyList<BibleHeading>(), genesis.headings(2))
+        assertEquals(emptyList<BibleHeading>(), exodus.headings(1))
+    }
+
+    @Test
+    fun `an old-layout folder stays readable without headings and is not current`() = runTest(testDispatcher) {
+        importNaa()
+        val dir = File(rootDir, "naa")
+        File(dir, "format").delete()
+        dir.listFiles { file -> file.name.endsWith(".headings.json") }!!.forEach { it.delete() }
+
+        val genesis = store.loadBook(BibleTranslation.NAA, position = 0, abbrev = "gn")!!
+
+        assertEquals(listOf("Assim..."), genesis.chapter(2))
+        assertTrue(genesis.headings.isEmpty())
+        assertTrue(store.exists(BibleTranslation.NAA))
+        assertFalse(store.isCurrent(BibleTranslation.NAA))
+    }
+
+    @Test
+    fun `a corrupt headings file deletes the translation`() = runTest(testDispatcher) {
+        importNaa()
+        File(rootDir, "naa/00.headings.json").writeText("[{broken")
+
+        assertNull(store.loadBook(BibleTranslation.NAA, position = 0, abbrev = "gn"))
+        assertFalse(store.exists(BibleTranslation.NAA))
     }
 
     @Test
@@ -102,6 +147,8 @@ class BibleLocalStoreTest {
         store.migrateLegacy()
 
         assertTrue(store.exists(BibleTranslation.NAA))
+        // The old file predates headings: the converted copy must be downloaded again.
+        assertFalse(store.isCurrent(BibleTranslation.NAA))
         assertEquals(2, store.loadIndex(BibleTranslation.NAA)?.size)
         assertFalse(File(legacyDir, "bible_naa.json").exists())
         assertFalse(File(legacyDir, "bible_naa_etag.txt").exists())

@@ -11,14 +11,19 @@ class BibleAutoDownloadUseCase @Inject constructor(
 ) {
     /**
      * Enfileira o download (WiFi only) se ainda falta alguma tradução em cache e o download automático
-     * não foi pausado por "Apagar Bíblia".
+     * não foi pausado por "Apagar Bíblia". Sem nada faltando, mas com tradução no formato antigo (sem títulos),
+     * enfileira a atualização silenciosa.
      * Deve rodar APÓS [BibleRepository.preload] para que `cachedTranslationsFlow` reflita o disco.
      */
     suspend fun triggerIfNeeded() {
         if (repository.isAutoDownloadPaused()) return
         val cached = repository.cachedTranslationsFlow.value
         val missing = BibleTranslation.entries.any { it !in cached }
-        if (missing) scheduler.enqueueWifiOnly()
+        when {
+            // The regular download also refreshes old-layout translations.
+            missing -> scheduler.enqueueWifiOnly()
+            repository.outdatedTranslationsFlow.value.isNotEmpty() -> scheduler.enqueueFormatUpgrade()
+        }
     }
 
     /** Download manual (botões do leitor): tira a pausa deixada por "Apagar Bíblia". */

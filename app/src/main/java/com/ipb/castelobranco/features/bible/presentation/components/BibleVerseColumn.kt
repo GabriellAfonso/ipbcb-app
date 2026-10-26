@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -24,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -32,10 +32,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 
 data class VerseRowData(
@@ -46,6 +48,17 @@ data class VerseRowData(
     val isHighlighted: Boolean = false,
 )
 
+/**
+ * Position in [BibleVerseColumn] of the first item that opens [verse]: its first heading, or the verse itself.
+ * Scrolling there keeps the headings of the passage on screen.
+ */
+fun verseItemIndex(verse: Int, headings: List<BibleHeading>): Int {
+    val target = verse.coerceAtLeast(1)
+    return HEADER_ITEMS + (target - 1) + headings.count { it.verse < target }
+}
+
+private const val HEADER_ITEMS = 1
+
 @Composable
 fun BibleVerseColumn(
     bookName: String,
@@ -54,8 +67,10 @@ fun BibleVerseColumn(
     fontSizeSp: Float,
     onVerseClick: (VerseRef) -> Unit,
     listState: LazyListState = rememberLazyListState(),
+    headings: List<BibleHeading> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
+    val headingsByVerse = remember(headings) { headings.groupBy { it.verse } }
     SelectionContainer(modifier = modifier) {
         LazyColumn(
             state = listState,
@@ -75,16 +90,42 @@ fun BibleVerseColumn(
                     )
                 }
             }
-            items(verses, key = { it.ref.verse }) { row ->
-                VerseRow(
-                    row = row,
-                    fontSizeSp = fontSizeSp,
-                    onClick = { onVerseClick(row.ref) },
-                )
+            verses.forEach { row ->
+                headingsByVerse[row.ref.verse]?.forEachIndexed { position, heading ->
+                    item(key = "heading-${heading.verse}-$position") {
+                        HeadingRow(heading = heading, fontSizeSp = fontSizeSp)
+                    }
+                }
+                item(key = row.ref.verse) {
+                    VerseRow(
+                        row = row,
+                        fontSizeSp = fontSizeSp,
+                        onClick = { onVerseClick(row.ref) },
+                    )
+                }
             }
         }
     }
 }
+
+/** Larger and bold at level 1, bold at level 2, italic at level 3; scales with the reader's font size. */
+@Composable
+private fun HeadingRow(heading: BibleHeading, fontSizeSp: Float) {
+    val scale = if (heading.level == 1) HEADING_TOP_LEVEL_SCALE else 1f
+    Text(
+        text = heading.title,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 6.dp, end = 6.dp, top = 12.dp, bottom = 2.dp),
+        color = MaterialTheme.colorScheme.primary,
+        fontSize = (fontSizeSp * scale).sp,
+        lineHeight = (fontSizeSp * scale + 6f).sp,
+        fontWeight = if (heading.level <= 2) FontWeight.Bold else FontWeight.Normal,
+        fontStyle = if (heading.level >= 3) FontStyle.Italic else FontStyle.Normal,
+    )
+}
+
+private const val HEADING_TOP_LEVEL_SCALE = 1.1f
 
 @Composable
 private fun VerseRow(

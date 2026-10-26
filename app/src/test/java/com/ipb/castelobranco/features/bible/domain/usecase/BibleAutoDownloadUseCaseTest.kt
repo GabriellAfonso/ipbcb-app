@@ -19,13 +19,19 @@ class BibleAutoDownloadUseCaseTest {
     private val repository: BibleRepository = mockk(relaxed = true)
     private val useCase = BibleAutoDownloadUseCase(scheduler, repository)
 
+    init {
+        every { repository.outdatedTranslationsFlow } returns MutableStateFlow(emptySet())
+    }
+
     @Test
     fun `triggerIfNeeded enqueues when cache is missing some translation`() = runTest {
         every { repository.cachedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.NAA))
+        every { repository.outdatedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.NAA))
 
         useCase.triggerIfNeeded()
 
         verify(exactly = 1) { scheduler.enqueueWifiOnly(replaceExisting = false, force = false) }
+        verify(exactly = 0) { scheduler.enqueueFormatUpgrade() }
     }
 
     @Test
@@ -35,16 +41,30 @@ class BibleAutoDownloadUseCaseTest {
         useCase.triggerIfNeeded()
 
         verify(exactly = 0) { scheduler.enqueueWifiOnly(any(), any()) }
+        verify(exactly = 0) { scheduler.enqueueFormatUpgrade() }
+    }
+
+    @Test
+    fun `triggerIfNeeded upgrades in silence when all are cached but one is outdated`() = runTest {
+        every { repository.cachedTranslationsFlow } returns MutableStateFlow(BibleTranslation.entries.toSet())
+        every { repository.outdatedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.ARA))
+
+        useCase.triggerIfNeeded()
+
+        verify(exactly = 1) { scheduler.enqueueFormatUpgrade() }
+        verify(exactly = 0) { scheduler.enqueueWifiOnly(any(), any()) }
     }
 
     @Test
     fun `triggerIfNeeded skips while the Bible deleted by the user is paused`() = runTest {
         every { repository.cachedTranslationsFlow } returns MutableStateFlow(emptySet())
+        every { repository.outdatedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.ARA))
         coEvery { repository.isAutoDownloadPaused() } returns true
 
         useCase.triggerIfNeeded()
 
         verify(exactly = 0) { scheduler.enqueueWifiOnly(any(), any()) }
+        verify(exactly = 0) { scheduler.enqueueFormatUpgrade() }
     }
 
     @Test

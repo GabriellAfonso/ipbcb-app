@@ -8,6 +8,7 @@ import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
+import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
@@ -66,6 +67,15 @@ data class BibleUiState(
             return text.chapter(position.chapter) ?: text.chapter(1).orEmpty()
         }
 
+    /** Section headings of the chapter in [currentChapterVerses]; empty while its text is on the way. */
+    val currentChapterHeadings: List<BibleHeading>
+        get() {
+            val book = currentBook ?: return emptyList()
+            val text = bookText?.takeIf { it.abbrev == book.abbrev } ?: return emptyList()
+            val chapter = if (text.chapter(position.chapter) != null) position.chapter else 1
+            return text.headings(chapter)
+        }
+
     val isBibleReady: Boolean get() = books.isNotEmpty()
 
     val isChapterReady: Boolean get() = currentChapterVerses != null
@@ -95,6 +105,10 @@ class BibleViewModel @Inject constructor(
         .getWorkInfosForUniqueWorkFlow(BibleDownloadWorker.WORK_NAME)
         .map { infos ->
             val info = infos.firstOrNull()
+            // The silent format upgrade runs while the old copy is still readable: nothing to show.
+            if (info != null && BibleDownloadWorker.TAG_FORMAT_UPGRADE in info.tags) {
+                return@map BibleDownloadStatus(isResolved = true)
+            }
             when (info?.state) {
                 WorkInfo.State.RUNNING -> {
                     val done = info.progress.getInt(BibleDownloadWorker.KEY_DOWNLOADED, 0)

@@ -69,6 +69,11 @@ class BibleRepositoryImplTest {
         BibleTranslation.entries.forEach { t -> coEvery { store.exists(t) } returns (t in translations) }
     }
 
+    /** In the current layout (with headings); the rest on disk is outdated. */
+    private fun current(vararg translations: BibleTranslation) {
+        BibleTranslation.entries.forEach { t -> coEvery { store.isCurrent(t) } returns (t in translations) }
+    }
+
     /** Stands in for the Bible graph's ViewModel collecting the current book. */
     private fun TestScope.collectBook(repo: BibleRepositoryImpl) =
         backgroundScope.launch { repo.currentBookFlow.collect {} }
@@ -108,6 +113,17 @@ class BibleRepositoryImplTest {
         repo.preload()
 
         assertEquals(setOf(BibleTranslation.NAA), repo.cachedTranslationsFlow.value)
+    }
+
+    @Test
+    fun `translations on disk without the current format are outdated`() = runTest {
+        onDisk(BibleTranslation.NAA, BibleTranslation.ARA)
+        current(BibleTranslation.NAA)
+
+        val repo = buildRepository()
+        advanceUntilIdle()
+
+        assertEquals(setOf(BibleTranslation.ARA), repo.outdatedTranslationsFlow.value)
     }
 
     // endregion
@@ -169,6 +185,22 @@ class BibleRepositoryImplTest {
     // endregion
 
     // region current book
+
+    @Test
+    fun `a finished format upgrade reads the open book again`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        current()
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { store.loadBook(BibleTranslation.NAA, 0, "gn") }
+
+        current(BibleTranslation.NAA)
+        repo.preload()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { store.loadBook(BibleTranslation.NAA, 0, "gn") }
+    }
 
     @Test
     fun `no book is read while nobody collects`() = runTest {

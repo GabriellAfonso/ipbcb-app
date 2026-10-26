@@ -76,6 +76,23 @@ class WorkManagerBibleDownloadSchedulerTest {
     }
 
     @Test
+    fun `enqueueFormatUpgrade keeps a queued job, waits for WiFi and carries the silent tag`() {
+        val request = slot<OneTimeWorkRequest>()
+
+        scheduler.enqueueFormatUpgrade()
+
+        verify(exactly = 1) {
+            workManager.enqueueUniqueWork(
+                BibleDownloadWorker.WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                capture(request),
+            )
+        }
+        assertEquals(NetworkType.UNMETERED, request.captured.workSpec.constraints.requiredNetworkType)
+        assertTrue(BibleDownloadWorker.TAG_FORMAT_UPGRADE in request.captured.tags)
+    }
+
+    @Test
     fun `force flag is passed to the worker input data`() {
         val request = slot<OneTimeWorkRequest>()
 

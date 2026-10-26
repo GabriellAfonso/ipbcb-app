@@ -45,6 +45,19 @@ class WorkManagerBibleDownloadScheduler @Inject constructor(
         )
     }
 
+    override fun enqueueFormatUpgrade() {
+        val request = OneTimeWorkRequestBuilder<BibleDownloadWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.UNMETERED)
+                    .build()
+            )
+            .setInputData(forceData(false))
+            .addTag(BibleDownloadWorker.TAG_FORMAT_UPGRADE)
+            .build()
+        workManager.enqueueUniqueWork(BibleDownloadWorker.WORK_NAME, ExistingWorkPolicy.KEEP, request)
+    }
+
     override fun cancel() {
         workManager.cancelUniqueWork(BibleDownloadWorker.WORK_NAME)
     }

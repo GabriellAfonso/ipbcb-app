@@ -27,6 +27,9 @@ interface BibleRepository {
     val currentBookFlow: StateFlow<BibleBookText?>
     val activeTranslationFlow: StateFlow<BibleTranslation>
     val cachedTranslationsFlow: StateFlow<Set<BibleTranslation>>
+
+    /** Traduções no disco, mas no formato antigo (sem títulos): legíveis, e baixadas de novo em silêncio. */
+    val outdatedTranslationsFlow: StateFlow<Set<BibleTranslation>>
     val positionFlow: StateFlow<BibleReadingPosition>
     val fontSizeFlow: StateFlow<Float>
 

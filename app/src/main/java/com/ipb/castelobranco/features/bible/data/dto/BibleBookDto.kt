@@ -19,14 +19,24 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * - [abbrev]: vem em minúsculo ("gn", "at", "1co").
  * - [chapters]: chapters[i] = lista de versículos (strings) do capítulo i+1.
+ * - [headings]: headings[i] = títulos de seção do capítulo i+1; ausente = sem títulos.
  *
- * Total: 66 livros, 1.189 capítulos, 31.104 versículos, ~3,9 MB por tradução.
+ * Total: 66 livros, 1.189 capítulos, 31.104 versículos, ~4,2 MB por tradução.
  */
 @Serializable
 data class BibleBookDto(
     val abbrev: String,
     val name: String,
     val chapters: List<List<@Serializable(with = VerseSerializer::class) String>>,
+    val headings: List<List<BibleHeadingDto>> = emptyList(),
+)
+
+/** Título de seção: aparece antes do versículo [verse] (1-based); [level] de 1 a 3. */
+@Serializable
+data class BibleHeadingDto(
+    val verse: Int,
+    val level: Int,
+    val title: String,
 )
 
 // Some translations have a verse encoded as ["part a","part b"] instead of "part a part b".

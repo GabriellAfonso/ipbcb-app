@@ -1,9 +1,11 @@
 package com.ipb.castelobranco.features.bible.data.local
 
 import com.ipb.castelobranco.features.bible.data.dto.BibleBookDto
+import com.ipb.castelobranco.features.bible.data.dto.BibleHeadingDto
 import com.ipb.castelobranco.features.bible.data.dto.BibleIndexEntryDto
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
+import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -22,7 +24,9 @@ import java.io.InputStream
 
 /**
  * Each translation split per book under `[rootDir]/{naa,ara}/`: `index.json` (books without text) plus one
- * `NN.json` per book, named by its position in the index. Reading a chapter never decodes more than its book.
+ * `NN.json` per book, named by its position in the index, and its `NN.headings.json`. Reading a chapter never
+ * decodes more than its book. A `format` file holds the layout version: folders written before section headings
+ * existed lack it and stay readable, without headings, until downloaded again.
  *
  * Also converts the old single-file snapshot (`[legacyDir]/bible_{naa,ara}.json`) left by earlier versions.
  */
@@ -35,9 +39,15 @@ class BibleLocalStore(
 
     private val indexSerializer = ListSerializer(BibleIndexEntryDto.serializer())
     private val chaptersSerializer = ListSerializer(ListSerializer(String.serializer()))
+    private val headingsSerializer = ListSerializer(ListSerializer(BibleHeadingDto.serializer()))
 
     suspend fun exists(translation: BibleTranslation): Boolean = withContext(ioDispatcher) {
         indexFile(translation).exists()
+    }
+
+    /** On disk and in the current layout: nothing to download again. */
+    suspend fun isCurrent(translation: BibleTranslation): Boolean = withContext(ioDispatcher) {
+        indexFile(translation).exists() && formatVersion(dir(translation)) >= FORMAT_VERSION
     }
 
     /** The index of [translation], or `null` when it is absent or corrupt (a corrupt one is deleted). */
@@ -49,17 +59,32 @@ class BibleLocalStore(
     /** The text of the book at [position] in the index, or `null` when absent or corrupt. */
     suspend fun loadBook(translation: BibleTranslation, position: Int, abbrev: String): BibleBookText? =
         withContext(ioDispatcher) {
-            decodeOrDelete(translation, bookFile(dir(translation), position), chaptersSerializer)
-                ?.let { BibleBookText(abbrev = abbrev, chapters = it) }
+            val dir = dir(translation)
+            val chapters = decodeOrDelete(translation, bookFile(dir, position), chaptersSerializer)
+                ?: return@withContext null
+            // An old-layout folder has no headings file: the book is read without headings. A corrupt one took the
+            // translation with it, like a corrupt text file.
+            val headingsFile = headingsFile(dir, position)
+            val headings = if (headingsFile.exists()) {
+                decodeOrDelete(translation, headingsFile, headingsSerializer) ?: return@withContext null
+            } else {
+                emptyList()
+            }
+            BibleBookText(abbrev = abbrev, chapters = chapters, headings = headings.toDomain())
         }
 
     /**
-     * Splits the API response (`[{abbrev, name, chapters}]`) read from [input], one book at a time, into a temporary
-     * folder that replaces the translation's only once the index is written: never the whole translation in memory,
-     * never a half-written translation in place.
+     * Splits the API response (`[{abbrev, name, chapters, headings}]`) read from [input], one book at a time, into a
+     * temporary folder that replaces the translation's only once the index is written: never the whole translation in
+     * memory, never a half-written translation in place. [markCurrent] `false` leaves the folder in the old layout
+     * (a source that never had headings), so it is downloaded again.
      */
     @OptIn(ExperimentalSerializationApi::class)
-    suspend fun import(translation: BibleTranslation, input: InputStream): Unit = withContext(ioDispatcher) {
+    suspend fun import(
+        translation: BibleTranslation,
+        input: InputStream,
+        markCurrent: Boolean = true,
+    ): Unit = withContext(ioDispatcher) {
         val tmp = tempDir(translation).apply {
             deleteRecursively()
             mkdirs()
@@ -69,9 +94,11 @@ class BibleLocalStore(
             json.decodeToSequence(input, BibleBookDto.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
                 .forEach { book ->
                     bookFile(tmp, index.size).writeText(json.encodeToString(chaptersSerializer, book.chapters))
+                    headingsFile(tmp, index.size).writeText(json.encodeToString(headingsSerializer, book.headings))
                     index += BibleIndexEntryDto(book.abbrev, book.name, book.chapters.map { it.size })
                 }
             if (index.isEmpty()) throw IOException("Bible ${translation.code} came without books")
+            if (markCurrent) File(tmp, FORMAT_FILE).writeText(FORMAT_VERSION.toString())
             File(tmp, INDEX_FILE).writeText(json.encodeToString(indexSerializer, index))
 
             val target = dir(translation)
@@ -89,7 +116,8 @@ class BibleLocalStore(
             val legacy = legacyFile(translation)
             if (!legacy.exists()) continue
             if (!indexFile(translation).exists()) {
-                runCatching { legacy.inputStream().buffered().use { import(translation, it) } }
+                // The old file predates headings: the converted folder stays outdated and is downloaded again.
+                runCatching { legacy.inputStream().buffered().use { import(translation, it, markCurrent = false) } }
                     .onFailure { Timber.w(it, "Could not convert old Bible %s", translation.code) }
             }
             legacy.delete()
@@ -133,7 +161,19 @@ class BibleLocalStore(
 
     private fun indexFile(translation: BibleTranslation) = File(dir(translation), INDEX_FILE)
 
-    private fun bookFile(dir: File, position: Int) = File(dir, "${position.toString().padStart(2, '0')}.json")
+    private fun bookFile(dir: File, position: Int) = File(dir, "${bookStem(position)}.json")
+
+    private fun headingsFile(dir: File, position: Int) = File(dir, "${bookStem(position)}$HEADINGS_SUFFIX")
+
+    private fun bookStem(position: Int) = position.toString().padStart(2, '0')
+
+    /** `0` when the folder predates the `format` file (or it is unreadable): the old, headings-less layout. */
+    private fun formatVersion(dir: File): Int =
+        runCatching { File(dir, FORMAT_FILE).readText().trim().toInt() }.getOrDefault(0)
+
+    private fun BibleHeadingDto.toDomain() = BibleHeading(verse = verse, level = level, title = title)
+
+    private fun List<List<BibleHeadingDto>>.toDomain() = map { chapter -> chapter.map { it.toDomain() } }
 
     private fun legacyFile(translation: BibleTranslation) = File(legacyDir, "${translation.snapshotKey}.json")
 
@@ -143,5 +183,10 @@ class BibleLocalStore(
     private companion object {
         const val INDEX_FILE = "index.json"
         const val TEMP_SUFFIX = ".tmp"
+        const val HEADINGS_SUFFIX = ".headings.json"
+        const val FORMAT_FILE = "format"
+
+        /** 2 = with section headings. Bump when the layout changes so installed copies are downloaded again. */
+        const val FORMAT_VERSION = 2
     }
 }

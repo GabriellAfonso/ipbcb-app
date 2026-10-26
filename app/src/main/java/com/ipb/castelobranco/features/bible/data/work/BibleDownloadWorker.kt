@@ -18,7 +18,8 @@ import org.json.JSONObject
 /**
  * Baixa o JSON de cada [BibleTranslation] e o divide por livro via [BibleLocalStore].
  *
- * Skip por tradução: se a tradução já está no disco, não rebaixa (a menos que [INPUT_FORCE] esteja true).
+ * Skip por tradução: se a tradução já está no disco no formato atual, não rebaixa (a menos que [INPUT_FORCE] esteja
+ * true). Uma no formato antigo (sem títulos) é baixada de novo.
  *
  * Importante: a resposta é lida em fluxo, um livro por vez — nunca a tradução inteira em memória. Cada tradução
  * tem ~4 MB e ~31 mil strings; decodificar tudo de uma vez causava OOM e GC longa na emulação, fazendo o worker
@@ -48,7 +49,7 @@ class BibleDownloadWorker @AssistedInject constructor(
             setProgressAsync(workDataOf(KEY_DOWNLOADED to 0, KEY_TOTAL to total))
 
             for (translation in translations) {
-                val alreadyCached = !force && store.exists(translation)
+                val alreadyCached = !force && store.isCurrent(translation)
                 if (!alreadyCached) {
                     val response = api.getBibleRaw(translation.code, ifNoneMatch = null)
                     if (!response.isSuccessful) {
@@ -97,6 +98,9 @@ class BibleDownloadWorker @AssistedInject constructor(
         const val KEY_ERROR      = "error"
         const val KEY_ERROR_CODE = "error_code"
         const val INPUT_FORCE    = "force"
+
+        /** Marks the silent re-download of old-layout translations: the reader shows no banner for it. */
+        const val TAG_FORMAT_UPGRADE = "bible_format_upgrade"
         private const val MAX_RETRIES = 3
     }
 }

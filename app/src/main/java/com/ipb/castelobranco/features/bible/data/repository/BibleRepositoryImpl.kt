@@ -43,6 +43,9 @@ class BibleRepositoryImpl @Inject constructor(
     private val _cachedTranslations = MutableStateFlow<Set<BibleTranslation>>(emptySet())
     override val cachedTranslationsFlow: StateFlow<Set<BibleTranslation>> = _cachedTranslations.asStateFlow()
 
+    private val _outdatedTranslations = MutableStateFlow<Set<BibleTranslation>>(emptySet())
+    override val outdatedTranslationsFlow: StateFlow<Set<BibleTranslation>> = _outdatedTranslations.asStateFlow()
+
     /** Whether [_cachedTranslations] already reflects the disk; before that, "absent" is not known yet. */
     private val cachedTranslationsKnown = MutableStateFlow(false)
 
@@ -102,14 +105,15 @@ class BibleRepositoryImpl @Inject constructor(
     /**
      * Text of the position's book only, read while someone collects (the Bible graph) and dropped
      * [BOOK_STOP_TIMEOUT_MS] after the last collector leaves. A chapter change in the same book reads nothing;
-     * on a book or translation change the previous text stays until the new one arrives.
+     * on a book or translation change the previous text stays until the new one arrives. When the translation
+     * leaves the old layout (a format upgrade finished), the book is read again to pick up its headings.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     override val currentBookFlow: StateFlow<BibleBookText?> =
-        combine(index, positionFlow) { loaded, position ->
+        combine(index, positionFlow, _outdatedTranslations) { loaded, position, outdated ->
             val books = loaded?.books ?: return@combine null
             val book = books.resolve(position.bookAbbrev) ?: return@combine null
-            BookKey(loaded.translation, books.indexOf(book), book.abbrev)
+            BookKey(loaded.translation, books.indexOf(book), book.abbrev, loaded.translation in outdated)
         }
             .distinctUntilChanged()
             .transformLatest { key ->
@@ -154,6 +158,7 @@ class BibleRepositoryImpl @Inject constructor(
         BibleTranslation.entries.forEach { store.clear(it) }
         preferences.resetAll()
         _cachedTranslations.value = emptySet()
+        _outdatedTranslations.value = emptySet()
     }
 
     override suspend fun isAutoDownloadPaused(): Boolean = preferences.isAutoDownloadPaused()
@@ -165,16 +170,23 @@ class BibleRepositoryImpl @Inject constructor(
     override suspend fun diskUsageBytes(): Long =
         BibleTranslation.entries.sumOf { store.sizeBytes(it) }
 
-    /** Converts old single-file translations, then checks the index files only: no text is decoded. */
+    /** Converts old single-file translations, then checks the index and format files only: no text is decoded. */
     private suspend fun refreshCachedTranslations() = refreshLock.withLock {
         store.migrateLegacy()
-        _cachedTranslations.value = BibleTranslation.entries.filter { store.exists(it) }.toSet()
+        val cached = BibleTranslation.entries.filter { store.exists(it) }.toSet()
+        _outdatedTranslations.value = cached.filterNot { store.isCurrent(it) }.toSet()
+        _cachedTranslations.value = cached
         cachedTranslationsKnown.value = true
     }
 
     private data class LoadedIndex(val translation: BibleTranslation, val books: List<BibleBook>)
 
-    private data class BookKey(val translation: BibleTranslation, val position: Int, val abbrev: String)
+    private data class BookKey(
+        val translation: BibleTranslation,
+        val position: Int,
+        val abbrev: String,
+        val outdated: Boolean,
+    )
 
     private companion object {
         /** Survives a configuration change without reading the book again. */

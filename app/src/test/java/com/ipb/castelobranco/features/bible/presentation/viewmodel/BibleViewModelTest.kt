@@ -3,11 +3,14 @@ package com.ipb.castelobranco.features.bible.presentation.viewmodel
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
+import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
+import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.BibleAutoDownloadUseCase
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.mockk.coVerify
 import io.mockk.every
@@ -159,6 +162,63 @@ class BibleViewModelTest {
         assertEquals(exodus, vm.uiState.value.currentBook)
         assertFalse(vm.uiState.value.isChapterReady)
         job.cancel()
+    }
+
+    @Test
+    fun `currentChapterHeadings follows the chapter of the position`() = runTest {
+        val heading = BibleHeading(verse = 1, level = 1, title = "A criação do Universo")
+        every { repository.currentBookFlow } returns MutableStateFlow(
+            genesisText.copy(headings = listOf(listOf(heading), emptyList())),
+        )
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertEquals(listOf(heading), vm.uiState.value.currentChapterHeadings)
+        job.cancel()
+    }
+
+    @Test
+    fun `currentChapterHeadings is empty for a book read without headings`() = runTest {
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertTrue(vm.uiState.value.currentChapterHeadings.isEmpty())
+        job.cancel()
+    }
+
+    // endregion
+
+    // region download status
+
+    private fun workInfo(state: WorkInfo.State, tags: Set<String> = emptySet()): WorkInfo = mockk(relaxed = true) {
+        every { this@mockk.state } returns state
+        every { this@mockk.tags } returns tags
+    }
+
+    @Test
+    fun `a queued download shows as pending`() = runTest {
+        every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns
+            flowOf(listOf(workInfo(WorkInfo.State.ENQUEUED)))
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertTrue(vm.uiState.value.download.isPending)
+        job.cancel()
+    }
+
+    @Test
+    fun `the silent format upgrade shows nothing while queued or running`() = runTest {
+        val tags = setOf(BibleDownloadWorker.TAG_FORMAT_UPGRADE)
+        for (state in listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING)) {
+            every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(listOf(workInfo(state, tags)))
+            val vm = buildViewModel()
+            val job = subscribeAndAdvance(vm)
+
+            val download = vm.uiState.value.download
+            assertFalse(download.isPending)
+            assertFalse(download.isDownloading)
+            job.cancel()
+        }
     }
 
     // endregion

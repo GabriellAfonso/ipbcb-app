@@ -57,6 +57,7 @@ import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseCo
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumnPlaceholder
 import com.ipb.castelobranco.features.bible.presentation.components.BibleWaitingForWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.VerseRowData
+import com.ipb.castelobranco.features.bible.presentation.components.verseItemIndex
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleUiEvent
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
@@ -100,8 +101,7 @@ fun BibleReaderScreen(
         val onTarget = position.bookAbbrev.equals(target.bookAbbrev, ignoreCase = true) &&
             position.chapter == target.chapter
         if (!state.isChapterReady || !onTarget) return@LaunchedEffect
-        val index = (target.verse - 1).coerceAtLeast(0) + 1 // +1 = item header
-        runCatching { listState.scrollToItem(index) }
+        runCatching { listState.scrollToItem(verseItemIndex(target.verse, state.currentChapterHeadings)) }
         viewModel.consumePendingScroll()
     }
 
@@ -224,6 +224,7 @@ fun BibleReaderScreen(
                         fontSizeSp = state.fontSize,
                         onVerseClick = { ref -> viewModel.toggleVerseSelection(ref) },
                         listState = listState,
+                        headings = state.currentChapterHeadings,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
