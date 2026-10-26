@@ -339,5 +339,33 @@ class BibleViewModelTest {
         assertEquals(null, vm.pendingScroll.value)
     }
 
+    @Test
+    fun `openPassage highlights the cited verses without selecting them`() = runTest {
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        vm.openPassage("ex", 1, 3, highlighted = setOf(3, 4, 7))
+        advanceUntilIdle()
+
+        val expected = setOf(VerseRef("ex", 1, 3), VerseRef("ex", 1, 4), VerseRef("ex", 1, 7))
+        assertEquals(expected, vm.uiState.value.highlightedVerses)
+        assertEquals(emptySet<VerseRef>(), vm.uiState.value.selectedVerses)
+        job.cancel()
+    }
+
+    @Test
+    fun `moving to another chapter clears the highlight`() = runTest {
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        vm.openPassage("ex", 1, 3, highlighted = setOf(3))
+        advanceUntilIdle()
+        vm.navigateTo("ex", 2, 1)
+        advanceUntilIdle()
+
+        assertEquals(emptySet<VerseRef>(), vm.uiState.value.highlightedVerses)
+        job.cancel()
+    }
+
     // endregion
 }
