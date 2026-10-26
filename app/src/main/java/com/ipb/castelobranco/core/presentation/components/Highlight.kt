@@ -67,8 +67,10 @@ fun Highlight(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                // Event flyers are cropped to 3:2 on upload; a fixed ratio also keeps the card from flattening on
+                // wide screens.
+                .aspectRatio(HIGHLIGHT_ASPECT_RATIO)
                 .shadow(
                     elevation = HighlightElevation,
                     shape = shape,
@@ -100,6 +102,7 @@ fun Highlight(
     }
 }
 
+private const val HIGHLIGHT_ASPECT_RATIO = 3f / 2f
 private val HighlightCorner = 20.dp
 private val HighlightElevation = 12.dp
 private const val SHADOW_AMBIENT_ALPHA = 0.08f

@@ -619,7 +619,8 @@ calculado no ViewModel (`nextDay`):
 - **datas passadas** (dia < `nextDay`, ou todas quando `nextDay` e nulo): texto esmaecido;
 - escala de mes futuro: nenhuma data passada, a primeira e a proxima; escala de mes anterior: todas passadas.
 
-HorizontalPager com auto-scroll (tween 600ms) dentro de um card elevado: cantos de 20dp, sombra externa suave
+HorizontalPager com auto-scroll (tween 600ms) dentro de um card elevado em 3:2 — proporcao fixa, para o card nao
+achatar em telas largas; e a proporcao do flyer de evento, que aparece inteiro. Cantos de 20dp, sombra externa suave
 e fundo que se destaca da tela (`surfaceContainerLowest` no claro, `surfaceContainerHigh` no escuro); sem sombra
 interna. Abaixo do card, um indicador de pagina (pontos; o da pagina atual alongado, cor `primaryContainer`),
 escondido quando ha uma pagina so.
@@ -728,7 +729,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 |------------|-----------|
 | `TopBar` | Logo + tab name + back/menu + account image. Fundo ipbGreen, icones brancos |
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
-| `Highlight` | Carousel com auto-scroll, HorizontalPager, card elevado de 250dp + indicador de pagina. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
+| `Highlight` | Carousel com auto-scroll, HorizontalPager, card elevado em 3:2 (largura da tela) + indicador de pagina. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
 | `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro |
 | `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight e pela `BirthdaysScreen` |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
