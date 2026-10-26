@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.bible.presentation.screens
 
 import com.ipb.castelobranco.core.domain.util.normalize
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +52,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.Testament
+import com.ipb.castelobranco.features.bible.domain.model.byTestament
 import com.ipb.castelobranco.features.bible.domain.model.resolve
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
 
@@ -73,19 +79,45 @@ fun BibleIndexScreen(
     var pendingBookAbbrev by rememberSaveable { mutableStateOf(state.position.bookAbbrev) }
     var pendingChapter by rememberSaveable { mutableStateOf(state.position.chapter) }
 
+    var isSearching by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val closeSearch = {
+        isSearching = false
+        searchQuery = ""
+    }
+
     val pendingBook = remember(state.books, pendingBookAbbrev) { state.books.resolve(pendingBookAbbrev) }
+    // Search only filters the book list: it belongs to that tab alone.
+    val canSearch = selectedTab == IndexTab.BOOK && state.books.isNotEmpty()
+
+    BackHandler(enabled = isSearching, onBack = closeSearch)
 
     BaseScreen(
         tabName = "Bíblia",
         showBackArrow = true,
         onBackClick = onBack,
+        extraActions = {
+            if (canSearch && !isSearching) {
+                IconButton(onClick = { isSearching = true }) {
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "Pesquisar livro")
+                }
+            }
+        },
+        topBarExtension = {
+            if (canSearch && isSearching) {
+                BookSearchField(query = searchQuery, onQueryChange = { searchQuery = it }, onClose = closeSearch)
+            }
+        },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TabRow(selectedTabIndex = selectedTab.ordinal) {
                 IndexTab.entries.forEach { tab ->
                     Tab(
                         selected = tab == selectedTab,
-                        onClick = { selectedTab = tab },
+                        onClick = {
+                            closeSearch()
+                            selectedTab = tab
+                        },
                         text = {
                             Text(
                                 text = tab.label,
@@ -100,9 +132,11 @@ fun BibleIndexScreen(
                 IndexTab.BOOK -> BookList(
                     books = state.books,
                     isLoading = state.isLoadingBooks,
+                    searchQuery = if (isSearching) searchQuery else "",
                     onBookClick = { book ->
                         pendingBookAbbrev = book.abbrev
                         pendingChapter = 1
+                        closeSearch()
                         selectedTab = IndexTab.CHAPTER
                     },
                 )
@@ -131,6 +165,7 @@ fun BibleIndexScreen(
 private fun BookList(
     books: List<BibleBook>,
     isLoading: Boolean,
+    searchQuery: String,
     onBookClick: (BibleBook) -> Unit,
 ) {
     if (books.isEmpty()) {
@@ -139,63 +174,86 @@ private fun BookList(
         }
         return
     }
-    var searchQuery by remember { mutableStateOf("") }
-    val filtered = remember(books, searchQuery) {
-        if (searchQuery.isBlank()) books
-        else books.filter { it.name.normalize().contains(searchQuery.normalize(), ignoreCase = true) }
+    // Split before filtering: a book's testament comes from its place in the whole index.
+    val rows = remember(books, searchQuery) {
+        books.byTestament().flatMap { (testament, group) ->
+            group
+                .filter {
+                    searchQuery.isBlank() || it.name.normalize().contains(searchQuery.normalize(), ignoreCase = true)
+                }
+                .map { it to testament }
+        }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Pesquisar livro...") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "Limpar",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-        )
-        if (filtered.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Nenhum livro encontrado.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp),
-            ) {
-                items(filtered, key = { it.abbrev }) { book ->
-                    BookRow(book = book, onClick = { onBookClick(book) })
-                }
-            }
+    if (rows.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Nenhum livro encontrado.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp),
+    ) {
+        items(rows, key = { (book, _) -> book.abbrev }) { (book, testament) ->
+            BookRow(book = book, testament = testament, onClick = { onBookClick(book) })
         }
     }
 }
 
+/** Circle and text colors of the book abbreviations: what tells the two testaments apart. */
 @Composable
-private fun BookRow(book: BibleBook, onClick: () -> Unit) {
+private fun Testament.colors(): Pair<Color, Color> = when (this) {
+    Testament.OLD -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    Testament.NEW -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+}
+
+/** Opened from the search button on the top bar; black so it stands apart from the list below. */
+@Composable
+private fun BookSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester),
+        placeholder = { Text("Pesquisar livro...") },
+        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = onClose) {
+                Icon(imageVector = Icons.Default.Clear, contentDescription = "Fechar busca")
+            }
+        },
+        singleLine = true,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Black,
+            unfocusedContainerColor = Color.Black,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = Color.White,
+            focusedPlaceholderColor = Color.White.copy(alpha = SEARCH_HINT_ALPHA),
+            unfocusedPlaceholderColor = Color.White.copy(alpha = SEARCH_HINT_ALPHA),
+            focusedLeadingIconColor = Color.White,
+            unfocusedLeadingIconColor = Color.White,
+            focusedTrailingIconColor = Color.White,
+            unfocusedTrailingIconColor = Color.White,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+    )
+}
+
+private const val SEARCH_HINT_ALPHA = 0.6f
+
+@Composable
+private fun BookRow(book: BibleBook, testament: Testament, onClick: () -> Unit) {
+    val (circle, circleText) = testament.colors()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -206,13 +264,13 @@ private fun BookRow(book: BibleBook, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                .background(circle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = book.displayAbbrev,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = circleText,
                 fontWeight = FontWeight.SemiBold,
             )
         }

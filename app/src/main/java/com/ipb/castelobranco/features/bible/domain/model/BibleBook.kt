@@ -56,6 +56,16 @@ data class BibleHeading(
     val title: String,
 )
 
+enum class Testament { OLD, NEW }
+
+/** Gênesis a Malaquias: os primeiros livros do índice, que vem na ordem canônica. */
+const val OLD_TESTAMENT_BOOK_COUNT = 39
+
+/** O índice dividido por testamento, na ordem canônica; um testamento sem livros fica de fora. */
+fun List<BibleBook>.byTestament(): List<Pair<Testament, List<BibleBook>>> =
+    listOf(Testament.OLD to take(OLD_TESTAMENT_BOOK_COUNT), Testament.NEW to drop(OLD_TESTAMENT_BOOK_COUNT))
+        .filter { (_, books) -> books.isNotEmpty() }
+
 /** Livro de [abbrev] (sem diferenciar maiúsculas); se não existir, o primeiro do índice. */
 fun List<BibleBook>.resolve(abbrev: String): BibleBook? =
     firstOrNull { it.abbrev.equals(abbrev, ignoreCase = true) } ?: firstOrNull()
