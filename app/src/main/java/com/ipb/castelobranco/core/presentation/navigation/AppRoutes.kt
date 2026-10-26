@@ -39,12 +39,40 @@ object AppRoutes {
     const val BIBLE_PASSAGE_BOOK    = "book"
     const val BIBLE_PASSAGE_CHAPTER = "chapter"
     const val BIBLE_PASSAGE_VERSE   = "verse"
+    const val BIBLE_PASSAGE_VERSES  = "verses"
     const val BIBLE_PASSAGE =
         "bible_passage?$BIBLE_PASSAGE_BOOK={$BIBLE_PASSAGE_BOOK}" +
-            "&$BIBLE_PASSAGE_CHAPTER={$BIBLE_PASSAGE_CHAPTER}&$BIBLE_PASSAGE_VERSE={$BIBLE_PASSAGE_VERSE}"
+            "&$BIBLE_PASSAGE_CHAPTER={$BIBLE_PASSAGE_CHAPTER}&$BIBLE_PASSAGE_VERSE={$BIBLE_PASSAGE_VERSE}" +
+            "&$BIBLE_PASSAGE_VERSES={$BIBLE_PASSAGE_VERSES}"
 
-    /** [book] is the Bible `abbrev` (e.g. "1Tn"). */
-    fun biblePassage(book: String, chapter: Int, verse: Int): String =
+    private const val VERSE_RANGE_SEPARATOR = ","
+    private const val VERSE_RANGE_DASH = "-"
+
+    /** [book] is the Bible `abbrev` (e.g. "1Tn"); [highlight] are the cited verses, highlighted in the reader. */
+    fun biblePassage(book: String, chapter: Int, verse: Int, highlight: List<IntRange> = emptyList()): String =
         "bible_passage?$BIBLE_PASSAGE_BOOK=${URLEncoder.encode(book, Charsets.UTF_8.name())}" +
-            "&$BIBLE_PASSAGE_CHAPTER=$chapter&$BIBLE_PASSAGE_VERSE=$verse"
+            "&$BIBLE_PASSAGE_CHAPTER=$chapter&$BIBLE_PASSAGE_VERSE=$verse" +
+            "&$BIBLE_PASSAGE_VERSES=${encodeVerseRanges(highlight)}"
+
+    /** `[3..5, 7..7]` → `"3-5,7"`. */
+    fun encodeVerseRanges(ranges: List<IntRange>): String =
+        ranges.joinToString(VERSE_RANGE_SEPARATOR) { range ->
+            if (range.first == range.last) "${range.first}" else "${range.first}$VERSE_RANGE_DASH${range.last}"
+        }
+
+    /** Inverse of [encodeVerseRanges]; malformed or non-positive parts are dropped. */
+    fun parseVerseRanges(value: String?): Set<Int> =
+        value.orEmpty()
+            .split(VERSE_RANGE_SEPARATOR)
+            .flatMap { part ->
+                val bounds = part.trim().split(VERSE_RANGE_DASH).map { it.trim().toIntOrNull() }
+                val start = bounds.firstOrNull() ?: return@flatMap emptyList()
+                val end = when (bounds.size) {
+                    1 -> start
+                    2 -> bounds[1] ?: return@flatMap emptyList()
+                    else -> return@flatMap emptyList()
+                }
+                if (start < 1 || end < start) emptyList() else (start..end).toList()
+            }
+            .toSet()
 }

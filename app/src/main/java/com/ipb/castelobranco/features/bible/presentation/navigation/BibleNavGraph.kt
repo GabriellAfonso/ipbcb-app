@@ -52,6 +52,10 @@ fun NavGraphBuilder.bibleGraph(navController: NavHostController) {
                     type = NavType.IntType
                     defaultValue = 1
                 },
+                navArgument(AppRoutes.BIBLE_PASSAGE_VERSES) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             ),
         ) { entry ->
             val graphEntry = remember(entry) { navController.getBackStackEntry(AppRoutes.BIBLE_GRAPH) }
@@ -64,6 +68,7 @@ fun NavGraphBuilder.bibleGraph(navController: NavHostController) {
                     bookAbbrev = args.getString(AppRoutes.BIBLE_PASSAGE_BOOK).orEmpty(),
                     chapter = args.getInt(AppRoutes.BIBLE_PASSAGE_CHAPTER, 1),
                     verse = args.getInt(AppRoutes.BIBLE_PASSAGE_VERSE, 1),
+                    highlighted = AppRoutes.parseVerseRanges(args.getString(AppRoutes.BIBLE_PASSAGE_VERSES)),
                 )
                 applied = true
             }

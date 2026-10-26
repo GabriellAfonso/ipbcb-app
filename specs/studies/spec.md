@@ -20,7 +20,7 @@ o estado compartilhado fica no repositório singleton.
 | Capítulo | `DoctrineConfessionChapter/{slug}/{chapter}?paragraph={n}` | Parágrafos numerados, listas do 1.2 e texto final; anterior/próximo; busca; tamanho do texto |
 
 - **Referências**: cada chip mostra o texto impresso. Com `reference`, abre a Bíblia em `AppRoutes.biblePassage(livro,
-  capítulo, primeiro versículo)` (ver `specs/bible/spec.md`); sem `reference`, é texto com contorno e não faz nada. O app
+  capítulo, primeiro versículo, intervalos)` com os versículos citados destacados (ver `specs/bible/spec.md`); sem `reference`, é texto com contorno e não faz nada. O app
   nunca interpreta o texto impresso.
 - **Busca** (no aparelho): ignora maiúsculas e acentos, exige todas as palavras em qualquer ordem. No catecismo, um
   número puro põe a pergunta daquele número primeiro. Sem resultado: "Nenhum resultado".

@@ -42,6 +42,8 @@ data class VerseRowData(
     val ref: VerseRef,
     val text: String,
     val isSelected: Boolean,
+    /** Cited by whoever opened the passage; selection paints over it. */
+    val isHighlighted: Boolean = false,
 )
 
 @Composable
@@ -90,8 +92,11 @@ private fun VerseRow(
     fontSizeSp: Float,
     onClick: () -> Unit,
 ) {
-    val bg = if (row.isSelected) MaterialTheme.colorScheme.primaryContainer
-    else MaterialTheme.colorScheme.surface
+    val bg = when {
+        row.isSelected -> MaterialTheme.colorScheme.primaryContainer
+        row.isHighlighted -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
     val numberColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onSurface
 

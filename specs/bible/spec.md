@@ -15,11 +15,17 @@ autenticação.
 
 Todas vivem em `bibleGraph`, com `BibleViewModel` escopado ao grafo.
 
-**Passagem** (`bible_passage?book={book}&chapter={chapter}&verse={verse}`, montada por `AppRoutes.biblePassage`): é como
-outras features (as referências da Doutrina, `specs/studies/spec.md`) abrem a Bíblia sem importá-la. Na primeira
-composição da entrada, `openPassage` salva a posição (conta como leitura normal) e deixa o versículo pendente; o leitor
-rola até ele quando a tradução está decodificada e a posição atual bate com o pendente, e então o descarta. Voltar
-retorna para quem abriu. `book` é o `abbrev` da Bíblia, comparado sem diferenciar maiúsculas.
+**Passagem** (`bible_passage?book={book}&chapter={chapter}&verse={verse}&verses={verses}`, montada por
+`AppRoutes.biblePassage`): é como outras features (as referências da Doutrina, `specs/studies/spec.md`) abrem a Bíblia
+sem importá-la. Na primeira composição da entrada, `openPassage` salva a posição (conta como leitura normal) e deixa o
+versículo pendente; o leitor rola até ele quando a tradução está decodificada e a posição atual bate com o pendente, e
+então o descarta. Voltar retorna para quem abriu. `book` é o `abbrev` da Bíblia, comparado sem diferenciar maiúsculas.
+
+**Destaque da passagem.** `verses` (opcional) são os intervalos citados, no formato `3-5,7` (`AppRoutes` monta e lê;
+trecho malformado é ignorado). Esses versículos do capítulo aberto ficam destacados com um fundo próprio
+(`secondaryContainer`), diferente da seleção. O destaque não é seleção: não abre a barra de copiar/compartilhar e não
+segura o "voltar". Tocar num versículo destacado o seleciona normalmente (a seleção pinta por cima). Mudar de capítulo
+ou de livro (setas, índice) apaga o destaque.
 
 O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar a fonte (14–32, padrão 18) e
 copiar/compartilhar os versículos selecionados.

@@ -199,10 +199,22 @@ fun BibleReaderScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    val rows = remember(verses, state.selectedVerses, state.position) {
+                    val rows = remember(verses, state.selectedVerses, state.highlightedVerses, state.position) {
+                        // The caller's abbrev may differ in case from the index's.
+                        val highlighted = state.highlightedVerses
+                            .filter {
+                                it.bookAbbrev.equals(book.abbrev, ignoreCase = true) &&
+                                    it.chapter == state.position.chapter
+                            }
+                            .mapTo(mutableSetOf()) { it.verse }
                         verses.mapIndexed { idx, text ->
                             val ref = VerseRef(book.abbrev, state.position.chapter, idx + 1)
-                            VerseRowData(ref = ref, text = text, isSelected = ref in state.selectedVerses)
+                            VerseRowData(
+                                ref = ref,
+                                text = text,
+                                isSelected = ref in state.selectedVerses,
+                                isHighlighted = ref.verse in highlighted,
+                            )
                         }
                     }
                     BibleVerseColumn(

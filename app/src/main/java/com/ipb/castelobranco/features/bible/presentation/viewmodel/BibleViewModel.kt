@@ -51,6 +51,8 @@ data class BibleUiState(
     val fontSize: Float = 18f,
     val download: BibleDownloadStatus = BibleDownloadStatus(),
     val selectedVerses: Set<VerseRef> = emptySet(),
+    /** Verses cited by whoever opened the passage (doctrine proof texts); not a selection. */
+    val highlightedVerses: Set<VerseRef> = emptySet(),
 ) {
     /** Livro indicado pela posição atual; null se a Bíblia ainda não foi baixada. */
     val currentBook: BibleBook?
@@ -84,6 +86,7 @@ class BibleViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _selectedVerses = MutableStateFlow<Set<VerseRef>>(emptySet())
+    private val _highlightedVerses = MutableStateFlow<Set<VerseRef>>(emptySet())
 
     val isOnWifi: StateFlow<Boolean> = connectivityObserver.isOnWifi
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -129,8 +132,9 @@ class BibleViewModel @Inject constructor(
         repository.fontSizeFlow,
         downloadStatus,
         _selectedVerses,
-    ) { base, font, status, selected ->
-        base.copy(fontSize = font, download = status, selectedVerses = selected)
+        _highlightedVerses,
+    ) { base, font, status, selected, highlighted ->
+        base.copy(fontSize = font, download = status, selectedVerses = selected, highlightedVerses = highlighted)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, BibleUiState())
 
     private val _events = Channel<BibleUiEvent>(capacity = Channel.BUFFERED)
@@ -142,6 +146,7 @@ class BibleViewModel @Inject constructor(
 
     fun navigateTo(bookAbbrev: String, chapter: Int, verse: Int = 1) {
         _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
+        _highlightedVerses.value = emptySet()
         viewModelScope.launch {
             repository.savePosition(bookAbbrev, chapter, verse)
             _selectedVerses.value = emptySet()
@@ -156,9 +161,13 @@ class BibleViewModel @Inject constructor(
      */
     val pendingScroll: StateFlow<VerseRef?> = _pendingScroll.asStateFlow()
 
-    /** Opens a passage from outside the Bible (doctrine proof texts); counts as normal reading. */
-    fun openPassage(bookAbbrev: String, chapter: Int, verse: Int) {
+    /**
+     * Opens a passage from outside the Bible (doctrine proof texts); counts as normal reading. [highlighted] are
+     * verse numbers of that chapter, highlighted until the reader moves to another chapter.
+     */
+    fun openPassage(bookAbbrev: String, chapter: Int, verse: Int, highlighted: Set<Int> = emptySet()) {
         _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
+        _highlightedVerses.value = highlighted.mapTo(mutableSetOf()) { VerseRef(bookAbbrev, chapter, it) }
         viewModelScope.launch {
             repository.savePosition(bookAbbrev, chapter, verse)
             _selectedVerses.value = emptySet()

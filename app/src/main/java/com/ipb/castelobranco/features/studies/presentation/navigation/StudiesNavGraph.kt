@@ -37,7 +37,10 @@ object StudiesRoutes {
 
 fun NavGraphBuilder.studiesGraph(navController: NavHostController) {
     val openBible: (BibleReference) -> Unit = { reference ->
-        navController.navigate(AppRoutes.biblePassage(reference.book, reference.chapter, reference.firstVerse))
+        val highlight = reference.verses.map { it.start..it.end }
+        navController.navigate(
+            AppRoutes.biblePassage(reference.book, reference.chapter, reference.firstVerse, highlight),
+        )
     }
 
     navigation(
