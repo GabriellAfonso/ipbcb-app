@@ -136,7 +136,7 @@ private fun VerseRow(
     val bg = when {
         row.isSelected -> MaterialTheme.colorScheme.primaryContainer
         row.isHighlighted -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surface
+        else -> bibleReaderPageColor()
     }
     val numberColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onSurface

@@ -34,7 +34,10 @@ segura o "voltar". Tocar num versículo destacado o seleciona normalmente (a sel
 ou de livro (setas, índice) apaga o destaque.
 
 O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar a fonte (14–32, padrão 18) e
-copiar/compartilhar os versículos selecionados.
+copiar/compartilhar os versículos selecionados. A toolbar do leitor é quase preta (`#141414`) nos dois
+temas, com ícones brancos e os botões de livro, capítulo e tradução em cinza escuro (`#2B2B2B`, cantos arredondados)
+com texto branco em negrito. No tema escuro a página do texto é cinza-escuro (`#1E1E20`), um tom acima da toolbar;
+no tema claro segue a cor do tema (`surface`).
 Sem a tradução ativa no aparelho, mostra o banner de download (tentar de novo no WiFi ou nos dados móveis).
 
 **Títulos.** Os títulos de seção da tradução (seção 2) aparecem antes do versículo que abrem, sempre (não há opção de

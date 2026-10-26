@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 
@@ -41,8 +43,11 @@ fun BibleReaderToolbar(
     onTranslationSelected: (BibleTranslation) -> Unit,
     onFontSizeClick: () -> Unit,
 ) {
+    // Fixed near-black in both themes so the bar reads apart from the text (a theme container color turns lighter
+    // than the page in dark mode); dark gray pills with white bold text on top.
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = BibleToolbarBackground,
+        contentColor = Color.White,
         modifier = Modifier.fillMaxWidth().statusBarsPadding(),
     ) {
         Row(
@@ -77,19 +82,19 @@ private fun ToolbarPill(
     onClick: () -> Unit,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(50),
+        color = BibleToolbarPillBackground,
+        shape = RoundedCornerShape(14.dp),
         onClick = onClick,
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge,
         )
     }
 }
-
 @Composable
 private fun TranslationPill(
     active: BibleTranslation,
@@ -103,18 +108,7 @@ private fun TranslationPill(
     }
 
     Box {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(50),
-            onClick = { if (available.size > 1) expanded = true },
-        ) {
-            Text(
-                text = active.displayName,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
+        ToolbarPill(text = active.displayName, onClick = { if (available.size > 1) expanded = true })
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             available.forEach { translation ->
                 DropdownMenuItem(

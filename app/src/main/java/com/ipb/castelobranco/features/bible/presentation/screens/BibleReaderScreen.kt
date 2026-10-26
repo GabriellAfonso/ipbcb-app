@@ -57,6 +57,7 @@ import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseCo
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumnPlaceholder
 import com.ipb.castelobranco.features.bible.presentation.components.BibleWaitingForWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.VerseRowData
+import com.ipb.castelobranco.features.bible.presentation.components.bibleReaderPageColor
 import com.ipb.castelobranco.features.bible.presentation.components.verseItemIndex
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleUiEvent
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
@@ -116,6 +117,7 @@ fun BibleReaderScreen(
         download.isPending
 
     Scaffold(
+        containerColor = bibleReaderPageColor(),
         topBar = {
             Column {
                 BibleReaderToolbar(
