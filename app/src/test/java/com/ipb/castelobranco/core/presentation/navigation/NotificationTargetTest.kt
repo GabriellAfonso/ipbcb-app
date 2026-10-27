@@ -21,6 +21,15 @@ class NotificationTargetTest {
     }
 
     @Test
+    fun `schedule carries the date of the reminder`() {
+        assertEquals(
+            NotificationTarget.Schedule(LocalDate.of(2026, 10, 29)),
+            NotificationTarget.fromExtras("schedule", "2026-10-29"),
+        )
+        assertNull(NotificationTarget.fromExtras("schedule", null))
+    }
+
+    @Test
     fun `a normal launch or broken extras are no target`() {
         assertNull(NotificationTarget.fromExtras(null, null))
         assertNull(NotificationTarget.fromExtras("confirm_plays", null))

@@ -26,6 +26,13 @@ object AppRoutes {
     fun sundayRegister(date: LocalDate? = null): String =
         if (date == null) SUNDAY_REGISTER_PATH else "$SUNDAY_REGISTER_PATH?$ARG_SUNDAY_DATE=$date"
 
+    // Escala (`specs/schedule/spec.md`). `SCHEDULE` opens it as from the home; a rota reminder adds an optional
+    // `YYYY-MM-DD` date that picks the opening tab.
+    const val ARG_SCHEDULE_DATE = "date"
+    const val SCHEDULE_ROUTE = "$SCHEDULE?$ARG_SCHEDULE_DATE={$ARG_SCHEDULE_DATE}"
+
+    fun schedule(date: LocalDate): String = "$SCHEDULE?$ARG_SCHEDULE_DATE=$date"
+
     // Nested graph parent routes
     const val AUTH_GRAPH        = "graph/auth"
     const val ADMIN_GRAPH       = "graph/admin"

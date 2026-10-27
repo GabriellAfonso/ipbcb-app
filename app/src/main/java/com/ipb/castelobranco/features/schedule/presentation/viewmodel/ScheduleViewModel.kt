@@ -1,9 +1,11 @@
 package com.ipb.castelobranco.features.schedule.presentation.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
+import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.schedule.domain.model.MonthSchedule
 import com.ipb.castelobranco.features.schedule.domain.repository.ScheduleRepository
@@ -14,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Calendar
 import timber.log.Timber
 import javax.inject.Inject
@@ -40,12 +43,27 @@ internal fun resolveNextDay(
     return days.sorted().firstOrNull { it >= threshold }
 }
 
+/**
+ * Index of the first of [sections] (tab order) with an entry on [date], or null when [date] is outside the
+ * schedule's month or has no entry.
+ */
+internal fun findSectionIndexForDate(
+    sections: List<ScheduleSectionUi>,
+    scheduleYear: Int,
+    scheduleMonth: Int,
+    date: LocalDate,
+): Int? {
+    if (date.year != scheduleYear || date.monthValue != scheduleMonth) return null
+    return sections.indexOfFirst { section -> section.rows.any { it.day == date.dayOfMonth } }.takeIf { it >= 0 }
+}
+
 sealed interface ScheduleUiState {
     object Loading : ScheduleUiState
     object Empty : ScheduleUiState
     /**
      * @param nextDays upcoming day of each section (same order as [sections]); null when every date has passed.
-     * @param initialTabIndex section of the next service, opened first on the schedule screen.
+     * @param initialTabIndex section opened first: the one with an entry on the reminder's date when the screen was
+     * opened from a rota reminder, otherwise the next service.
      */
     data class Success(
         val sections: List<ScheduleSectionUi>,
@@ -59,7 +77,12 @@ sealed interface ScheduleUiState {
 @HiltViewModel
 class ScheduleViewModel @Inject constructor(
     private val repository: ScheduleRepository,
+    savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
+
+    /** Set when opened from a rota reminder: only picks the opening tab. */
+    private val openDate: LocalDate? = savedStateHandle.get<String>(AppRoutes.ARG_SCHEDULE_DATE)
+        ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing = _isRefreshing.asStateFlow()
@@ -169,9 +192,11 @@ class ScheduleViewModel @Inject constructor(
                                 todayDay = calendar.get(Calendar.DAY_OF_MONTH),
                             )
                         },
-                        initialTabIndex = findNextSection(sections)
-                            ?.let { sections.indexOf(it) }
-                            ?.coerceAtLeast(0) ?: 0,
+                        initialTabIndex = openDate
+                            ?.let { findSectionIndexForDate(sections, snapshot.value.year, snapshot.value.month, it) }
+                            ?: findNextSection(sections)
+                                ?.let { sections.indexOf(it) }
+                                ?.coerceAtLeast(0) ?: 0,
                     )
                 } else {
                     ScheduleUiState.Empty

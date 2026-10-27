@@ -32,6 +32,7 @@ class ThemePreferences @Inject constructor(
     private val hymnalFontSizeKey = floatPreferencesKey("hymnal_font_size")
     private val songScrollModeKey = intPreferencesKey("song_scroll_mode")
     private val birthdayNotificationsKey = booleanPreferencesKey("birthday_notifications_enabled")
+    private val scheduleNotificationsKey = booleanPreferencesKey("schedule_notifications_enabled")
     private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on")
     private val birthdayLastNotifiedKey = longPreferencesKey("birthday_last_notified_epoch_day")
 
@@ -96,6 +97,18 @@ class ThemePreferences @Inject constructor(
     suspend fun setBirthdayNotifications(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[birthdayNotificationsKey] = enabled
+        }
+    }
+
+    /** Rota reminders pushed by the server; on by default, dropped on the device when off. */
+    val scheduleNotificationsFlow: Flow<Boolean> =
+        dataStore.data.map { prefs ->
+            prefs[scheduleNotificationsKey] ?: true
+        }
+
+    suspend fun setScheduleNotifications(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[scheduleNotificationsKey] = enabled
         }
     }
 

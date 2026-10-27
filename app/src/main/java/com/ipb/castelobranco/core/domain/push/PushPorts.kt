@@ -24,3 +24,8 @@ interface RegisteredTokenStore {
     suspend fun set(token: String)
     suspend fun clear()
 }
+
+/** Whether the user wants the rota reminders; the server always sends them, the app drops them when off. */
+fun interface ScheduleRemindersPreference {
+    suspend fun isEnabled(): Boolean
+}

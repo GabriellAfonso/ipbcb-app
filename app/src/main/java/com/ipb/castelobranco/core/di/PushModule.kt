@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.core.di
 
+import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.data.push.DevicesApi
 import com.ipb.castelobranco.core.data.push.DevicesRepositoryImpl
 import com.ipb.castelobranco.core.data.push.FcmTokenSource
@@ -8,6 +9,8 @@ import com.ipb.castelobranco.core.data.push.SetlistNotifications
 import com.ipb.castelobranco.core.data.push.SetlistNotifier
 import com.ipb.castelobranco.core.data.push.AccessRequestNotifications
 import com.ipb.castelobranco.core.data.push.AccessRequestNotifier
+import com.ipb.castelobranco.core.data.push.ScheduleNotifications
+import com.ipb.castelobranco.core.data.push.ScheduleNotifier
 import com.ipb.castelobranco.core.data.push.SetlistRefreshScheduler
 import com.ipb.castelobranco.core.data.push.WorkManagerPushRegistrationScheduler
 import com.ipb.castelobranco.core.data.push.WorkManagerSetlistRefreshScheduler
@@ -15,11 +18,13 @@ import com.ipb.castelobranco.core.domain.push.DevicesRepository
 import com.ipb.castelobranco.core.domain.push.PushRegistrationScheduler
 import com.ipb.castelobranco.core.domain.push.PushTokenSource
 import com.ipb.castelobranco.core.domain.push.RegisteredTokenStore
+import com.ipb.castelobranco.core.domain.push.ScheduleRemindersPreference
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.flow.first
 import retrofit2.Retrofit
 import javax.inject.Singleton
 
@@ -53,6 +58,10 @@ abstract class PushModule {
 
     @Binds
     @Singleton
+    abstract fun bindScheduleNotifier(impl: ScheduleNotifications): ScheduleNotifier
+
+    @Binds
+    @Singleton
     abstract fun bindSetlistRefreshScheduler(impl: WorkManagerSetlistRefreshScheduler): SetlistRefreshScheduler
 
     companion object {
@@ -60,5 +69,9 @@ abstract class PushModule {
         @Singleton
         fun provideDevicesApi(@AuthedRetrofit retrofit: Retrofit): DevicesApi =
             retrofit.create(DevicesApi::class.java)
+
+        @Provides
+        fun provideScheduleRemindersPreference(preferences: ThemePreferences): ScheduleRemindersPreference =
+            ScheduleRemindersPreference { preferences.scheduleNotificationsFlow.first() }
     }
 }

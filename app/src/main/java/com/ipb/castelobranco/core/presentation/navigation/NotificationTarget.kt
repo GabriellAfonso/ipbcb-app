@@ -18,6 +18,9 @@ sealed interface NotificationTarget {
     /** The requester's request was decided: their profile, with the access card. */
     data object Profile : NotificationTarget
 
+    /** A rota reminder: Escala, opened on the service that has an entry on [date]. */
+    data class Schedule(val date: LocalDate) : NotificationTarget
+
     companion object {
         const val EXTRA_TARGET = "com.ipb.castelobranco.extra.TARGET"
         const val EXTRA_DATE = "com.ipb.castelobranco.extra.DATE"
@@ -25,6 +28,7 @@ sealed interface NotificationTarget {
         const val TARGET_CONFIRM_PLAYS = "confirm_plays"
         const val TARGET_PROFILES_PENDING = "profiles_pending"
         const val TARGET_PROFILE = "profile"
+        const val TARGET_SCHEDULE = "schedule"
 
         /** `null` for a normal launch or extras that do not make a valid target. */
         fun fromExtras(target: String?, date: String?): NotificationTarget? = when (target) {
@@ -32,6 +36,7 @@ sealed interface NotificationTarget {
             TARGET_CONFIRM_PLAYS -> date.toLocalDateOrNull()?.let { ConfirmPlays(it) }
             TARGET_PROFILES_PENDING -> ProfilesPending
             TARGET_PROFILE -> Profile
+            TARGET_SCHEDULE -> date.toLocalDateOrNull()?.let { Schedule(it) }
             else -> null
         }
 

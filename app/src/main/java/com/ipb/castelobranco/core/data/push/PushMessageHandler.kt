@@ -4,6 +4,7 @@ import com.ipb.castelobranco.core.data.app.AppForegroundState
 import com.ipb.castelobranco.core.domain.access.AccessRepository
 import com.ipb.castelobranco.core.domain.auth.SessionPresenceProvider
 import com.ipb.castelobranco.core.domain.push.PushMessage
+import com.ipb.castelobranco.core.domain.push.ScheduleRemindersPreference
 import com.ipb.castelobranco.core.domain.worship.WorshipAccessRepository
 import timber.log.Timber
 import javax.inject.Inject
@@ -25,6 +26,8 @@ class PushMessageHandler @Inject constructor(
     private val refreshScheduler: SetlistRefreshScheduler,
     private val accessNotifier: AccessRequestNotifier,
     private val accessRepository: AccessRepository,
+    private val scheduleNotifier: ScheduleNotifier,
+    private val scheduleReminders: ScheduleRemindersPreference,
 ) {
 
     suspend fun handle(data: Map<String, String>) {
@@ -54,6 +57,15 @@ class PushMessageHandler @Inject constructor(
                 accessNotifier.showDenied(message.requestType, message.reason)
                 accessRepository.refresh()
             }
+            // Shown even in the foreground: no screen shows them. No schedule refresh — Escala re-reads on open.
+            is PushMessage.ScheduleWeek ->
+                if (scheduleReminders.isEnabled()) scheduleNotifier.showWeek(message.slots)
+            is PushMessage.ScheduleEve ->
+                if (scheduleReminders.isEnabled()) scheduleNotifier.showEve(message.slot, message.gender)
+            is PushMessage.SchedulePublished ->
+                if (scheduleReminders.isEnabled()) {
+                    scheduleNotifier.showPublished(message.month, message.slots, message.gender)
+                }
         }
     }
 }

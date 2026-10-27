@@ -83,6 +83,8 @@ fun AppNavHost(
                 }
             NotificationTarget.Profile ->
                 if (coreViewModel.isLoggedIn.value) navController.navigate(AppRoutes.PROFILE)
+            // Signed out or without member access, Escala shows its own placeholders.
+            is NotificationTarget.Schedule -> navController.navigate(AppRoutes.schedule(pending.date))
         }
         onNotificationTargetHandled()
     }
@@ -155,7 +157,16 @@ fun AppNavHost(
             hymnalGraph(navController)
             bibleGraph(navController)
 
-            composable(AppRoutes.SCHEDULE) {
+            composable(
+                route = AppRoutes.SCHEDULE_ROUTE,
+                arguments = listOf(
+                    navArgument(AppRoutes.ARG_SCHEDULE_DATE) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) {
                 MonthScheduleScreen(
                     onBackClick = { navController.safePopBackStack() },
                     onShare     = { text ->

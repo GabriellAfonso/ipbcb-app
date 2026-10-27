@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.schedule.presentation.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.RefreshResult
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
@@ -58,11 +59,49 @@ class ScheduleViewModelTest {
     private fun buildViewModel(
         initial: SnapshotState<MonthSchedule> = SnapshotState.Loading,
         observed: kotlinx.coroutines.flow.Flow<SnapshotState<MonthSchedule>> = emptyFlow(),
+        date: String? = null,
     ): ScheduleViewModel {
         every { repository.getCurrentSnapshot() } returns initial
         every { repository.observeMonthSchedule() } returns observed
-        return ScheduleViewModel(repository)
+        return ScheduleViewModel(repository, SavedStateHandle(mapOf("date" to date)))
     }
+
+    // region opening date (rota reminder)
+
+    private val octoberSchedule = MonthSchedule(
+        year = 2026,
+        month = 10,
+        schedule = mapOf(
+            "Terça de Oração" to ScheduleEntry("19h30", listOf(ScheduleItem(27, "Ana"))),
+            "Quinta de Oração" to ScheduleEntry("19h30", listOf(ScheduleItem(29, "Carlos"))),
+            "Domingo" to ScheduleEntry("19h00", listOf(ScheduleItem(25, "João"), ScheduleItem(29, "Rui"))),
+        ),
+    )
+
+    private fun initialTab(date: String?): Int =
+        (buildViewModel(initial = SnapshotState.Data(octoberSchedule), date = date).uiState.value
+            as ScheduleUiState.Success).initialTabIndex
+
+    @Test
+    fun `a reminder date opens the tab of the service on that date`() {
+        assertEquals(0, initialTab("2026-10-27"))
+        assertEquals(2, initialTab("2026-10-25"))
+    }
+
+    @Test
+    fun `a date with two services opens the first tab with it`() {
+        assertEquals(1, initialTab("2026-10-29"))
+    }
+
+    @Test
+    fun `a date outside the month or without entry keeps the default tab`() {
+        val default = initialTab(null)
+        assertEquals(default, initialTab("2026-11-03"))
+        assertEquals(default, initialTab("2026-10-28"))
+        assertEquals(default, initialTab("ontem"))
+    }
+
+    // endregion
 
     // region uiState mapping
 
