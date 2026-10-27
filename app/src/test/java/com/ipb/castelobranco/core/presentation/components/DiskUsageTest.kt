@@ -1,4 +1,4 @@
-package com.ipb.castelobranco.features.settings.presentation.components
+package com.ipb.castelobranco.core.presentation.components
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

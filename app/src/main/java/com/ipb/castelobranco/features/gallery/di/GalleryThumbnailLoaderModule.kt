@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.di
 import android.content.Context
 import coil.ImageLoader
 import coil.annotation.ExperimentalCoilApi
+import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.di.Client
@@ -41,6 +42,8 @@ object GalleryThumbnailLoaderModule {
         @Client client: OkHttpClient,
     ): ImageLoader = ImageLoader.Builder(context)
         .okHttpClient(client)
+        // Downloaded videos show a frame of the local file: no poster to fetch, works offline.
+        .components { add(VideoFrameDecoder.Factory()) }
         .respectCacheHeaders(false)
         .memoryCache { ImageMemoryBudget.memoryCache(context, ImageMemoryBudget.GALLERY_PREVIEWS) }
         .diskCache {

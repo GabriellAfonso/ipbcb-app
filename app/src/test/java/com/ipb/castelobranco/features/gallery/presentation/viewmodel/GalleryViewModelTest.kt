@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.presentation.viewmodel
 
+import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryStorageUseCase
+import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDialogState
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -82,6 +84,8 @@ class GalleryViewModelTest {
             syncGallery = syncGallery,
             autoDownload = autoDownload,
             manage = manageUseCases(FakeGalleryManageRepository(), FakeUploadRepository(), repository),
+            videoSettings = videoSettingsUseCase(),
+            storage = GalleryStorageUseCase(repository, mockk(relaxed = true), autoDownload),
             observeAccess = ObserveAccessUseCase(FakeAccessRepository()),
             connectivityObserver = connectivity,
             workManager = workManager,
@@ -200,12 +204,32 @@ class GalleryViewModelTest {
     }
 
     @Test
-    fun `download gallery lifts the pause through the use case`() = runTest(dispatcher) {
-        viewModel.downloadGallery()
-        advanceUntilIdle()
+    fun `download gallery opens the Fotos and Videos dialog with photos checked and videos not`() =
+        runTest(dispatcher) {
+            syncStatus.value = GallerySyncStatus(isPaused = true)
 
-        coVerify(exactly = 1) { autoDownload.downloadAfterDelete() }
-    }
+            viewModel.downloadGallery()
+            advanceUntilIdle()
+
+            val dialog = viewModel.dialog.value as GalleryDialogState.Download
+            assertEquals(listOf(true, false), dialog.dialog.options.map { it.checked })
+            assertEquals(listOf(true, true), dialog.dialog.options.map { it.enabled })
+        }
+
+    @Test
+    fun `confirming the dialog lifts the pause through the use case with the checked types`() =
+        runTest(dispatcher) {
+            syncStatus.value = GallerySyncStatus(isPaused = true)
+            viewModel.downloadGallery()
+            advanceUntilIdle()
+
+            viewModel.toggleDownloadOption(1)
+            viewModel.confirmDownload()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { autoDownload.downloadAfterDelete(true, true, false) }
+            assertNull(viewModel.dialog.value)
+        }
 
     @Test
     fun `download actions delegate to the use case`() {

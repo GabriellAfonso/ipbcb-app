@@ -8,8 +8,10 @@ import com.ipb.castelobranco.core.domain.member.ObserveOwnMemberIdUseCase
 import com.ipb.castelobranco.features.gallery.di.GalleryThumbnailLoader
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryVisibility
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.tags.GalleryPeople
+import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
 import com.ipb.castelobranco.features.gallery.domain.tags.NameSearch
 import com.ipb.castelobranco.features.gallery.domain.tags.TaggedPerson
 import com.ipb.castelobranco.features.gallery.presentation.state.PeopleUiState
@@ -44,24 +46,35 @@ class PeopleViewModel @Inject constructor(
 
     private val query = MutableStateFlow("")
     private val selection = MutableStateFlow<Set<Long>>(emptySet())
+    private val mediaFilter = MutableStateFlow(MediaFilter.ALL)
 
     /** Everyone tagged in the last computed state: a toggle drops people no longer tagged anywhere. */
     @Volatile
     private var taggedIds: Set<Long> = emptySet()
 
+    // What members see: undownloaded videos are not in the filter either.
     private val local = repository.localState.map { local ->
-        val tree = local.index?.let(::GalleryTree)
+        val tree = local.index?.let { GalleryTree(GalleryVisibility.visibleIndex(it, local.videos.keys)) }
         Local(local, tree, tree?.let(GalleryPeople::taggedPeople).orEmpty())
     }
 
-    val state: StateFlow<PeopleUiState> = combine(local, query, selection, observeOwnMemberId()) {
-            local, query, selection, ownMemberId ->
-        filter(local, query, selection, ownMemberId)
+    val state: StateFlow<PeopleUiState> = combine(
+        local,
+        query,
+        combine(selection, mediaFilter, ::Pair),
+        observeOwnMemberId(),
+    ) { local, query, (selection, mediaFilter), ownMemberId ->
+        filter(local, query, selection, mediaFilter, ownMemberId)
     }.flowOn(defaultDispatcher)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), PeopleUiState())
 
     fun onQueryChange(value: String) {
         query.value = value
+    }
+
+    fun onMediaFilter(filter: MediaFilter) {
+        mediaFilter.value = filter
+        query.value = ""
     }
 
     /** Checks or unchecks [memberId]. Picking from the list clears the search, so the results show. */
@@ -73,10 +86,21 @@ class PeopleViewModel @Inject constructor(
         query.value = ""
     }
 
-    private fun filter(local: Local, query: String, selection: Set<Long>, ownMemberId: Long?): PeopleUiState {
+    private fun filter(
+        local: Local,
+        query: String,
+        selection: Set<Long>,
+        requestedFilter: MediaFilter,
+        ownMemberId: Long?,
+    ): PeopleUiState {
         val tree = local.tree ?: return PeopleUiState(isLoading = true)
         taggedIds = local.people.mapTo(HashSet()) { it.id }
-        if (local.people.isEmpty()) return PeopleUiState(isLoading = false, emptyText = TagTexts.NO_TAGS)
+        val showMediaFilter = tree.allPhotosInTreeOrder().any { it.isVideo }
+        // Without any video on the device the chips are gone, and so is their effect.
+        val mediaFilter = if (showMediaFilter) requestedFilter else MediaFilter.ALL
+        if (local.people.isEmpty() && !showMediaFilter) {
+            return PeopleUiState(isLoading = false, emptyText = TagTexts.NO_TAGS)
+        }
         // A person no longer tagged anywhere leaves the list and the selection.
         val selectedIds = selection.filterTo(LinkedHashSet()) { it in taggedIds }
         // The user first; sortedBy is stable, so everyone else keeps the name order.
@@ -84,8 +108,8 @@ class PeopleViewModel @Inject constructor(
         val selected = people.filter { it.id in selectedIds }.map { it.toRow(checked = true, ownMemberId) }
         val matching = people.filter { NameSearch.matches(it.name, query) }
             .map { it.toRow(checked = it.id in selectedIds, ownMemberId) }
-        val showResults = selectedIds.isNotEmpty() && query.isBlank()
-        val results = if (showResults) tiles(tree, local.local, selectedIds) else emptyList()
+        val showResults = (selectedIds.isNotEmpty() || mediaFilter != MediaFilter.ALL) && query.isBlank()
+        val results = if (showResults) tiles(tree, local.local, selectedIds, mediaFilter) else emptyList()
         return PeopleUiState(
             isLoading = false,
             query = query,
@@ -95,17 +119,28 @@ class PeopleViewModel @Inject constructor(
             showResults = showResults,
             results = results,
             memberIds = selectedIds,
+            showMediaFilter = showMediaFilter,
+            mediaFilter = mediaFilter,
             hint = TagTexts.RESULT_HINT.takeIf { showResults && selectedIds.size > 1 },
             emptyText = when {
-                showResults && results.isEmpty() -> TagTexts.NO_RESULT
+                showResults && results.isEmpty() -> when {
+                    selectedIds.isNotEmpty() -> TagTexts.NO_RESULT
+                    mediaFilter == MediaFilter.VIDEOS -> TagTexts.NO_VIDEOS
+                    else -> TagTexts.NO_PHOTOS
+                }
+                !showResults && local.people.isEmpty() -> TagTexts.NO_TAGS
                 !showResults && matching.isEmpty() -> TagTexts.NO_PERSON_FOUND
                 else -> null
             },
         )
     }
 
-    private fun tiles(tree: GalleryTree, local: GalleryLocalState, memberIds: Set<Long>): List<PhotoTile> =
-        GalleryPeople.photosWithAll(tree, memberIds).map { PhotoTile(it.id, GalleryUiMapper.photoImage(it, local)) }
+    private fun tiles(
+        tree: GalleryTree,
+        local: GalleryLocalState,
+        memberIds: Set<Long>,
+        filter: MediaFilter,
+    ): List<PhotoTile> = GalleryPeople.matching(tree, memberIds, filter).map { GalleryUiMapper.photoTile(it, local) }
 
     private fun TaggedPerson.toRow(checked: Boolean, ownMemberId: Long?) = PersonRow(
         id = id,

@@ -3,8 +3,8 @@ package com.ipb.castelobranco.features.settings.presentation.viewmodel
 import androidx.appcompat.app.AppCompatDelegate
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.DeleteBibleUseCase
-import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
-import com.ipb.castelobranco.features.gallery.domain.usecase.DeleteGalleryUseCase
+import com.ipb.castelobranco.core.domain.gallery.GalleryStoragePort
+import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.domain.repository.SettingsRepository
 import app.cash.turbine.test
@@ -39,8 +39,7 @@ class SettingsViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private lateinit var settingsRepository: SettingsRepository
-    private lateinit var galleryRepository: GalleryRepository
-    private lateinit var deleteGallery: DeleteGalleryUseCase
+    private lateinit var galleryStorage: GalleryStoragePort
     private lateinit var deleteBible: DeleteBibleUseCase
     private lateinit var bibleRepository: BibleRepository
     private lateinit var viewModel: SettingsViewModel
@@ -53,19 +52,17 @@ class SettingsViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         settingsRepository = mockk(relaxed = true)
-        galleryRepository = mockk(relaxed = true)
-        deleteGallery = mockk(relaxed = true)
+        galleryStorage = mockk(relaxed = true)
         deleteBible = mockk(relaxed = true)
         bibleRepository = mockk(relaxed = true)
         every { settingsRepository.themeModeFlow } returns themeModeFlow
         every { settingsRepository.birthdayNotificationsFlow } returns birthdayNotificationsFlow
         every { settingsRepository.keepScreenOnFlow } returns keepScreenOnFlow
-        coEvery { galleryRepository.diskUsageBytes() } returns GALLERY_BYTES
+        coEvery { galleryStorage.usage() } returns GALLERY_USAGE
         coEvery { bibleRepository.diskUsageBytes() } returns BIBLE_BYTES
         viewModel = SettingsViewModel(
             settingsRepository,
-            galleryRepository,
-            deleteGallery,
+            galleryStorage,
             deleteBible,
             bibleRepository,
         )
@@ -184,7 +181,7 @@ class SettingsViewModelTest {
             themeModeFlow.emit(ThemeMode.DARK)
             advanceUntilIdle()
             val state = expectMostRecentItem()
-            assertEquals(GALLERY_BYTES, state.galleryBytes)
+            assertEquals(GALLERY_USAGE, state.galleryUsage)
             assertEquals(BIBLE_BYTES, state.bibleBytes)
             cancelAndIgnoreRemainingEvents()
         }
@@ -196,31 +193,27 @@ class SettingsViewModelTest {
             awaitItem()
             themeModeFlow.emit(ThemeMode.DARK)
             advanceUntilIdle()
-            coEvery { galleryRepository.diskUsageBytes() } returns 0L
+            coEvery { bibleRepository.diskUsageBytes() } returns 0L
 
-            viewModel.requestReset(ResetAction.GALLERY)
+            viewModel.requestReset(ResetAction.BIBLE)
             viewModel.confirmReset()
             advanceUntilIdle()
 
             val state = expectMostRecentItem()
-            assertTrue(state.galleryCleared)
-            assertEquals(0L, state.galleryBytes)
+            assertTrue(state.bibleCleared)
+            assertEquals(0L, state.bibleBytes)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `confirming each delete runs its use case`() = runTest {
-        viewModel.requestReset(ResetAction.GALLERY)
-        viewModel.confirmReset()
-        advanceUntilIdle()
+    fun `confirming the Bible delete runs its use case and never touches the gallery`() = runTest {
         viewModel.requestReset(ResetAction.BIBLE)
         viewModel.confirmReset()
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { deleteGallery() }
         coVerify(exactly = 1) { deleteBible() }
-        coVerify(exactly = 0) { galleryRepository.clear() }
+        coVerify(exactly = 0) { galleryStorage.delete(any(), any()) }
     }
 
     // endregion
@@ -284,7 +277,7 @@ class SettingsViewModelTest {
     // endregion
 
     private companion object {
-        const val GALLERY_BYTES = 312L * 1024 * 1024
+        val GALLERY_USAGE = GalleryUsage(photoBytes = 312L * 1024 * 1024, videoBytes = 0L)
         const val BIBLE_BYTES = 8L * 1024 * 1024
     }
 }

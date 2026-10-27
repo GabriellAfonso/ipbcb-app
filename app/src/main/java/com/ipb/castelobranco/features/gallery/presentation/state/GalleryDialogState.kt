@@ -1,5 +1,9 @@
 package com.ipb.castelobranco.features.gallery.presentation.state
 
+import com.ipb.castelobranco.core.domain.gallery.GalleryMissing
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageChoice
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageDialogs
+import com.ipb.castelobranco.core.presentation.components.MediaTypesDialogState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.tags.NameSearch
@@ -10,6 +14,24 @@ sealed interface GalleryDialogState {
     data class MovePicker(val picker: MovePickerState) : GalleryDialogState
     data class Confirm(val confirm: ConfirmState) : GalleryDialogState
     data class PeoplePicker(val picker: PeoplePickerState) : GalleryDialogState
+
+    /** "Baixar galeria" with Fotos / Vídeos, opened from the gallery after a delete. */
+    data class Download(
+        val missing: GalleryMissing,
+        val autoDownloadVideos: Boolean,
+        val choice: GalleryStorageChoice,
+    ) : GalleryDialogState {
+        val dialog: MediaTypesDialogState
+            get() = GalleryStorageDialogs.downloadDialog(missing, autoDownloadVideos, choice)
+    }
+
+    /** A batch with videos picked on mobile data: send now, or let the videos wait for WiFi. */
+    data class UploadOnMobileData(
+        val albumId: Long,
+        val sources: List<String>,
+        val videoCount: Int,
+        val videoBytes: Long,
+    ) : GalleryDialogState
 }
 
 /** What a form edits: a new album (under [parentId], `null` = root), an album, or a photo. */

@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.gallery.presentation.screens
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.provider.MediaStore
 import android.view.SoundEffectConstants
 import android.webkit.MimeTypeMap
@@ -52,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
@@ -63,6 +65,8 @@ import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
+import com.ipb.castelobranco.features.gallery.presentation.components.GalleryVideoPage
+import com.ipb.castelobranco.features.gallery.presentation.components.rememberGalleryPlayer
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.PhotoDetailsSheet
@@ -73,6 +77,7 @@ import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiSt
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerPhoto
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -83,7 +88,7 @@ private const val LOADING_TITLE = "Carregando..."
 private const val SAVED_MESSAGE = "Baixado com sucesso"
 private const val SAVE_LABEL = "Baixar"
 private const val SHARE_LABEL = "Compartilhar"
-private const val SHARE_CHOOSER_TITLE = "Compartilhar imagem"
+private const val SHARE_CHOOSER_TITLE = "Compartilhar"
 private const val SAVE_FEEDBACK_MS = 1_200L
 private const val MAX_ZOOM = 5f
 private const val SAVE_DIR = "ipb_castelobranco"
@@ -107,6 +112,7 @@ fun PhotoScreen(
     val state by viewModel.viewerState(viewerId, source, photoId).collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
+    val muted by viewModel.videoMuted.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Nenhuma foto sobrou no álbum: volta para ele.
@@ -120,8 +126,8 @@ fun PhotoScreen(
             previewLoader = viewModel.previewLoader,
             onBack = nav.back,
             onPageChanged = { currentId -> viewModel.onPageChanged(viewerId, currentId) },
-            onSave = { photo -> photo.original?.let { saveImageToGallery(context, it, photo.fileName) } },
-            onShare = { photo -> photo.original?.let { sharePhoto(context, it) } },
+            onSave = { photo -> photo.file?.let { saveToDevice(context, it, photo.fileName, photo) } },
+            onShare = { photo -> photo.file?.let { shareFile(context, it, photo.mimeType) } },
             // Cada ação usa o álbum da própria foto: num resultado de filtro, as fotos vêm de vários.
             manage = PhotoManageActions(
                 onEdit = { photo -> viewModel.openEditPhoto(photo.id) },
@@ -131,10 +137,14 @@ fun PhotoScreen(
                 onTagPeople = { photo -> viewModel.openTagPhoto(photo.id) },
             ),
             isPickerOpen = dialog is GalleryDialogState.PeoplePicker,
+            video = VideoControls(muted = muted, onMutedChange = viewModel::setVideoMuted),
         )
     }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
+
+/** The sound of the videos: muted until turned on, then kept while the gallery stays open. */
+data class VideoControls(val muted: Boolean = true, val onMutedChange: (Boolean) -> Unit = {})
 
 /** Management of the photo on screen. */
 data class PhotoManageActions(
@@ -156,8 +166,11 @@ fun PhotoContent(
     manage: PhotoManageActions,
     /** The people picker is open: the details sheet steps aside for it. */
     isPickerOpen: Boolean = false,
+    video: VideoControls = VideoControls(),
 ) {
     val view = LocalView.current
+    val player = rememberGalleryPlayer()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var showDetails by rememberSaveable { mutableStateOf(false) }
     val photos = state.photos
     // Recriado quando as fotos chegam, para abrir já na foto tocada.
@@ -179,6 +192,21 @@ fun PhotoContent(
     }
 
     val current = photos.getOrNull(pagerState.currentPage)
+
+    // Landscape on a video: the video alone, full screen. Back in portrait, the pager is where it was.
+    val landscapeVideo = current?.videoFile?.takeIf { isLandscape && current.isVideo }
+    if (landscapeVideo != null) {
+        GalleryVideoPage(
+            file = landscapeVideo,
+            player = player,
+            isActive = true,
+            muted = video.muted,
+            onMutedChange = video.onMutedChange,
+            failedText = VideoTexts.PLAYBACK_FAILED,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
 
     BaseScreen(
         tabName = current?.title ?: LOADING_TITLE,
@@ -211,16 +239,31 @@ fun PhotoContent(
                     userScrollEnabled = !isZoomed,
                     key = { photos[it].id },
                 ) { index ->
-                    ZoomablePage(
-                        resetKey = pagerState.currentPage,
-                        onZoomChanged = { isZoomed = it },
-                    ) {
-                        GalleryImage(
-                            image = photos[index].image,
-                            previewLoader = previewLoader,
-                            contentScale = ContentScale.Fit,
+                    val page = photos[index]
+                    val videoFile = page.videoFile
+                    if (page.isVideo && videoFile != null) {
+                        // Plays once the pager settles here, muted unless the sound was turned on.
+                        GalleryVideoPage(
+                            file = videoFile,
+                            player = player,
+                            isActive = pagerState.settledPage == index,
+                            muted = video.muted,
+                            onMutedChange = video.onMutedChange,
+                            failedText = VideoTexts.PLAYBACK_FAILED,
                             modifier = Modifier.fillMaxSize(),
                         )
+                    } else {
+                        ZoomablePage(
+                            resetKey = pagerState.currentPage,
+                            onZoomChanged = { isZoomed = it },
+                        ) {
+                            GalleryImage(
+                                image = page.image,
+                                previewLoader = previewLoader,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
                 }
                 Row(
@@ -368,18 +411,39 @@ private fun ZoomablePage(
     }
 }
 
-private fun sharePhoto(context: Context, file: File) {
+private fun shareFile(context: Context, file: File, mimeType: String) {
     val uri = FileProvider.getUriForFile(
         context,
         "${context.packageName}.provider",
         file
     )
     val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "image/*"
+        type = mimeType
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     context.startActivity(Intent.createChooser(intent, SHARE_CHOOSER_TITLE))
+}
+
+/** A photo goes to Pictures, a video to Movies, each under the app's folder and typed by its MIME. */
+private fun saveToDevice(context: Context, sourceFile: File, displayName: String, item: ViewerPhoto) {
+    if (item.isVideo) saveVideoToGallery(context, sourceFile, displayName, item.mimeType)
+    else saveImageToGallery(context, sourceFile, displayName)
+}
+
+private fun saveVideoToGallery(context: Context, sourceFile: File, displayName: String, mimeType: String) {
+    val contentValues = ContentValues().apply {
+        put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
+        put(MediaStore.Video.Media.MIME_TYPE, mimeType)
+        put(MediaStore.Video.Media.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_MOVIES}/$SAVE_DIR")
+        put(MediaStore.Video.Media.IS_PENDING, 1)
+    }
+    val resolver = context.contentResolver
+    val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues) ?: return
+    resolver.openOutputStream(uri)?.use { output -> sourceFile.inputStream().use { it.copyTo(output) } }
+    contentValues.clear()
+    contentValues.put(MediaStore.Video.Media.IS_PENDING, 0)
+    resolver.update(uri, contentValues, null, null)
 }
 
 /** Copies the original to the device's Pictures, named after the photo and typed by its extension. */

@@ -3,6 +3,9 @@
 Preferências do aparelho e ferramentas de diagnóstico. Nada aqui fala com o servidor: tudo vive no
 `@SettingsPrefs` DataStore, nos caches locais ou no buffer de logs em memória.
 
+As telas formam o `settingsGraph` (`SettingsNavGraph.kt`). A galeria é alcançada só pela porta de core
+`GalleryStoragePort` (`core/domain/gallery`), implementada pela galeria: uma feature não importa outra.
+
 ---
 
 ## 1. Telas
@@ -10,6 +13,7 @@ Preferências do aparelho e ferramentas de diagnóstico. Nada aqui fala com o se
 | Tela          | Origem                                  |
 |---------------|-----------------------------------------|
 | Configurações | Tela inicial (`CoreScreen`)             |
+| Galeria       | Configurações → "Galeria" (seção 4)      |
 | Logs do app   | Configurações → Diagnóstico → "Logs do app" (seção escondida, 2.6) |
 
 ---
@@ -23,7 +27,7 @@ Lista em seções, separadas por divisor:
 | Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
-| Dados        | Apagar galeria    | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a galeria do aparelho e mostra "Galeria apagada" (2.5). |
+| Galeria      | Galeria ›         | "Fotos {x} · Vídeos {y}"; abre Configurações › Galeria (seção 4). |
 | Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
 | Diagnóstico  | Logs do app       | Abre a tela de logs. Seção escondida até destravar (2.6).                   |
 | Sobre        | Versão            | `versionName` do build. Tocável: 5 toques destravam o Diagnóstico (2.6).    |
@@ -68,11 +72,11 @@ seguem o tempo de tela do sistema.
 
 ### 2.4 Espaço ocupado
 
-Cada item de Dados mostra quanto ocupa no aparelho o que vai ser apagado:
+Cada item de Dados mostra quanto ocupa no aparelho o que vai ser apagado (a galeria mostra o seu na linha "Galeria":
+vídeos = `gallery/videos/`, fotos = o resto da pasta da galeria):
 
 | Item            | O que é somado                                                              | Texto                              |
 |-----------------|-----------------------------------------------------------------------------|------------------------------------|
-| Apagar galeria  | Arquivos da galeria no aparelho (originais, capas, fila de envio)            | `Apaga as fotos do aparelho · 312 MB` |
 | Apagar Bíblia   | Arquivos das traduções baixadas                                               | `Apaga a Bíblia do aparelho · 8,4 MB` |
 
 - Calculado fora da thread principal ao abrir a tela e de novo depois de cada "Apagar".
@@ -90,7 +94,6 @@ aparelho e sobrevive a fechar o app e ao logout.
 
 | Item           | Diálogo                                                                                              |
 |----------------|------------------------------------------------------------------------------------------------------|
-| Apagar galeria | "Apaga a galeria do aparelho. Ela só volta a ser baixada quando você tocar em "Baixar galeria" na Galeria. Deseja continuar?" |
 | Apagar Bíblia  | "Apaga a Bíblia do aparelho. Ela só volta a ser baixada quando você tocar em baixar na Bíblia. Deseja continuar?" |
 
 Botões: "Apagar" e "Cancelar".
@@ -119,3 +122,18 @@ pelo nível (W laranja, E/A cor de erro, I verde, demais cor do texto).
 - **Copiar:** cada linha é selecionável (long press seleciona e abre o menu de copiar do sistema). A seleção
   vale por linha; para levar várias, use "Compartilhar".
 - Sem entradas: "Nenhum log".
+
+---
+
+## 4. Configurações › Galeria
+
+`GallerySettingsScreen` / `GallerySettingsViewModel`, rota `settings/gallery`. Espaço para futuras opções da galeria.
+
+| Seção         | Item                           | Comportamento |
+|---------------|--------------------------------|---------------|
+| Vídeos        | Baixar vídeos automaticamente  | Switch, desligado por padrão (`specs/gallery/spec.md` 11.3). Descrição: desligado "Somente no WiFi · {n} vídeos ({tamanho})"; ligado e faltando "{k} de {n} baixados"; completo "Somente no WiFi · {n} de {n} baixados". |
+| Armazenamento | Baixar galeria                 | Diálogo Fotos / Vídeos (galeria 3.5). |
+| Armazenamento | Apagar galeria                 | "Fotos {x} · Vídeos {y}". Diálogo "Escolha o que apagar deste aparelho." com Fotos e Vídeos marcados, cada um com o tamanho; "Apagar" desabilitado sem nenhum; só Vídeos avisa "Apagar os vídeos desliga o download automático de vídeos."; os dois avisam que a galeria só volta por "Baixar galeria". Efeito: galeria 3.3 / 3.4. Depois: "Galeria apagada" / "Fotos apagadas" / "Vídeos apagados". |
+
+Os tamanhos são medidos ao abrir e depois de cada ação; a tela principal mede de novo a cada volta (`ON_RESUME`).
+

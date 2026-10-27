@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.presentation.state
 
+import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
+
 /** A person of the filter list: tagged in [photoCount] photos on the device. */
 data class PersonRow(
     val id: Long,
@@ -25,6 +27,9 @@ data class PeopleUiState(
     val results: List<PhotoTile> = emptyList(),
     /** The people the results were computed for — what the viewer pages through. */
     val memberIds: Set<Long> = emptySet(),
+    /** "Tudo / Fotos / Vídeos": shown only when a video is on the device. */
+    val showMediaFilter: Boolean = false,
+    val mediaFilter: MediaFilter = MediaFilter.ALL,
     val hint: String? = null,
     /** The text in place of the list or the grid, when there is nothing to show. */
     val emptyText: String? = null,

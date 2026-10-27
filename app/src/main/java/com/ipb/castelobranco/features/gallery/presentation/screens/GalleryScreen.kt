@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,6 +55,7 @@ import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDia
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
+import com.ipb.castelobranco.features.gallery.presentation.components.MediaDialogActions
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
 import com.ipb.castelobranco.features.gallery.presentation.components.PeoplePickerActions
@@ -60,6 +63,8 @@ import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDownloadState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryRootUiState
+import com.ipb.castelobranco.features.gallery.presentation.state.VideoCard
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -106,6 +111,10 @@ fun GalleryScreen(
             onRetryDownload = viewModel::retryDownload,
             onDownloadWithMobileData = viewModel::downloadWithMobileData,
             onDownloadGallery = viewModel::downloadGallery,
+            videoCard = VideoCardActions(
+                onDismiss = viewModel::dismissVideoCard,
+                onAccept = viewModel::acceptVideoCard,
+            ),
             manage = RootManageActions(
                 onNewAlbum = { viewModel.openCreateAlbum(null) },
                 onOrganize = { viewModel.startOrganize(null) },
@@ -117,6 +126,9 @@ fun GalleryScreen(
     }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
 }
+
+/** "Não, obrigado" / "Baixar" on the videos card. */
+data class VideoCardActions(val onDismiss: () -> Unit = {}, val onAccept: () -> Unit = {})
 
 /** The root's management events: a new root album, and "Organizar" for the root albums. */
 data class RootManageActions(
@@ -144,6 +156,12 @@ internal fun rememberDialogActions(viewModel: GalleryViewModel): GalleryDialogAc
             onRetry = viewModel::retryPickerLoad,
             onConfirm = viewModel::savePicker,
             onDismiss = viewModel::dismissDialog,
+        ),
+        media = MediaDialogActions(
+            onToggle = viewModel::toggleDownloadOption,
+            onToggleExtra = viewModel::toggleDownloadMobileData,
+            onConfirm = viewModel::confirmDownload,
+            onUploadNow = viewModel::confirmUploadOnMobileData,
         ),
     )
 }
@@ -203,6 +221,7 @@ fun GalleryContent(
     onDownloadWithMobileData: () -> Unit,
     onDownloadGallery: () -> Unit,
     manage: RootManageActions,
+    videoCard: VideoCardActions = VideoCardActions(),
 ) {
     val download = state.download
     val canManage = isLoggedIn && state.permissions.canManage
@@ -259,6 +278,8 @@ fun GalleryContent(
                     download.isPending && !state.isOnWifi -> WaitingForWifiBanner(onDownloadWithMobileData)
                     download.isPending -> MessageBanner(PENDING_WIFI_MESSAGE)
                 }
+                if (state.showLowSpace) MessageBanner(VideoTexts.LOW_SPACE)
+                state.videoCard?.let { card -> VideoDiscoveryCard(card, videoCard) }
 
                 when {
                     state.albums.isNotEmpty() -> RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove)
@@ -336,6 +357,28 @@ private fun RootAlbumGrid(
                     onClick = { if (!state.isOrganizing) onAlbumClick(album.id) },
                     modifier = Modifier.longPressDraggableHandle(enabled = state.isOrganizing),
                 )
+            }
+        }
+    }
+}
+
+/** On the root only, above the albums, until either button is tapped — then never again. */
+@Composable
+private fun VideoDiscoveryCard(card: VideoCard, actions: VideoCardActions) {
+    Card(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Filled.Movie, contentDescription = null)
+                Text(card.title, style = MaterialTheme.typography.titleSmall)
+            }
+            Text(
+                text = VideoCard.SUBTITLE,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = actions.onDismiss) { Text(VideoCard.DISMISS_LABEL) }
+                TextButton(onClick = actions.onAccept) { Text(VideoCard.ACCEPT_LABEL) }
             }
         }
     }

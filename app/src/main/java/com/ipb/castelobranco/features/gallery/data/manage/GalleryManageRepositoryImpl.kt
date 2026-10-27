@@ -98,15 +98,21 @@ class GalleryManageRepositoryImpl @Inject constructor(
 
     override suspend fun originalForCover(photoId: Long): Result<CoverSource> {
         val local = repository.localState.value
-        local.originals[photoId]?.let { return Result.success(CoverSource(it, isTemp = false)) }
         val photo = local.index?.photos?.get(photoId)
-            ?: return Result.failure(AppError.Server(code = HTTP_NOT_FOUND))
+        if (photo?.isVideo != true) {
+            local.originals[photoId]?.let { return Result.success(CoverSource(it, isTemp = false)) }
+        }
+        photo ?: return Result.failure(AppError.Server(code = HTTP_NOT_FOUND))
+        // A video's cover is its poster, never the video file.
+        val url = if (photo.isVideo) photo.thumbnailUrl else photo.imageUrl
+        url ?: return Result.failure(AppError.Server(code = HTTP_NOT_FOUND))
+        val extension = if (photo.isVideo) POSTER_EXTENSION else photo.fileExtension()
         return try {
-            val response = api.downloadFile(photo.imageUrl)
+            val response = api.downloadFile(url)
             val body = response.body()
             if (!response.isSuccessful || body == null) return Result.failure(response.toAppError())
             val file = withContext(ioDispatcher) {
-                mediaStore.newTempFile(".${photo.fileExtension()}").also { temp ->
+                mediaStore.newTempFile(".$extension").also { temp ->
                     body.byteStream().use { input -> temp.outputStream().use { input.copyTo(it) } }
                 }
             }
@@ -226,6 +232,7 @@ class GalleryManageRepositoryImpl @Inject constructor(
     companion object {
         const val OFFLINE_MESSAGE = "Sem conexão"
         private const val HTTP_NOT_FOUND = 404
+        private const val POSTER_EXTENSION = "jpg"
         private const val EMPTY_BODY_MESSAGE = "Resposta vazia de uma escrita da galeria"
 
         fun mimeOf(file: File): String = when (file.extension.lowercase()) {

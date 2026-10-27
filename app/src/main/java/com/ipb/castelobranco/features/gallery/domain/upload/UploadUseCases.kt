@@ -6,7 +6,10 @@ import javax.inject.Inject
 class EnqueueUploadsUseCase @Inject constructor(
     private val repository: GalleryUploadRepository,
 ) {
-    suspend operator fun invoke(albumId: Long, sources: List<String>) = repository.enqueue(albumId, sources)
+    suspend operator fun invoke(albumId: Long, sources: List<String>, videosWifiOnly: Boolean = false) =
+        repository.enqueue(albumId, sources, videosWifiOnly)
+
+    suspend fun inspect(sources: List<String>): List<PickedMedia> = repository.inspect(sources)
 }
 
 class DismissUploadUseCase @Inject constructor(

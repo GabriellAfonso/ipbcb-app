@@ -7,11 +7,15 @@ import java.io.File
 interface GalleryUploadRepository {
     val items: StateFlow<List<UploadItem>>
 
+    /** The type and size of each picked file ([sources] are content URIs as strings), before copying. */
+    suspend fun inspect(sources: List<String>): List<PickedMedia>
+
     /**
-     * Copies each picked image ([sources] are content URIs as strings) into app storage, queues it
-     * and starts the queue. Returns once every copy is done.
+     * Copies each picked image or video into app storage, queues it and starts the queue. A video is
+     * checked and gets its poster here: a refused one enters the queue as failed, with the reason.
+     * [videosWifiOnly] holds the batch's videos until WiFi. Returns once every copy is done.
      */
-    suspend fun enqueue(albumId: Long, sources: List<String>)
+    suspend fun enqueue(albumId: Long, sources: List<String>, videosWifiOnly: Boolean = false)
 
     /** Removes a failed item and its file. */
     suspend fun dismiss(uploadId: String)

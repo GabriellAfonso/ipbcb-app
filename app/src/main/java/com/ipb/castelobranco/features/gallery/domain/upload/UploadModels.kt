@@ -2,8 +2,19 @@ package com.ipb.castelobranco.features.gallery.domain.upload
 
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 
+/** A picked file before it is copied: what the confirmation on mobile data needs. */
+data class PickedMedia(val source: String, val mimeType: String?, val sizeBytes: Long?) {
+    val isVideo: Boolean get() = mimeType?.startsWith(VIDEO_MIME_PREFIX) == true
+
+    private companion object {
+        const val VIDEO_MIME_PREFIX = "video/"
+    }
+}
+
+enum class UploadKind { PHOTO, VIDEO }
+
 /**
- * One picked image waiting to be sent. [uploadId] is generated once, at enqueue, and sent as the
+ * One picked image or video waiting to be sent. [uploadId] is generated once, at enqueue, and sent as the
  * `client_upload_id` of every attempt, so a retry after a lost answer never creates a second photo.
  */
 data class UploadItem(
@@ -17,13 +28,21 @@ data class UploadItem(
     /** Why it failed, for the user; set only in [UploadState.Failed]. */
     val failure: String? = null,
     val enqueuedAt: Long,
+    val kind: UploadKind = UploadKind.PHOTO,
+    /** A video's poster, made on the phone, under `gallery/uploads/`. */
+    val posterFileName: String? = null,
+    val durationMs: Long? = null,
+    /** `yyyy-MM-dd`, read from the video's metadata. */
+    val dateTaken: String? = null,
+    /** "Esperar WiFi": sent only on an unmetered network. */
+    val wifiOnly: Boolean = false,
 )
 
 enum class UploadState {
     /** Raw copy of the picked image; not prepared yet. */
     Waiting,
 
-    /** Prepared (downscaled, upright JPEG — or a GIF within limits); ready to send. */
+    /** Prepared (downscaled, upright JPEG — or a GIF within limits — or a checked video); ready to send. */
     Prepared,
 
     /** Will not be retried; stays listed until dismissed. */

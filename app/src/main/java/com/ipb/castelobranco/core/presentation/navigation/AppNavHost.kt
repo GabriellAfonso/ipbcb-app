@@ -40,8 +40,7 @@ import com.ipb.castelobranco.core.presentation.screens.CoreView
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
 import com.ipb.castelobranco.features.profile.presentation.screens.ProfileScreen
 import com.ipb.castelobranco.features.schedule.presentation.screens.MonthScheduleScreen
-import com.ipb.castelobranco.features.settings.presentation.screens.LogViewerScreen
-import com.ipb.castelobranco.features.settings.presentation.screens.SettingsScreen
+import com.ipb.castelobranco.features.settings.presentation.navigation.settingsGraph
 import com.ipb.castelobranco.features.studies.presentation.navigation.studiesGraph
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation.worshipHubGraph
 
@@ -186,16 +185,7 @@ fun AppNavHost(
                 EventDetailScreen(onBackClick = { navController.safePopBackStack() })
             }
 
-            composable(AppRoutes.SETTINGS) {
-                SettingsScreen(
-                    onBackClick = { navController.safePopBackStack() },
-                    onNavigateToLogViewer = { navController.navigate(AppRoutes.LOG_VIEWER) },
-                )
-            }
-
-            composable(AppRoutes.LOG_VIEWER) {
-                LogViewerScreen(onBackClick = { navController.safePopBackStack() })
-            }
+            settingsGraph(navController)
 
             composable(AppRoutes.PROFILE) {
                 ProfileScreen(

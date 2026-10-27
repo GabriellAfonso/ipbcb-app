@@ -25,6 +25,7 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
+import com.ipb.castelobranco.features.gallery.domain.model.GalleryVisibility
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.tags.GalleryPeople
@@ -58,6 +59,14 @@ import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiSt
 import com.ipb.castelobranco.features.gallery.presentation.state.PickerMode
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.state.toGalleryPermissions
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageChoice
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageDialogs
+import com.ipb.castelobranco.core.presentation.components.formatDiskUsage
+import com.ipb.castelobranco.features.gallery.data.work.GalleryVideoDownloadWorker
+import com.ipb.castelobranco.features.gallery.domain.upload.VideoUploadCheck
+import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryStorageUseCase
+import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryVideoSettingsUseCase
+import com.ipb.castelobranco.features.gallery.presentation.state.VideoCard
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +100,8 @@ class GalleryViewModel @Inject constructor(
     private val syncGallery: SyncGalleryUseCase,
     private val autoDownload: GalleryAutoDownloadUseCase,
     private val manage: GalleryManageUseCases,
+    private val videoSettings: GalleryVideoSettingsUseCase,
+    private val storage: GalleryStorageUseCase,
     observeAccess: ObserveAccessUseCase,
     connectivityObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
@@ -98,7 +109,17 @@ class GalleryViewModel @Inject constructor(
     @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private data class LocalView(val local: GalleryLocalState, val tree: GalleryTree?)
+    /**
+     * [tree] is what members see (undownloaded videos and the albums left with only those hidden);
+     * [fullTree] is everything, for "Organizar" and the move picker. [visibleAlbums] marks, in the full
+     * tree, the albums the visible one keeps.
+     */
+    private data class LocalView(
+        val local: GalleryLocalState,
+        val tree: GalleryTree?,
+        val fullTree: GalleryTree?,
+        val visibleAlbums: Set<Long>,
+    )
 
     /** Photos picked for a batch in one album. */
     private data class Selection(val albumId: Long, val ids: Set<Long>)
@@ -113,6 +134,9 @@ class GalleryViewModel @Inject constructor(
         val uploadProgress: Pair<Int, Int>,
     )
 
+    /** The video switch, the card, and whether the video work stopped for lack of space. */
+    private data class VideoView(val autoDownload: Boolean, val cardDismissed: Boolean, val lowSpace: Boolean)
+
     private data class ManageFlags(
         val permissions: GalleryPermissions,
         val organize: OrganizeSession?,
@@ -121,7 +145,16 @@ class GalleryViewModel @Inject constructor(
 
     /** The local copy with its tree, built once per change off the main thread. */
     private val view: StateFlow<LocalView?> = repository.localState
-        .map { local -> LocalView(local, local.index?.let(::GalleryTree)) }
+        .map { local ->
+            val index = local.index
+            val visible = index?.let { GalleryVisibility.visibleIndex(it, local.videos.keys) }
+            LocalView(
+                local = local,
+                tree = visible?.let(::GalleryTree),
+                fullTree = index?.let(::GalleryTree),
+                visibleAlbums = visible?.albums?.keys.orEmpty(),
+            )
+        }
         .flowOn(defaultDispatcher)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -160,10 +193,31 @@ class GalleryViewModel @Inject constructor(
         .map { infos -> infos.firstOrNull().toDownloadState() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryDownloadState())
 
-    private val uploadProgress: StateFlow<Pair<Int, Int>> = workManager
-        .getWorkInfosForUniqueWorkFlow(GalleryUploadWorker.WORK_NAME)
-        .map { infos -> infos.firstOrNull { it.state == WorkInfo.State.RUNNING }.toUploadProgress() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0 to 0)
+    private val uploadProgress: StateFlow<Pair<Int, Int>> = combine(
+        workManager.getWorkInfosForUniqueWorkFlow(GalleryUploadWorker.WORK_NAME),
+        workManager.getWorkInfosForUniqueWorkFlow(GalleryUploadWorker.WIFI_WORK_NAME),
+    ) { any, wifi ->
+        (any + wifi).firstOrNull { it.state == WorkInfo.State.RUNNING }.toUploadProgress()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0 to 0)
+
+    private val videoView: StateFlow<VideoView> = combine(
+        videoSettings.autoDownload,
+        videoSettings.cardDismissed,
+        workManager.getWorkInfosForUniqueWorkFlow(GalleryVideoDownloadWorker.WORK_NAME),
+    ) { auto, dismissed, infos ->
+        val info = infos.firstOrNull()
+        val lowSpace = info?.state == WorkInfo.State.FAILED &&
+            info.outputData.getBoolean(GalleryVideoDownloadWorker.KEY_LOW_SPACE, false)
+        VideoView(autoDownload = auto, cardDismissed = dismissed, lowSpace = auto && lowSpace)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, VideoView(autoDownload = false, cardDismissed = true, false))
+
+    private val _videoMuted = MutableStateFlow(true)
+
+    /**
+     * Videos start muted. Once the sound is turned on, the next videos start with it while the gallery
+     * stays open; this ViewModel lives as long as the gallery graph, so the next visit starts muted.
+     */
+    val videoMuted: StateFlow<Boolean> = _videoMuted.asStateFlow()
 
     private val manageView: StateFlow<ManageView> = combine(
         combine(permissions, organize, selection, ::ManageFlags),
@@ -183,14 +237,18 @@ class GalleryViewModel @Inject constructor(
         repository.syncStatus,
         downloadState,
         isOnWifi,
-        manageView,
-    ) { view, status, download, wifi, manageView ->
+        combine(manageView, videoView, ::Pair),
+    ) { view, status, download, wifi, (manageView, videoView) ->
         val index = view?.local?.index
         val isPaused = status.isPaused && index == null
         val isLoading = !isPaused && (view == null || (index == null && (!status.hasAnswered || status.isRunning)))
         val error = status.lastError.takeIf { index == null && !isLoading && !isPaused }
         val session = manageView.organize?.takeIf { it.albumId == null }
-        val albums = view?.tree?.roots()?.map { GalleryUiMapper.albumTile(it, view.local) }.orEmpty()
+        val albums = if (session != null) {
+            view?.fullTree?.roots()?.map { GalleryUiMapper.albumTile(it, view.local, view.visibleAlbums) }
+        } else {
+            view?.tree?.roots()?.map { GalleryUiMapper.albumTile(it, view.local) }
+        }.orEmpty()
         GalleryRootUiState(
             isLoading = isLoading,
             isPaused = isPaused,
@@ -204,8 +262,18 @@ class GalleryViewModel @Inject constructor(
             permissions = manageView.permissions,
             isOrganizing = session != null,
             isSavingOrder = session?.isSaving == true,
+            videoCard = videoCard(view?.local, videoView).takeIf { session == null },
+            showLowSpace = videoView.lowSpace,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryRootUiState())
+
+    private fun videoCard(local: GalleryLocalState?, video: VideoView): VideoCard? {
+        if (local == null || video.autoDownload || video.cardDismissed) return null
+        val missing = local.index?.photos?.values.orEmpty().filter { it.isVideo && it.id !in local.videos }
+        if (missing.isEmpty()) return null
+        val bytes = missing.sumOf { it.fileSize ?: 0L }
+        return VideoCard(missing.size, bytes.takeIf { it > 0 }?.let(::formatDiskUsage))
+    }
 
     private val albumStates = mutableMapOf<Long, StateFlow<AlbumUiState>>()
     /** Keyed by the back stack entry that opened the viewer: each opening starts on the tapped photo. */
@@ -217,7 +285,7 @@ class GalleryViewModel @Inject constructor(
         // "Organizar" recusado: a lista é refeita quando o sync trouxer a ordem do servidor.
         viewModelScope.launch {
             view.filterNotNull().collect { view ->
-                val tree = view.tree ?: return@collect
+                val tree = view.fullTree ?: return@collect
                 organize.update { session ->
                     if (session?.awaitingRefresh != true) return@update session
                     if (session.isUntouched) {
@@ -241,7 +309,13 @@ class GalleryViewModel @Inject constructor(
     fun albumState(albumId: Long): StateFlow<AlbumUiState> = albumStates.getOrPut(albumId) {
         var wasPresent = false
         combine(view.filterNotNull(), manageView) { view, manageView ->
-            val base = GalleryUiMapper.albumState(albumId, view.local, view.tree)
+            // "Organizar" here lists everything, so the saved order names every item.
+            val organizing = manageView.organize?.albumId == albumId
+            val base = if (organizing) {
+                GalleryUiMapper.albumState(albumId, view.local, view.fullTree, view.visibleAlbums)
+            } else {
+                GalleryUiMapper.albumState(albumId, view.local, view.tree)
+            }
             if (base.isRemoved && wasPresent && albumId !in selfRemovedAlbums) post(GalleryMessage.AlbumRemoved)
             if (!base.isLoading && !base.isRemoved) wasPresent = true
             decorate(albumId, base, manageView, view.local.index?.photos.orEmpty())
@@ -267,10 +341,64 @@ class GalleryViewModel @Inject constructor(
 
     fun retrySync() = sync()
 
-    /** "Baixar galeria" after the gallery was deleted from settings. */
+    /** "Baixar galeria" after the gallery was deleted: the same Fotos / Vídeos dialog as in settings. */
     fun downloadGallery() {
-        viewModelScope.launch { autoDownload.downloadAfterDelete() }
+        viewModelScope.launch {
+            val missing = storage.missing()
+            _dialog.value = GalleryDialogState.Download(
+                missing = missing,
+                autoDownloadVideos = videoView.value.autoDownload,
+                choice = GalleryStorageDialogs.initialDownload(missing),
+            )
+        }
     }
+
+    /** [index] of the option: 0 = Fotos, 1 = Vídeos. */
+    fun toggleDownloadOption(index: Int) = updateDownload { choice ->
+        if (index == 0) choice.copy(photos = !choice.photos) else choice.copy(videos = !choice.videos)
+    }
+
+    fun toggleDownloadMobileData() = updateDownload { it.copy(useMobileData = !it.useMobileData) }
+
+    fun confirmDownload() {
+        val download = _dialog.value as? GalleryDialogState.Download ?: return
+        val dialog = download.dialog
+        if (!dialog.canConfirm) return
+        _dialog.value = null
+        viewModelScope.launch {
+            storage.download(
+                photos = dialog.options[0].let { it.checked && it.enabled },
+                videos = dialog.options[1].let { it.checked && it.enabled },
+                useMobileData = dialog.extra?.checked == true,
+            )
+        }
+    }
+
+    private fun updateDownload(transform: (GalleryStorageChoice) -> GalleryStorageChoice) {
+        _dialog.update { current ->
+            if (current is GalleryDialogState.Download) current.copy(choice = transform(current.choice)) else current
+        }
+    }
+
+    // region videos
+
+    fun setVideoMuted(muted: Boolean) {
+        _videoMuted.value = muted
+    }
+
+    /** "Não, obrigado" on the card: it never comes back; the switch lives in settings. */
+    fun dismissVideoCard() {
+        viewModelScope.launch { videoSettings.dismissCard() }
+        post(GalleryMessage.Text(VideoTexts.CARD_DISMISSED))
+    }
+
+    /** "Baixar" on the card: it never comes back, and the switch turns on. */
+    fun acceptVideoCard() {
+        viewModelScope.launch { videoSettings.acceptCard() }
+        if (!isOnWifi.value) post(GalleryMessage.Text(VideoTexts.WAITING_WIFI))
+    }
+
+    // endregion
 
     fun downloadWithMobileData() {
         autoDownload.enqueueAnyNetwork()
@@ -357,21 +485,21 @@ class GalleryViewModel @Inject constructor(
     // region move
 
     fun openMoveAlbum(albumId: Long) {
-        val tree = tree() ?: return
+        val tree = fullTree() ?: return
         _dialog.value = GalleryDialogState.MovePicker(
-            MovePickerState(MoveSubject.Album(albumId), tree.moveTargetsForAlbum(albumId))
+            MovePickerState(MoveSubject.Album(albumId), tree.moveTargetsForAlbum(albumId).markOnDevice())
         )
     }
 
     /** The photos selected in [albumId], or the single [photoId] shown in the viewer. */
     fun openMovePhotos(albumId: Long, photoId: Long? = null) {
-        val tree = tree() ?: return
+        val tree = fullTree() ?: return
         val ids = photoId?.let(::listOf) ?: selectedIds(albumId)
         if (ids.isEmpty()) return
         _dialog.value = GalleryDialogState.MovePicker(
             MovePickerState(
                 MoveSubject.Photos(albumId, ids, fromViewer = photoId != null),
-                tree.moveTargetsForPhotos(albumId),
+                tree.moveTargetsForPhotos(albumId).markOnDevice(),
             )
         )
     }
@@ -410,7 +538,8 @@ class GalleryViewModel @Inject constructor(
     // region confirmations: delete and remove cover
 
     fun askDeleteAlbum(albumId: Long) {
-        val tree = tree() ?: return
+        // Counts what goes to the trash, undownloaded videos included.
+        val tree = fullTree() ?: return
         val album = tree.album(albumId) ?: return
         confirm(
             ConfirmAction.DeleteAlbum(albumId),
@@ -482,6 +611,7 @@ class GalleryViewModel @Inject constructor(
             is GalleryDialogState.MovePicker -> current.picker.isSaving
             is GalleryDialogState.Confirm -> current.confirm.isRunning
             is GalleryDialogState.PeoplePicker -> current.picker.isSaving
+            is GalleryDialogState.Download, is GalleryDialogState.UploadOnMobileData -> false
             null -> false
         }
         if (!busy) _dialog.value = null
@@ -726,7 +856,7 @@ class GalleryViewModel @Inject constructor(
 
     /** [albumId] `null` = the root. Closes a selection in progress. */
     fun startOrganize(albumId: Long?) {
-        val tree = tree() ?: return
+        val tree = fullTree() ?: return
         selection.value = null
         organize.value = OrganizeSession.from(albumId, tree)
     }
@@ -751,7 +881,7 @@ class GalleryViewModel @Inject constructor(
                 }
                 ReorderResult.Unchanged -> organize.value = null
                 ReorderResult.OrderChanged -> {
-                    val tree = tree()
+                    val tree = fullTree()
                     organize.value = (tree?.let { OrganizeSession.from(session.albumId, it) } ?: session)
                         .copy(isSaving = false, awaitingRefresh = true)
                     post(GalleryMessage.OrderChanged)
@@ -768,16 +898,47 @@ class GalleryViewModel @Inject constructor(
 
     // region uploads
 
-    /** [sources] are the picked images' URIs; they are copied into the app before this returns. */
+    /**
+     * [sources] are the picked images' and videos' URIs. A batch with videos picked off WiFi asks
+     * first ([GalleryDialogState.UploadOnMobileData]); otherwise everything is copied and queued.
+     */
     fun addPhotos(albumId: Long, sources: List<String>) {
         if (sources.isEmpty()) return
-        copying.update { it + albumId }
         viewModelScope.launch {
-            try {
-                manage.enqueueUploads(albumId, sources)
-            } finally {
-                copying.update { it - albumId }
+            val videos = if (isOnWifi.value) {
+                emptyList()
+            } else {
+                // Too big ones will be refused anyway: they are not sent on any network.
+                manage.enqueueUploads.inspect(sources).filter { media ->
+                    media.isVideo && (media.sizeBytes ?: 0L) <= VideoUploadCheck.MAX_BYTES
+                }
             }
+            if (videos.isEmpty()) {
+                enqueue(albumId, sources, videosWifiOnly = false)
+            } else {
+                _dialog.value = GalleryDialogState.UploadOnMobileData(
+                    albumId = albumId,
+                    sources = sources,
+                    videoCount = videos.size,
+                    videoBytes = videos.sumOf { it.sizeBytes ?: 0L },
+                )
+            }
+        }
+    }
+
+    /** The answer to the mobile-data question: [waitForWifi] holds the batch's videos until WiFi. */
+    fun confirmUploadOnMobileData(waitForWifi: Boolean) {
+        val pending = _dialog.value as? GalleryDialogState.UploadOnMobileData ?: return
+        _dialog.value = null
+        viewModelScope.launch { enqueue(pending.albumId, pending.sources, videosWifiOnly = waitForWifi) }
+    }
+
+    private suspend fun enqueue(albumId: Long, sources: List<String>, videosWifiOnly: Boolean) {
+        copying.update { it + albumId }
+        try {
+            manage.enqueueUploads(albumId, sources, videosWifiOnly)
+        } finally {
+            copying.update { it - albumId }
         }
     }
 
@@ -826,6 +987,16 @@ class GalleryViewModel @Inject constructor(
     }
 
     private fun tree(): GalleryTree? = view.value?.tree
+
+    private fun fullTree(): GalleryTree? = view.value?.fullTree
+
+    /** Albums a member does not see are listed dimmed. */
+    private fun List<TreeTarget>.markOnDevice(): List<TreeTarget> {
+        val visible = view.value?.visibleAlbums ?: return this
+        return map { target ->
+            if (target.albumId == null || target.albumId in visible) target else target.copy(onDevice = false)
+        }
+    }
 
     private fun photo(photoId: Long): GalleryPhoto? = view.value?.local?.index?.photos?.get(photoId)
 
@@ -876,7 +1047,7 @@ class GalleryViewModel @Inject constructor(
             val tree = view.tree ?: return@combine PhotoViewerUiState(isLoading = true)
             val photos = when (source) {
                 is ViewerSource.Album -> tree.photosOf(source.albumId)
-                is ViewerSource.People -> GalleryPeople.photosWithAll(tree, source.memberIds)
+                is ViewerSource.People -> GalleryPeople.matching(tree, source.memberIds, source.filter)
             }
             val ids = photos.map { it.id }
             var index = ids.indexOf(currentId)

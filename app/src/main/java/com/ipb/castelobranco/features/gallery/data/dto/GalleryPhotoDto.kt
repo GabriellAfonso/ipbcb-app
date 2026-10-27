@@ -23,6 +23,13 @@ data class GalleryPhotoDto(
     val position: Int = 0,
     /** The people tagged in the photo, by name then id; `[]` when untagged. */
     val members: List<GalleryPhotoMemberDto> = emptyList(),
+    /** `photo` or `video`; absent in snapshots written before videos. */
+    @SerialName("media_type")
+    val mediaType: String = "photo",
+    @SerialName("duration_ms")
+    val durationMs: Long? = null,
+    @SerialName("file_size")
+    val fileSize: Long? = null,
 )
 
 @Serializable

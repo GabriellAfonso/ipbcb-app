@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.features.gallery.domain.usecase
 
 import com.ipb.castelobranco.core.domain.error.AppError
+import com.ipb.castelobranco.features.gallery.domain.FakeGalleryMediaSettings
 import com.ipb.castelobranco.features.gallery.domain.download.GalleryDownloadScheduler
+import com.ipb.castelobranco.features.gallery.domain.download.GalleryVideoDownloadScheduler
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import io.mockk.coEvery
@@ -16,13 +18,17 @@ class SyncGalleryUseCaseTest {
 
     private lateinit var repository: GalleryRepository
     private lateinit var scheduler: GalleryDownloadScheduler
+    private lateinit var videoScheduler: GalleryVideoDownloadScheduler
+    private lateinit var settings: FakeGalleryMediaSettings
     private lateinit var useCase: SyncGalleryUseCase
 
     @Before
     fun setup() {
         repository = mockk()
         scheduler = mockk(relaxed = true)
-        useCase = SyncGalleryUseCase(repository, scheduler)
+        videoScheduler = mockk(relaxed = true)
+        settings = FakeGalleryMediaSettings()
+        useCase = SyncGalleryUseCase(repository, scheduler, videoScheduler, settings)
     }
 
     @Test
@@ -41,6 +47,7 @@ class SyncGalleryUseCaseTest {
         useCase()
 
         verify(exactly = 0) { scheduler.enqueueWifiOnly(any()) }
+        verify(exactly = 0) { videoScheduler.enqueue(any()) }
     }
 
     @Test
@@ -51,6 +58,35 @@ class SyncGalleryUseCaseTest {
         )
 
         useCase()
+        useCase()
+
+        verify(exactly = 0) { scheduler.enqueueWifiOnly(any()) }
+    }
+
+    @Test
+    fun `missing videos with the switch off - never queued`() = runTest {
+        coEvery { repository.sync() } returns GallerySyncResult.Synced(missingOriginals = 0, missingVideos = 2)
+
+        useCase()
+
+        verify(exactly = 0) { videoScheduler.enqueue(any()) }
+    }
+
+    @Test
+    fun `missing videos with the switch on - queued keeping a running video download`() = runTest {
+        settings.autoDownloadVideos.value = true
+        coEvery { repository.sync() } returns GallerySyncResult.Synced(missingOriginals = 0, missingVideos = 2)
+
+        useCase()
+
+        verify(exactly = 1) { videoScheduler.enqueue(replaceExisting = false) }
+    }
+
+    @Test
+    fun `photo downloads paused - missing photos are not queued`() = runTest {
+        settings.photoDownloadsPaused.value = true
+        coEvery { repository.sync() } returns GallerySyncResult.Synced(missingOriginals = 4)
+
         useCase()
 
         verify(exactly = 0) { scheduler.enqueueWifiOnly(any()) }

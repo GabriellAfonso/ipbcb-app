@@ -6,6 +6,7 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
+import com.ipb.castelobranco.features.gallery.domain.repository.MediaUsage
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,4 +35,10 @@ class GalleryRepositoryImpl @Inject constructor(
     override suspend fun setSyncPaused(paused: Boolean) = syncer.setPaused(paused)
 
     override suspend fun diskUsageBytes(): Long = syncer.diskUsageBytes()
+
+    override suspend fun usage(): MediaUsage = syncer.usage().let { (photos, videos) -> MediaUsage(photos, videos) }
+
+    override suspend fun clearPhotos() = syncer.clearPhotos()
+
+    override suspend fun clearVideos() = syncer.clearVideos()
 }

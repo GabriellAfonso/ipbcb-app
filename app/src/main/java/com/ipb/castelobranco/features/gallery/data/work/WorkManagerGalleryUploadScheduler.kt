@@ -32,8 +32,22 @@ class WorkManagerGalleryUploadScheduler @Inject constructor(
         workManager.enqueueUniqueWork(GalleryUploadWorker.WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
+    /** `KEEP`: one waiting run serves every video held until WiFi. */
+    override fun enqueueWifiOnly() {
+        val request = OneTimeWorkRequestBuilder<GalleryUploadWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.UNMETERED)
+                    .build()
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_SECONDS, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueueUniqueWork(GalleryUploadWorker.WIFI_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+    }
+
     override fun cancel() {
         workManager.cancelUniqueWork(GalleryUploadWorker.WORK_NAME)
+        workManager.cancelUniqueWork(GalleryUploadWorker.WIFI_WORK_NAME)
     }
 
     private companion object {

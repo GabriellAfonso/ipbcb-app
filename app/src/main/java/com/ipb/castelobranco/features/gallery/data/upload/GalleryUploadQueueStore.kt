@@ -36,16 +36,24 @@ class GalleryUploadQueueStore @Inject constructor(
         mutate { it }
     }
 
-    /** The oldest item still to be sent, if any. */
-    suspend fun nextPending(): UploadItem? {
+    /** The oldest item still to be sent, if any; "Esperar WiFi" videos only when [unmetered]. */
+    suspend fun nextPending(unmetered: Boolean = true): UploadItem? {
         load()
-        return _items.value.firstOrNull { it.state != UploadState.Failed }
+        return _items.value.firstOrNull { it.isSendable(unmetered) }
     }
 
-    suspend fun pendingCount(): Int {
+    suspend fun pendingCount(unmetered: Boolean = true): Int {
         load()
-        return _items.value.count { it.state != UploadState.Failed }
+        return _items.value.count { it.isSendable(unmetered) }
     }
+
+    /** Items still waiting for WiFi. */
+    suspend fun wifiOnlyCount(): Int {
+        load()
+        return _items.value.count { it.state != UploadState.Failed && it.wifiOnly }
+    }
+
+    private fun UploadItem.isSendable(unmetered: Boolean) = state != UploadState.Failed && (unmetered || !wifiOnly)
 
     suspend fun append(item: UploadItem) {
         mutate { it + item }
@@ -78,7 +86,10 @@ class GalleryUploadQueueStore @Inject constructor(
     /** Drops the item and deletes its file. */
     suspend fun dismiss(uploadId: String) {
         mutate { items ->
-            items.firstOrNull { it.uploadId == uploadId }?.let { mediaStore.uploadFile(it.fileName).delete() }
+            items.firstOrNull { it.uploadId == uploadId }?.let { item ->
+                if (item.fileName.isNotEmpty()) mediaStore.uploadFile(item.fileName).delete()
+                item.posterFileName?.let { mediaStore.uploadFile(it).delete() }
+            }
             items.filterNot { it.uploadId == uploadId }
         }
     }

@@ -4,6 +4,20 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
 
+/** "Tudo / Fotos / Vídeos" in the filter. */
+enum class MediaFilter {
+    ALL,
+    PHOTOS,
+    VIDEOS,
+    ;
+
+    fun accepts(photo: GalleryPhoto): Boolean = when (this) {
+        ALL -> true
+        PHOTOS -> !photo.isVideo
+        VIDEOS -> photo.isVideo
+    }
+}
+
 /** A person tagged in at least one photo on the device, with how many. */
 data class TaggedPerson(val id: Long, val name: String, val photoCount: Int)
 
@@ -28,11 +42,17 @@ object GalleryPeople {
     }
 
     /** The photos in which every one of [memberIds] is tagged, in tree order; none for an empty set. */
-    fun photosWithAll(tree: GalleryTree, memberIds: Set<Long>): List<GalleryPhoto> {
-        if (memberIds.isEmpty()) return emptyList()
+    fun photosWithAll(tree: GalleryTree, memberIds: Set<Long>): List<GalleryPhoto> =
+        matching(tree, memberIds, MediaFilter.ALL)
+
+    /**
+     * The items with every one of [memberIds] (AND) that [filter] accepts, in tree order. With nobody
+     * chosen, every item of the [filter]'s type — none for [MediaFilter.ALL].
+     */
+    fun matching(tree: GalleryTree, memberIds: Set<Long>, filter: MediaFilter): List<GalleryPhoto> {
+        if (memberIds.isEmpty() && filter == MediaFilter.ALL) return emptyList()
         return tree.allPhotosInTreeOrder().filter { photo ->
-            val tagged = photo.members.mapTo(HashSet()) { it.id }
-            tagged.containsAll(memberIds)
+            filter.accepts(photo) && photo.members.mapTo(HashSet()) { it.id }.containsAll(memberIds)
         }
     }
 

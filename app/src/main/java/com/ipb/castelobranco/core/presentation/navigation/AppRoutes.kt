@@ -34,6 +34,7 @@ object AppRoutes {
     const val HYMNAL_GRAPH      = "graph/hymnal"
     const val BIBLE_GRAPH       = "graph/bible"
     const val STUDIES_GRAPH     = "graph/studies"
+    const val SETTINGS_GRAPH    = "graph/settings"
 
     // Bible reader opened at a passage from another feature (doctrine proof texts). Registered in bibleGraph.
     const val BIBLE_PASSAGE_BOOK    = "book"

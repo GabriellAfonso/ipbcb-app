@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.MediaTypesDialog
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,9 +95,35 @@ fun GalleryDialogHost(dialog: GalleryDialogState?, actions: GalleryDialogActions
         is GalleryDialogState.MovePicker -> MoveTargetSheet(dialog.picker, actions.onChooseTarget, actions.onDismiss)
         is GalleryDialogState.Confirm -> ConfirmDialog(dialog.confirm, actions.onConfirm, actions.onDismiss)
         is GalleryDialogState.PeoplePicker -> PeoplePickerSheet(dialog.picker, actions.picker)
+        is GalleryDialogState.Download -> MediaTypesDialog(
+            state = dialog.dialog,
+            onToggle = actions.media.onToggle,
+            onToggleExtra = actions.media.onToggleExtra,
+            onConfirm = actions.media.onConfirm,
+            onDismiss = actions.onDismiss,
+        )
+        is GalleryDialogState.UploadOnMobileData -> AlertDialog(
+            onDismissRequest = actions.onDismiss,
+            text = { Text(VideoTexts.mobileDataQuestion(dialog.videoCount, dialog.videoBytes)) },
+            confirmButton = {
+                TextButton(onClick = { actions.media.onUploadNow(false) }) { Text(VideoTexts.SEND_LABEL) }
+            },
+            dismissButton = {
+                TextButton(onClick = { actions.media.onUploadNow(true) }) { Text(VideoTexts.WAIT_WIFI_LABEL) }
+            },
+        )
         null -> Unit
     }
 }
+
+/** "Baixar galeria" (by type) and the mobile-data question of an upload with videos. */
+data class MediaDialogActions(
+    val onToggle: (index: Int) -> Unit = {},
+    val onToggleExtra: () -> Unit = {},
+    val onConfirm: () -> Unit = {},
+    /** `true` = "Esperar WiFi" for the videos. */
+    val onUploadNow: (waitForWifi: Boolean) -> Unit = {},
+)
 
 /** The events of every gallery dialog. */
 data class GalleryDialogActions(
@@ -107,6 +135,7 @@ data class GalleryDialogActions(
     val onConfirm: () -> Unit,
     val onDismiss: () -> Unit,
     val picker: PeoplePickerActions = PeoplePickerActions({}, {}, {}, {}, onDismiss),
+    val media: MediaDialogActions = MediaDialogActions(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -220,7 +249,8 @@ private const val ROOT_KEY = -1L
 @Composable
 private fun MoveTargetRow(target: TreeTarget, enabled: Boolean, onClick: () -> Unit) {
     Text(
-        text = target.name,
+        // An album members do not see (only undownloaded videos in it) is still a valid destination.
+        text = if (target.onDevice) target.name else "${target.name} · ${VideoTexts.NOT_ON_DEVICE}",
         style = MaterialTheme.typography.bodyLarge,
         color = if (target.selectable) MaterialTheme.colorScheme.onSurface else Color.Gray,
         maxLines = 1,

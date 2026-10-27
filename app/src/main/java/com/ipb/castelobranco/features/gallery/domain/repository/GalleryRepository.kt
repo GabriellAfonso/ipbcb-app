@@ -32,4 +32,15 @@ interface GalleryRepository {
 
     /** Bytes the gallery files take on disk — what [clear] frees. */
     suspend fun diskUsageBytes(): Long
+
+    /** Bytes of photos (everything but videos) and of videos. */
+    suspend fun usage(): MediaUsage
+
+    /** Deletes the photo originals only; the index, covers and videos stay. */
+    suspend fun clearPhotos()
+
+    /** Deletes every video file, complete or partial; the index and photos stay. */
+    suspend fun clearVideos()
 }
+
+data class MediaUsage(val photoBytes: Long, val videoBytes: Long)

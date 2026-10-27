@@ -24,4 +24,10 @@ object GalleryEndpoints {
     const val PART_ALBUM_ID = "album_id"
     const val PART_IMAGE = "image"
     const val PART_CLIENT_UPLOAD_ID = "client_upload_id"
+    const val PART_VIDEO = "video"
+    const val PART_POSTER = "poster"
+    const val PART_DURATION_MS = "duration_ms"
+    const val PART_DATE_TAKEN = "date_taken"
+
+    const val HEADER_RANGE = "Range"
 }

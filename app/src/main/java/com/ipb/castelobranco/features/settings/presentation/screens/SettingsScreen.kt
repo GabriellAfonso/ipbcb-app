@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cake
@@ -39,13 +40,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.ipb.castelobranco.BuildConfig
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.presentation.components.rememberNotificationAccessRequest
-import com.ipb.castelobranco.features.settings.presentation.components.withDiskUsage
+import com.ipb.castelobranco.core.presentation.components.formatDiskUsage
+import com.ipb.castelobranco.core.presentation.components.withDiskUsage
+import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.ResetAction
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.SettingsViewModel
 
@@ -54,9 +59,13 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {},
     onNavigateToLogViewer: () -> Unit = {},
+    onNavigateToGallery: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Back from Configurações › Galeria: the sizes may have changed.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshDiskUsage() }
 
     val requestNotificationAccess = rememberNotificationAccessRequest()
 
@@ -78,14 +87,13 @@ fun SettingsScreen(
             if (!uiState.birthdayNotifications) requestNotificationAccess()
             viewModel.toggleBirthdayNotifications()
         },
-        onRequestResetGallery        = { viewModel.requestReset(ResetAction.GALLERY) },
+        onOpenGallery                = onNavigateToGallery,
         onRequestResetBible          = { viewModel.requestReset(ResetAction.BIBLE) },
         pendingConfirmation          = uiState.pendingConfirmation,
         onConfirmReset               = { viewModel.confirmReset() },
         onDismissConfirmation        = { viewModel.dismissConfirmation() },
-        galleryCleared               = uiState.galleryCleared,
         bibleCleared                 = uiState.bibleCleared,
-        galleryBytes                 = uiState.galleryBytes,
+        galleryUsage                 = uiState.galleryUsage,
         bibleBytes                   = uiState.bibleBytes,
         onNavigateToLogViewer        = onNavigateToLogViewer,
         showDiagnostics              = uiState.showDiagnostics,
@@ -102,14 +110,13 @@ fun SettingsContent(
     onToggleKeepScreenOn: () -> Unit = {},
     birthdayNotifications: Boolean = true,
     onToggleBirthdayNotifications: () -> Unit = {},
-    onRequestResetGallery: () -> Unit,
+    onOpenGallery: () -> Unit,
     onRequestResetBible: () -> Unit,
     pendingConfirmation: ResetAction?,
     onConfirmReset: () -> Unit,
     onDismissConfirmation: () -> Unit,
-    galleryCleared: Boolean,
     bibleCleared: Boolean,
-    galleryBytes: Long? = null,
+    galleryUsage: GalleryUsage? = null,
     bibleBytes: Long? = null,
     onNavigateToLogViewer: () -> Unit = {},
     showDiagnostics: Boolean = false,
@@ -117,9 +124,6 @@ fun SettingsContent(
 ) {
     if (pendingConfirmation != null) {
         val (title, message) = when (pendingConfirmation) {
-            ResetAction.GALLERY -> "Apagar galeria" to
-                "Apaga a galeria do aparelho. Ela só volta a ser baixada quando você tocar em " +
-                "\"Baixar galeria\" na Galeria. Deseja continuar?"
             ResetAction.BIBLE   -> "Apagar Bíblia" to
                 "Apaga a Bíblia do aparelho. Ela só volta a ser baixada quando você tocar em baixar " +
                 "na Bíblia. Deseja continuar?"
@@ -176,19 +180,16 @@ fun SettingsContent(
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-            SettingsSectionHeader("Dados")
-            SettingsActionRow(
+            SettingsNavigationRow(
                 icon        = Icons.Filled.Image,
-                title       = "Apagar galeria",
-                description = if (galleryCleared) {
-                    "Galeria apagada"
-                } else {
-                    withDiskUsage("Apaga as fotos do aparelho", galleryBytes)
-                },
-                tint        = MaterialTheme.colorScheme.error,
-                done        = galleryCleared,
-                onClick     = onRequestResetGallery,
+                title       = "Galeria",
+                description = galleryUsageText(galleryUsage),
+                onClick     = onOpenGallery,
             )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            SettingsSectionHeader("Dados")
             SettingsActionRow(
                 icon        = Icons.Filled.AutoStories,
                 title       = "Apagar Bíblia",
@@ -227,8 +228,37 @@ fun SettingsContent(
     }
 }
 
+/** "Fotos 320 MB · Vídeos 1,2 GB"; plain "Fotos e vídeos" while measuring. */
+internal fun galleryUsageText(usage: GalleryUsage?): String =
+    if (usage == null) {
+        "Fotos e vídeos"
+    } else {
+        "Fotos ${formatDiskUsage(usage.photoBytes)} · Vídeos ${formatDiskUsage(usage.videoBytes)}"
+    }
+
+/** A row that opens another settings screen. */
 @Composable
-private fun SettingsSectionHeader(title: String) {
+private fun SettingsNavigationRow(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        modifier          = Modifier.clickable(onClick = onClick),
+        headlineContent   = { Text(title) },
+        supportingContent = { Text(description) },
+        leadingContent    = {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        trailingContent   = {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        },
+    )
+}
+
+@Composable
+internal fun SettingsSectionHeader(title: String) {
     Text(
         text       = title,
         style      = MaterialTheme.typography.labelMedium,
@@ -278,7 +308,7 @@ private fun ThemeModeRow(
 }
 
 @Composable
-private fun SettingsSwitchRow(
+internal fun SettingsSwitchRow(
     icon: ImageVector,
     title: String,
     description: String,
@@ -302,7 +332,7 @@ private fun SettingsSwitchRow(
 }
 
 @Composable
-private fun SettingsActionRow(
+internal fun SettingsActionRow(
     icon: ImageVector,
     title: String,
     description: String,

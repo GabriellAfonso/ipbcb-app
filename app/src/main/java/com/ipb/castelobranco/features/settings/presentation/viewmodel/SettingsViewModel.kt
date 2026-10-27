@@ -3,10 +3,10 @@ package com.ipb.castelobranco.features.settings.presentation.viewmodel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.domain.gallery.GalleryStoragePort
+import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.DeleteBibleUseCase
-import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
-import com.ipb.castelobranco.features.gallery.domain.usecase.DeleteGalleryUseCase
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.features.settings.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,17 +21,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class ResetAction { GALLERY, BIBLE }
+/** What "Dados" can delete from here; the gallery's own options live in Configurações › Galeria. */
+enum class ResetAction { BIBLE }
 
 data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
     val birthdayNotifications: Boolean = true,
     val keepScreenOn: Boolean = true,
     val pendingConfirmation: ResetAction? = null,
-    val galleryCleared: Boolean = false,
     val bibleCleared: Boolean = false,
-    /** Bytes on disk; `null` while still being measured. */
-    val galleryBytes: Long? = null,
+    /** Bytes on disk per type; `null` while still being measured. */
+    val galleryUsage: GalleryUsage? = null,
     val bibleBytes: Long? = null,
     /** "Logs do app" stays hidden until "Versão" is tapped [DIAGNOSTICS_UNLOCK_TAPS] times. */
     val showDiagnostics: Boolean = false,
@@ -41,18 +41,20 @@ const val DIAGNOSTICS_UNLOCK_TAPS = 5
 
 private data class ExtraState(
     val pendingConfirmation: ResetAction? = null,
-    val galleryCleared: Boolean = false,
     val bibleCleared: Boolean = false,
-    val galleryBytes: Long? = null,
+    val galleryUsage: GalleryUsage? = null,
     val bibleBytes: Long? = null,
     val versionTaps: Int = 0,
 )
 
+/**
+ * The main settings screen. The gallery is reached only through [GalleryStoragePort] (core): features
+ * never import each other.
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
-    private val galleryRepository: GalleryRepository,
-    private val deleteGallery: DeleteGalleryUseCase,
+    private val galleryStorage: GalleryStoragePort,
     private val deleteBible: DeleteBibleUseCase,
     private val bibleRepository: BibleRepository,
 ) : ViewModel() {
@@ -74,9 +76,8 @@ class SettingsViewModel @Inject constructor(
             birthdayNotifications = birthdayNotif,
             keepScreenOn = keepScreenOn,
             pendingConfirmation = extra.pendingConfirmation,
-            galleryCleared = extra.galleryCleared,
             bibleCleared = extra.bibleCleared,
-            galleryBytes = extra.galleryBytes,
+            galleryUsage = extra.galleryUsage,
             bibleBytes = extra.bibleBytes,
             showDiagnostics = extra.versionTaps >= DIAGNOSTICS_UNLOCK_TAPS,
         )
@@ -106,10 +107,6 @@ class SettingsViewModel @Inject constructor(
         _extra.update { it.copy(pendingConfirmation = null) }
         viewModelScope.launch {
             when (action) {
-                ResetAction.GALLERY -> {
-                    deleteGallery()
-                    _extra.update { it.copy(galleryCleared = true) }
-                }
                 ResetAction.BIBLE -> {
                     deleteBible()
                     _extra.update { it.copy(bibleCleared = true) }
@@ -119,11 +116,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun refreshDiskUsage() {
+    /** Also on every return to the screen: the gallery screen may have deleted or downloaded media. */
+    fun refreshDiskUsage() {
         viewModelScope.launch {
-            val gallery = galleryRepository.diskUsageBytes()
+            val gallery = galleryStorage.usage()
             val bible = bibleRepository.diskUsageBytes()
-            _extra.update { it.copy(galleryBytes = gallery, bibleBytes = bible) }
+            _extra.update { it.copy(galleryUsage = gallery, bibleBytes = bible) }
         }
     }
 

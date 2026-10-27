@@ -22,6 +22,12 @@ import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCas
 import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadRepository
 import com.ipb.castelobranco.features.gallery.domain.upload.ObserveUploadsUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
+import com.ipb.castelobranco.features.gallery.domain.upload.PickedMedia
+import com.ipb.castelobranco.features.gallery.domain.FakeGalleryMediaSettings
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryMediaSettings
+import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryStorageUseCase
+import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryVideoSettingsUseCase
+import io.mockk.mockk
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoViewerUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,11 +38,19 @@ import java.io.File
 class FakeUploadRepository : GalleryUploadRepository {
     override val items = MutableStateFlow<List<UploadItem>>(emptyList())
     val enqueued = mutableListOf<Pair<Long, List<String>>>()
+    val wifiOnlyBatches = mutableListOf<Boolean>()
+
+    /** What [inspect] reports per source; unknown sources are images of unknown size. */
+    val picked = mutableMapOf<String, PickedMedia>()
     val dismissed = mutableListOf<String>()
     var coverResult: Result<File> = Result.success(File("cover.jpg"))
 
-    override suspend fun enqueue(albumId: Long, sources: List<String>) {
+    override suspend fun inspect(sources: List<String>): List<PickedMedia> =
+        sources.map { picked[it] ?: PickedMedia(it, "image/jpeg", null) }
+
+    override suspend fun enqueue(albumId: Long, sources: List<String>, videosWifiOnly: Boolean) {
         enqueued += albumId to sources
+        wifiOnlyBatches += videosWifiOnly
     }
 
     override suspend fun dismiss(uploadId: String) {
@@ -74,6 +88,14 @@ fun manageUseCases(
     setPhotoMembers = SetPhotoMembersUseCase(repository),
     changePhotoMembers = ChangePhotoMembersUseCase(repository),
 )
+
+/** The video switch and the card over [settings]; schedulers are relaxed mocks. */
+fun videoSettingsUseCase(settings: GalleryMediaSettings = FakeGalleryMediaSettings()) =
+    GalleryVideoSettingsUseCase(settings, mockk(relaxed = true))
+
+/** "Baixar / Apagar galeria" by type, with relaxed collaborators. */
+fun storageUseCase(gallery: GalleryRepository) =
+    GalleryStorageUseCase(gallery, mockk(relaxed = true), mockk(relaxed = true))
 
 /** Opens a viewer whose id is derived from what it shows, as if each source/photo pair were its own entry. */
 fun GalleryViewModel.viewerState(source: ViewerSource, photoId: Long): StateFlow<PhotoViewerUiState> =

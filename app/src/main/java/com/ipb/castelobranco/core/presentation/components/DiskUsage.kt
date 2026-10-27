@@ -1,4 +1,4 @@
-package com.ipb.castelobranco.features.settings.presentation.components
+package com.ipb.castelobranco.core.presentation.components
 
 import java.util.Locale
 

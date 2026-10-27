@@ -13,6 +13,11 @@ internal object TagTexts {
     const val NO_RESULT = "Nenhuma foto com todas essas pessoas."
     const val NO_TAGS = "Ninguém foi marcado nas fotos ainda."
     const val NO_PERSON_FOUND = "Nenhuma pessoa encontrada."
+    const val NO_PHOTOS = "Nenhuma foto."
+    const val NO_VIDEOS = "Nenhum vídeo."
+    const val MEDIA_FILTER_ALL = "Tudo"
+    const val MEDIA_FILTER_PHOTOS = "Fotos"
+    const val MEDIA_FILTER_VIDEOS = "Vídeos"
 
     /** The user's own row in the filter: "João Lima (você)". */
     fun ownName(name: String): String = "$name (você)"

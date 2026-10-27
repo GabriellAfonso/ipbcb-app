@@ -1,6 +1,6 @@
 # Galeria — Spec
 
-A Galeria é o acervo de fotos dos eventos da igreja, organizado numa **árvore de álbuns** com capas e ordem
+A Galeria é o acervo de fotos e vídeos dos eventos da igreja, organizado numa **árvore de álbuns** com capas e ordem
 definidas pela igreja. É **conteúdo restrito a membros** (`IsMemberUser` no servidor). Para quem não tem nível no
 escopo `gallery` ela é **somente leitura**; quem tem `manage` ou `owner` monta a galeria **nas mesmas telas** (seção
 8). O app mantém uma **cópia local** que segue o servidor: novos, alterados e apagados — álbuns e fotos — chegam ao
@@ -8,7 +8,11 @@ aparelho pelo feed de mudanças, e o que o próprio usuário grava é aplicado l
 
 Fonte da verdade no backend: `backend/specs/gallery/spec.md`, `013-gallery-write-api/contracts/gallery-api.md`,
 `014-gallery-trash-sync/contracts/gallery-trash-api.md`, `015-gallery-member-tags/contracts/gallery-tags-api.md`,
-`016-photo-upload-idempotency/contracts/photo-upload-api.md`.
+`016-photo-upload-idempotency/contracts/photo-upload-api.md`, `023-gallery-videos/contracts/video-upload-api.md`.
+
+Vídeos (seção 11) são itens da galeria como as fotos — mesmo feed, álbuns, ordem, lixeira e marcações —, mas só
+existem para o membro quando o arquivo inteiro está no aparelho, e só são baixados por quem liga "Baixar vídeos
+automaticamente". No texto abaixo, "foto" vale para os dois tipos, salvo onde a seção 11 diz o contrário.
 
 Cada foto diz quem está nela (membros marcados); todo membro vê as pessoas de uma foto e filtra a galeria por pessoas
 (achando a si mesmo no topo da lista), e quem tem `manage` marca pessoas numa foto ou em várias (seção 10). A
@@ -100,7 +104,8 @@ antes do cursor (pode repetir itens).
   "photos": [{ "id": 301, "name": "IMG_0042.jpg", "description": "", "album_id": 7, "album_name": "Retiro 2026",
                "image_url": "https://…/media/gallery/7/9b1e.jpg", "thumbnail_url": "https://…/thumbs/7/c4d0.jpg",
                "date_taken": "2026-03-14", "uploaded_at": "2026-03-15T10:00:00Z", "position": 0,
-               "members": [{ "id": 40, "name": "João Lima" }] }],
+               "members": [{ "id": 40, "name": "João Lima" }],
+               "media_type": "photo", "duration_ms": null, "file_size": 2481152 }],
   "deleted_album_ids": [12],
   "deleted_photo_ids": [302],
   "cursor": "v1.AAYh3k9x2QA",
@@ -113,7 +118,9 @@ antes do cursor (pode repetir itens).
 - `full_sync_required: true` (cursor velho, ilegível ou futuro) vem com listas vazias.
 - `cover_url` e `cover_source_album_id` nulos = nenhuma capa abaixo: o app mostra preto.
 - `thumbnail_url` é nulo até o servidor gerar a miniatura.
-- A extensão do original salvo vem de `image_url` (`png` / `webp`, senão `jpg`).
+- A extensão do original salvo vem de `image_url` (`png` / `webp`, senão `jpg`; vídeo: `mov`, senão `mp4`).
+- `media_type` (`photo` / `video`; ausente ou desconhecido = foto), `duration_ms` (só vídeo) e `file_size` (bytes de
+  `image_url`; pode faltar em foto antiga). Num vídeo, `image_url` é o vídeo e `thumbnail_url` o poster.
 
 | Código | Quando                        |
 |--------|-------------------------------|
@@ -141,6 +148,8 @@ Um álbum cujo pai não está no índice, ou uma foto cujo álbum não está, n�
 
 ```
 filesDir/gallery/photos/{photoId}.{ext}       originais, planos por id
+filesDir/gallery/videos/{id}.{mp4|mov}         vídeos completos (seção 11.2)
+filesDir/gallery/videos/{id}.{ext}.part        vídeo baixando; nunca conta como baixado
 filesDir/gallery/covers/{sha1(cover_url)}.jpg capas, por hash da URL
 filesDir/gallery/uploads/{uploadId}[-src].{ext} fila de envio (cópia do que foi escolhido, depois o preparado)
 cacheDir/gallery-*.part                       temporários da escrita atômica
@@ -163,8 +172,8 @@ quando o corpo chegou inteiro — um arquivo truncado com o nome final contaria 
 3. Senão: upsert de álbuns e fotos por id, remoção dos ids apagados (idempotente; se um id vier alterado e apagado,
    apagar vence).
 4. Grava índice + novo cursor.
-5. **Reconcilia o disco com o índice**: apaga todo original cuja foto não está no índice e toda capa cuja URL nenhum
-   álbum usa; baixa as capas que faltam (qualquer rede; falha é pulada e a capa fica preta até o próximo sync).
+5. **Reconcilia o disco com o índice**: apaga todo original cuja foto não está no índice, todo vídeo (completo ou
+   parcial) cujo item não está no índice e toda capa cuja URL nenhum álbum usa; baixa as capas que faltam (qualquer rede; falha é pulada e a capa fica preta até o próximo sync).
 
 O passo 5 é a única regra de limpeza: cobre fotos e álbuns apagados, `full_sync_required`, capas trocadas ou
 removidas e os órfãos da migração.
@@ -190,7 +199,9 @@ O periódico é agendado no login e em cada `onAppForeground` (idempotente). Vol
 dispara sync — a volta do background já cobre. Com a galeria apagada (3.3), todo gatilho desta tabela é ignorado.
 
 Depois de cada sync bem-sucedido, se há fotos sem original no aparelho, o download é enfileirado **só no WiFi**
-(`KEEP`: não mexe num download já na fila ou rodando; um trabalho já terminado é substituído).
+(`KEEP`: não mexe num download já na fila ou rodando; um trabalho já terminado é substituído) — exceto com as fotos
+apagadas (3.4). Se há vídeos sem arquivo e o switch de vídeos está ligado, o download de vídeos (11.3) é enfileirado
+do mesmo jeito.
 
 ### 3.2 Migração do layout antigo
 
@@ -204,8 +215,8 @@ aparelho.
 
 ### 3.3 Galeria apagada (pausa)
 
-"Apagar galeria" nas configurações (`DeleteGalleryUseCase`) **pausa** a galreria e então apaga tudo o que ela tem no
-aparelho:
+"Apagar galeria" com Fotos **e** Vídeos marcados (Configurações › Galeria, `DeleteGalleryUseCase`) **pausa** a
+galeria, desliga o switch de vídeos e então apaga tudo o que ela tem no aparelho:
 
 1. Cancela o download dos originais.
 2. Grava a pausa (`gallery_sync_paused` em `GalleryPreferences`, `@SettingsPrefs`).
@@ -217,8 +228,26 @@ inclusive o do download sem índice) sem falar com o servidor: nenhum gatilho de
 nada. O download sem índice que recebe `Paused` termina com `success`, sem nova tentativa.
 
 A pausa sobrevive a fechar o app e ao logout (o logout apaga a galeria, mas não tira a pausa; um novo login continua
-sem baixar). Só sai pelo botão "Baixar galeria" da tela (seção 6), que tira a pausa e roda um sync; daí em diante tudo
-volta a ser como antes — inclusive os originais faltando, enfileirados só no WiFi.
+sem baixar). Só sai por "Baixar galeria" (o botão da tela, seção 6, ou Configurações › Galeria), que abre o diálogo Fotos /
+Vídeos (3.5), tira a pausa e roda um sync; daí em diante tudo volta a ser como antes — inclusive os originais
+faltando, enfileirados só no WiFi.
+
+### 3.4 Só fotos ou só vídeos apagados
+
+- **Só Vídeos:** cancela o download de vídeos, desliga o switch e apaga `gallery/videos/` (completos e parciais). Índice
+  e fotos seguem sincronizando. Os vídeos voltam ligando o switch.
+- **Só Fotos:** cancela o download de fotos, grava `gallery_photo_downloads_paused` e apaga `gallery/photos/` e o cache
+  de previews. Índice, capas e vídeos baixados ficam e seguem visíveis; as fotos aparecem pelo preview (seção 5) e nada
+  as baixa (o sync não enfileira, o trabalho termina com `success`) até "Baixar galeria" com Fotos.
+
+### 3.5 "Baixar galeria" por tipo
+
+Diálogo com Fotos e Vídeos (`core/presentation/components/GalleryStorageDialogs.kt`, o mesmo nas Configurações):
+Fotos vem marcada quando falta alguma (ou a galeria foi apagada inteira); completa, desabilitada com "Já baixadas".
+Vídeos **nunca** vem marcada (opt-in); com o switch ligado fica desabilitada ("Já são baixados automaticamente"), sem
+vídeo faltando "Nenhum vídeo para baixar". Marcar Vídeos liga o switch ("Vídeos novos também serão baixados. Somente no
+WiFi."). "Usar dados móveis para as fotos" vale só para as fotos. Confirmar tira a pausa geral, tira (ou mantém) a das
+fotos, liga o switch se Vídeos e sincroniza.
 
 `GallerySyncStatus.isPaused` reflete a pausa: lida do disco junto com o índice (`load`) e em `clear()`, atualizada a
 cada mudança.
@@ -238,7 +267,8 @@ lógica fica em `GalleryDownloadJob` (sem tipos do WorkManager, testável).
 | Botão "Usar dados móveis"       | `REPLACE` | `CONNECTED` |
 | Logout                          | cancela   | —           |
 
-A lista de fotos é o **índice, em ordem de árvore** (pré-ordem: fotos do álbum, depois cada sub-álbum). Sem índice
+A lista de fotos é o **índice, em ordem de árvore** (pré-ordem: fotos do álbum, depois cada sub-álbum), **sem os
+vídeos** (seção 11.3). Com as fotos apagadas (3.4) a rodada termina sem baixar. Sem índice
 (login no WiFi antes de qualquer sync responder), o trabalho sincroniza primeiro. O worker atualiza a lista de
 arquivos locais a cada álbum concluído e ao terminar, então a grid troca preview por original durante o download.
 
@@ -434,8 +464,8 @@ exclusivos.
 
 ### 8.7 Envio de fotos
 
-"Adicionar fotos" abre o Photo Picker do sistema (`PickMultipleVisualMedia`, só imagens, sem permissão). O destino é
-sempre o álbum aberto.
+"Adicionar fotos e vídeos" abre o Photo Picker do sistema (`PickMultipleVisualMedia`, imagens e vídeos, sem
+permissão). O destino é sempre o álbum aberto. Vídeos seguem a seção 11.6; o resto desta seção vale para fotos.
 
 1. **Cópia imediata** (`PickedImageCopier`, no `viewModelScope`): cada imagem é copiada para
    `gallery/uploads/{uploadId}-src.{ext}` (a permissão da URI do picker não sobrevive ao processo). Cada item recebe
@@ -582,7 +612,7 @@ sync roda no fim. Resultado: "Marcações atualizadas em {n} fotos" ("1 foto") e
 
 ### 10.6 Filtro por pessoas (todo membro, offline)
 
-"Pessoas" na raiz abre `GalleryPeople`. A lista vem do índice (`GalleryPeople.taggedPeople`): toda pessoa marcada em ao
+"Pessoas" na raiz abre `GalleryPeople`. Com algum vídeo visível, chips "Tudo / Fotos / Vídeos" no topo (11.5). A lista vem do índice (`GalleryPeople.taggedPeople`): toda pessoa marcada em ao
 menos uma foto alcançável, com "{n} fotos" ("1 foto"), por nome (sem acentos), com busca local. Ninguém marcado:
 "Ninguém foi marcado nas fotos ainda.". Seleção múltipla; as escolhidas ficam como chips no topo. Com alguém escolhido
 e a busca vazia, a tela mostra o resultado **E**: as fotos em que todas as pessoas escolhidas estão marcadas
@@ -602,3 +632,84 @@ Não há entrada nem tela própria de "Minhas fotos": com `member_id` no perfil,
 lista do filtro (também entre os resultados de uma busca), como "{nome} (você)", e escolhê-la é como escolher qualquer
 outra — sozinha, o resultado são as fotos dela. Sem vínculo, ou sem marcação em nenhuma foto, ela não tem destaque (e,
 sem marcação, não aparece, como qualquer pessoa). O destaque segue o perfil ao vivo; a busca casa só com o nome.
+
+---
+
+## 11. Vídeos
+
+Feature 017 (`specs/017-gallery-videos/`). O servidor nunca converte: a equipe de mídia posta MP4/MOV pequenos e
+tocáveis, até 100 MB.
+
+### 11.1 Visibilidade
+
+- Um vídeo só **existe** para o membro quando o arquivo inteiro está em `gallery/videos/`. Sem ele, não aparece em
+  grid, visualizador, contagem, filtro nem resultado de pessoas.
+- Um álbum fica visível se tem item visível, sub-álbum visível, ou nenhum item na subárvore (álbum vazio, esperando
+  envio). Assim, um álbum só com vídeos não baixados some; com eles e um sub-álbum de fotos, mostra só o sub-álbum.
+- Regra única em `GalleryVisibility.visibleIndex` (índice visível); todas as telas usam a árvore visível.
+- **Exceção:** "Organizar" e o seletor de destino ao mover usam o índice inteiro: vídeos não baixados e álbuns
+  escondidos aparecem esmaecidos com o ícone "Não está no aparelho" (o vídeo pelo poster, como preview), e a ordem
+  enviada tem todos os ids. A contagem de "Apagar álbum" também conta o que vai para a lixeira.
+- A capa de um álbum vinda de um vídeo é o poster (o servidor resolve); capas não dependem do arquivo do vídeo.
+
+### 11.2 Grid
+
+Célula de vídeo: quadro do arquivo local (Coil `VideoFrameDecoder` no `@GalleryThumbnailLoader`, funciona offline),
+ícone ▶ e duração (`1:24`, `1:02:03`). O título do grupo vira "Fotos e vídeos · {n}" quando há vídeo.
+
+### 11.3 Download
+
+- Switch **"Baixar vídeos automaticamente"** (`gallery_auto_download_videos`, `@SettingsPrefs`, desligado por padrão,
+  sobrevive ao logout). Ligado: todo vídeo do índice é baixado, os novos também. Desligado: nada é baixado; o que já
+  está no aparelho fica (apagar é "Apagar galeria" com Vídeos).
+- Trabalho único `gallery_video_download`, **sempre `UNMETERED`** — nunca segue "Usar dados móveis". `KEEP` pelo sync,
+  `REPLACE` ao ligar o switch e em "Baixar galeria"; cancelado ao desligar, ao apagar vídeos e no logout.
+- `GalleryVideoDownloader`: um vídeo por vez, na ordem da árvore, para `{id}.{ext}.part`; `Range: bytes=N-` retoma
+  (`206` anexa, `200` recomeça, `416` com o parcial do tamanho de `file_size` completa). O parcial só vira vídeo
+  inteiro (renomeado) — e cada vídeo pronto aparece na hora (`refreshLocalFiles`). 401/403/429 param a rodada como nas
+  fotos; falha de rede tenta de novo (até 3).
+- **Espaço:** antes de cada vídeo, se terminar ele deixaria menos de 1 GB livre (`file_size`, ou 100 MB sem tamanho),
+  a rodada para (`failure` com `low_space`) e a galeria mostra "Pouco espaço no aparelho. Os vídeos pararam de
+  baixar." enquanto o switch está ligado. Fotos não são afetadas. O próximo sync tenta de novo.
+
+### 11.4 Card de descoberta
+
+Na raiz, acima dos álbuns, quando o switch está desligado, há vídeo não baixado e o card nunca foi respondido:
+"Há {n} vídeos na galeria ({tamanho})" / "Eles não são baixados automaticamente." / [Não, obrigado] [Baixar].
+Qualquer botão esconde **para sempre** (`gallery_video_card_dismissed`, sobrevive ao logout). "Não, obrigado" mostra
+"Você pode baixar os vídeos depois em Configurações."; "Baixar" liga o switch e, fora do WiFi, avisa "Os vídeos vão
+baixar quando você estiver no WiFi". Some durante "Organizar".
+
+### 11.5 Visualizador
+
+- Media3 ExoPlayer (`PlayerView`) dentro do pager, misturado às fotos; um player por visualizador, preso à página
+  assentada. Toca o arquivo local assim que a página assenta, **mudo**; deslizar para fora pausa.
+- Som: o botão sobre o vídeo liga/desliga; a escolha vale enquanto a galeria está aberta (`GalleryViewModel.videoMuted`,
+  escopo do grafo) e a próxima visita começa muda.
+- Controles do Media3: play/pause, barra, botão de repetir (desligado por padrão). Em paisagem, o vídeo ocupa a tela.
+- Falha ao tocar: "Não foi possível reproduzir este vídeo neste aparelho".
+- "Baixar" salva em `Movies/ipb_castelobranco` (`MediaStore.Video`) e "Compartilhar" usa o MIME do vídeo.
+- Detalhes, marcações, editar, mover, apagar, lixeira e seleção valem como para fotos; "Usar como capa" manda o poster
+  (`thumbnail_url`), nunca o vídeo.
+- Filtro "Tudo / Fotos / Vídeos" na tela Pessoas, só com vídeo visível, **E** com as pessoas; só um tipo sem pessoas
+  lista todos os itens dele, na ordem da árvore. A rota do visualizador leva o tipo (`PeoplePhoto/{ids|-}/{id}?type=`).
+
+### 11.6 Envio
+
+- Mesmo nível das fotos (`manage`). Fotos seguem a seção 8.7; **vídeos vão como estão**, sem compressão.
+- Na escolha (`GalleryUploadRepositoryImpl.enqueue`), cada vídeo é copiado e conferido (`AndroidVideoProbe` +
+  `VideoUploadCheck`): até 100 MB; contêiner MP4/MOV pela assinatura `ftyp`; vídeo H.264 ou HEVC; áudio AAC ou nenhum;
+  sem limite de duração. Poster (quadro perto de 0,5 s, lado maior ≤ 1280 px, JPEG) e duração do aparelho; data da
+  gravação quando o arquivo diz. Recusado entra na fila como falha com o motivo ("Vídeo muito grande (máx. 100 MB)…",
+  "Formato não suportado. Converta o vídeo para MP4.", "O formato de áudio ou vídeo não é compatível. Converta o vídeo
+  para MP4.", "Não foi possível gerar a capa deste vídeo.", "Não foi possível ler este vídeo.").
+- Envio: `POST api/photos/` multipart `album_id`, `client_upload_id`, `duration_ms`, `date_taken` (se houver), `video`
+  e `poster`; mesma fila, worker, tentativas, notificação e lista "Não enviadas" (texto genérico "Não foi possível
+  enviar este vídeo.").
+- **Dados móveis:** escolhido um lote com vídeo (até 100 MB) fora do WiFi, pergunta antes: "Você está nos dados móveis.
+  Enviar {n} vídeo(s) ({tamanho}) agora?" [Esperar WiFi] [Enviar]. "Esperar WiFi" marca os vídeos do lote
+  `wifi_only`: a fila os pula em rede medida e o trabalho `gallery_upload_wifi` (`UNMETERED`, `KEEP`) os envia; as
+  fotos vão já. Os dois trabalhos rodam a mesma passada, uma por vez.
+- Aceito, o arquivo de quem enviou vira o vídeo do aparelho (`adoptVideo`), visível na hora mesmo com o switch
+  desligado; nada é baixado de volta.
+

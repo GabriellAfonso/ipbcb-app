@@ -6,6 +6,7 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryAlbum
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
+import com.ipb.castelobranco.features.gallery.domain.model.VideoDuration
 import com.ipb.castelobranco.features.gallery.presentation.state.AlbumTile
 import com.ipb.castelobranco.features.gallery.presentation.state.AlbumUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoImage
@@ -22,18 +23,38 @@ internal object GalleryUiMapper {
     const val NO_ACCESS_MESSAGE = "Disponível apenas para membros."
     const val NO_CONNECTION_MESSAGE = "Não foi possível carregar a galeria. Verifique sua conexão."
 
-    fun albumTile(album: GalleryAlbum, local: GalleryLocalState) = AlbumTile(
+    /** [visible] the albums a member sees; `null` = all of them are (outside management modes). */
+    fun albumTile(album: GalleryAlbum, local: GalleryLocalState, visible: Set<Long>? = null) = AlbumTile(
         id = album.id,
         name = album.name,
         cover = album.coverUrl?.let { local.covers[it] },
+        onDevice = visible == null || album.id in visible,
     )
 
     fun photoImage(photo: GalleryPhoto, local: GalleryLocalState): PhotoImage =
         local.originals[photo.id]?.let { PhotoImage.Original(it) }
+            ?: local.videos[photo.id]?.takeIf { photo.isVideo }?.let { PhotoImage.VideoFrame(it) }
             ?: photo.thumbnailUrl?.let { PhotoImage.Preview(it) }
             ?: PhotoImage.None
 
-    fun albumState(albumId: Long, local: GalleryLocalState, tree: GalleryTree?): AlbumUiState {
+    fun photoTile(photo: GalleryPhoto, local: GalleryLocalState) = PhotoTile(
+        id = photo.id,
+        image = photoImage(photo, local),
+        isVideo = photo.isVideo,
+        duration = photo.durationMs?.takeIf { photo.isVideo }?.let(VideoDuration::format),
+        onDevice = !photo.isVideo || photo.id in local.videos,
+    )
+
+    /**
+     * [tree] is what the album shows: the visible tree, or the full one while "Organizar" is open there
+     * — then [visibleAlbums] marks the sub-albums a member would not see.
+     */
+    fun albumState(
+        albumId: Long,
+        local: GalleryLocalState,
+        tree: GalleryTree?,
+        visibleAlbums: Set<Long>? = null,
+    ): AlbumUiState {
         if (tree == null) return AlbumUiState(isLoading = true)
         val album = tree.album(albumId) ?: return AlbumUiState(isLoading = false, isRemoved = true)
         return AlbumUiState(
@@ -42,8 +63,8 @@ internal object GalleryUiMapper {
             subtitle = tree.parentOf(albumId)?.name,
             eventDate = album.eventDate?.let(::formatDate),
             description = album.description.takeIf { it.isNotBlank() },
-            subAlbums = tree.children(albumId).map { albumTile(it, local) },
-            photos = tree.photosOf(albumId).map { PhotoTile(it.id, photoImage(it, local)) },
+            subAlbums = tree.children(albumId).map { albumTile(it, local, visibleAlbums) },
+            photos = tree.photosOf(albumId).map { photoTile(it, local) },
             hasOwnCover = album.coverUrl != null && album.coverSourceAlbumId == album.id,
         )
     }
@@ -57,6 +78,9 @@ internal object GalleryUiMapper {
         description = photo.description.takeIf { it.isNotBlank() },
         dateTaken = photo.dateTaken?.let(::formatDate),
         people = photo.members.map { it.name },
+        isVideo = photo.isVideo,
+        videoFile = local.videos[photo.id]?.takeIf { photo.isVideo },
+        mimeType = photo.mimeType(),
     )
 
     /** `yyyy-MM-dd` → `dd/MM/yyyy`; anything else is shown as it came. */

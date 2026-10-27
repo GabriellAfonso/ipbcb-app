@@ -90,6 +90,8 @@ class GalleryViewModelTagsTest {
             syncGallery = syncGallery,
             autoDownload = mockk(relaxed = true),
             manage = manageUseCases(manage, FakeUploadRepository(), repository),
+            videoSettings = videoSettingsUseCase(),
+            storage = storageUseCase(repository),
             observeAccess = ObserveAccessUseCase(access),
             connectivityObserver = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns flowOf(true) },
             workManager = mockk<WorkManager> {

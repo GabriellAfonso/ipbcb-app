@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.data.download
 
+import com.ipb.castelobranco.features.gallery.domain.FakeGalleryMediaSettings
+import com.ipb.castelobranco.features.gallery.domain.model.MediaType
 import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.features.gallery.data.galleryAlbum
 import com.ipb.castelobranco.features.gallery.data.galleryPhoto
@@ -26,6 +28,7 @@ class GalleryDownloadJobTest {
     private lateinit var job: GalleryDownloadJob
     private val state = MutableStateFlow(GalleryLocalState.EMPTY)
     private val photos = slot<List<GalleryPhoto>>()
+    private val settings = FakeGalleryMediaSettings()
 
     private val index = GalleryIndex(
         albums = listOf(galleryAlbum(1, position = 1), galleryAlbum(2, position = 0)).associateBy { it.id },
@@ -41,10 +44,30 @@ class GalleryDownloadJobTest {
         coEvery { downloader.download(capture(photos), any(), any()) } answers {
             GalleryDownloadRun.Completed(photos.captured.size, photos.captured.size, 0, 0)
         }
-        job = GalleryDownloadJob(repository, downloader)
+        job = GalleryDownloadJob(repository, downloader, settings)
     }
 
     private suspend fun run(attempt: Int = 0) = job.run(attempt, MAX_RETRIES, onProgress = { _, _ -> })
+
+    @Test
+    fun `videos are left to the video work`() = runTest {
+        val video = galleryPhoto(30, albumId = 1).copy(mediaType = MediaType.VIDEO)
+        state.value = GalleryLocalState(index.copy(photos = index.photos + (video.id to video)), emptyMap(), emptyMap())
+
+        run()
+
+        assertEquals(listOf(20L, 10L), photos.captured.map { it.id })
+    }
+
+    @Test
+    fun `photo downloads paused - nothing is downloaded and the run succeeds`() = runTest {
+        settings.photoDownloadsPaused.value = true
+        state.value = GalleryLocalState(index, emptyMap(), emptyMap())
+
+        assertEquals(WorkDecision.Success, run())
+
+        coVerify(exactly = 0) { downloader.download(any(), any(), any()) }
+    }
 
     @Test
     fun `downloads the index photos in tree order`() = runTest {

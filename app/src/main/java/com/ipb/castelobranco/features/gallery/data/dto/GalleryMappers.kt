@@ -6,6 +6,7 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryDelta
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryIndex
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
+import com.ipb.castelobranco.features.gallery.domain.model.MediaType
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 
@@ -43,6 +44,9 @@ fun GalleryPhotoDto.toDomain() = GalleryPhoto(
     uploadedAt = uploadedAt,
     position = position,
     members = members.map { GalleryMember(it.id, it.name) },
+    mediaType = MediaType.fromApi(mediaType),
+    durationMs = durationMs,
+    fileSize = fileSize,
 )
 
 fun GalleryPhoto.toDto() = GalleryPhotoDto(
@@ -57,6 +61,9 @@ fun GalleryPhoto.toDto() = GalleryPhotoDto(
     uploadedAt = uploadedAt,
     position = position,
     members = members.map { GalleryPhotoMemberDto(it.id, it.name) },
+    mediaType = MediaType.toApi(mediaType),
+    durationMs = durationMs,
+    fileSize = fileSize,
 )
 
 fun GalleryChangesDto.toDelta() = GalleryDelta(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,9 @@ import coil.ImageLoader
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
-import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
+import com.ipb.castelobranco.features.gallery.presentation.components.PhotoTileImage
+import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
+import com.ipb.castelobranco.features.gallery.presentation.viewmodel.TagTexts
 import com.ipb.castelobranco.features.gallery.presentation.components.PersonCheckRow
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.PeopleUiState
@@ -55,13 +58,15 @@ private const val SEARCH_KEY = "search"
 private const val CHIPS_KEY = "chips"
 private const val HINT_KEY = "hint"
 private const val EMPTY_KEY = "empty"
+private const val MEDIA_FILTER_KEY = "media-filter"
 
 /** The events of the people screen. */
 data class PeopleActions(
     val onBack: () -> Unit,
     val onQueryChange: (String) -> Unit,
     val onToggle: (Long) -> Unit,
-    val onPhotoClick: (memberIds: Set<Long>, photoId: Long) -> Unit,
+    val onPhotoClick: (memberIds: Set<Long>, filter: MediaFilter, photoId: Long) -> Unit,
+    val onMediaFilter: (MediaFilter) -> Unit = {},
 )
 
 /**
@@ -82,6 +87,7 @@ fun PeopleScreen(viewModel: PeopleViewModel, galleryViewModel: GalleryViewModel,
                 onQueryChange = viewModel::onQueryChange,
                 onToggle = viewModel::toggle,
                 onPhotoClick = nav.toPeoplePhoto,
+                onMediaFilter = viewModel::onMediaFilter,
             ),
         )
     }
@@ -120,6 +126,11 @@ fun PeopleContent(state: PeopleUiState, previewLoader: ImageLoader?, actions: Pe
                         )
                     }
                 }
+                if (state.showMediaFilter) {
+                    item(key = MEDIA_FILTER_KEY, span = { GridItemSpan(maxLineSpan) }) {
+                        MediaFilterRow(state.mediaFilter, actions.onMediaFilter)
+                    }
+                }
                 if (state.selected.isNotEmpty()) {
                     item(key = CHIPS_KEY, span = { GridItemSpan(maxLineSpan) }) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -143,7 +154,9 @@ fun PeopleContent(state: PeopleUiState, previewLoader: ImageLoader?, actions: Pe
                 }
                 if (state.showResults) {
                     items(state.results, key = { GalleryGridKeys.photo(it.id) }) { photo ->
-                        ResultTile(photo, previewLoader) { actions.onPhotoClick(state.memberIds, photo.id) }
+                        ResultTile(photo, previewLoader) {
+                            actions.onPhotoClick(state.memberIds, state.mediaFilter, photo.id)
+                        }
                     }
                 } else {
                     items(
@@ -183,20 +196,28 @@ private fun ResultTile(photo: PhotoTile, previewLoader: ImageLoader?, onClick: (
             .aspectRatio(1f)
             .clickable(onClick = onClick),
     ) {
-        if (previewLoader != null) {
-            GalleryImage(
-                image = photo.image,
-                previewLoader = previewLoader,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+        if (previewLoader != null) PhotoTileImage(photo, previewLoader, Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+private fun MediaFilterRow(selected: MediaFilter, onSelect: (MediaFilter) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MEDIA_FILTERS.forEach { (filter, label) ->
+            FilterChip(selected = filter == selected, onClick = { onSelect(filter) }, label = { Text(label) })
         }
     }
 }
 
+private val MEDIA_FILTERS = listOf(
+    MediaFilter.ALL to TagTexts.MEDIA_FILTER_ALL,
+    MediaFilter.PHOTOS to TagTexts.MEDIA_FILTER_PHOTOS,
+    MediaFilter.VIDEOS to TagTexts.MEDIA_FILTER_VIDEOS,
+)
+
 // region previews
 
-private val previewActions = PeopleActions({}, {}, {}, { _, _ -> })
+private val previewActions = PeopleActions({}, {}, {}, { _, _, _ -> })
 
 @Preview
 @Composable

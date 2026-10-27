@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.gallery.domain.usecase
 
 import com.ipb.castelobranco.features.gallery.domain.download.GalleryDownloadScheduler
+import com.ipb.castelobranco.features.gallery.domain.download.GalleryVideoDownloadScheduler
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryMediaSettings
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryPreviewCache
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
@@ -11,6 +13,8 @@ import javax.inject.Inject
 /** Session-level gallery triggers: app start and foreground, login, download buttons and logout. */
 class GalleryAutoDownloadUseCase @Inject constructor(
     private val downloadScheduler: GalleryDownloadScheduler,
+    private val videoScheduler: GalleryVideoDownloadScheduler,
+    private val settings: GalleryMediaSettings,
     private val syncScheduler: GallerySyncScheduler,
     private val syncGallery: SyncGalleryUseCase,
     private val repository: GalleryRepository,
@@ -35,11 +39,21 @@ class GalleryAutoDownloadUseCase @Inject constructor(
     }
 
     /**
-     * "Baixar galeria" after "Apagar galeria": lifts the pause and syncs. Missing originals then queue on
-     * WiFi, as after any sync.
+     * "Baixar galeria" (settings or the gallery after a delete): lifts the full pause and syncs.
+     * [photos] lifts the photo pause — on mobile data too when [useMobileData]; otherwise photos stay
+     * paused. [videos] turns the video switch on (new videos follow). The sync then queues what is
+     * missing, as after any sync.
      */
-    suspend fun downloadAfterDelete() {
+    suspend fun downloadAfterDelete(photos: Boolean = true, videos: Boolean = false, useMobileData: Boolean = false) {
         repository.setSyncPaused(false)
+        settings.setPhotoDownloadsPaused(!photos)
+        if (videos) {
+            settings.setAutoDownloadVideos(true)
+            videoScheduler.enqueue(replaceExisting = true)
+        }
+        if (photos) {
+            if (useMobileData) downloadScheduler.enqueueAnyNetwork() else downloadScheduler.enqueueWifiOnly(true)
+        }
         syncGallery()
     }
 
@@ -55,6 +69,7 @@ class GalleryAutoDownloadUseCase @Inject constructor(
         uploadScheduler.cancel()
         uploads.clear()
         downloadScheduler.cancel()
+        videoScheduler.cancel()
         syncScheduler.cancel()
         repository.clear()
         previewCache.clear()

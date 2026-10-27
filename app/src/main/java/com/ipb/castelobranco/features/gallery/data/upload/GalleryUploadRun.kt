@@ -9,10 +9,14 @@ import com.ipb.castelobranco.features.gallery.domain.model.GalleryLocalChange
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
+import com.ipb.castelobranco.features.gallery.domain.upload.UploadKind
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadOutcome
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadState
+import com.ipb.castelobranco.features.gallery.domain.upload.VideoUploadCheck
 import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -20,11 +24,17 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import javax.inject.Inject
 
+/** Whether the device's network is unmetered right now (WiFi). */
+fun interface NetworkStatus {
+    fun isUnmetered(): Boolean
+}
+
 /**
  * One pass over the upload queue, independent of WorkManager: prepares and sends the pending items
  * one at a time, oldest first, reading the queue again before each so items added meanwhile are
  * served in the same pass. The session is checked before every request; after sign-out it writes
- * nothing.
+ * nothing. A video marked "Esperar WiFi" is skipped while the network is metered — the WiFi-only work
+ * sends it later. Two works may run this; [PASS_LOCK] keeps one pass at a time.
  */
 class GalleryUploadRun @Inject constructor(
     private val queue: GalleryUploadQueueStore,
@@ -35,6 +45,7 @@ class GalleryUploadRun @Inject constructor(
     private val syncGallery: SyncGalleryUseCase,
     private val mediaStore: GalleryMediaStore,
     private val session: SessionPresenceProvider,
+    private val network: NetworkStatus,
 ) {
 
     sealed interface Result {
@@ -49,7 +60,10 @@ class GalleryUploadRun @Inject constructor(
     }
 
     /** [onProgress] gets the 1-based position of the item being sent and the size of the batch. */
-    suspend fun run(onProgress: suspend (current: Int, total: Int) -> Unit): Result {
+    suspend fun run(onProgress: suspend (current: Int, total: Int) -> Unit): Result =
+        PASS_LOCK.withLock { runPass(onProgress) }
+
+    private suspend fun runPass(onProgress: suspend (current: Int, total: Int) -> Unit): Result {
         var sent = 0
         var failed = 0
         var result: Result? = null
@@ -58,9 +72,10 @@ class GalleryUploadRun @Inject constructor(
                 result = Result.Stopped
                 break
             }
-            val next = queue.nextPending() ?: break
+            val unmetered = network.isUnmetered()
+            val next = queue.nextPending(unmetered) ?: break
             val done = sent + failed
-            onProgress(done + 1, done + queue.pendingCount())
+            onProgress(done + 1, done + queue.pendingCount(unmetered))
 
             val item = ready(next)
             if (item == null) {
@@ -89,7 +104,8 @@ class GalleryUploadRun @Inject constructor(
 
     /** The item ready to send (prepared once, then kept prepared across retries); `null` = failed. */
     private suspend fun ready(item: UploadItem): UploadItem? {
-        if (item.state == UploadState.Prepared) return item
+        // A video is checked when picked and goes as it is.
+        if (item.state == UploadState.Prepared || item.kind == UploadKind.VIDEO) return item
         return when (val prepared = preparer.prepare(item)) {
             is PrepareResult.Ready -> {
                 queue.markPrepared(item.uploadId, prepared.file.name, prepared.displayName)
@@ -111,20 +127,40 @@ class GalleryUploadRun @Inject constructor(
 
     private suspend fun send(item: UploadItem): UploadOutcome {
         val file = mediaStore.uploadFile(item.fileName)
-        if (!file.exists()) return UploadOutcome.Failed(UNREADABLE_MESSAGE)
+        if (!file.exists()) return UploadOutcome.Failed(unreadable(item))
         return try {
-            val response = api.uploadPhoto(
-                albumId = item.albumId.toString().toRequestBody(TEXT_PLAIN),
-                clientUploadId = item.uploadId.toRequestBody(TEXT_PLAIN),
-                image = imagePart(file, item.displayName),
-            )
-            classifier.classify(response)
+            val response = if (item.kind == UploadKind.VIDEO) {
+                val poster = item.posterFileName?.let(mediaStore::uploadFile)?.takeIf { it.exists() }
+                    ?: return UploadOutcome.Failed(VideoUploadCheck.NO_POSTER)
+                api.uploadVideo(
+                    albumId = item.albumId.toString().toRequestBody(TEXT_PLAIN),
+                    clientUploadId = item.uploadId.toRequestBody(TEXT_PLAIN),
+                    durationMs = (item.durationMs ?: 0L).toString().toRequestBody(TEXT_PLAIN),
+                    dateTaken = item.dateTaken?.toRequestBody(TEXT_PLAIN),
+                    video = videoPart(file, item.displayName),
+                    poster = MultipartBody.Part.createFormData(
+                        GalleryEndpoints.PART_POSTER,
+                        poster.name,
+                        poster.asRequestBody(JPEG),
+                    ),
+                )
+            } else {
+                api.uploadPhoto(
+                    albumId = item.albumId.toString().toRequestBody(TEXT_PLAIN),
+                    clientUploadId = item.uploadId.toRequestBody(TEXT_PLAIN),
+                    image = imagePart(file, item.displayName),
+                )
+            }
+            classifier.classify(response, isVideo = item.kind == UploadKind.VIDEO)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            classifier.classify(e)
+            classifier.classify(e, isVideo = item.kind == UploadKind.VIDEO)
         }
     }
+
+    private fun unreadable(item: UploadItem) =
+        if (item.kind == UploadKind.VIDEO) VideoUploadCheck.UNREADABLE else UNREADABLE_MESSAGE
 
     /**
      * The server stores the file as sent, so the prepared file becomes the photo's original on the
@@ -133,11 +169,25 @@ class GalleryUploadRun @Inject constructor(
     private suspend fun adopt(item: UploadItem, photo: GalleryPhoto) {
         val file = mediaStore.uploadFile(item.fileName)
         val applied = repository.applyLocal(GalleryLocalChange.UpsertPhoto(photo)) {
-            if (file.exists()) mediaStore.adoptOriginal(photo.id, photo.fileExtension(), file)
+            if (!file.exists()) return@applyLocal
+            if (photo.isVideo) {
+                // The uploader sees their video at once, whatever the video switch says.
+                mediaStore.adoptVideo(photo.id, photo.fileExtension(), file)
+            } else {
+                mediaStore.adoptOriginal(photo.id, photo.fileExtension(), file)
+            }
         }
         if (!applied) file.delete()
+        item.posterFileName?.let { mediaStore.uploadFile(it).delete() }
         queue.remove(item.uploadId)
     }
+
+    private fun videoPart(file: File, displayName: String): MultipartBody.Part =
+        MultipartBody.Part.createFormData(
+            GalleryEndpoints.PART_VIDEO,
+            displayName,
+            file.asRequestBody((if (file.extension.equals(MOV, true)) MOV_MIME else MP4_MIME).toMediaType()),
+        )
 
     private fun imagePart(file: File, displayName: String): MultipartBody.Part =
         MultipartBody.Part.createFormData(
@@ -151,5 +201,12 @@ class GalleryUploadRun @Inject constructor(
         const val UNREADABLE_MESSAGE = "Não foi possível ler esta imagem."
         const val TOO_LARGE_MESSAGE = "Imagem grande demais para enviar."
         private val TEXT_PLAIN = "text/plain".toMediaType()
+        private val JPEG = "image/jpeg".toMediaType()
+        private const val MOV = "mov"
+        private const val MOV_MIME = "video/quicktime"
+        private const val MP4_MIME = "video/mp4"
+
+        /** One pass at a time, whichever work (any network, WiFi only) started it. */
+        private val PASS_LOCK = Mutex()
     }
 }

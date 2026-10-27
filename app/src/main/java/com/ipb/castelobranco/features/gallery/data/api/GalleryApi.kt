@@ -14,6 +14,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -37,10 +38,12 @@ interface GalleryApi {
         @Query(GalleryEndpoints.SINCE) since: String?,
     ): Response<GalleryChangesDto>
 
+    /** [range] (`bytes=N-`) resumes a video download; the media route answers `206` from there. */
     @Streaming
     @GET
     suspend fun downloadFile(
-        @Url absoluteUrl: String
+        @Url absoluteUrl: String,
+        @Header(GalleryEndpoints.HEADER_RANGE) range: String? = null,
     ): Response<ResponseBody>
 
     @POST(GalleryEndpoints.ALBUMS)
@@ -75,6 +78,18 @@ interface GalleryApi {
         @Part(GalleryEndpoints.PART_ALBUM_ID) albumId: RequestBody,
         @Part(GalleryEndpoints.PART_CLIENT_UPLOAD_ID) clientUploadId: RequestBody,
         @Part image: MultipartBody.Part,
+    ): Response<PhotoUploadResultDto>
+
+    /** One video per request, sent as it is, with its poster and duration made on the phone. */
+    @Multipart
+    @POST(GalleryEndpoints.PHOTOS)
+    suspend fun uploadVideo(
+        @Part(GalleryEndpoints.PART_ALBUM_ID) albumId: RequestBody,
+        @Part(GalleryEndpoints.PART_CLIENT_UPLOAD_ID) clientUploadId: RequestBody,
+        @Part(GalleryEndpoints.PART_DURATION_MS) durationMs: RequestBody,
+        @Part(GalleryEndpoints.PART_DATE_TAKEN) dateTaken: RequestBody?,
+        @Part video: MultipartBody.Part,
+        @Part poster: MultipartBody.Part,
     ): Response<PhotoUploadResultDto>
 
     @PATCH(GalleryEndpoints.PHOTO)

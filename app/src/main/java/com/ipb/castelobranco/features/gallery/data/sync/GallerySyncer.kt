@@ -158,6 +158,27 @@ class GallerySyncer @Inject constructor(
 
     suspend fun diskUsageBytes(): Long = withContext(ioDispatcher) { mediaStore.totalBytes() }
 
+    /** Bytes of the videos (partials included) and of everything else the gallery keeps. */
+    suspend fun usage(): Pair<Long, Long> = withContext(ioDispatcher) {
+        val videos = mediaStore.videoBytes()
+        (mediaStore.totalBytes() - videos) to videos
+    }
+
+    /** "Apagar galeria" with only Fotos: the originals go; the index keeps syncing. */
+    suspend fun clearPhotos() = clearFiles { mediaStore.clearPhotos() }
+
+    /** "Apagar galeria" with only Vídeos: every video file, complete or partial. */
+    suspend fun clearVideos() = clearFiles { mediaStore.clearVideos() }
+
+    private suspend fun clearFiles(delete: () -> Unit) {
+        mutex.withLock {
+            withContext(ioDispatcher) {
+                delete()
+                _state.update { withFiles(it.index) }
+            }
+        }
+    }
+
     /** Saved before anything else, so a sync started right after already sees it. */
     suspend fun setPaused(paused: Boolean) {
         preferences.setSyncPaused(paused)
@@ -205,8 +226,9 @@ class GallerySyncer @Inject constructor(
         reconcile(next)
         val local = withFiles(next)
         _state.value = local
-        val missing = next.photos.values.count { it.id !in local.originals }
-        return finish(GallerySyncResult.Synced(missing))
+        val missingPhotos = next.photos.values.count { !it.isVideo && it.id !in local.originals }
+        val missingVideos = next.photos.values.count { it.isVideo && it.id !in local.videos }
+        return finish(GallerySyncResult.Synced(missingPhotos, missingVideos))
     }
 
     private suspend fun fetch(since: String?): Result<GalleryChangesDto> = try {
@@ -233,12 +255,15 @@ class GallerySyncer @Inject constructor(
             .forEach { url -> downloadCover(url) }
     }
 
-    /** Deletes the originals and covers the index no longer uses. No network. */
+    /** Deletes the originals, videos and covers the index no longer uses. No network. */
     private fun prune(index: GalleryIndex) {
         mediaStore.originalFiles()
             .filterKeys { it !in index.photos }
             .values
             .forEach(mediaStore::delete)
+        (mediaStore.videoFiles().entries + mediaStore.partialVideos().entries)
+            .filter { (id, _) -> index.photos[id]?.isVideo != true }
+            .forEach { (_, file) -> mediaStore.delete(file) }
 
         val wantedNames = index.albums.values.mapNotNull { it.coverUrl }.map(mediaStore::coverName).toSet()
         mediaStore.coverFiles()
@@ -280,7 +305,12 @@ class GallerySyncer @Inject constructor(
             .distinct()
             .mapNotNull { url -> mediaStore.coverFile(url).takeIf { it.exists() }?.let { url to it } }
             .toMap()
-        return GalleryLocalState(index = index, originals = mediaStore.originalFiles(), covers = covers)
+        return GalleryLocalState(
+            index = index,
+            originals = mediaStore.originalFiles(),
+            videos = mediaStore.videoFiles(),
+            covers = covers,
+        )
     }
 
     private fun fail(error: Throwable): GallerySyncResult {

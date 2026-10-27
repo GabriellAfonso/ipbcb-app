@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.data.upload
 
+import com.ipb.castelobranco.features.gallery.domain.repository.MediaUsage
+import com.ipb.castelobranco.features.gallery.domain.upload.UploadKind
 import com.ipb.castelobranco.core.testing.tempDirContext
 import com.ipb.castelobranco.features.gallery.data.api.FakeGalleryApi
 import com.ipb.castelobranco.features.gallery.data.apiError
@@ -56,6 +58,9 @@ class GalleryUploadRunTest {
         override suspend fun clear() = Unit
         override suspend fun setSyncPaused(paused: Boolean) = Unit
         override suspend fun diskUsageBytes(): Long = 0L
+        override suspend fun usage() = MediaUsage(0L, 0L)
+        override suspend fun clearPhotos() = Unit
+        override suspend fun clearVideos() = Unit
     }
 
     /** Every image decodes to a small JPEG. */
@@ -76,6 +81,7 @@ class GalleryUploadRunTest {
     private val repository = RecordingRepository()
     private val syncGallery = mockk<SyncGalleryUseCase> { coEvery { afterWrite() } returns GallerySyncResult.Skipped }
     private var loggedIn = true
+    private var unmetered = true
     private lateinit var media: GalleryMediaStore
     private lateinit var queue: GalleryUploadQueueStore
     private lateinit var run: GalleryUploadRun
@@ -94,7 +100,88 @@ class GalleryUploadRunTest {
             syncGallery = syncGallery,
             mediaStore = media,
             session = { loggedIn },
+            network = { unmetered },
         )
+    }
+
+    private suspend fun enqueueVideo(id: String, wifiOnly: Boolean = false, time: Long = 0) {
+        val fileName = GalleryImagePreparer.rawFileName(id, "mp4")
+        media.saveUpload(fileName, "video-$id".byteInputStream())
+        val poster = GalleryUploadRepositoryImpl.posterFileName(id)
+        media.saveUpload(poster, "poster-$id".byteInputStream())
+        queue.append(
+            UploadItem(
+                uploadId = id,
+                albumId = 7,
+                displayName = "$id.mp4",
+                fileName = fileName,
+                state = UploadState.Prepared,
+                enqueuedAt = time,
+                kind = UploadKind.VIDEO,
+                posterFileName = poster,
+                durationMs = 45_000,
+                dateTaken = "2026-03-14",
+                wifiOnly = wifiOnly,
+            )
+        )
+    }
+
+    private fun acceptedVideo(id: Long) = Response.success(
+        201,
+        PhotoUploadResultDto(
+            accepted = listOf(
+                photoDto(id, 7, url = "https://example.com/ipbcb/media/gallery/7/$id.mp4")
+                    .copy(mediaType = "video", durationMs = 45_000, fileSize = 11),
+            ),
+        ),
+    )
+
+    @Test
+    fun `a video goes as it is, with its poster, duration and date, and becomes the local copy`() =
+        runTest(dispatcher) {
+            enqueueVideo("v")
+            api.respond("uploadVideo") { acceptedVideo(51) }
+
+            assertEquals(GalleryUploadRun.Result.Done(failed = 0), runOnce())
+
+            val call = api.writes.single()
+            assertEquals("uploadVideo", call.name)
+            assertEquals("v.mp4", call.fileName)
+            assertEquals("45000", call.parts["duration_ms"])
+            assertEquals("2026-03-14", call.parts["date_taken"])
+            assertEquals("v", call.parts["client_upload_id"])
+            assertEquals("video-v", media.videoFiles().getValue(51).readText())
+            assertFalse(media.uploadFile(GalleryUploadRepositoryImpl.posterFileName("v")).exists())
+            assertTrue(queue.items.value.isEmpty())
+        }
+
+    @Test
+    fun `a video held for WiFi waits on mobile data while the photos go`() = runTest(dispatcher) {
+        unmetered = false
+        enqueueVideo("v", wifiOnly = true, time = 1)
+        enqueue("a", time = 2)
+        api.respond("uploadPhoto") { accepted(41) }
+
+        runOnce()
+
+        assertEquals(listOf("uploadPhoto"), api.writes.map { it.name })
+        assertEquals("v", queue.items.value.single().uploadId)
+
+        unmetered = true
+        api.respond("uploadVideo") { acceptedVideo(51) }
+        runOnce()
+
+        assertTrue(queue.items.value.isEmpty())
+    }
+
+    @Test
+    fun `a refused video without a reason gets the video text`() = runTest(dispatcher) {
+        enqueueVideo("v")
+        api.respondWriteError("uploadVideo", 400, "{}")
+
+        runOnce()
+
+        assertEquals("Não foi possível enviar este vídeo.", queue.items.value.single().failure)
     }
 
     private suspend fun enqueue(id: String, albumId: Long = 7, time: Long = 0) {

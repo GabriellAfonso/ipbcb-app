@@ -17,6 +17,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
+import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
 import com.ipb.castelobranco.features.gallery.presentation.screens.AlbumScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.GalleryScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.PeopleScreen
@@ -35,8 +36,8 @@ data class GalleryNav(
     val toPhoto: (albumId: Long, photoId: Long) -> Unit,
     val toTrash: () -> Unit,
     val toPeople: () -> Unit = {},
-    /** The viewer over the photos with every one of [memberIds]. */
-    val toPeoplePhoto: (memberIds: Set<Long>, photoId: Long) -> Unit = { _, _ -> },
+    /** The viewer over the items with every one of [memberIds] that [filter] accepts. */
+    val toPeoplePhoto: (memberIds: Set<Long>, filter: MediaFilter, photoId: Long) -> Unit = { _, _, _ -> },
 )
 
 object GalleryRoutes {
@@ -48,12 +49,21 @@ object GalleryRoutes {
     const val TRASH = "GalleryTrash"
     const val ARG_MEMBER_IDS = "memberIds"
     const val PEOPLE = "GalleryPeople"
-    const val PEOPLE_PHOTO = "PeoplePhoto/{$ARG_MEMBER_IDS}/{$ARG_PHOTO_ID}"
+    const val ARG_MEDIA_FILTER = "type"
+    const val PEOPLE_PHOTO = "PeoplePhoto/{$ARG_MEMBER_IDS}/{$ARG_PHOTO_ID}?$ARG_MEDIA_FILTER={$ARG_MEDIA_FILTER}"
+    private const val NO_MEMBERS = "-"
     private const val ID_SEPARATOR = ","
 
-    /** [memberIds] travel comma-separated: the viewer pages through the photos with all of them. */
-    fun peoplePhoto(memberIds: Set<Long>, photoId: Long) =
-        "PeoplePhoto/${memberIds.sorted().joinToString(ID_SEPARATOR)}/$photoId"
+    /**
+     * [memberIds] travel comma-separated (`-` for nobody: a type-only filter): the viewer pages through
+     * the items with all of them that [filter] accepts.
+     */
+    fun peoplePhoto(memberIds: Set<Long>, photoId: Long, filter: MediaFilter = MediaFilter.ALL): String {
+        val ids = memberIds.sorted().joinToString(ID_SEPARATOR).ifEmpty { NO_MEMBERS }
+        return "PeoplePhoto/$ids/$photoId?$ARG_MEDIA_FILTER=${filter.name}"
+    }
+
+    fun mediaFilterOf(raw: String?): MediaFilter = MediaFilter.entries.firstOrNull { it.name == raw } ?: MediaFilter.ALL
 
     fun memberIdsOf(raw: String?): Set<Long> =
         raw.orEmpty().split(ID_SEPARATOR).mapNotNull { it.trim().toLongOrNull() }.toSet()
@@ -80,8 +90,8 @@ fun NavGraphBuilder.galleryGraph(
         toPhoto = { albumId, photoId -> navController.navigate(GalleryRoutes.photo(albumId, photoId)) },
         toTrash = { navController.navigate(GalleryRoutes.TRASH) },
         toPeople = { navController.navigate(GalleryRoutes.PEOPLE) },
-        toPeoplePhoto = { memberIds, photoId ->
-            navController.navigate(GalleryRoutes.peoplePhoto(memberIds, photoId))
+        toPeoplePhoto = { memberIds, filter, photoId ->
+            navController.navigate(GalleryRoutes.peoplePhoto(memberIds, photoId, filter))
         },
     )
 
@@ -132,14 +142,20 @@ fun NavGraphBuilder.galleryGraph(
             arguments = listOf(
                 navArgument(GalleryRoutes.ARG_MEMBER_IDS) { type = NavType.StringType },
                 navArgument(GalleryRoutes.ARG_PHOTO_ID) { type = NavType.LongType },
+                navArgument(GalleryRoutes.ARG_MEDIA_FILTER) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
             ),
         ) { entry ->
             val memberIds = GalleryRoutes.memberIdsOf(entry.arguments?.getString(GalleryRoutes.ARG_MEMBER_IDS))
+            val filter = GalleryRoutes.mediaFilterOf(entry.arguments?.getString(GalleryRoutes.ARG_MEDIA_FILTER))
             val photoId = entry.arguments?.getLong(GalleryRoutes.ARG_PHOTO_ID) ?: 0L
             val viewModel = graphViewModel(navController, entry)
             PhotoScreen(
                 viewerId = viewerId(entry, viewModel),
-                source = ViewerSource.People(memberIds),
+                source = ViewerSource.People(memberIds, filter),
                 photoId = photoId,
                 viewModel = viewModel,
                 nav = nav,

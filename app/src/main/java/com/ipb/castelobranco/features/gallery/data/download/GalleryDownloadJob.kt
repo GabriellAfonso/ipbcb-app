@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.gallery.data.download
 
+import com.ipb.castelobranco.features.gallery.domain.repository.GalleryMediaSettings
 import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncResult
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryTree
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
@@ -10,11 +11,13 @@ import javax.inject.Inject
  *
  * The photo list is the index, in tree order. With no index yet (login on WiFi before any sync
  * answered) it syncs first, and a failed sync is treated like the old failed photo list. A paused
- * gallery ("Apagar galeria") ends the run without retrying.
+ * gallery ("Apagar galeria") ends the run without retrying, and so do paused photo downloads (only
+ * the photos were deleted). Videos are left to `GalleryVideoDownloadJob`.
  */
 class GalleryDownloadJob @Inject constructor(
     private val repository: GalleryRepository,
     private val downloader: GalleryPhotoDownloader,
+    private val preferences: GalleryMediaSettings,
 ) {
 
     suspend fun run(
@@ -35,9 +38,12 @@ class GalleryDownloadJob @Inject constructor(
             }
         }
         val index = repository.localState.value.index ?: return WorkDecision.Success
+        // Only the photos were deleted: they wait for "Baixar galeria" with Fotos.
+        if (preferences.isPhotoDownloadsPaused()) return WorkDecision.Success
 
         val run = downloader.download(
-            photos = GalleryTree(index).allPhotosInTreeOrder(),
+            // Videos have their own work, on WiFi only.
+            photos = GalleryTree(index).allPhotosInTreeOrder().filterNot { it.isVideo },
             onProgress = onProgress,
             // A grid ganha as fotos a cada álbum concluído.
             onAlbumDone = { repository.refreshLocalFiles() },

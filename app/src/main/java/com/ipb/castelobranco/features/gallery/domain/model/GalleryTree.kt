@@ -106,7 +106,16 @@ class GalleryTree(private val index: GalleryIndex) {
     }
 }
 
-/** A destination in the move picker. [albumId] `null` = the root. */
-data class TreeTarget(val albumId: Long?, val name: String, val depth: Int, val selectable: Boolean)
+/**
+ * A destination in the move picker. [albumId] `null` = the root. [onDevice] `false` = an album a
+ * member does not see (only undownloaded videos below it): listed dimmed so moves stay correct.
+ */
+data class TreeTarget(
+    val albumId: Long?,
+    val name: String,
+    val depth: Int,
+    val selectable: Boolean,
+    val onDevice: Boolean = true,
+)
 
 data class SubtreeCounts(val subAlbums: Int, val photos: Int)

@@ -3,8 +3,11 @@ package com.ipb.castelobranco.features.gallery.domain.model
 import com.ipb.castelobranco.core.domain.error.AppError
 
 sealed interface GallerySyncResult {
-    /** The index follows the server; [missingOriginals] photos have no original on disk yet. */
-    data class Synced(val missingOriginals: Int) : GallerySyncResult
+    /**
+     * The index follows the server; [missingOriginals] photos have no original on disk yet, and
+     * [missingVideos] videos have no complete file.
+     */
+    data class Synced(val missingOriginals: Int, val missingVideos: Int = 0) : GallerySyncResult
 
     /** Another sync was running, there is no session, or the sync was cancelled by logout. */
     data object Skipped : GallerySyncResult

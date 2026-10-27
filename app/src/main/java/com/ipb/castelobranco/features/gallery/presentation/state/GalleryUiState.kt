@@ -1,19 +1,34 @@
 package com.ipb.castelobranco.features.gallery.presentation.state
 
+import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 import java.io.File
 
-/** What a photo tile or page shows: the original on disk, else the server preview, else grey. */
+/**
+ * What a photo tile or page shows: the original on disk, a frame of the video on disk, else the
+ * server preview (a video's poster), else grey.
+ */
 sealed interface PhotoImage {
     data class Original(val file: File) : PhotoImage
+    data class VideoFrame(val file: File) : PhotoImage
     data class Preview(val url: String) : PhotoImage
     data object None : PhotoImage
 }
 
-/** An album in a grid. [cover] `null` = black tile. */
-data class AlbumTile(val id: Long, val name: String, val cover: File?)
+/**
+ * An album in a grid. [cover] `null` = black tile. [onDevice] `false` = hidden outside "Organizar"
+ * and the move picker (only undownloaded videos below it), shown dimmed there.
+ */
+data class AlbumTile(val id: Long, val name: String, val cover: File?, val onDevice: Boolean = true)
 
-data class PhotoTile(val id: Long, val image: PhotoImage)
+/** [duration] `m:ss` for a video; [onDevice] `false` = an undownloaded video, only shown in "Organizar". */
+data class PhotoTile(
+    val id: Long,
+    val image: PhotoImage,
+    val isVideo: Boolean = false,
+    val duration: String? = null,
+    val onDevice: Boolean = true,
+)
 
 data class GalleryDownloadState(
     val isDownloading: Boolean = false,
@@ -45,12 +60,31 @@ data class GalleryRootUiState(
     /** "Organizar" open on the root: [albums] already follow the draft order. */
     val isOrganizing: Boolean = false,
     val isSavingOrder: Boolean = false,
+    /** "Há N vídeos na galeria": the switch is off, videos are missing and the card was never answered. */
+    val videoCard: VideoCard? = null,
+    /** Video downloads stopped: finishing the next one would leave under 1 GB free. */
+    val showLowSpace: Boolean = false,
 ) {
     /** The trash icon: owners only, not while organizing. */
     val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
 
     /** The people filter: everyone, once the gallery is on the device, not while organizing. */
     val showPeople: Boolean get() = hasIndex && !isOrganizing
+}
+
+/** The discovery card: [count] videos not on the device, [sizeText] their total size (`480 MB`). */
+data class VideoCard(val count: Int, val sizeText: String?) {
+    val title: String
+        get() = buildString {
+            append(if (count == 1) "Há 1 vídeo na galeria" else "Há $count vídeos na galeria")
+            sizeText?.let { append(" ($it)") }
+        }
+
+    companion object {
+        const val SUBTITLE = "Eles não são baixados automaticamente."
+        const val DISMISS_LABEL = "Não, obrigado"
+        const val ACCEPT_LABEL = "Baixar"
+    }
 }
 
 data class AlbumUiState(
@@ -111,17 +145,28 @@ data class ViewerPhoto(
     val dateTaken: String? = null,
     /** The names of the people tagged, in the photo's order. */
     val people: List<String> = emptyList(),
+    val isVideo: Boolean = false,
+    /** The video file on the device; every video in a viewer has one. */
+    val videoFile: File? = null,
+    val mimeType: String = DEFAULT_MIME,
 ) {
     val original: File? get() = (image as? PhotoImage.Original)?.file
-    val canSaveOrShare: Boolean get() = original != null
+
+    /** What "Baixar" and "Compartilhar" send: the photo's original or the video. */
+    val file: File? get() = videoFile ?: original
+    val canSaveOrShare: Boolean get() = file != null
+
+    private companion object {
+        const val DEFAULT_MIME = "image/jpeg"
+    }
 }
 
 /** What a viewer pages through: the album it was opened from, or a people filter's result. */
 sealed interface ViewerSource {
     data class Album(val albumId: Long) : ViewerSource
 
-    /** The photos in which every one of [memberIds] is tagged, in tree order. */
-    data class People(val memberIds: Set<Long>) : ViewerSource
+    /** The items in which every one of [memberIds] is tagged and that match [filter], in tree order. */
+    data class People(val memberIds: Set<Long>, val filter: MediaFilter = MediaFilter.ALL) : ViewerSource
 }
 
 data class PhotoViewerUiState(

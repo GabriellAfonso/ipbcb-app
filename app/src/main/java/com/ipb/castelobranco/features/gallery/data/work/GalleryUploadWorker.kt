@@ -53,6 +53,9 @@ class GalleryUploadWorker @AssistedInject constructor(
 
     companion object {
         const val WORK_NAME = "gallery_upload"
+
+        /** The same run, waiting for WiFi: serves the videos held by "Esperar WiFi". */
+        const val WIFI_WORK_NAME = "gallery_upload_wifi"
         const val KEY_CURRENT = "current"
         const val KEY_TOTAL = "total"
     }

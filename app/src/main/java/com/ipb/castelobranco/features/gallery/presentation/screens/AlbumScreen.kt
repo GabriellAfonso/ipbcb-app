@@ -51,7 +51,7 @@ import com.ipb.castelobranco.features.gallery.presentation.components.AlbumItem
 import com.ipb.castelobranco.features.gallery.presentation.components.AlbumUploadsPanel
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
-import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
+import com.ipb.castelobranco.features.gallery.presentation.components.PhotoTileImage
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
 import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
@@ -69,12 +69,13 @@ private const val ALBUM_SPAN = 3
 private const val PHOTO_SPAN = 2
 private const val ALBUMS_SECTION = "Álbuns"
 private const val PHOTOS_SECTION = "Fotos"
+private const val MEDIA_SECTION = "Fotos e vídeos"
 private const val DEFAULT_TITLE = "Álbum"
 private const val EMPTY_MESSAGE = "Nenhuma foto neste álbum."
 private const val ORGANIZE_TITLE = "Organizar"
 private const val ORGANIZE_HINT = "Toque e segure para arrastar."
 private const val ADD_LABEL = "Adicionar"
-private const val ADD_PHOTOS_LABEL = "Adicionar fotos"
+private const val ADD_PHOTOS_LABEL = "Adicionar fotos e vídeos"
 private const val NEW_ALBUM_LABEL = "Novo álbum"
 private const val EDIT_ALBUM_LABEL = "Editar álbum"
 private const val MOVE_ALBUM_LABEL = "Mover álbum"
@@ -131,6 +132,7 @@ fun AlbumScreen(
         uri?.let { viewModel.setCoverFromPicked(albumId, it.toString()) }
     }
     val imagesOnly = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+    val imagesAndVideos = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
 
     BackHandler(enabled = state.isSelecting) { viewModel.clearSelection() }
     BackHandler(enabled = state.isOrganizing) { viewModel.cancelOrganize() }
@@ -147,7 +149,7 @@ fun AlbumScreen(
                     else nav.toPhoto(albumId, photoId)
                 },
                 onPhotoLongPress = { photoId -> viewModel.onPhotoLongPress(albumId, photoId) },
-                onAddPhotos = { pickPhotos.launch(imagesOnly) },
+                onAddPhotos = { pickPhotos.launch(imagesAndVideos) },
                 onNewAlbum = { viewModel.openCreateAlbum(albumId) },
                 onEditAlbum = { viewModel.openEditAlbum(albumId) },
                 onMoveAlbum = { viewModel.openMoveAlbum(albumId) },
@@ -289,7 +291,8 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         }
         if (showSections) {
             item(key = GalleryGridKeys.PHOTOS_SECTION, span = { GridItemSpan(maxLineSpan) }) {
-                SectionTitle(PHOTOS_SECTION, state.photos.size, Modifier.padding(top = 8.dp))
+                val label = if (state.photos.any { it.isVideo }) MEDIA_SECTION else PHOTOS_SECTION
+                SectionTitle(label, state.photos.size, Modifier.padding(top = 8.dp))
             }
         }
         items(
@@ -313,12 +316,7 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
                         .aspectRatio(1f)
                         .then(tileModifier),
                 ) {
-                    GalleryImage(
-                        image = photo.image,
-                        previewLoader = previewLoader,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    PhotoTileImage(photo, previewLoader, Modifier.fillMaxSize())
                     if (selected) SelectedOverlay()
                 }
             }

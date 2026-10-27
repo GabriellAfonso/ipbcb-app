@@ -14,6 +14,8 @@ import java.security.MessageDigest
  *   never touches its file.
  * - Covers, by a hash of their URL: `gallery/covers/{sha1(url)}.jpg`. A replaced cover gets a new URL,
  *   hence a new file; two albums inheriting the same cover share one.
+ * - Videos, flat by item id: `gallery/videos/{id}.{mp4|mov}`. A download in progress is
+ *   `{id}.{ext}.part` next to it — kept between runs so it resumes, never listed as a video.
  * - Upload queue files, by upload id: `gallery/uploads/{uploadId}.{ext}`. Inside the gallery root so
  *   sign-out removes them with the rest; the reconcile never looks at them.
  *
@@ -26,6 +28,7 @@ class GalleryMediaStore(private val context: Context) {
     private val originalsDir: File get() = File(root, ORIGINALS_DIR)
     private val coversDir: File get() = File(root, COVERS_DIR)
     private val uploadsDir: File get() = File(root, UPLOADS_DIR)
+    private val videosDir: File get() = File(root, VIDEOS_DIR)
 
     fun saveOriginal(photoId: Long, ext: String, input: InputStream): File =
         writeAtomically(File(originalsDir, "$photoId.$ext"), input)
@@ -39,6 +42,43 @@ class GalleryMediaStore(private val context: Context) {
             ?.mapNotNull { file -> file.nameWithoutExtension.toLongOrNull()?.let { it to file } }
             ?.toMap()
             .orEmpty()
+
+    /** Item id → complete video. Partials and files whose name is not `{id}.{mp4|mov}` are ignored. */
+    fun videoFiles(): Map<Long, File> =
+        videosDir.listFiles()
+            ?.filter { it.isFile && it.extension.lowercase() in VIDEO_EXTENSIONS }
+            ?.mapNotNull { file -> file.nameWithoutExtension.toLongOrNull()?.let { it to file } }
+            ?.toMap()
+            .orEmpty()
+
+    fun videoFile(id: Long, ext: String): File = File(videosDir, "$id.$ext")
+
+    /** Where the download of a video accumulates until it is whole. */
+    fun partialVideo(id: Long, ext: String): File = File(videosDir, "$id.$ext$PARTIAL_SUFFIX").also {
+        it.parentFile?.mkdirs()
+    }
+
+    /** Item ids of every partial video on disk, with its file. */
+    fun partialVideos(): Map<Long, File> =
+        videosDir.listFiles()
+            ?.filter { it.isFile && it.name.endsWith(PARTIAL_SUFFIX) }
+            ?.mapNotNull { file -> file.name.substringBefore('.').toLongOrNull()?.let { it to file } }
+            ?.toMap()
+            .orEmpty()
+
+    /** The partial is whole: give it the final name, which makes it a video. */
+    fun completeVideo(id: Long, ext: String): File {
+        val partial = partialVideo(id, ext)
+        val target = videoFile(id, ext)
+        if (!partial.renameTo(target)) {
+            partial.copyTo(target, overwrite = true)
+            partial.delete()
+        }
+        return target
+    }
+
+    /** An uploaded video becomes the device's copy: the server stores it as sent. */
+    fun adoptVideo(id: Long, ext: String, source: File): File = move(source, videoFile(id, ext))
 
     fun saveCover(url: String, input: InputStream): File = writeAtomically(coverFile(url), input)
 
@@ -58,8 +98,10 @@ class GalleryMediaStore(private val context: Context) {
      * Makes a prepared upload the original of the photo the server created from it — the server
      * stores the file as sent, so there is nothing to download back.
      */
-    fun adoptOriginal(photoId: Long, ext: String, source: File): File {
-        val target = File(originalsDir, "$photoId.$ext")
+    fun adoptOriginal(photoId: Long, ext: String, source: File): File =
+        move(source, File(originalsDir, "$photoId.$ext"))
+
+    private fun move(source: File, target: File): File {
         target.parentFile?.mkdirs()
         if (!source.renameTo(target)) {
             source.copyTo(target, overwrite = true)
@@ -79,8 +121,23 @@ class GalleryMediaStore(private val context: Context) {
         root.deleteRecursively()
     }
 
+    /** "Apagar galeria" with only Fotos: the photo originals go; covers, videos and the queue stay. */
+    fun clearPhotos() {
+        originalsDir.deleteRecursively()
+    }
+
+    /** "Apagar galeria" with only Vídeos: complete and partial videos. */
+    fun clearVideos() {
+        videosDir.deleteRecursively()
+    }
+
     /** Bytes of every file under the gallery root — what [clearAll] frees. */
-    fun totalBytes(): Long = root.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    fun totalBytes(): Long = bytesOf(root)
+
+    /** Bytes of the videos, partials included. Everything else under the root counts as photos. */
+    fun videoBytes(): Long = bytesOf(videosDir)
+
+    private fun bytesOf(dir: File): Long = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
 
     private fun writeAtomically(target: File, input: InputStream): File {
         target.parentFile?.mkdirs()
@@ -106,6 +163,9 @@ class GalleryMediaStore(private val context: Context) {
         const val ORIGINALS_DIR = "photos"
         const val COVERS_DIR = "covers"
         const val UPLOADS_DIR = "uploads"
+        const val VIDEOS_DIR = "videos"
+        private const val PARTIAL_SUFFIX = ".part"
+        private val VIDEO_EXTENSIONS = setOf("mp4", "mov")
         private const val COVER_EXTENSION = "jpg"
         private const val TEMP_PREFIX = "gallery-"
         private const val TEMP_SUFFIX = ".part"

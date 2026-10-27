@@ -55,12 +55,39 @@ class FakeGalleryApi : GalleryApi {
         }
     }
 
-    private val scripts = mutableMapOf<String, () -> Response<ResponseBody>>()
+    private val scripts = mutableMapOf<String, (range: String?) -> Response<ResponseBody>>()
     private val _requestedUrls = mutableListOf<String>()
     val requestedUrls: List<String> get() = _requestedUrls
+    private val _ranges = mutableListOf<String?>()
+
+    /** The `Range` header of every media request, in order (`null` = whole file). */
+    val ranges: List<String?> get() = _ranges
+
+    /**
+     * Serves [bytes] like the media route: with `Range: bytes=N-` it answers 206 with the rest, unless
+     * [ignoreRange] (then 200 with everything, as a server that ignores the header).
+     */
+    fun respondRanged(url: String, bytes: ByteArray, ignoreRange: Boolean = false) {
+        scripts[url] = { range ->
+            val start = range?.removePrefix("bytes=")?.removeSuffix("-")?.toIntOrNull()
+            when {
+                start == null || ignoreRange -> Response.success(bytes.toResponseBody(VIDEO_MP4))
+                start >= bytes.size -> Response.error(416, "".toResponseBody(APPLICATION_JSON))
+                else -> Response.success(
+                    206,
+                    bytes.copyOfRange(start, bytes.size).toResponseBody(VIDEO_MP4),
+                )
+            }
+        }
+    }
 
     fun respondBytes(url: String, bytes: ByteArray = DEFAULT_BYTES) {
         scripts[url] = { Response.success(bytes.toResponseBody(IMAGE_JPEG)) }
+    }
+
+    /** 200 whose body breaks after [bytes]: the partial keeps what arrived. */
+    fun respondCut(url: String, bytes: ByteArray) {
+        scripts[url] = { Response.success(TruncatedBody(bytes)) }
     }
 
     fun respondError(url: String, code: Int, body: String = """{"detail":"HTTP $code"}""") {
@@ -82,10 +109,11 @@ class FakeGalleryApi : GalleryApi {
         return next()
     }
 
-    override suspend fun downloadFile(absoluteUrl: String): Response<ResponseBody> {
+    override suspend fun downloadFile(absoluteUrl: String, range: String?): Response<ResponseBody> {
         _requestedUrls += absoluteUrl
+        _ranges += range
         val script = scripts[absoluteUrl] ?: return Response.success(DEFAULT_BYTES.toResponseBody(IMAGE_JPEG))
-        return script()
+        return script(range)
     }
 
     // region writes
@@ -153,6 +181,27 @@ class FakeGalleryApi : GalleryApi {
         )
     )
 
+    override suspend fun uploadVideo(
+        albumId: RequestBody,
+        clientUploadId: RequestBody,
+        durationMs: RequestBody,
+        dateTaken: RequestBody?,
+        video: MultipartBody.Part,
+        poster: MultipartBody.Part,
+    ): Response<PhotoUploadResultDto> = answer(
+        WriteCall(
+            "uploadVideo",
+            parts = buildMap {
+                put("album_id", albumId.text())
+                put("client_upload_id", clientUploadId.text())
+                put("duration_ms", durationMs.text())
+                dateTaken?.let { put("date_taken", it.text()) }
+                put("poster", poster.fileName().orEmpty())
+            },
+            fileName = video.fileName(),
+        )
+    )
+
     override suspend fun patchPhoto(photoId: Long, body: JsonObject): Response<GalleryPhotoDto> =
         answer(WriteCall("patchPhoto", photoId, body))
 
@@ -199,6 +248,7 @@ class FakeGalleryApi : GalleryApi {
         val DEFAULT_BYTES: ByteArray = "fake-image-bytes".toByteArray()
         private const val HTTP_NO_CONTENT = 204
         private val IMAGE_JPEG = "image/jpeg".toMediaType()
+        private val VIDEO_MP4 = "video/mp4".toMediaType()
         private val APPLICATION_JSON = "application/json".toMediaType()
     }
 }
