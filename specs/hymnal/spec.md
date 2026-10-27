@@ -31,17 +31,31 @@ todos os hinos e não deve rodar a cada tecla, mas a query vazia precisa passar 
 `debounce` uniforme atrasaria também a emissão inicial do `MutableStateFlow("")`, deixando a tela
 em `isLoading` por 200 ms toda vez que se entra no hinário, mesmo com os hinos já em memória.
 
-`HymnalUiState`: `hymns`, `filteredHymns`, `isLoading`, `error`.
+`HymnalUiState`: `hymns`, `filteredHymns`, `groups`, `isLoading`, `error`.
+
+**Layout** (mesma linguagem das Tabelas e da Escala: o mais escuro em cima): o campo de busca fica no bloco
+verde da TopBar (`topBarExtension`), translucido, com a dica "Número, título ou trecho". Com texto digitado,
+mostra "N hinos" e um botao de limpar. Abaixo, a folha de conteudo com cantos superiores arredondados
+(`surfaceDim`).
+
+**Grupos por centena:** `filteredHymns` agrupados de 100 em 100 pelo numero (`groupHymnsByHundred`, calculado
+no ViewModel): titulo do grupo "1 – 100", "101 – 200"… centralizado entre duas linhas finas, e um cartao
+(`surfaceContainer`) com os hinos do grupo. Numero sem parte numerica vai para o grupo "Outros", no fim.
+
+**Linha:** numero grande em verde (`BrandColors.Green`, 22 sp, negrito) a esquerda; titulo em cima e o
+comeco da primeira estrofe numa linha embaixo. Linha inteira clicavel. Busca sem resultado: "Nenhum hino
+encontrado para “{busca}”."
 
 ### 1.2 Detalhe
 
-Exibe `número • título` e cada estrofe em um card, com faixa colorida por tipo:
+**Cabecalho** no bloco verde da TopBar: "Hino {número}" pequeno (mono, verde-menta) e o titulo grande em
+branco. O botao de fonte da TopBar abre o ajuste no mesmo bloco verde, acima do cabecalho. Abaixo, a folha de
+conteudo arredondada (`surfaceDim`).
 
-| Tipo     | Cor       |
-|----------|-----------|
-| `VERSE`  | `#F2A300` |
-| `CHORUS` | `#0F6B5C` |
-| `OTHER`  | `#9E9E9E` |
+**Estrofes:** um cartao por estrofe (`surfaceContainer`, cantos de 12 dp), com um rotulo em cima dizendo o
+que e (`stanzaLabels`): "1ª estrofe", "2ª estrofe"… so contando as `VERSE`; "Coro" para `CHORUS`; sem rotulo
+para `OTHER`. O coro tem fundo verde claro e texto verde escuro em italico (no escuro, fundo verde escuro e
+texto verde-menta). Sem faixa colorida.
 
 Texto selecionável (`SelectionContainer`). Ajuste de fonte de 16 sp a 32 sp por slider na
 extensão da top bar, persistido em `ThemePreferences.hymnalFontSize` (padrão 22 sp).

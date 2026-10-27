@@ -7,6 +7,7 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.hymnal.domain.usecase.ObserveHymnsUseCase
 import com.ipb.castelobranco.features.hymnal.domain.usecase.SearchHymnsUseCase
+import com.ipb.castelobranco.features.hymnal.presentation.mapper.groupHymnsByHundred
 import com.ipb.castelobranco.features.hymnal.presentation.screens.HymnalUiState
 import com.ipb.castelobranco.features.settings.domain.repository.SettingsRepository
 import com.ipb.castelobranco.core.di.DefaultDispatcher
@@ -74,12 +75,16 @@ class HymnalViewModel @Inject constructor(
     ) { state, query ->
         when (state) {
             is SnapshotState.Loading -> HymnalUiState(isLoading = true, error = null)
-            is SnapshotState.Data -> HymnalUiState(
-                hymns = state.value,
-                filteredHymns = searchHymnsUseCase(state.value, query),
-                isLoading = false,
-                error = null
-            )
+            is SnapshotState.Data -> {
+                val filtered = searchHymnsUseCase(state.value, query)
+                HymnalUiState(
+                    hymns = state.value,
+                    filteredHymns = filtered,
+                    groups = groupHymnsByHundred(filtered),
+                    isLoading = false,
+                    error = null
+                )
+            }
             is SnapshotState.Error -> HymnalUiState(
                 isLoading = false,
                 error = state.error.toUserMessage()
