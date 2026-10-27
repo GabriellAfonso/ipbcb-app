@@ -77,6 +77,7 @@ class AccessMapperTest {
     private companion object {
         val ALL_SCOPES = listOf(
             "members", "schedule", "songs", "gallery", "events", "notices", "reports.hymnal_history", "profiles",
+            "bible_videos",
         )
         val LEADER = mapOf(
             "members" to "manage", "schedule" to "manage", "songs" to "manage", "gallery" to "manage",

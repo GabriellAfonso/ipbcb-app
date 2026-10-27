@@ -9,7 +9,8 @@ enum class Scope(val wireKey: String) {
     EVENTS("events"),
     NOTICES("notices"),
     HYMNAL_HISTORY_REPORT("reports.hymnal_history"),
-    PROFILES("profiles");
+    PROFILES("profiles"),
+    BIBLE_VIDEOS("bible_videos");
 
     companion object {
         /** An unknown key is dropped: the app never grants access to something it does not understand. */
