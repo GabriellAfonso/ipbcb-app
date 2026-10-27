@@ -28,7 +28,7 @@ Lista em seções, separadas por divisor:
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
 | Notificações | Escala            | Switch abaixo de Aniversários; ligado por padrão; "Ativado"/"Desativado". Desligado, o app descarta os lembretes da escala (`specs/schedule/spec.md` §4); só no aparelho, nada vai ao servidor. Ao ligar, mesmo pedido de acesso (2.1). |
-| Galeria      | Galeria ›         | "Fotos {x} · Vídeos {y}"; abre Configurações › Galeria (seção 4). |
+| Galeria      | Galeria ›         | "Fotos {x} · Vídeos {y}"; um tipo sem nada no aparelho some do texto ("Fotos {x}"); os dois vazios, "nada no aparelho". Abre Configurações › Galeria (seção 4). |
 | Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
 | Diagnóstico  | Logs do app       | Abre a tela de logs. Seção escondida até destravar (2.6).                   |
 | Sobre        | Versão            | `versionName` do build. Tocável: 5 toques destravam o Diagnóstico (2.6).    |
@@ -134,7 +134,7 @@ pelo nível (W laranja, E/A cor de erro, I verde, demais cor do texto).
 |---------------|--------------------------------|---------------|
 | Vídeos        | Baixar vídeos automaticamente  | Switch, desligado por padrão (`specs/gallery/spec.md` 11.3). Descrição: desligado "Somente no WiFi · {n} vídeos ({tamanho})"; ligado e faltando "{k} de {n} baixados"; completo "Somente no WiFi · {n} de {n} baixados". |
 | Armazenamento | Baixar galeria                 | Diálogo Fotos / Vídeos (galeria 3.5). |
-| Armazenamento | Apagar galeria                 | "Fotos {x} · Vídeos {y}". Diálogo "Escolha o que apagar deste aparelho." com Fotos e Vídeos marcados, cada um com o tamanho; "Apagar" desabilitado sem nenhum; só Vídeos avisa "Apagar os vídeos desliga o download automático de vídeos."; os dois avisam que a galeria só volta por "Baixar galeria". Efeito: galeria 3.3 / 3.4. Depois: "Galeria apagada" / "Fotos apagadas" / "Vídeos apagados". |
+| Armazenamento | Apagar galeria                 | "Fotos {x} · Vídeos {y}", mesma regra da linha Galeria (seção 2). Diálogo "Escolha o que apagar deste aparelho." com Fotos e Vídeos marcados, cada um com o tamanho na mesma linha ("Fotos  26 MB"; vazio, "0 MB"); "Apagar" desabilitado sem nenhum; só Vídeos avisa "Apagar os vídeos desliga o download automático de vídeos."; os dois avisam que a galeria só volta por "Baixar galeria". Efeito: galeria 3.3 / 3.4. Depois: "Galeria apagada" / "Fotos apagadas" / "Vídeos apagados". |
 
 Os tamanhos são medidos ao abrir e depois de cada ação; a tela principal mede de novo a cada volta (`ON_RESUME`).
 

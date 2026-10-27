@@ -243,13 +243,18 @@ fun SettingsContent(
     }
 }
 
-/** "Fotos 320 MB · Vídeos 1,2 GB"; plain "Fotos e vídeos" while measuring. */
-internal fun galleryUsageText(usage: GalleryUsage?): String =
-    if (usage == null) {
-        "Fotos e vídeos"
-    } else {
-        "Fotos ${formatDiskUsage(usage.photoBytes)} · Vídeos ${formatDiskUsage(usage.videoBytes)}"
-    }
+/**
+ * "Fotos 320 MB · Vídeos 1,2 GB", leaving out a type with nothing on the device; plain "Fotos e vídeos" while
+ * measuring.
+ */
+internal fun galleryUsageText(usage: GalleryUsage?): String {
+    if (usage == null) return "Fotos e vídeos"
+    val parts = listOfNotNull(
+        usage.photoBytes.takeIf { it > 0 }?.let { "Fotos ${formatDiskUsage(it)}" },
+        usage.videoBytes.takeIf { it > 0 }?.let { "Vídeos ${formatDiskUsage(it)}" },
+    )
+    return if (parts.isEmpty()) formatDiskUsage(0) else parts.joinToString(" · ")
+}
 
 /** A row that opens another settings screen. */
 @Composable
