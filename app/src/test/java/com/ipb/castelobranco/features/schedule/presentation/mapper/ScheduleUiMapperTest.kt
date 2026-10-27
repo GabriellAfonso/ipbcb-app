@@ -170,4 +170,32 @@ class ScheduleUiMapperTest {
     }
 
     // endregion
+
+    // region weekday and short title
+
+    @Test
+    fun `toSectionsUi fills the abbreviated weekday of each date`() {
+        // 27/10/2026 is a Tuesday, 25/10/2026 a Sunday
+        val schedule = MonthSchedule(
+            year = 2026, month = 10,
+            schedule = mapOf(
+                "Terça de Oração" to ScheduleEntry(time = "19h30", items = listOf(ScheduleItem(27, "A"))),
+                "Domingo Liturgia de Adoração" to ScheduleEntry(time = "18h", items = listOf(ScheduleItem(25, "B"))),
+            )
+        )
+
+        val result = schedule.toSectionsUi()
+
+        assertEquals("ter", result[0].rows.single().weekday)
+        assertEquals("dom", result[1].rows.single().weekday)
+        assertEquals("Terça", result[0].shortTitle)
+        assertEquals("Domingo", result[1].shortTitle)
+    }
+
+    @Test
+    fun `weekdayAbbr is blank for a date that does not exist`() {
+        assertEquals("", weekdayAbbr(year = 2026, month = 2, day = 30))
+    }
+
+    // endregion
 }

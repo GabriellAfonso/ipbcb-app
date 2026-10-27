@@ -43,9 +43,15 @@ internal fun resolveNextDay(
 sealed interface ScheduleUiState {
     object Loading : ScheduleUiState
     object Empty : ScheduleUiState
+    /**
+     * @param nextDays upcoming day of each section (same order as [sections]); null when every date has passed.
+     * @param initialTabIndex section of the next service, opened first on the schedule screen.
+     */
     data class Success(
         val sections: List<ScheduleSectionUi>,
-        val data: MonthSchedule
+        val data: MonthSchedule,
+        val nextDays: List<Int?> = emptyList(),
+        val initialTabIndex: Int = 0,
     ) : ScheduleUiState
     data class Error(val message: String, val httpCode: Int? = null) : ScheduleUiState
 }
@@ -149,9 +155,23 @@ class ScheduleViewModel @Inject constructor(
             is SnapshotState.Data -> {
                 val sections = snapshot.value.toSectionsUi()
                 if (sections.isNotEmpty()) {
+                    val calendar = Calendar.getInstance()
                     ScheduleUiState.Success(
                         sections = sections,
-                        data = snapshot.value
+                        data = snapshot.value,
+                        nextDays = sections.map { section ->
+                            resolveNextDay(
+                                days = section.rows.map { it.day },
+                                scheduleYear = snapshot.value.year,
+                                scheduleMonth = snapshot.value.month,
+                                todayYear = calendar.get(Calendar.YEAR),
+                                todayMonth = calendar.get(Calendar.MONTH) + 1,
+                                todayDay = calendar.get(Calendar.DAY_OF_MONTH),
+                            )
+                        },
+                        initialTabIndex = findNextSection(sections)
+                            ?.let { sections.indexOf(it) }
+                            ?.coerceAtLeast(0) ?: 0,
                     )
                 } else {
                     ScheduleUiState.Empty
