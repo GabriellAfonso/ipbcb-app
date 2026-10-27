@@ -33,6 +33,9 @@ object AppRoutes {
 
     fun schedule(date: LocalDate): String = "$SCHEDULE?$ARG_SCHEDULE_DATE=$date"
 
+    // EBD management (`specs/studies/spec.md` §5). Registered in studiesGraph; the admin panel card opens it.
+    const val SUNDAY_SCHOOL_MANAGE = "SundaySchoolManage"
+
     // Nested graph parent routes
     const val AUTH_GRAPH        = "graph/auth"
     const val ADMIN_GRAPH       = "graph/admin"

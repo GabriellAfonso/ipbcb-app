@@ -2,8 +2,10 @@ package com.ipb.castelobranco.features.bible.di
 
 import android.content.Context
 import com.ipb.castelobranco.core.di.AuthLessRetrofit
+import com.ipb.castelobranco.core.domain.bible.BibleBookCatalog
 import com.ipb.castelobranco.core.di.IoDispatcher
 import com.ipb.castelobranco.features.bible.data.api.BibleApi
+import com.ipb.castelobranco.features.bible.data.catalog.BibleBookCatalogImpl
 import com.ipb.castelobranco.features.bible.data.local.BibleLocalStore
 import com.ipb.castelobranco.features.bible.data.repository.BibleRepositoryImpl
 import com.ipb.castelobranco.features.bible.data.work.WorkManagerBibleDownloadScheduler
@@ -28,6 +30,9 @@ abstract class BibleModule {
     @Binds
     @Singleton
     abstract fun bindBibleRepository(impl: BibleRepositoryImpl): BibleRepository
+
+    @Binds
+    abstract fun bindBibleBookCatalog(impl: BibleBookCatalogImpl): BibleBookCatalog
 
     @Binds
     @Singleton

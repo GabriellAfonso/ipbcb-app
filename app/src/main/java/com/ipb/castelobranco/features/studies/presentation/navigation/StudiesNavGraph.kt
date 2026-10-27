@@ -16,6 +16,8 @@ import com.ipb.castelobranco.features.studies.presentation.screens.ConfessionCha
 import com.ipb.castelobranco.features.studies.presentation.screens.ConfessionScreen
 import com.ipb.castelobranco.features.studies.presentation.screens.DoctrineListScreen
 import com.ipb.castelobranco.features.studies.presentation.screens.StudiesScreen
+import com.ipb.castelobranco.features.studies.presentation.screens.SundaySchoolLessonScreen
+import com.ipb.castelobranco.features.studies.presentation.screens.SundaySchoolScreen
 
 object StudiesRoutes {
     const val Hub = "StudiesHub"
@@ -24,6 +26,20 @@ object StudiesRoutes {
     const val ARG_SLUG = "slug"
     const val ARG_CHAPTER = "chapter"
     const val ARG_PARAGRAPH = "paragraph"
+    const val ARG_LESSON_ID = "lessonId"
+    const val ARG_YEAR = "year"
+
+    const val SundaySchool = "SundaySchool"
+    const val SundaySchoolLesson = "SundaySchoolLesson/{$ARG_LESSON_ID}"
+    const val SundaySchoolLessonForm = "SundaySchoolLessonForm?$ARG_LESSON_ID={$ARG_LESSON_ID}&$ARG_YEAR={$ARG_YEAR}"
+    const val SundaySchoolYears = "SundaySchoolYears"
+
+    /** [lessonId] null opens an empty form for a new lesson. */
+    const val NEW_LESSON = -1
+
+    fun sundaySchoolLesson(id: Int) = "SundaySchoolLesson/$id"
+    fun sundaySchoolLessonForm(lessonId: Int?, year: Int) =
+        "SundaySchoolLessonForm?$ARG_LESSON_ID=${lessonId ?: NEW_LESSON}&$ARG_YEAR=$year"
 
     const val Catechism = "DoctrineCatechism/{$ARG_SLUG}"
     const val Confession = "DoctrineConfession/{$ARG_SLUG}"
@@ -51,8 +67,30 @@ fun NavGraphBuilder.studiesGraph(navController: NavHostController) {
             StudiesScreen(
                 onBackClick = { navController.safePopBackStack() },
                 onOpenDoctrine = { navController.navigate(StudiesRoutes.DoctrineList) },
+                onOpenSundaySchool = { navController.navigate(StudiesRoutes.SundaySchool) },
             )
         }
+
+        composable(StudiesRoutes.SundaySchool) {
+            SundaySchoolScreen(
+                viewModel = hiltViewModel(),
+                onBackClick = { navController.safePopBackStack() },
+                onOpenLesson = { lesson -> navController.navigate(StudiesRoutes.sundaySchoolLesson(lesson.id)) },
+            )
+        }
+
+        composable(
+            route = StudiesRoutes.SundaySchoolLesson,
+            arguments = listOf(navArgument(StudiesRoutes.ARG_LESSON_ID) { type = NavType.IntType }),
+        ) {
+            SundaySchoolLessonScreen(
+                viewModel = hiltViewModel(),
+                onBackClick = { navController.safePopBackStack() },
+                onReferenceClick = openBible,
+            )
+        }
+
+        sundaySchoolManagement(navController)
 
         composable(StudiesRoutes.DoctrineList) {
             DoctrineListScreen(

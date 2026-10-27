@@ -24,6 +24,7 @@ import com.ipb.castelobranco.features.studies.presentation.components.StudiesEnt
 fun StudiesScreen(
     onBackClick: () -> Unit,
     onOpenDoctrine: () -> Unit,
+    onOpenSundaySchool: () -> Unit,
 ) {
     BaseScreen(
         tabName = "Estudos",
@@ -32,6 +33,7 @@ fun StudiesScreen(
     ) { innerPadding ->
         StudiesContent(
             onOpenDoctrine = onOpenDoctrine,
+            onOpenSundaySchool = onOpenSundaySchool,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -40,6 +42,7 @@ fun StudiesScreen(
 @Composable
 fun StudiesContent(
     onOpenDoctrine: () -> Unit,
+    onOpenSundaySchool: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -62,9 +65,9 @@ fun StudiesContent(
         )
         StudiesEntryCard(
             title = "Escola Bíblica Dominical",
-            subtitle = "Lições por trimestre",
+            subtitle = "Aulas por ano",
             icon = Icons.Filled.School,
-            onClick = null,
+            onClick = onOpenSundaySchool,
         )
         StudiesEntryCard(
             title = "Personagens Bíblicos",
@@ -84,5 +87,5 @@ fun StudiesContent(
 @Preview(showBackground = true)
 @Composable
 private fun StudiesContentPreview() {
-    MaterialTheme { StudiesContent(onOpenDoctrine = {}) }
+    MaterialTheme { StudiesContent(onOpenDoctrine = {}, onOpenSundaySchool = {}) }
 }

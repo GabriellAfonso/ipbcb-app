@@ -87,12 +87,15 @@ fica guardada no código mas o card aparece cinza.
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
 | Eventos            | Ciano    | `Event`         | Navega para a área de eventos  | `events` ≥ `view`                    |
 | Perfis             | Âmbar    | `ManageAccounts`| Navega para Perfis (§8)        | `profiles` ≥ `view`                  |
+| EBD                | Marrom   | `School`        | Navega para `SundaySchoolManage` | `sunday_school` ≥ `view`           |
 
 O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença
-não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os seis; Liderança todos menos
+não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os sete; Liderança todos menos
 Presença; Mídia Relatórios e Eventos. Avisos e Notificações (push manual) não vão existir no app: não há card para
 eles, e o escopo `notices` que o backend ainda manda é ignorado pelo painel. A área de eventos (lista e
-formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4.
+formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4. A área da EBD (aulas, formulário com
+pré-visualização, anos) vive em `studiesGraph`, porque a pré-visualização usa o leitor de Estudos: o card só navega
+para `AppRoutes.SUNDAY_SCHOOL_MANAGE` (`specs/studies/spec.md` §5).
 
 A galeria não tem card: a gestão vive nas próprias telas dela, abertas pelo botão Galeria da tela inicial, e cada
 ação aparece conforme o nível em `gallery` (gallery spec §8.1).

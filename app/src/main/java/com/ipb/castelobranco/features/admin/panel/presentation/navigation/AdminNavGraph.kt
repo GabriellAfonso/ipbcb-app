@@ -29,6 +29,7 @@ data class AdminNav(
     val members: () -> Unit,
     val events: () -> Unit,
     val profiles: () -> Unit = {},
+    val sundaySchool: () -> Unit = {},
     val confirmSunday: (LocalDate) -> Unit = {},
 )
 
@@ -60,6 +61,8 @@ fun NavGraphBuilder.adminGraph(navController: NavHostController) {
         members  = { navController.navigate(MembersRoutes.GRAPH) },
         events   = { navController.navigate(EventsAdminRoutes.GRAPH) },
         profiles = { navController.navigate(ProfilesRoutes.GRAPH) },
+        // Managed inside the studies feature, which owns the lesson renderer the preview needs.
+        sundaySchool = { navController.navigate(AppRoutes.SUNDAY_SCHOOL_MANAGE) },
         confirmSunday = { date -> navController.navigate(AppRoutes.sundayRegister(date)) },
     )
 

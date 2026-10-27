@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +66,7 @@ private val Blue = Color(0xFF2563EB)
 private val Indigo = Color(0xFF4F46E5)
 private val Sky = Color(0xFF0EA5E9)
 private val Amber = Color(0xFFD97706)
+private val Brown = Color(0xFF8B5E34)
 
 /** Cinza aplicado no lugar do [AdminAction.accentColor] enquanto a ação não tem implementação. */
 private val DisabledGray = Color(0xFF9CA3AF)
@@ -255,6 +257,13 @@ internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction =
         icon = Icons.Filled.ManageAccounts,
         accentColor = Amber,
         onClick = nav.profiles
+    )
+    PanelCard.SUNDAY_SCHOOL -> AdminAction(
+        label = "EBD",
+        description = "Aulas da Escola Bíblica Dominical",
+        icon = Icons.Filled.School,
+        accentColor = Brown,
+        onClick = nav.sundaySchool
     )
 }
 

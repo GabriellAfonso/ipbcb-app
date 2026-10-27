@@ -17,4 +17,5 @@ enum class PanelCard(val requirement: CardRequirement) {
     REPORTS(AtLeast(Scope.HYMNAL_HISTORY_REPORT, AccessLevel.VIEW)),
     EVENTS(AtLeast(Scope.EVENTS, AccessLevel.VIEW)),
     PROFILES(AtLeast(Scope.PROFILES, AccessLevel.VIEW)),
+    SUNDAY_SCHOOL(AtLeast(Scope.SUNDAY_SCHOOL, AccessLevel.VIEW)),
 }
