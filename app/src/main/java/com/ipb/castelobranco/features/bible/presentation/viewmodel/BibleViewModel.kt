@@ -9,10 +9,13 @@ import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
 import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
+import com.ipb.castelobranco.features.bible.domain.model.BibleProgress
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
+import com.ipb.castelobranco.features.bible.domain.model.ProgressTarget
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 import com.ipb.castelobranco.features.bible.domain.model.resolve
+import com.ipb.castelobranco.features.bible.domain.repository.BibleProgressRepository
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.BibleAutoDownloadUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +57,8 @@ data class BibleUiState(
     val selectedVerses: Set<VerseRef> = emptySet(),
     /** Verses cited by whoever opened the passage (doctrine proof texts); not a selection. */
     val highlightedVerses: Set<VerseRef> = emptySet(),
+    /** The account's reading progress; null when signed out (no marking controls at all). */
+    val progress: BibleProgress? = null,
 ) {
     /** Livro indicado pela posição atual; null se a Bíblia ainda não foi baixada. */
     val currentBook: BibleBook?
@@ -79,7 +84,21 @@ data class BibleUiState(
     val isBibleReady: Boolean get() = books.isNotEmpty()
 
     val isChapterReady: Boolean get() = currentChapterVerses != null
+
+    /** Null when signed out. */
+    val isCurrentChapterRead: Boolean?
+        get() {
+            val book = currentBook ?: return null
+            return progress?.isRead(book.abbrev, position.chapter)
+        }
 }
+
+/** Selection, highlight and progress: the inputs of [BibleUiState] that do not come from the Bible repository. */
+private data class ReaderMarks(
+    val selected: Set<VerseRef>,
+    val highlighted: Set<VerseRef>,
+    val progress: BibleProgress?,
+)
 
 sealed interface BibleUiEvent {
     data class CopiedToClipboard(val text: String) : BibleUiEvent
@@ -90,6 +109,7 @@ sealed interface BibleUiEvent {
 @HiltViewModel
 class BibleViewModel @Inject constructor(
     private val repository: BibleRepository,
+    private val progressRepository: BibleProgressRepository,
     private val autoDownload: BibleAutoDownloadUseCase,
     workManager: WorkManager,
     connectivityObserver: NetworkConnectivityObserver,
@@ -97,6 +117,11 @@ class BibleViewModel @Inject constructor(
 
     private val _selectedVerses = MutableStateFlow<Set<VerseRef>>(emptySet())
     private val _highlightedVerses = MutableStateFlow<Set<VerseRef>>(emptySet())
+    private val _isSignedIn = MutableStateFlow(false)
+
+    private val progress = combine(progressRepository.progress, _isSignedIn) { progress, signedIn ->
+        progress.takeIf { signedIn }
+    }
 
     val isOnWifi: StateFlow<Boolean> = connectivityObserver.isOnWifi
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -145,14 +170,50 @@ class BibleViewModel @Inject constructor(
         },
         repository.fontSizeFlow,
         downloadStatus,
-        _selectedVerses,
-        _highlightedVerses,
-    ) { base, font, status, selected, highlighted ->
-        base.copy(fontSize = font, download = status, selectedVerses = selected, highlightedVerses = highlighted)
+        combine(_selectedVerses, _highlightedVerses, progress, ::ReaderMarks),
+    ) { base, font, status, marks ->
+        base.copy(
+            fontSize = font,
+            download = status,
+            selectedVerses = marks.selected,
+            highlightedVerses = marks.highlighted,
+            progress = marks.progress,
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, BibleUiState())
 
     private val _events = Channel<BibleUiEvent>(capacity = Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    init {
+        // The Bible opened: other devices may have marked chapters since the last fetch.
+        viewModelScope.launch { progressRepository.refresh() }
+    }
+
+    /** The login state lives in the Activity-scoped `CoreViewModel`; the graph hands it in. */
+    fun setSignedIn(signedIn: Boolean) {
+        if (_isSignedIn.value == signedIn) return
+        _isSignedIn.value = signedIn
+        if (signedIn) viewModelScope.launch { progressRepository.refresh() }
+    }
+
+    /** "Marcar como lido" / "Lido ✓" at the end of the chapter. */
+    fun toggleCurrentChapterRead() {
+        val state = uiState.value
+        val book = state.currentBook ?: return
+        val read = state.isCurrentChapterRead ?: return
+        viewModelScope.launch {
+            progressRepository.mark(listOf(ProgressTarget.chapter(book.abbrev, state.position.chapter)), done = !read)
+        }
+    }
+
+    /** Marks or unmarks every chapter of [book]; only the chapters whose state changes are queued. */
+    fun setBookRead(book: BibleBook, done: Boolean) {
+        val progress = uiState.value.progress ?: return
+        val targets = (1..book.chapterCount)
+            .filter { progress.isRead(book.abbrev, it) != done }
+            .map { ProgressTarget.chapter(book.abbrev, it) }
+        viewModelScope.launch { progressRepository.mark(targets, done) }
+    }
 
     fun setActiveTranslation(translation: BibleTranslation) {
         viewModelScope.launch { repository.setActiveTranslation(translation) }

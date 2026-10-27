@@ -4,10 +4,13 @@ import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
 import com.ipb.castelobranco.features.bible.domain.model.BibleHeading
+import com.ipb.castelobranco.features.bible.domain.model.BibleProgress
+import com.ipb.castelobranco.features.bible.domain.model.ProgressTarget
 import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
+import com.ipb.castelobranco.features.bible.domain.repository.BibleProgressRepository
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.usecase.BibleAutoDownloadUseCase
 import androidx.work.WorkInfo
@@ -30,6 +33,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -43,6 +47,8 @@ class BibleViewModelTest {
     private val autoDownload: BibleAutoDownloadUseCase = mockk(relaxed = true)
     private val workManager: WorkManager = mockk(relaxed = true)
     private val connectivityObserver: NetworkConnectivityObserver = mockk(relaxed = true)
+    private val progressRepository: BibleProgressRepository = mockk(relaxed = true)
+    private val progress = MutableStateFlow(BibleProgress.EMPTY)
 
     private val genesis = BibleBook(abbrev = "gn", name = "Gênesis", verseCounts = listOf(2, 2))
 
@@ -67,6 +73,7 @@ class BibleViewModelTest {
         every { repository.fontSizeFlow } returns MutableStateFlow(18f)
         every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
         every { connectivityObserver.isOnWifi } returns flowOf(false)
+        every { progressRepository.progress } returns progress
     }
 
     @After
@@ -75,7 +82,7 @@ class BibleViewModelTest {
     }
 
     private fun buildViewModel(): BibleViewModel =
-        BibleViewModel(repository, autoDownload, workManager, connectivityObserver)
+        BibleViewModel(repository, progressRepository, autoDownload, workManager, connectivityObserver)
 
     /** Subscribe to uiState so WhileSubscribed upstream activates. */
     private fun TestScope.subscribeAndAdvance(vm: BibleViewModel): kotlinx.coroutines.Job {
@@ -428,4 +435,46 @@ class BibleViewModelTest {
     }
 
     // endregion
+
+    @Test
+    fun `signed out has no progress, so no marking controls`() = runTest(testDispatcher) {
+        progress.value = BibleProgress(mapOf("gn" to setOf(1)), emptySet())
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        assertNull(vm.uiState.value.progress)
+        assertNull(vm.uiState.value.isCurrentChapterRead)
+        job.cancel()
+    }
+
+    @Test
+    fun `toggling the current chapter queues the opposite state`() = runTest(testDispatcher) {
+        progress.value = BibleProgress(mapOf("gn" to setOf(1)), emptySet())
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+        vm.setSignedIn(true)
+        advanceUntilIdle()
+
+        assertEquals(true, vm.uiState.value.isCurrentChapterRead)
+        vm.toggleCurrentChapterRead()
+        advanceUntilIdle()
+
+        coVerify { progressRepository.mark(listOf(ProgressTarget.chapter("gn", 1)), done = false) }
+        job.cancel()
+    }
+
+    @Test
+    fun `marking a book queues only the chapters whose state changes`() = runTest(testDispatcher) {
+        progress.value = BibleProgress(mapOf("gn" to setOf(1)), emptySet())
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+        vm.setSignedIn(true)
+        advanceUntilIdle()
+
+        vm.setBookRead(genesis, done = true)
+        advanceUntilIdle()
+
+        coVerify { progressRepository.mark(listOf(ProgressTarget.chapter("gn", 2)), done = true) }
+        job.cancel()
+    }
 }

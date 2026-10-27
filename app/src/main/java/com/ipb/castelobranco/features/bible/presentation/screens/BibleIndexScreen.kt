@@ -4,6 +4,7 @@ import com.ipb.castelobranco.core.domain.util.normalize
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,15 +23,19 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -52,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
+import com.ipb.castelobranco.features.bible.domain.model.BibleProgress
 import com.ipb.castelobranco.features.bible.domain.model.Testament
 import com.ipb.castelobranco.features.bible.domain.model.byTestament
 import com.ipb.castelobranco.features.bible.domain.model.resolve
@@ -72,9 +78,13 @@ private enum class IndexTab(val label: String, val key: String) {
 fun BibleIndexScreen(
     viewModel: BibleViewModel,
     initialTabKey: String,
+    isLoggedIn: Boolean,
     onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(isLoggedIn) { viewModel.setSignedIn(isLoggedIn) }
+    // Long-pressed book waiting for the confirmation of "marcar/desmarcar livro".
+    var bookToToggle by remember { mutableStateOf<BibleBook?>(null) }
     var selectedTab by rememberSaveable { mutableStateOf(IndexTab.fromKey(initialTabKey)) }
     var pendingBookAbbrev by rememberSaveable { mutableStateOf(state.position.bookAbbrev) }
     var pendingChapter by rememberSaveable { mutableStateOf(state.position.chapter) }
@@ -139,9 +149,12 @@ fun BibleIndexScreen(
                         closeSearch()
                         selectedTab = IndexTab.CHAPTER
                     },
+                    progress = state.progress,
+                    onBookLongClick = { book -> if (state.progress != null) bookToToggle = book },
                 )
                 IndexTab.CHAPTER -> ChapterGrid(
                     book = pendingBook,
+                    progress = state.progress,
                     onChapterClick = { ch ->
                         pendingChapter = ch
                         selectedTab = IndexTab.VERSE
@@ -159,14 +172,33 @@ fun BibleIndexScreen(
             }
         }
     }
+
+    bookToToggle?.let { book ->
+        val markAsRead = state.progress?.isBookRead(book.abbrev, book.chapterCount) != true
+        BookReadDialog(
+            book = book,
+            markAsRead = markAsRead,
+            onConfirm = {
+                bookToToggle = null
+                viewModel.setBookRead(book, done = markAsRead)
+            },
+            onDismiss = { bookToToggle = null },
+        )
+    }
 }
 
+/**
+ * The Bible's books by testament, filtered by [searchQuery]. Also the book step of the place picker of "Locais do
+ * vídeo". With [progress] (signed in) each row shows how many chapters were read.
+ */
 @Composable
-private fun BookList(
+internal fun BookList(
     books: List<BibleBook>,
     isLoading: Boolean,
     searchQuery: String,
     onBookClick: (BibleBook) -> Unit,
+    progress: BibleProgress? = null,
+    onBookLongClick: ((BibleBook) -> Unit)? = null,
 ) {
     if (books.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -196,7 +228,13 @@ private fun BookList(
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
         items(rows, key = { (book, _) -> book.abbrev }) { (book, testament) ->
-            BookRow(book = book, testament = testament, onClick = { onBookClick(book) })
+            BookRow(
+                book = book,
+                testament = testament,
+                readCount = progress?.readCount(book.abbrev),
+                onClick = { onBookClick(book) },
+                onLongClick = onBookLongClick?.let { { it(book) } },
+            )
         }
     }
 }
@@ -210,7 +248,7 @@ private fun Testament.colors(): Pair<Color, Color> = when (this) {
 
 /** Opened from the search button on the top bar; black so it stands apart from the list below. */
 @Composable
-private fun BookSearchField(
+internal fun BookSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,
@@ -251,13 +289,20 @@ private fun BookSearchField(
 
 private const val SEARCH_HINT_ALPHA = 0.6f
 
+/** [readCount] is null when signed out: the row shows the chapter count instead of the progress. */
 @Composable
-private fun BookRow(book: BibleBook, testament: Testament, onClick: () -> Unit) {
+private fun BookRow(
+    book: BibleBook,
+    testament: Testament,
+    readCount: Int?,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+) {
     val (circle, circleText) = testament.colors()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -282,17 +327,45 @@ private fun BookRow(book: BibleBook, testament: Testament, onClick: () -> Unit) 
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+        val complete = readCount != null && readCount >= book.chapterCount
         Text(
-            text = "${book.chapterCount} cap.",
+            text = if (readCount == null) "${book.chapterCount} cap." else "$readCount/${book.chapterCount}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (complete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (complete) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = "Livro lido",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 6.dp).size(18.dp),
+            )
+        }
     }
+}
+
+/** Always asks: a long-press by accident must not mark 50 chapters. */
+@Composable
+private fun BookReadDialog(book: BibleBook, markAsRead: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val count = book.chapterCount
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (markAsRead) "Marcar livro como lido" else "Desmarcar livro") },
+        text = {
+            Text(
+                if (markAsRead) "Marcar os $count capítulos de ${book.name} como lidos?"
+                else "Desmarcar os $count capítulos de ${book.name}?"
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(if (markAsRead) "Marcar" else "Desmarcar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }
 
 @Composable
 private fun ChapterGrid(
     book: BibleBook?,
+    progress: BibleProgress?,
     onChapterClick: (Int) -> Unit,
 ) {
     if (book == null) {
@@ -309,7 +382,11 @@ private fun ChapterGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items((1..book.chapterCount).toList()) { ch ->
-            GridCell(text = ch.toString(), onClick = { onChapterClick(ch) })
+            GridCell(
+                text = ch.toString(),
+                onClick = { onChapterClick(ch) },
+                isRead = progress?.isRead(book.abbrev, ch) == true,
+            )
         }
     }
 }
@@ -341,19 +418,45 @@ private fun VerseGrid(
 }
 
 
+/** [isRead]: a read chapter, with its own background and a small check. [isSelected]: picked in the place picker. */
 @Composable
-private fun GridCell(text: String, onClick: () -> Unit) {
+internal fun GridCell(
+    text: String,
+    onClick: () -> Unit,
+    isRead: Boolean = false,
+    isSelected: Boolean = false,
+    checkDescription: String = "Lido",
+) {
+    val background = when {
+        isSelected -> MaterialTheme.colorScheme.primary
+        isRead -> MaterialTheme.colorScheme.primaryContainer
+        else -> Color.Transparent
+    }
+    val textColor = when {
+        isSelected -> MaterialTheme.colorScheme.onPrimary
+        isRead -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
     Box(
         modifier = Modifier
             .height(56.dp)
             .fillMaxWidth()
+            .background(background, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = textColor,
         )
+        if (isRead && !isSelected) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = checkDescription,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(14.dp),
+            )
+        }
     }
 }

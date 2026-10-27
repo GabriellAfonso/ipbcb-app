@@ -155,7 +155,7 @@ fun AppNavHost(
                 onNavigateToAuth = { navController.navigate(AppRoutes.AUTH_GRAPH) },
             )
             hymnalGraph(navController)
-            bibleGraph(navController)
+            bibleGraph(navController, isLoggedIn = coreViewModel.isLoggedIn)
 
             composable(
                 route = AppRoutes.SCHEDULE_ROUTE,

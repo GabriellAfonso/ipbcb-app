@@ -69,6 +69,8 @@ fun BibleVerseColumn(
     listState: LazyListState = rememberLazyListState(),
     headings: List<BibleHeading> = emptyList(),
     modifier: Modifier = Modifier,
+    /** Shown after the last verse (the "Marcar como lido" button); nothing when null. */
+    footer: (@Composable () -> Unit)? = null,
 ) {
     val headingsByVerse = remember(headings) { headings.groupBy { it.verse } }
     SelectionContainer(modifier = modifier) {
@@ -103,6 +105,9 @@ fun BibleVerseColumn(
                         onClick = { onVerseClick(row.ref) },
                     )
                 }
+            }
+            if (footer != null) {
+                item(key = "footer") { footer() }
             }
         }
     }

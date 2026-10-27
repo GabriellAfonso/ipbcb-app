@@ -3,7 +3,9 @@ package com.ipb.castelobranco.features.bible.presentation.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -22,15 +24,18 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ipb.castelobranco.features.bible.domain.model.BiblePlace
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 import com.ipb.castelobranco.features.bible.presentation.components.BibleDownloadBanner
 import com.ipb.castelobranco.features.bible.presentation.components.BibleFontSizeBar
@@ -55,26 +61,78 @@ import com.ipb.castelobranco.features.bible.presentation.components.BiblePending
 import com.ipb.castelobranco.features.bible.presentation.components.BibleReaderToolbar
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumn
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumnPlaceholder
+import com.ipb.castelobranco.features.bible.presentation.components.BibleVideosSheet
+import com.ipb.castelobranco.features.bible.presentation.components.BibleVideosSheetActions
 import com.ipb.castelobranco.features.bible.presentation.components.BibleWaitingForWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.VerseRowData
 import com.ipb.castelobranco.features.bible.presentation.components.bibleReaderPageColor
 import com.ipb.castelobranco.features.bible.presentation.components.verseItemIndex
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleUiEvent
 import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleViewModel
+import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleVideosEvent
+import com.ipb.castelobranco.features.bible.presentation.viewmodel.BibleVideosViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 
 @Composable
 fun BibleReaderScreen(
     viewModel: BibleViewModel,
+    videosViewModel: BibleVideosViewModel,
+    isLoggedIn: Boolean,
     onBack: () -> Unit,
     onOpenIndex: (tab: String) -> Unit,
+    onOpenVideoPlaces: (videoId: Long, preset: BiblePlace?) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val videosState by videosViewModel.uiState.collectAsStateWithLifecycle()
     val isOnWifi by viewModel.isOnWifi.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var showFontBar by remember { mutableStateOf(false) }
+    var showVideos by remember { mutableStateOf(false) }
     KeepScreenOn()
+
+    LaunchedEffect(isLoggedIn) {
+        viewModel.setSignedIn(isLoggedIn)
+        videosViewModel.setSignedIn(isLoggedIn)
+    }
+
+    LaunchedEffect(videosViewModel) {
+        videosViewModel.events.collect { event ->
+            when (event) {
+                is BibleVideosEvent.OpenPlaces -> {
+                    showVideos = false
+                    onOpenVideoPlaces(event.videoId, event.preset)
+                }
+                is BibleVideosEvent.ShowMessage -> Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    if (showVideos) {
+        BibleVideosSheet(
+            state = videosState,
+            actions = BibleVideosSheetActions(
+                onDismiss = {
+                    showVideos = false
+                    videosViewModel.stopReorder()
+                },
+                onOpen = { video -> openLink(context, video.url) },
+                onAdd = videosViewModel::addVideo,
+                onClearAddError = videosViewModel::clearAddError,
+                onEditPlaces = { video ->
+                    showVideos = false
+                    onOpenVideoPlaces(video.id, null)
+                },
+                onRemoveFromPlace = videosViewModel::removeFromPlace,
+                onDelete = videosViewModel::deleteVideo,
+                onStartReorder = videosViewModel::startReorder,
+                onMove = videosViewModel::moveInReorder,
+                onDragStopped = videosViewModel::saveOrder,
+                onStopReorder = videosViewModel::stopReorder,
+                onToggleWatched = videosViewModel::toggleWatched,
+            ),
+        )
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -130,6 +188,8 @@ fun BibleReaderScreen(
                     onChapterClick = { onOpenIndex("chapter") },
                     onTranslationSelected = viewModel::setActiveTranslation,
                     onFontSizeClick = { showFontBar = !showFontBar },
+                    showVideosButton = state.isBibleReady && videosState.showPlayIcon,
+                    onVideosClick = { showVideos = true },
                 )
                 if (showFontBar) {
                     BibleFontSizeBar(
@@ -228,6 +288,9 @@ fun BibleReaderScreen(
                         listState = listState,
                         headings = state.currentChapterHeadings,
                         modifier = Modifier.fillMaxSize(),
+                        footer = state.isCurrentChapterRead?.let { read ->
+                            { ChapterReadButton(read = read, onClick = viewModel::toggleCurrentChapterRead) }
+                        },
                     )
                 }
 
@@ -308,6 +371,24 @@ private fun androidx.compose.foundation.layout.BoxScope.ChapterChevrons(
     }
 }
 
+/** End of the chapter: marking is always manual. Bottom room keeps it clear of the chapter arrows. */
+@Composable
+private fun ChapterReadButton(read: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 88.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (read) {
+            FilledTonalButton(onClick = onClick) {
+                Text("Lido")
+                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.padding(start = 8.dp))
+            }
+        } else {
+            OutlinedButton(onClick = onClick) { Text("Marcar como lido") }
+        }
+    }
+}
+
 @Composable
 private fun SelectionActionBar(
     onCopy: () -> Unit,
@@ -330,6 +411,15 @@ private fun SelectionActionBar(
                 }
             }
         }
+    }
+}
+
+/** YouTube app when installed, browser otherwise; a start time in the link is kept. */
+private fun openLink(context: Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "Nenhum app para abrir o vídeo", Toast.LENGTH_SHORT).show()
     }
 }
 

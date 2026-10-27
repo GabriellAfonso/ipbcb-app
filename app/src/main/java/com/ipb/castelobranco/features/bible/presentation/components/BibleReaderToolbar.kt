@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -42,6 +43,8 @@ fun BibleReaderToolbar(
     onChapterClick: () -> Unit,
     onTranslationSelected: (BibleTranslation) -> Unit,
     onFontSizeClick: () -> Unit,
+    showVideosButton: Boolean = false,
+    onVideosClick: () -> Unit = {},
 ) {
     // Fixed near-black in both themes so the bar reads apart from the text (a theme container color turns lighter
     // than the page in dark mode); dark gray pills with white bold text on top.
@@ -69,6 +72,11 @@ fun BibleReaderToolbar(
                 onSelected = onTranslationSelected,
             )
             Box(modifier = Modifier.weight(1f))
+            if (showVideosButton) {
+                IconButton(onClick = onVideosClick) {
+                    Icon(Icons.Filled.SmartDisplay, contentDescription = "Vídeos")
+                }
+            }
             IconButton(onClick = onFontSizeClick) {
                 Icon(Icons.Filled.FormatSize, contentDescription = "Tamanho da fonte")
             }

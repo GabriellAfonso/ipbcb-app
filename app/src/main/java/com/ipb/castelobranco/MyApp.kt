@@ -13,6 +13,7 @@ import com.ipb.castelobranco.core.data.image.ImageMemoryBudget
 import com.ipb.castelobranco.core.data.local.ThemePreferences
 import com.ipb.castelobranco.core.data.worker.BirthdayNotificationSchedule
 import com.ipb.castelobranco.core.data.worker.BirthdayNotificationWorker
+import com.ipb.castelobranco.features.bible.domain.sync.BibleProgressSyncScheduler
 import com.ipb.castelobranco.features.hymnal.domain.sync.HymnViewSyncScheduler
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import dagger.hilt.android.HiltAndroidApp
@@ -32,6 +33,7 @@ class MyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var themePreferences: ThemePreferences
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var hymnViewSyncScheduler: HymnViewSyncScheduler
+    @Inject lateinit var bibleProgressSyncScheduler: BibleProgressSyncScheduler
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -64,6 +66,7 @@ class MyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // Picks up anything the unique-work KEEP policy could not schedule while a previous run
         // was finishing, so a queued view is never stranded longer than one app launch.
         hymnViewSyncScheduler.scheduleSync()
+        bibleProgressSyncScheduler.scheduleSync()
     }
 
     /**

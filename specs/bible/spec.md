@@ -1,7 +1,7 @@
 # Bíblia — Spec
 
 A Bíblia completa em duas traduções (NAA e ARA), lida 100% offline depois do primeiro download. Não exige
-autenticação.
+autenticação. Vídeos ligados a capítulos e livros (seção 6) e, com login, progresso de leitura (seção 7).
 
 ---
 
@@ -12,6 +12,7 @@ autenticação.
 | Leitor  | `BibleReader`             | Capítulo da posição atual, fonte ajustável, seleção de versículos |
 | Índice  | `BibleIndex?tab={tab}`    | Livros (com busca por nome), capítulos e versículos             |
 | Passagem | `AppRoutes.BIBLE_PASSAGE` | O mesmo leitor, aberto num livro/capítulo/versículo vindo de outra feature |
+| Locais do vídeo | `BibleVideoPlaces/{videoId}` | Onde um vídeo aparece (gestores; seção 6.3) |
 
 Todas vivem em `bibleGraph`, com `BibleViewModel` escopado ao grafo.
 
@@ -143,3 +144,74 @@ política `KEEP` (não substitui um download em andamento), marcado com a tag `b
 trabalho com essa tag espera ou roda, o leitor não mostra banner nem progresso — a pessoa segue lendo a versão
 antiga, e a troca é atômica como qualquer download (5). Se falta alguma tradução, vale o download automático normal
 (com banners), que também atualiza as antigas. Um download manual substitui a atualização.
+
+## 6. Vídeos
+
+Vídeos e playlists do YouTube ligados a capítulos e a livros inteiros (`specs/019-bible-videos/`). Valem para as
+duas traduções (só `abbrev` e número do capítulo). Gerência só com `bible_videos` ≥ `manage` (Admin e Liderança;
+Mídia não); "Excluir vídeo" com `owner`.
+
+### 6.1 Dados
+
+`GET api/bible/videos/` é público (cliente sem token): todos os vídeos com seus locais numa resposta. Guardado como
+snapshot `bible_videos` (+ ETag) pelo `BibleVideoRepository`; carregado do disco no boot (`Preloadable`) e
+atualizado quando o grafo da Bíblia abre (`BibleVideosViewModel`) e depois de cada alteração. Falha de rede mantém a
+lista guardada. Vídeo: `id`, `kind` (`video` | `playlist`), `url`, `title`, `thumbnail_url`, `places` (`book`,
+`chapter` ou `null` = livro inteiro, `position`). Miniaturas pelo Coil (cache em disco, aparecem offline).
+
+### 6.2 Leitor
+
+- Ícone ▶ (`SmartDisplay`) na toolbar, antes do de fonte: para quem não gerencia, só quando o capítulo ou o livro
+  atual tem vídeo; para quem gerencia, sempre (é por ele que se adiciona).
+- Abre um bottom sheet com duas seções: "Gênesis 1" (vídeos do capítulo) e "Gênesis" (do livro inteiro), cada uma
+  na ordem do seu local. Vídeo nos dois aparece só no capítulo. Seção vazia some; gestor sem nada vê "Nenhum vídeo
+  aqui ainda.".
+- Card: miniatura 16:9, título em até 2 linhas, selo "Playlist". Tocar abre a `url` com `ACTION_VIEW` (app do
+  YouTube, senão navegador; o `t=` do link vale).
+
+### 6.3 Gerência
+
+- "Adicionar link" no sheet: diálogo com o link → `POST` com o capítulo atual como primeiro local → abre "Locais do
+  vídeo". `409 BIBLE_VIDEO_EXISTS`: aviso "Esse vídeo já está cadastrado" e abre "Locais do vídeo" do existente
+  (lido de `video` no corpo do erro) com o capítulo atual já na lista, sem salvar. Link inválido, vídeo indisponível
+  ou falha na consulta: mensagem do servidor no diálogo.
+- **"Locais do vídeo"** (`BibleVideoPlaces/{videoId}?presetBook=&presetChapter=`, VM própria da entrada): miniatura e
+  título; lista de locais ("Gênesis 1", "Êxodo (livro inteiro)") em ordem canônica, cada um com ✕; "+ Local" abre o
+  seletor: livro (mesma lista e busca do índice), depois grade de capítulos com seleção múltipla e "Livro inteiro";
+  locais já na lista ficam marcados e travados. "Salvar" envia a lista inteira (`PUT .../places/`); lista vazia pede
+  confirmação e exclui o vídeo. Sair sem salvar descarta.
+- Menu ⋮ do card: "Editar locais", "Remover deste capítulo" / "Remover deste livro" (conforme a seção), "Excluir
+  vídeo" (com confirmação, de todos os lugares).
+- "Reordenar" na seção com 2+ vídeos: mostra só aquela seção com alças de arrastar; soltar salva a ordem daquele
+  local (`PUT .../order/`); "Concluir" sai. Reordenar Gn 1 não mexe em Gn 2. Vídeo novo entra no fim.
+- Toda alteração precisa de rede; falha mostra a mensagem e a lista volta à do servidor.
+
+## 7. Progresso de leitura
+
+Só com login; sem login não aparece nenhum controle. Marcação sempre manual.
+
+- **Fim do capítulo:** depois do último versículo, "Marcar como lido"; lido vira "Lido ✓", e tocar desmarca. Rolar
+  até o fim não marca.
+- **Índice:** na aba Capítulo, capítulo lido tem fundo `primaryContainer` e um check; na lista de livros, "12/50" no
+  lugar de "50 cap.", com check quando completo.
+- **Livro inteiro:** toque longo no livro → diálogo sempre ("Marcar os 50 capítulos de Gênesis como lidos?" /
+  "Desmarcar os 50 capítulos de Gênesis?"); só os capítulos que mudam entram na fila. Livro lido é derivado (todos
+  os capítulos), nunca guardado.
+- **Vídeo visto:** check no card; visto mostra o selo "Visto" e a miniatura esmaecida. Abrir o vídeo não marca.
+
+### 7.1 Estado e fila
+
+`BibleProgressRepository`: estado da conta (`GET api/bible/progress/`, snapshot `bible_progress`) com as mudanças
+pendentes aplicadas por cima — a marca aparece na hora, inclusive offline. Buscado no boot e depois do login
+(`Refreshable`), quando a Bíblia abre e depois de cada envio; sem sessão não busca.
+
+Fila `BibleProgressQueueStore` (snapshot `bible_progress_queue`, um `Mutex`, arquivo ilegível = vazio, máximo 5000):
+cada item é um estado (alvo capítulo ou vídeo, `done`, `changedAt` ISO-8601 com fuso), **um por alvo** — marcar e
+desmarcar offline vira um item só. `BibleProgressSyncWorker` (rede, trabalho único `bible_progress_sync` + `KEEP`,
+backoff exponencial; enfileirado a cada marca e no `MyApp.onCreate()`) envia em lotes de 500 para
+`POST api/bible/progress/sync/` (DTO de envio separado do item guardado). 2xx ou 400: os itens enviados saem da fila
+(só os mesmos alvo e horário — uma mudança feita durante o envio fica); erro de rede, 5xx ou 401: tudo fica. O
+servidor resolve conflitos pela hora da ação (a mais recente vence).
+
+**Logout** (`SessionScopedCache`): tenta enviar a fila por até 5 s e então apaga fila e estado guardado — outra conta
+pode entrar no aparelho. Marca feita offline por quem sai antes de reconectar se perde (aceito).
