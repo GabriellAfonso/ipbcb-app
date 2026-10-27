@@ -78,6 +78,7 @@ class AccessMapperTest {
         val ALL_SCOPES = listOf(
             "members", "schedule", "songs", "gallery", "events", "notices", "reports.hymnal_history", "profiles",
             "bible_videos",
+            "sunday_school",
         )
         val LEADER = mapOf(
             "members" to "manage", "schedule" to "manage", "songs" to "manage", "gallery" to "manage",

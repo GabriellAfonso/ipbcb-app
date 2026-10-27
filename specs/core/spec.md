@@ -154,7 +154,7 @@ Vocabulario em `core/domain/access/` (sem Android):
 | Tipo | Conteudo |
 |------|----------|
 | `AccessLevel` | `VIEW` < `MANAGE` < `OWNER` (ordem do enum = hierarquia) |
-| `Scope` | `MEMBERS`, `SCHEDULE`, `SONGS`, `GALLERY`, `EVENTS`, `NOTICES`, `HYMNAL_HISTORY_REPORT` (`reports.hymnal_history`), `PROFILES`, `BIBLE_VIDEOS` (`bible_videos`, gestão dos vídeos da Bíblia — `specs/bible/spec.md` §6) |
+| `Scope` | `MEMBERS`, `SCHEDULE`, `SONGS`, `GALLERY`, `EVENTS`, `NOTICES`, `HYMNAL_HISTORY_REPORT` (`reports.hymnal_history`), `PROFILES`, `BIBLE_VIDEOS` (`bible_videos`, gestão dos vídeos da Bíblia — `specs/bible/spec.md` §6), `SUNDAY_SCHOOL` (`sunday_school`, gestão das aulas da EBD — `specs/studies/spec.md` §5) |
 | `Role` | `ADMIN`, `LEADER`, `MEDIA` |
 | `Access` | `roles`, `hasAnyRole`, `levels`; `allows(scope, minimo)`, `holds(role)`; `Access.NONE` |
 | `AccessRepository` | `access: Flow<Access>`, `refresh()` |
