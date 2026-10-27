@@ -106,16 +106,6 @@ fun SundaySongRow(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start
     ) {
-        Text(
-            text = "${state.position}.",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier
-                .width(18.dp)
-                .padding(top = 14.dp)
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Top
@@ -133,7 +123,7 @@ fun SundaySongRow(
             ) {
                 val label = selectedSong?.let { SongLabelFormatter.format(it) }
                 Text(
-                    text = label ?: "Música",
+                    text = label ?: "${state.position}ª música",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (label != null)
                         MaterialTheme.colorScheme.onSurface

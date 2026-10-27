@@ -5,15 +5,9 @@ import com.ipb.castelobranco.core.domain.util.normalize
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,18 +15,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -40,16 +34,12 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,17 +54,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ipb.castelobranco.core.domain.constants.MUSIC_TONES
 import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.PositionLabel
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.RowDivider
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.SongTitleArtist
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.TableCard
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.TableRow
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.ToneChip
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireRowState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 private val Green = BrandColors.Green
+private const val FIXED_ROW_ALPHA = 0.12f
+private const val SELECTED_OPTION_ALPHA = 0.08f
+private const val DISABLED_ALPHA = 0.6f
+private const val EMPTY_SONG_LABEL = "Escolher música"
+private const val HINT = "Toque na música para trocar e no tom para mudar."
 
 @Composable
 fun RepertoireTab(
@@ -122,124 +124,170 @@ fun RepertoireTab(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = MaterialTheme.colorScheme.surfaceContainer)
-            .padding(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        rows.forEach { row ->
-            RepertoireRow(
-                row = row,
-                availableSongs = availableSongs,
-                enabled = !isRefreshing,
-                onSongSelect = { song -> onSongSelect(row.position, song) },
-                onToneChange = { tone -> onToneChange(row.position, tone) },
-                onToggleFixed = { onToggleFixed(row.position) },
-                onSongInfoClick = onSongInfoClick,
+    // Only one row's song picker is open at a time.
+    var openPosition by remember { mutableStateOf<Int?>(null) }
+    val hasAnySelection = rows.any { it.selectedSong != null }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            RepertoireHeader(
+                actionsEnabled = !isRefreshing && hasAnySelection,
+                onClearClick = onClearClick,
+                onShareClick = { share() },
             )
-        }
 
-        val hasAnySelection = rows.any { it.selectedSong != null }
-        Row(
-            modifier = Modifier.align(Alignment.End).padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onClearClick,
-                enabled = !isRefreshing && hasAnySelection,
-                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.DeleteSweep,
-                    contentDescription = "Limpar repertório",
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            IconButton(
-                onClick = { share() },
-                enabled = !isRefreshing && hasAnySelection,
-                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Share,
-                    contentDescription = "Compartilhar",
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onGenerateClick,
-                enabled = !isRefreshing,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                ),
-                modifier = Modifier.weight(1f)
-            ) {
-                if (!isRefreshing) {
-                    Text(text = "Gerar")
-                } else {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(18.dp)
+            TableCard {
+                rows.forEachIndexed { index, row ->
+                    if (index > 0) RowDivider()
+                    RepertoireRow(
+                        row = row,
+                        enabled = !isRefreshing,
+                        onSongClick = {
+                            openPosition = if (openPosition == row.position) null else row.position
+                        },
+                        onToneChange = { tone -> onToneChange(row.position, tone) },
+                        onToggleFixed = { onToggleFixed(row.position) },
                     )
-                }
-            }
-
-            if (save.canSave) {
-                Button(
-                    onClick = onSaveClick,
-                    enabled = !isRefreshing && save.isSaveEnabled,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (save.isSaving) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(18.dp)
+                    AnimatedVisibility(
+                        visible = openPosition == row.position,
+                        enter = expandVertically(),
+                        exit = shrinkVertically(),
+                    ) {
+                        SongPicker(
+                            selectedSong = row.selectedSong,
+                            availableSongs = availableSongs,
+                            onSongSelect = { song ->
+                                onSongSelect(row.position, song)
+                                openPosition = null
+                            },
+                            onSongInfoClick = onSongInfoClick,
                         )
-                    } else {
-                        Text(text = "Salvar")
                     }
                 }
             }
+
+            Text(
+                text = HINT,
+                color = MaterialTheme.colorScheme.outline,
+                fontSize = 11.5.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        RepertoireActionBar(
+            isRefreshing = isRefreshing,
+            save = save,
+            onGenerateClick = onGenerateClick,
+            onSaveClick = onSaveClick,
+        )
+    }
+}
+
+@Composable
+private fun RepertoireHeader(
+    actionsEnabled: Boolean,
+    onClearClick: () -> Unit,
+    onShareClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 18.dp, end = 10.dp, top = 6.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Repertório",
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        val iconColors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+        IconButton(onClick = onClearClick, enabled = actionsEnabled, colors = iconColors) {
+            Icon(Icons.Outlined.DeleteSweep, contentDescription = "Limpar repertório", modifier = Modifier.size(22.dp))
+        }
+        IconButton(onClick = onShareClick, enabled = actionsEnabled, colors = iconColors) {
+            Icon(Icons.Filled.Share, contentDescription = "Compartilhar", modifier = Modifier.size(22.dp))
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun RepertoireRow(
     row: RepertoireRowState,
-    availableSongs: List<Song>,
     enabled: Boolean,
-    onSongSelect: (Song?) -> Unit,
+    onSongClick: () -> Unit,
     onToneChange: (String) -> Unit,
     onToggleFixed: () -> Unit,
-    onSongInfoClick: (songId: Int) -> Unit = {},
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var expandedTone by remember { mutableStateOf(false) }
+    val song = row.selectedSong
+    val hasSong = song != null
+    var toneMenuOpen by remember { mutableStateOf(false) }
+
+    TableRow(background = if (row.isFixed) Green.copy(alpha = FIXED_ROW_ALPHA) else Color.Transparent) {
+        PositionLabel(position = row.position)
+        SongTitleArtist(
+            title = song?.title.orEmpty(),
+            artist = song?.artist,
+            placeholder = EMPTY_SONG_LABEL,
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(enabled = enabled, onClick = onSongClick)
+                .padding(vertical = 2.dp),
+        )
+        Box {
+            ToneChip(
+                tone = row.tone,
+                modifier = Modifier.clickable(enabled = enabled && hasSong) { toneMenuOpen = true },
+            )
+            DropdownMenu(expanded = toneMenuOpen, onDismissRequest = { toneMenuOpen = false }) {
+                MUSIC_TONES.forEach { tone ->
+                    DropdownMenuItem(
+                        text = { Text(tone) },
+                        onClick = {
+                            onToneChange(tone)
+                            toneMenuOpen = false
+                        },
+                    )
+                }
+            }
+        }
+        IconButton(
+            onClick = onToggleFixed,
+            enabled = enabled && hasSong,
+            modifier = Modifier.size(28.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PushPin,
+                contentDescription = if (row.isFixed) "Desafixar" else "Fixar",
+                tint = when {
+                    row.isFixed -> Green
+                    hasSong -> MaterialTheme.colorScheme.outlineVariant
+                    else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                },
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SongPicker(
+    selectedSong: Song?,
+    availableSongs: List<Song>,
+    onSongSelect: (Song) -> Unit,
+    onSongInfoClick: (songId: Int) -> Unit,
+) {
     var searchQuery by remember { mutableStateOf("") }
+    LaunchedEffect(selectedSong) { searchQuery = "" }
 
     val filtered = remember(searchQuery, availableSongs) {
         val q = searchQuery.trim()
@@ -253,232 +301,153 @@ private fun RepertoireRow(
         }
     }
 
-    LaunchedEffect(row.selectedSong) {
-        expanded = false
-        searchQuery = ""
-    }
-
-    val triggerShape = if (expanded)
-        RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-    else
-        RoundedCornerShape(8.dp)
-
-    val rowBackground = if (row.isFixed) Green.copy(alpha = 0.85f) else Color.Transparent
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(rowBackground)
-            .combinedClickable(
-                enabled = enabled && row.selectedSong != null,
-                onClick = {},
-                onLongClick = { onToggleFixed() }
-            )
-            .padding(vertical = 4.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Text(
-            text = "${row.position}.",
-            style = MaterialTheme.typography.titleMedium,
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+        Row(
             modifier = Modifier
-                .width(18.dp)
-                .padding(top = 14.dp)
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .clip(triggerShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .combinedClickable(
-                        enabled = enabled,
-                        onClick = { expanded = !expanded },
-                        onLongClick = {
-                            if (row.selectedSong != null) onToggleFixed()
-                        }
-                    )
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceDim)
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                val label = row.selectedSong?.let { formatSongLabel(it) }
-                Text(
-                    text = label ?: "Música",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (label != null)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.size(16.dp),
                 )
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = row.selectedSong != null && !expanded,
-                    enter = fadeIn() + scaleIn(),
-                    exit = fadeOut() + scaleOut(),
-                ) {
+                Spacer(modifier = Modifier.width(8.dp))
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(Green),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { inner ->
+                        Box {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Buscar música...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                )
+            }
+            if (selectedSong != null) {
+                IconButton(onClick = { onSongInfoClick(selectedSong.id) }, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = "Detalhes da música",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable { row.selectedSong?.let { onSongInfoClick(it.id) } }
+                        modifier = Modifier.size(20.dp),
                     )
-                }
-                Icon(
-                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = if (expanded) Green else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            textStyle = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            cursorBrush = SolidColor(Green),
-                            modifier = Modifier.fillMaxWidth(),
-                            decorationBox = { inner ->
-                                Box {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "Buscar música...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-                                        )
-                                    }
-                                    inner()
-                                }
-                            }
-                        )
-                    }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-
-                    if (filtered.isEmpty()) {
-                        Text(
-                            text = "Nenhuma música encontrada",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 240.dp)
-                        ) {
-                            items(filtered, key = { it.id }) { song ->
-                                val isSelected = song.id == row.selectedSong?.id
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(if (isSelected) Green.copy(alpha = 0.08f) else Color.Transparent)
-                                        .clickable { onSongSelect(song) }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = formatSongLabel(song),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (isSelected) Green else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        ExposedDropdownMenuBox(
-            expanded = expandedTone,
-            onExpandedChange = {
-                if (enabled && row.selectedSong != null) expandedTone = !expandedTone
-            },
-            modifier = Modifier.width(72.dp)
-        ) {
-            OutlinedTextField(
-                value = row.tone,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                placeholder = {
-                    Text(
-                        text = "Tom",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                },
-                textStyle = MaterialTheme.typography.bodySmall,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    disabledBorderColor = Color.Transparent,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                ),
-                enabled = enabled && row.selectedSong != null,
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-                    .height(48.dp)
+        if (filtered.isEmpty()) {
+            Text(
+                text = "Nenhuma música encontrada",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(horizontal = 42.dp, vertical = 8.dp),
             )
-
-            ExposedDropdownMenu(
-                expanded = expandedTone,
-                onDismissRequest = { expandedTone = false }
-            ) {
-                MUSIC_TONES.forEach { tone ->
-                    DropdownMenuItem(
-                        text = { Text(tone) },
-                        onClick = {
-                            onToneChange(tone)
-                            expandedTone = false
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp)) {
+                items(filtered, key = { it.id }) { song ->
+                    val isSelected = song.id == selectedSong?.id
+                    val optionBackground =
+                        if (isSelected) Green.copy(alpha = SELECTED_OPTION_ALPHA) else Color.Transparent
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(optionBackground)
+                            .clickable { onSongSelect(song) }
+                            .padding(start = 42.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+                    ) {
+                        Text(
+                            text = song.title,
+                            fontSize = 13.5.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isSelected) Green else MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (song.artist.isNotBlank()) {
+                            Text(
+                                text = song.artist,
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
     }
 }
 
-private fun formatSongLabel(song: Song): String =
-    if (song.artist.isBlank()) song.title else "${song.title} [${song.artist}]"
+@Composable
+private fun RepertoireActionBar(
+    isRefreshing: Boolean,
+    save: RepertoireSaveState,
+    onGenerateClick: () -> Unit,
+    onSaveClick: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        RowDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            val tonal = MaterialTheme.colorScheme.secondaryContainer
+            val onTonal = MaterialTheme.colorScheme.onSecondaryContainer
+            Button(
+                onClick = onGenerateClick,
+                enabled = !isRefreshing,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = tonal,
+                    contentColor = onTonal,
+                    disabledContainerColor = tonal.copy(alpha = DISABLED_ALPHA),
+                    disabledContentColor = onTonal.copy(alpha = DISABLED_ALPHA),
+                ),
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isRefreshing) ButtonSpinner(color = onTonal) else Text(text = "Gerar")
+            }
+
+            if (save.canSave) {
+                Button(
+                    onClick = onSaveClick,
+                    enabled = !isRefreshing && save.isSaveEnabled,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Green,
+                        contentColor = Color.White,
+                        disabledContainerColor = Green.copy(alpha = DISABLED_ALPHA),
+                        disabledContentColor = Color.White.copy(alpha = DISABLED_ALPHA),
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (save.isSaving) ButtonSpinner(color = Color.White) else Text(text = "Salvar")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ButtonSpinner(color: Color) {
+    CircularProgressIndicator(color = color, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+}

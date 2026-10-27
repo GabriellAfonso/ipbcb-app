@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,17 +25,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
+import com.ipb.castelobranco.core.presentation.components.GreenTab
+import com.ipb.castelobranco.core.presentation.components.GreenTabBar
 import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySet
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.TopSong
@@ -78,6 +72,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
 data class WorshipSongsUiState(
     val sundays: SnapshotState<List<SundaySet>> = SnapshotState.Loading,
@@ -181,16 +178,13 @@ fun WorshipSongsTableContent(
         )
     }
 
-    val tabs = listOf("Ultimos Domingos", "Mais tocadas", "Top tons", "Repertório")
+    val tabs = listOf("Últimos Domingos", "Mais tocadas", "Top tons", "Repertório")
     // Saveable: the NavHost keeps it while Song detail is on top, so back returns to the same tab.
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val searchQuery = state.searchQuery
     // The query outlives this composition in the ViewModel: reopen the bar so an active filter stays visible.
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
     val focusRequester = remember { FocusRequester() }
-
-    val barColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val indicatorColor = MaterialTheme.colorScheme.secondary
 
     LaunchedEffect(showSearch) {
         if (showSearch) focusRequester.requestFocus()
@@ -205,8 +199,17 @@ fun WorshipSongsTableContent(
         logoRes = R.drawable.ic_table,
         showBackArrow = true,
         onBackClick = actions.onBackClick,
+        // The green behind the sheet's rounded corners continues the top bar.
+        containerColor = ipbGreen,
         extraActions = {
             if (state.canRegisterSunday) TablesOverflowMenu(onRegisterSundayClick = actions.onRegisterSundayClick)
+        },
+        topBarExtension = {
+            GreenTabBar(
+                tabs = tabs.map { GreenTab(it) },
+                selectedIndex = selectedTabIndex,
+                onSelect = { selectedTabIndex = it },
+            )
         },
     ) { innerPadding ->
         ElasticPullToRefresh(
@@ -214,12 +217,13 @@ fun WorshipSongsTableContent(
             onRefresh    = { actions.onRefreshCurrentTab(selectedTabIndex) },
             modifier     = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(top = innerPadding.calculateTopPadding())
+                .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
+                .background(MaterialTheme.colorScheme.surfaceDim)
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(color = MaterialTheme.colorScheme.surfaceDim),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -232,8 +236,10 @@ fun WorshipSongsTableContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(barColor)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(start = 10.dp, end = 10.dp, top = 10.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -247,9 +253,10 @@ fun WorshipSongsTableContent(
                             onValueChange = actions.onSearchQueryChange,
                             modifier = Modifier
                                 .weight(1f)
+                                .padding(vertical = 12.dp)
                                 .focusRequester(focusRequester),
                             singleLine = true,
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface), // ← adiciona isso
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
@@ -273,35 +280,6 @@ fun WorshipSongsTableContent(
                                 )
                             }
                         }
-                    }
-                }
-
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = barColor,
-                    contentColor = Color.Black,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = indicatorColor,
-                            height = 3.dp
-                        )
-                    },
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        val isSingleWord = !title.contains(" ")
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                AutoSizeTabText(
-                                    text = title,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = if (isSingleWord) 1 else 2,
-                                )
-                            }
-                        )
                     }
                 }
 
@@ -346,27 +324,29 @@ fun WorshipSongsTableContent(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp),
             )
 
-            // FAB de busca — sobreposto no canto inferior direito
-            FloatingActionButton(
-                onClick = {
-                    if (showSearch) {
-                        showSearch = false
-                        actions.onSearchQueryChange("")
-                    } else {
-                        showSearch = true
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(20.dp),
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary
-            ) {
-                Icon(
-                    imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
-                    contentDescription = "Buscar"
-                )
+            // FAB de busca no canto inferior direito. Não filtra o Repertório e tamparia o rodapé dele.
+            if (selectedTabIndex != REPERTOIRE_TAB_INDEX) {
+                FloatingActionButton(
+                    onClick = {
+                        if (showSearch) {
+                            showSearch = false
+                            actions.onSearchQueryChange("")
+                        } else {
+                            showSearch = true
+                        }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(20.dp),
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                ) {
+                    Icon(
+                        imageVector = if (showSearch) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = "Buscar"
+                    )
+                }
             }
         }
     }
@@ -397,36 +377,8 @@ private fun <T> SnapshotContent(
     }
 }
 
-@Composable
-private fun AutoSizeTabText(
-    text: String,
-    color: Color,
-    maxLines: Int,
-    maxFontSize: TextUnit = 13.sp,
-    minFontSize: TextUnit = 9.sp,
-    stepSize: TextUnit = 0.5.sp,
-) {
-    var fontSize by remember(text) { mutableStateOf(maxFontSize) }
-    var readyToDraw by remember(text) { mutableStateOf(false) }
-
-    Text(
-        text = text,
-        color = color,
-        fontSize = fontSize,
-        maxLines = maxLines,
-        textAlign = TextAlign.Center,
-        onTextLayout = { result ->
-            if (result.hasVisualOverflow && fontSize > minFontSize) {
-                fontSize = (fontSize.value - stepSize.value).coerceAtLeast(minFontSize.value).sp
-            } else {
-                readyToDraw = true
-            }
-        },
-        modifier = Modifier.drawWithContent { if (readyToDraw) drawContent() },
-    )
-}
-
 private const val REPERTOIRE_TAB_INDEX = 3
+private val SheetRadius = 18.dp
 
 @Composable
 private fun TablesOverflowMenu(onRegisterSundayClick: () -> Unit) {

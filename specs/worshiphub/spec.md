@@ -27,11 +27,19 @@ com "Registrar domingo" (§2.6).
 **Tab selecionada:** abre em Ultimos Domingos. Ao voltar de `SongDetailScreen` (ou apos rotacao / morte do
 processo), a tela reabre na tab de onde o usuario saiu.
 
+**Layout:** do topo para baixo, o mais escuro em cima. As tabs ficam dentro do bloco verde da TopBar (`ipbGreen`,
+via `topBarExtension` do `BaseScreen`): texto branco, tab ativa com fundo branco translucido e sublinhado
+verde-menta. Abaixo, o conteudo e uma folha com cantos superiores arredondados (`surfaceDim`), e as listas ficam
+em cartoes arredondados (`surfaceContainer`). Sem cabecalho de colunas: cada linha tem posicao, titulo em cima e
+artista embaixo (quando houver), e o tom num selo (`secondaryContainer`, fonte mono).
+
 ### 2.1 Ultimos Domingos
 
-Lista agrupada por data (`dd/MM/yyyy`). Cada domingo mostra as musicas tocadas com posicao, titulo, artista e tom.
+Lista agrupada por data (`dd/MM/yyyy`). Cada domingo tem a data inteira centralizada entre duas linhas finas e,
+abaixo, um cartao com as musicas tocadas: posicao, titulo, artista e tom.
 
-**Click no titulo:** titulo da musica e clicavel (ripple padrao Material). Navega para `SongDetailScreen` usando `songId`. Apenas o texto do titulo e clicavel, nao a row inteira.
+**Click na musica:** a linha inteira e clicavel (ripple padrao Material). Navega para `SongDetailScreen` usando
+`songId`.
 
 **Busca:** filtra por data, titulo, artista ou tom (accent-insensitive e sem pontuacao via `normalize()` — "07/04" casa com "07/04/2024"). Mostra o domingo inteiro quando qualquer campo casa. O resultado atualiza apos uma pausa curta na digitacao (~150 ms); limpar a busca volta a lista completa na hora. A digitacao e o scroll nunca travam, mesmo com o historico inteiro carregado.
 
@@ -45,9 +53,10 @@ Lista agrupada por data (`dd/MM/yyyy`). Cada domingo mostra as musicas tocadas c
 
 ### 2.2 Mais Tocadas
 
-Ranking de musicas por numero de vezes tocadas aos domingos. Lista ordenada por `play_count` decrescente.
+Ranking de musicas por numero de vezes tocadas aos domingos. Lista ordenada por `play_count` decrescente, num
+cartao so: posicao, titulo e "N vezes". As 3 primeiras posicoes mostram o numero num circulo verde.
 
-**Click no titulo:** mesmo comportamento de Ultimos Domingos — titulo clicavel com ripple, navega para `SongDetailScreen` usando `songId`.
+**Click na musica:** mesmo comportamento de Ultimos Domingos — linha inteira clicavel, navega para `SongDetailScreen` usando `songId`.
 
 **Dados:** `GET top-songs/`
 ```
@@ -56,7 +65,8 @@ Ranking de musicas por numero de vezes tocadas aos domingos. Lista ordenada por 
 
 ### 2.3 Top Tons
 
-Ranking global de tons mais utilizados. Lista ordenada por `tone_count` decrescente.
+Ranking global de tons mais utilizados. Lista ordenada por `tone_count` decrescente, num cartao so: posicao (top 3
+em circulo verde), tom num selo, barra proporcional ao mais usado e "N vezes".
 
 **Dados:** `GET top-tones/`
 ```
@@ -75,7 +85,23 @@ uma musica recem-cadastrada apareca no select sem reiniciar o app. Falha e silen
 catalogo que ja estava carregado. O catalogo e um so no app (`SongsRepositoryImpl` e `@Singleton`): lista de
 musicas, repertorio, cifras, letras e o registro de domingo leem a mesma instancia em memoria.
 
-**Icone de detalhe:** quando uma musica esta selecionada no select, aparece icone `(i)` flutuante sobrepondo o canto direito do select (overlay). Tap no icone navega para `SongDetailScreen` usando `songId`. Icone aparece com `AnimatedVisibility` (fade+scale) e some quando select esta vazio. Nao conflita com tap (selecionar) nem long press (fixar).
+**Layout:** titulo "Repertorio" com os icones "Limpar repertorio" e "Compartilhar" a direita; abaixo, um cartao
+com as 4 posicoes no mesmo formato de Ultimos Domingos (posicao, titulo/artista, selo de tom) mais um alfinete no
+fim da linha. Posicao vazia mostra "Escolher musica" e o selo "Tom" tracejado. Uma dica embaixo do cartao: "Toque
+na musica para trocar e no tom para mudar." No rodape, preso: "Gerar" (tonal) e "Salvar" (verde). O FAB de busca
+nao aparece nesta tab.
+
+**Escolher musica:** tocar no titulo abre, logo abaixo da linha, a busca (titulo ou artista, accent-insensitive)
+e a lista do catalogo (titulo em cima, artista embaixo; a atual destacada). Escolher fecha a busca. Tocar de novo
+no titulo fecha sem trocar.
+
+**Tom:** tocar no selo abre um menu com os 12 tons. Desabilitado em posicao vazia.
+
+**Icone de detalhe:** com a busca aberta e uma musica escolhida, um icone `(i)` ao lado do campo de busca navega
+para `SongDetailScreen` usando `songId`.
+
+**Alfinete:** fixa/desafixa a posicao (regras em "Fixar", abaixo). Desabilitado em posicao vazia. Linha fixada
+fica com fundo verde leve e alfinete verde.
 
 **Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada, execucao sugerida) ficam salvas no aparelho a cada mudanca
 (escolha a mao, tom, fixar/desafixar, "Gerar") e voltam ao reabrir a tela ou o app. Expiram 1h depois da
@@ -86,8 +112,8 @@ servidor, nao e preenchido a partir do repertorio salvo e continua depois do log
 `@SetlistPrefs` (chaves `repertoire_draft_v1` e `repertoire_draft_updated_at`) por `RepertoireDraftStorage`;
 regras em `DraftExpiry` e `RestoreRepertoireDraftUseCase`, tempo via `WallClock` (core).
 
-**Botoes:** "Gerar" | "Salvar" | "Compartilhar". "Compartilhar" (texto via Intent) e sempre disponivel,
-com ou sem salvar. "Salvar" so aparece com `can_save_setlist` do perfil (`ObserveWorshipAccessUseCase`, core) e
+**Botoes:** "Gerar" | "Salvar" | "Compartilhar". "Compartilhar" (texto via Intent) e sempre disponivel
+quando ha musica escolhida, com ou sem salvar. Sem "Salvar", "Gerar" ocupa o rodape inteiro. "Salvar" so aparece com `can_save_setlist` do perfil (`ObserveWorshipAccessUseCase`, core) e
 fica desabilitado sem linha preenchida, com linha preenchida sem tom ou com tom acima de 3 caracteres
 (`RepertoireValidation`), ou durante o envio. Ao tocar, um dialogo confirma "Salvar repertorio de domingo
 dd/MM?" — a data e hoje se for domingo, senao o proximo domingo (`setlistDateFor`, core). Envia so as linhas
@@ -127,8 +153,8 @@ opcoes, a musica pode repetir no repertorio.
 
 ### 2.5 Busca Global (Tabelas)
 
-- FAB circular no canto inferior direito
-- Abre barra de busca animada acima das tabs
+- FAB circular no canto inferior direito (escondido na tab Repertorio)
+- Abre barra de busca animada no topo da folha de conteudo, abaixo das tabs
 - Busca accent-insensitive usando `normalize()`
 - Ativa apenas na tab "Ultimos Domingos" (demais tabs nao filtram)
 
@@ -146,7 +172,7 @@ Entradas:
 
 **Tela:** titulo "Registrar domingo", campo de data (abre o seletor; hoje por padrao) e as musicas tocadas em
 linhas ordenadas (no minimo 4; "adicionar mais" cria a 5a em diante, que pode ser removida). Cada linha tem musica
-(busca no catalogo) e tom, que sai de uma lista com os 12 tons (`MUSIC_TONES`, core). O botao "Enviar ao servidor"
+(busca no catalogo; vazio mostra "Nª música", ex. "1ª música" — sem numero solto ao lado) e tom, que sai de uma lista com os 12 tons (`MUSIC_TONES`, core). O botao "Enviar ao servidor"
 so habilita com data, nenhuma linha incompleta (musica sem tom ou tom sem musica) e ao menos uma linha completa.
 Linha incompleta mostra "Posição N incompleta: preencha música e tom.".
 
