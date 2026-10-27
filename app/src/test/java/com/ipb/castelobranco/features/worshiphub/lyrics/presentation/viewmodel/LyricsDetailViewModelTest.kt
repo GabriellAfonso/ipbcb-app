@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -153,13 +154,20 @@ class LyricsDetailViewModelTest {
     // region scrollMode
 
     @Test
-    fun `scrollMode starts with HORIZONTAL`() = runTest {
+    fun `scrollMode is unknown until the preference is read, then is the saved mode`() = runTest {
+        val saved = MutableSharedFlow<SongScrollMode>()
+        every { themePreferences.songScrollModeFlow } returns saved
         every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Loading)
         every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Loading)
 
         val vm = createViewModel()
 
-        assertEquals(SongScrollMode.HORIZONTAL, vm.scrollMode.value)
+        advanceUntilIdle()
+        assertNull(vm.scrollMode.value)
+
+        saved.emit(SongScrollMode.VERTICAL)
+        advanceUntilIdle()
+        assertEquals(SongScrollMode.VERTICAL, vm.scrollMode.value)
     }
 
     @Test

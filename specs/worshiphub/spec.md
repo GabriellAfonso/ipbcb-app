@@ -403,6 +403,10 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
 
+**Modo de leitura:** horizontal (paginas) ou vertical (rolagem), alternado no cabecalho e salvo no aparelho
+(`song_scroll_mode`), o mesmo para cifras e letras. A tela ja abre no modo salvo: enquanto a preferencia nao foi
+lida, mostra o carregando — nunca um modo provisorio que depois troca.
+
 **Texto copiavel:** o conteudo (acordes e letra), nos modos horizontal e vertical, fica num `SelectionContainer`:
 long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua virando a pagina. O cabecalho
 (tom, paginas) nao entra.
@@ -456,6 +460,8 @@ Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve me
 Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsStanza>`, cada estrofe com suas linhas.
 
 **Texto copiavel:** a letra e copiavel como na cifra (4.3), nos dois modos de rolagem.
+
+**Modo de leitura:** o mesmo da cifra (4.3) — compartilhado, salvo no aparelho e ja aplicado ao abrir.
 
 **Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
 

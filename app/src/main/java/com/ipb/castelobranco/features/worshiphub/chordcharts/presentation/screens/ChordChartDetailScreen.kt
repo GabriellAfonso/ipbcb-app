@@ -88,7 +88,7 @@ fun ChordChartDetailScreen(
 @Composable
 private fun ChordChartDetailContent(
     state: ChordChartDetailUiState,
-    scrollMode: SongScrollMode,
+    scrollMode: SongScrollMode?,
     onToggleScroll: () -> Unit,
     onBackClick: () -> Unit,
     onEnterEdit: () -> Unit,
@@ -127,6 +127,8 @@ private fun ChordChartDetailContent(
                     .imePadding(),
             )
             state.blocks.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
+            // Opens straight in the saved mode: nothing is drawn until it is known.
+            scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
             scrollMode == SongScrollMode.VERTICAL -> ChordVerticalContent(
                 blocks         = state.blocks,
                 tone           = state.tone,

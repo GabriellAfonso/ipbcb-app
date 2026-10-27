@@ -86,10 +86,14 @@ class LyricsDetailViewModel @Inject constructor(
         initialValue = LyricsDetailUiState(isLoading = true),
     )
 
-    val scrollMode: StateFlow<SongScrollMode> = themePreferences.songScrollModeFlow.stateIn(
+    /**
+     * The saved reading mode; `null` until the preference is read. No default stands in for it: the
+     * content would open paged and then jump to scrolling for whoever chose vertical.
+     */
+    val scrollMode: StateFlow<SongScrollMode?> = themePreferences.songScrollModeFlow.stateIn(
         scope        = viewModelScope,
         started      = SharingStarted.Eagerly,
-        initialValue = SongScrollMode.HORIZONTAL,
+        initialValue = null,
     )
 
     fun toggleScrollMode() {
@@ -97,6 +101,7 @@ class LyricsDetailViewModel @Inject constructor(
             val next = when (scrollMode.value) {
                 SongScrollMode.HORIZONTAL -> SongScrollMode.VERTICAL
                 SongScrollMode.VERTICAL   -> SongScrollMode.HORIZONTAL
+                null                      -> return@launch
             }
             themePreferences.setSongScrollMode(next)
         }

@@ -80,7 +80,7 @@ fun LyricsDetailScreen(
 @Composable
 private fun LyricsDetailContent(
     state: LyricsDetailUiState,
-    scrollMode: SongScrollMode,
+    scrollMode: SongScrollMode?,
     onToggleScroll: () -> Unit,
     onBackClick: () -> Unit,
     onEnterEdit: () -> Unit,
@@ -119,6 +119,8 @@ private fun LyricsDetailContent(
                     .imePadding(),
             )
             state.stanzas.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
+            // Opens straight in the saved mode: nothing is drawn until it is known.
+            scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
             scrollMode == SongScrollMode.VERTICAL -> LyricsVerticalContent(
                 stanzas        = state.stanzas,
                 songName       = state.songName,
