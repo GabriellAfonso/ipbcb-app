@@ -27,15 +27,16 @@ Lista em seções, separadas por divisor:
 | Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
 | Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
+| Notificações | Escala            | Switch abaixo de Aniversários; ligado por padrão; "Ativado"/"Desativado". Desligado, o app descarta os lembretes da escala (`specs/schedule/spec.md` §4); só no aparelho, nada vai ao servidor. Ao ligar, mesmo pedido de acesso (2.1). |
 | Galeria      | Galeria ›         | "Fotos {x} · Vídeos {y}"; abre Configurações › Galeria (seção 4). |
 | Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
 | Diagnóstico  | Logs do app       | Abre a tela de logs. Seção escondida até destravar (2.6).                   |
 | Sobre        | Versão            | `versionName` do build. Tocável: 5 toques destravam o Diagnóstico (2.6).    |
 
-### 2.1 Acesso a notificações ao ligar Aniversários
+### 2.1 Acesso a notificações ao ligar Aniversários ou Escala
 
-A permissão pedida na primeira abertura costuma ser negada sem querer. Ligar o switch de Aniversários (de
-desligado para ligado) é a forma de pedir de novo. A preferência é salva de qualquer jeito; o acesso só decide se
+A permissão pedida na primeira abertura costuma ser negada sem querer. Ligar o switch de Aniversários ou de Escala
+(de desligado para ligado) é a forma de pedir de novo. A preferência é salva de qualquer jeito; o acesso só decide se
 a notificação aparece.
 
 | Situação ao ligar                                                         | Ação                                      |

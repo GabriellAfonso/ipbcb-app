@@ -47,6 +47,7 @@ class SettingsViewModelTest {
     private val themeModeFlow = MutableSharedFlow<ThemeMode>(replay = 1)
     private val birthdayNotificationsFlow = MutableStateFlow(true)
     private val keepScreenOnFlow = MutableStateFlow(true)
+    private val scheduleNotificationsFlow = MutableStateFlow(true)
 
     @Before
     fun setup() {
@@ -58,6 +59,7 @@ class SettingsViewModelTest {
         every { settingsRepository.themeModeFlow } returns themeModeFlow
         every { settingsRepository.birthdayNotificationsFlow } returns birthdayNotificationsFlow
         every { settingsRepository.keepScreenOnFlow } returns keepScreenOnFlow
+        every { settingsRepository.scheduleNotificationsFlow } returns scheduleNotificationsFlow
         coEvery { galleryStorage.usage() } returns GALLERY_USAGE
         coEvery { bibleRepository.diskUsageBytes() } returns BIBLE_BYTES
         viewModel = SettingsViewModel(
@@ -270,6 +272,23 @@ class SettingsViewModelTest {
             advanceUntilIdle()
 
             coVerify { settingsRepository.setKeepScreenOn(false) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the rota reminders switch reflects and saves its value`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+            themeModeFlow.emit(ThemeMode.DARK)
+            assertEquals(true, awaitItem().scheduleNotifications)
+
+            viewModel.toggleScheduleNotifications()
+            advanceUntilIdle()
+            coVerify { settingsRepository.setScheduleNotifications(false) }
+
+            scheduleNotificationsFlow.value = false
+            assertEquals(false, awaitItem().scheduleNotifications)
             cancelAndIgnoreRemainingEvents()
         }
     }

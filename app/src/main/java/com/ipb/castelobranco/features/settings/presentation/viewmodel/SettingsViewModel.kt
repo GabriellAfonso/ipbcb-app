@@ -27,6 +27,8 @@ enum class ResetAction { BIBLE }
 data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.FOLLOW_SYSTEM,
     val birthdayNotifications: Boolean = true,
+    /** Rota reminders (`specs/018-schedule-reminders`); on by default. */
+    val scheduleNotifications: Boolean = true,
     val keepScreenOn: Boolean = true,
     val pendingConfirmation: ResetAction? = null,
     val bibleCleared: Boolean = false,
@@ -68,12 +70,14 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         repository.themeModeFlow,
         repository.birthdayNotificationsFlow,
+        repository.scheduleNotificationsFlow,
         repository.keepScreenOnFlow,
         _extra,
-    ) { mode, birthdayNotif, keepScreenOn, extra ->
+    ) { mode, birthdayNotif, scheduleNotif, keepScreenOn, extra ->
         SettingsUiState(
             themeMode = mode,
             birthdayNotifications = birthdayNotif,
+            scheduleNotifications = scheduleNotif,
             keepScreenOn = keepScreenOn,
             pendingConfirmation = extra.pendingConfirmation,
             bibleCleared = extra.bibleCleared,
@@ -128,6 +132,12 @@ class SettingsViewModel @Inject constructor(
     fun toggleBirthdayNotifications() {
         viewModelScope.launch {
             repository.setBirthdayNotifications(!uiState.value.birthdayNotifications)
+        }
+    }
+
+    fun toggleScheduleNotifications() {
+        viewModelScope.launch {
+            repository.setScheduleNotifications(!uiState.value.scheduleNotifications)
         }
     }
 

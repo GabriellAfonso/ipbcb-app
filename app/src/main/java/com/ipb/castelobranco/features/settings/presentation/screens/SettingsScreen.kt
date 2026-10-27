@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Image
@@ -87,6 +88,11 @@ fun SettingsScreen(
             if (!uiState.birthdayNotifications) requestNotificationAccess()
             viewModel.toggleBirthdayNotifications()
         },
+        scheduleNotifications        = uiState.scheduleNotifications,
+        onToggleScheduleNotifications = {
+            if (!uiState.scheduleNotifications) requestNotificationAccess()
+            viewModel.toggleScheduleNotifications()
+        },
         onOpenGallery                = onNavigateToGallery,
         onRequestResetBible          = { viewModel.requestReset(ResetAction.BIBLE) },
         pendingConfirmation          = uiState.pendingConfirmation,
@@ -110,6 +116,8 @@ fun SettingsContent(
     onToggleKeepScreenOn: () -> Unit = {},
     birthdayNotifications: Boolean = true,
     onToggleBirthdayNotifications: () -> Unit = {},
+    scheduleNotifications: Boolean = true,
+    onToggleScheduleNotifications: () -> Unit = {},
     onOpenGallery: () -> Unit,
     onRequestResetBible: () -> Unit,
     pendingConfirmation: ResetAction?,
@@ -176,6 +184,13 @@ fun SettingsContent(
                 description     = if (birthdayNotifications) "Ativado" else "Desativado",
                 checked         = birthdayNotifications,
                 onCheckedChange = { onToggleBirthdayNotifications() },
+            )
+            SettingsSwitchRow(
+                icon            = Icons.Filled.Event,
+                title           = "Escala",
+                description     = if (scheduleNotifications) "Ativado" else "Desativado",
+                checked         = scheduleNotifications,
+                onCheckedChange = { onToggleScheduleNotifications() },
             )
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
