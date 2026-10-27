@@ -150,6 +150,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.ucrop)
     implementation(libs.coil.compose)
+    implementation(libs.coil.video)
     coreLibraryDesugaring(libs.android.tools.desugar.jdk.libs)
 
     //noinspection UseTomlInstead
@@ -182,4 +183,6 @@ dependencies {
     // Gallery management: drag-to-reorder and EXIF carry-over of uploads
     implementation(libs.reorderable)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
 }
