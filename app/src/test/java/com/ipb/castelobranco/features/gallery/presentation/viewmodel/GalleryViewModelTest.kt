@@ -220,6 +220,7 @@ class GalleryViewModelTest {
     fun `confirming the dialog lifts the pause through the use case with the checked types`() =
         runTest(dispatcher) {
             syncStatus.value = GallerySyncStatus(isPaused = true)
+            observe(viewModel.rootState)
             viewModel.downloadGallery()
             advanceUntilIdle()
 

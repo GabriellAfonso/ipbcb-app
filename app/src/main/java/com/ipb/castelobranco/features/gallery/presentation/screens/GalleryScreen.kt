@@ -159,7 +159,7 @@ internal fun rememberDialogActions(viewModel: GalleryViewModel): GalleryDialogAc
         ),
         media = MediaDialogActions(
             onToggle = viewModel::toggleDownloadOption,
-            onToggleExtra = viewModel::toggleDownloadMobileData,
+            onAnswerMobileData = viewModel::answerDownloadMobileData,
             onConfirm = viewModel::confirmDownload,
             onUploadNow = viewModel::confirmUploadOnMobileData,
         ),

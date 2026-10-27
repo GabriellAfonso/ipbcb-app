@@ -68,12 +68,21 @@ class GalleryStorageDialogsTest {
     }
 
     @Test
-    fun `mobile data applies only while photos are checked`() {
-        val missing = GalleryMissing(photos = 2, videos = 0, isPaused = false)
-        val state = GalleryStorageDialogs.downloadDialog(missing, false, GalleryStorageChoice(false, false, true))
+    fun `delete shows 0 MB for a type with nothing on the device`() {
+        val state = GalleryStorageDialogs.deleteDialog(GalleryUsage(26 * mb, 0), GalleryStorageDialogs.initialDelete())
 
-        assertFalse(state.extra!!.enabled)
-        assertFalse(state.extra!!.checked)
+        assertEquals(listOf("26 MB", "0 MB"), state.options.map { it.detail })
+    }
+
+    @Test
+    fun `mobile data is asked only off WiFi with photos checked`() {
+        val missing = GalleryMissing(photos = 2, videos = 3, isPaused = false)
+        val photos = GalleryStorageDialogs.downloadDialog(missing, false, GalleryStorageChoice(true, false))
+        val videos = GalleryStorageDialogs.downloadDialog(missing, false, GalleryStorageChoice(false, true))
+
+        assertTrue(GalleryStorageDialogs.asksMobileData(photos, isOnWifi = false))
+        assertFalse(GalleryStorageDialogs.asksMobileData(photos, isOnWifi = true))
+        assertFalse(GalleryStorageDialogs.asksMobileData(videos, isOnWifi = false))
     }
 
     @Test

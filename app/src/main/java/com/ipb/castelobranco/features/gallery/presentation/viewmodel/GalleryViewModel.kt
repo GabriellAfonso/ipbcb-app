@@ -358,18 +358,30 @@ class GalleryViewModel @Inject constructor(
         if (index == 0) choice.copy(photos = !choice.photos) else choice.copy(videos = !choice.videos)
     }
 
-    fun toggleDownloadMobileData() = updateDownload { it.copy(useMobileData = !it.useMobileData) }
-
     fun confirmDownload() {
         val download = _dialog.value as? GalleryDialogState.Download ?: return
+        if (!download.dialog.canConfirm) return
+        if (GalleryStorageDialogs.asksMobileData(download.dialog, isOnWifi.value)) {
+            _dialog.value = download.copy(askingMobileData = true)
+            return
+        }
+        startDownload(download, useMobileData = false)
+    }
+
+    /** The mobile data question: `true` = "Baixar agora", `false` = "Esperar WiFi". */
+    fun answerDownloadMobileData(downloadNow: Boolean) {
+        val download = _dialog.value as? GalleryDialogState.Download ?: return
+        if (download.askingMobileData) startDownload(download, useMobileData = downloadNow)
+    }
+
+    private fun startDownload(download: GalleryDialogState.Download, useMobileData: Boolean) {
         val dialog = download.dialog
-        if (!dialog.canConfirm) return
         _dialog.value = null
         viewModelScope.launch {
             storage.download(
                 photos = dialog.options[0].let { it.checked && it.enabled },
                 videos = dialog.options[1].let { it.checked && it.enabled },
-                useMobileData = dialog.extra?.checked == true,
+                useMobileData = useMobileData,
             )
         }
     }

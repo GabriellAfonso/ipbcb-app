@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.gallery.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageDialogs
 import com.ipb.castelobranco.core.presentation.components.MediaTypesDialog
+import com.ipb.castelobranco.core.presentation.components.MobileDataDialog
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,13 +97,21 @@ fun GalleryDialogHost(dialog: GalleryDialogState?, actions: GalleryDialogActions
         is GalleryDialogState.MovePicker -> MoveTargetSheet(dialog.picker, actions.onChooseTarget, actions.onDismiss)
         is GalleryDialogState.Confirm -> ConfirmDialog(dialog.confirm, actions.onConfirm, actions.onDismiss)
         is GalleryDialogState.PeoplePicker -> PeoplePickerSheet(dialog.picker, actions.picker)
-        is GalleryDialogState.Download -> MediaTypesDialog(
-            state = dialog.dialog,
-            onToggle = actions.media.onToggle,
-            onToggleExtra = actions.media.onToggleExtra,
-            onConfirm = actions.media.onConfirm,
-            onDismiss = actions.onDismiss,
-        )
+        is GalleryDialogState.Download -> if (dialog.askingMobileData) {
+            MobileDataDialog(
+                question = GalleryStorageDialogs.MOBILE_DATA_QUESTION,
+                onDownloadNow = { actions.media.onAnswerMobileData(true) },
+                onWaitForWifi = { actions.media.onAnswerMobileData(false) },
+                onDismiss = actions.onDismiss,
+            )
+        } else {
+            MediaTypesDialog(
+                state = dialog.dialog,
+                onToggle = actions.media.onToggle,
+                onConfirm = actions.media.onConfirm,
+                onDismiss = actions.onDismiss,
+            )
+        }
         is GalleryDialogState.UploadOnMobileData -> AlertDialog(
             onDismissRequest = actions.onDismiss,
             text = { Text(VideoTexts.mobileDataQuestion(dialog.videoCount, dialog.videoBytes)) },
@@ -119,7 +129,8 @@ fun GalleryDialogHost(dialog: GalleryDialogState?, actions: GalleryDialogActions
 /** "Baixar galeria" (by type) and the mobile-data question of an upload with videos. */
 data class MediaDialogActions(
     val onToggle: (index: Int) -> Unit = {},
-    val onToggleExtra: () -> Unit = {},
+    /** "Baixar galeria" off WiFi: `true` = "Baixar agora", `false` = "Esperar WiFi". */
+    val onAnswerMobileData: (downloadNow: Boolean) -> Unit = {},
     val onConfirm: () -> Unit = {},
     /** `true` = "Esperar WiFi" for the videos. */
     val onUploadNow: (waitForWifi: Boolean) -> Unit = {},

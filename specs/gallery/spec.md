@@ -246,8 +246,10 @@ Diálogo com Fotos e Vídeos (`core/presentation/components/GalleryStorageDialog
 Fotos vem marcada quando falta alguma (ou a galeria foi apagada inteira); completa, desabilitada com "Já baixadas".
 Vídeos **nunca** vem marcada (opt-in); com o switch ligado fica desabilitada ("Já são baixados automaticamente"), sem
 vídeo faltando "Nenhum vídeo para baixar". Marcar Vídeos liga o switch ("Vídeos novos também serão baixados. Somente no
-WiFi."). "Usar dados móveis para as fotos" vale só para as fotos. Confirmar tira a pausa geral, tira (ou mantém) a das
-fotos, liga o switch se Vídeos e sincroniza.
+WiFi."). Cada tipo mostra o detalhe na mesma linha do checkbox ("Fotos  26 MB"). Confirmar com Fotos marcada fora do
+WiFi pergunta antes: "Você está nos dados móveis. Baixar as fotos agora?" — "Baixar agora" baixa as fotos pelos dados
+móveis, "Esperar WiFi" as deixa para o WiFi; vídeos sempre esperam o WiFi, então só Vídeos não pergunta. Confirmar tira
+a pausa geral, tira (ou mantém) a das fotos, liga o switch se Vídeos e sincroniza.
 
 `GallerySyncStatus.isPaused` reflete a pausa: lida do disco junto com o índice (`load`) e em `clear()`, atualizada a
 cada mudança.

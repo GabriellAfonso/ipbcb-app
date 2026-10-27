@@ -15,11 +15,15 @@ sealed interface GalleryDialogState {
     data class Confirm(val confirm: ConfirmState) : GalleryDialogState
     data class PeoplePicker(val picker: PeoplePickerState) : GalleryDialogState
 
-    /** "Baixar galeria" with Fotos / Vídeos, opened from the gallery after a delete. */
+    /**
+     * "Baixar galeria" with Fotos / Vídeos, opened from the gallery after a delete. [askingMobileData]:
+     * confirmed with photos off WiFi, the "Baixar agora / Esperar WiFi" question is open.
+     */
     data class Download(
         val missing: GalleryMissing,
         val autoDownloadVideos: Boolean,
         val choice: GalleryStorageChoice,
+        val askingMobileData: Boolean = false,
     ) : GalleryDialogState {
         val dialog: MediaTypesDialogState
             get() = GalleryStorageDialogs.downloadDialog(missing, autoDownloadVideos, choice)

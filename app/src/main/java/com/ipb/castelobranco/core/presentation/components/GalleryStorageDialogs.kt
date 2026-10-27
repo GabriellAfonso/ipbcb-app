@@ -7,7 +7,6 @@ import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
 data class GalleryStorageChoice(
     val photos: Boolean,
     val videos: Boolean,
-    val useMobileData: Boolean = false,
 )
 
 /**
@@ -27,7 +26,8 @@ object GalleryStorageDialogs {
     const val DELETE_NOTE_ALL = "A galeria só volta a ser baixada quando você tocar em \"Baixar galeria\"."
     const val DOWNLOAD_MESSAGE = "Escolha o que baixar para este aparelho."
     const val DOWNLOAD_NOTE_VIDEOS = "Vídeos novos também serão baixados. Somente no WiFi."
-    const val MOBILE_DATA = "Usar dados móveis para as fotos"
+    const val MOBILE_DATA_QUESTION = "Você está nos dados móveis. Baixar as fotos agora?"
+    const val EMPTY_SIZE = "0 MB"
     const val DELETE_LABEL = "Apagar"
     const val DOWNLOAD_LABEL = "Baixar"
     const val DELETED_ALL = "Galeria apagada"
@@ -41,8 +41,8 @@ object GalleryStorageDialogs {
         title = DELETE_TITLE,
         message = DELETE_MESSAGE,
         options = listOf(
-            MediaTypeOption(PHOTOS, usage?.photoBytes?.let(::formatDiskUsage), checked = choice.photos),
-            MediaTypeOption(VIDEOS, usage?.videoBytes?.let(::formatDiskUsage), checked = choice.videos),
+            MediaTypeOption(PHOTOS, usage?.photoBytes?.let(::deleteSize), checked = choice.photos),
+            MediaTypeOption(VIDEOS, usage?.videoBytes?.let(::deleteSize), checked = choice.videos),
         ),
         confirmLabel = DELETE_LABEL,
         note = when {
@@ -86,12 +86,14 @@ object GalleryStorageDialogs {
             ),
             confirmLabel = DOWNLOAD_LABEL,
             note = DOWNLOAD_NOTE_VIDEOS.takeIf { choice.videos && !autoDownloadVideos },
-            extra = MediaTypeOption(
-                MOBILE_DATA,
-                checked = choice.useMobileData && choice.photos,
-                enabled = choice.photos && photosAvailable(missing),
-            ),
         )
+
+    /** Photos are the only type that may go over mobile data; videos always wait for WiFi. */
+    fun asksMobileData(dialog: MediaTypesDialogState, isOnWifi: Boolean): Boolean =
+        !isOnWifi && dialog.options[0].let { it.checked && it.enabled }
+
+    /** Next to a type in "Apagar galeria": "0 MB" instead of "nada no aparelho". */
+    private fun deleteSize(bytes: Long) = if (bytes > 0) formatDiskUsage(bytes) else EMPTY_SIZE
 
     /** After a full delete nothing is known yet: both types may come back. */
     private fun photosAvailable(missing: GalleryMissing) = missing.isPaused || missing.photos > 0

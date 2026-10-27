@@ -27,7 +27,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.GalleryStorageDialogs
 import com.ipb.castelobranco.core.presentation.components.MediaTypesDialog
+import com.ipb.castelobranco.core.presentation.components.MobileDataDialog
+import com.ipb.castelobranco.features.settings.presentation.viewmodel.GalleryStorageDialog
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.GallerySettingsTexts
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.GallerySettingsUiState
 import com.ipb.castelobranco.features.settings.presentation.viewmodel.GallerySettingsViewModel
@@ -39,7 +42,8 @@ data class GallerySettingsActions(
     val onOpenDownload: () -> Unit = {},
     val onOpenDelete: () -> Unit = {},
     val onToggle: (Int) -> Unit = {},
-    val onToggleExtra: () -> Unit = {},
+    /** `true` = "Baixar agora", `false` = "Esperar WiFi". */
+    val onAnswerMobileData: (downloadNow: Boolean) -> Unit = {},
     val onConfirm: () -> Unit = {},
     val onDismiss: () -> Unit = {},
 )
@@ -62,7 +66,7 @@ fun GallerySettingsScreen(
                 onOpenDownload = viewModel::openDownload,
                 onOpenDelete = viewModel::openDelete,
                 onToggle = viewModel::toggle,
-                onToggleExtra = viewModel::toggleMobileData,
+                onAnswerMobileData = viewModel::answerMobileData,
                 onConfirm = viewModel::confirm,
                 onDismiss = viewModel::dismissDialog,
             ),
@@ -73,11 +77,18 @@ fun GallerySettingsScreen(
 
 @Composable
 fun GallerySettingsContent(state: GallerySettingsUiState, actions: GallerySettingsActions) {
-    state.dialog?.let { dialog ->
-        MediaTypesDialog(
+    val dialog = state.dialog
+    when {
+        dialog == null -> Unit
+        (dialog as? GalleryStorageDialog.Download)?.askingMobileData == true -> MobileDataDialog(
+            question = GalleryStorageDialogs.MOBILE_DATA_QUESTION,
+            onDownloadNow = { actions.onAnswerMobileData(true) },
+            onWaitForWifi = { actions.onAnswerMobileData(false) },
+            onDismiss = actions.onDismiss,
+        )
+        else -> MediaTypesDialog(
             state = dialog.state,
             onToggle = actions.onToggle,
-            onToggleExtra = actions.onToggleExtra,
             onConfirm = actions.onConfirm,
             onDismiss = actions.onDismiss,
         )

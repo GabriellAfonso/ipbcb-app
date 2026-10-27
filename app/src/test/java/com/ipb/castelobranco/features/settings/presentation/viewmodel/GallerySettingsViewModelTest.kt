@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.settings.presentation.viewmodel
 
 import app.cash.turbine.test
+import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.core.domain.gallery.GalleryMissing
 import com.ipb.castelobranco.core.domain.gallery.GalleryStoragePort
 import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
@@ -30,6 +31,7 @@ class GallerySettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val auto = MutableStateFlow(false)
     private val videos = MutableStateFlow(GalleryVideoSummary(total = 12, downloaded = 0, totalBytes = 480L * MB))
+    private val wifi = MutableStateFlow(true)
     private lateinit var storage: GalleryStoragePort
     private lateinit var viewModel: GallerySettingsViewModel
 
@@ -41,7 +43,8 @@ class GallerySettingsViewModelTest {
         every { storage.videos } returns videos
         coEvery { storage.usage() } returns GalleryUsage(320 * MB, 0)
         coEvery { storage.missing() } returns GalleryMissing(photos = 0, videos = 12, isPaused = false)
-        viewModel = GallerySettingsViewModel(storage)
+        val connectivity = mockk<NetworkConnectivityObserver> { every { isOnWifi } returns wifi }
+        viewModel = GallerySettingsViewModel(storage, connectivity)
     }
 
     @After
@@ -102,6 +105,36 @@ class GallerySettingsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
         coVerify(exactly = 1) { storage.download(photos = false, videos = true, useMobileData = false) }
+    }
+
+    @Test
+    fun `photos off WiFi ask first, and downloading now goes over mobile data`() = runTest(dispatcher) {
+        wifi.value = false
+        coEvery { storage.missing() } returns GalleryMissing(photos = 5, videos = 0, isPaused = false)
+        viewModel.uiState.test {
+            viewModel.openDownload()
+            advanceUntilIdle()
+            viewModel.confirm()
+            advanceUntilIdle()
+            val dialog = expectMostRecentItem().dialog
+            assertTrue(dialog is GalleryStorageDialog.Download && dialog.askingMobileData)
+            viewModel.answerMobileData(downloadNow = true)
+            advanceUntilIdle()
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify(exactly = 1) { storage.download(photos = true, videos = false, useMobileData = true) }
+    }
+
+    @Test
+    fun `photos off WiFi may wait for WiFi`() = runTest(dispatcher) {
+        wifi.value = false
+        coEvery { storage.missing() } returns GalleryMissing(photos = 5, videos = 0, isPaused = false)
+        viewModel.openDownload()
+        advanceUntilIdle()
+        viewModel.confirm()
+        viewModel.answerMobileData(downloadNow = false)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { storage.download(photos = true, videos = false, useMobileData = false) }
     }
 
     private companion object {

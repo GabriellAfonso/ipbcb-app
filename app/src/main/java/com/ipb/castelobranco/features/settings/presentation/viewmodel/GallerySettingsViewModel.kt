@@ -2,6 +2,7 @@ package com.ipb.castelobranco.features.settings.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
 import com.ipb.castelobranco.core.domain.gallery.GalleryMissing
 import com.ipb.castelobranco.core.domain.gallery.GalleryStoragePort
 import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
@@ -31,10 +32,12 @@ sealed interface GalleryStorageDialog {
         override val state get() = GalleryStorageDialogs.deleteDialog(usage, choice)
     }
 
+    /** [askingMobileData]: confirmed with photos off WiFi, the "Baixar agora / Esperar WiFi" question is open. */
     data class Download(
         val missing: GalleryMissing,
         val autoDownloadVideos: Boolean,
         val choice: GalleryStorageChoice,
+        val askingMobileData: Boolean = false,
     ) : GalleryStorageDialog {
         override val state get() = GalleryStorageDialogs.downloadDialog(missing, autoDownloadVideos, choice)
     }
@@ -52,7 +55,11 @@ data class GallerySettingsUiState(
 @HiltViewModel
 class GallerySettingsViewModel @Inject constructor(
     private val storage: GalleryStoragePort,
+    connectivityObserver: NetworkConnectivityObserver,
 ) : ViewModel() {
+
+    private val isOnWifi: StateFlow<Boolean> = connectivityObserver.isOnWifi
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val usage = MutableStateFlow<GalleryUsage?>(null)
     private val dialog = MutableStateFlow<GalleryStorageDialog?>(null)
@@ -104,8 +111,6 @@ class GallerySettingsViewModel @Inject constructor(
         if (index == 0) choice.copy(photos = !choice.photos) else choice.copy(videos = !choice.videos)
     }
 
-    fun toggleMobileData() = updateChoice { it.copy(useMobileData = !it.useMobileData) }
-
     fun dismissDialog() {
         dialog.value = null
     }
@@ -114,6 +119,21 @@ class GallerySettingsViewModel @Inject constructor(
         val open = dialog.value ?: return
         val state = open.state
         if (!state.canConfirm) return
+        if (open is GalleryStorageDialog.Download && GalleryStorageDialogs.asksMobileData(state, isOnWifi.value)) {
+            dialog.value = open.copy(askingMobileData = true)
+            return
+        }
+        run(open, useMobileData = false)
+    }
+
+    /** The mobile data question: `true` = "Baixar agora", `false` = "Esperar WiFi". */
+    fun answerMobileData(downloadNow: Boolean) {
+        val open = dialog.value as? GalleryStorageDialog.Download ?: return
+        if (open.askingMobileData) run(open, useMobileData = downloadNow)
+    }
+
+    private fun run(open: GalleryStorageDialog, useMobileData: Boolean) {
+        val state = open.state
         dialog.value = null
         val photos = state.options[0].let { it.checked && it.enabled }
         val videos = state.options[1].let { it.checked && it.enabled }
@@ -123,8 +143,7 @@ class GallerySettingsViewModel @Inject constructor(
                     storage.delete(photos, videos)
                     _messages.tryEmit(GalleryStorageDialogs.deletedMessage(open.choice))
                 }
-                is GalleryStorageDialog.Download ->
-                    storage.download(photos, videos, useMobileData = state.extra?.checked == true)
+                is GalleryStorageDialog.Download -> storage.download(photos, videos, useMobileData)
             }
             refreshUsage()
         }
