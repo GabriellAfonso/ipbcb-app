@@ -240,7 +240,7 @@ private fun QuestionCard(
             if (question.proofTexts.isNotEmpty()) {
                 Text(
                     text = "REFERÊNCIAS",
-                    modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

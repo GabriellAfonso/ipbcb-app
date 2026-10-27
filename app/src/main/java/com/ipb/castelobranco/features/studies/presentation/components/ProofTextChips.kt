@@ -32,8 +32,8 @@ fun ProofTextChips(
 ) {
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         proofTexts.forEach { proofText ->
             val reference = proofText.reference
@@ -64,19 +64,19 @@ fun ProofTextChips(
 private fun ChipLabel(text: String, bold: Boolean) {
     Box(
         modifier = Modifier
-            .defaultMinSize(minHeight = 32.dp)
-            .padding(horizontal = 12.dp),
+            .defaultMinSize(minHeight = 26.dp)
+            .padding(horizontal = 9.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }
 
-private val CHIP_SHAPE = RoundedCornerShape(16.dp)
+private val CHIP_SHAPE = RoundedCornerShape(13.dp)
 
 @Preview(showBackground = true)
 @Composable
