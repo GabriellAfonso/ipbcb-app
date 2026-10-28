@@ -46,6 +46,11 @@ class LyricsCreateViewModel @Inject constructor(
         _uiState.update { it.copy(selectedSong = song, songQuery = song.title, filteredSongs = emptyList()) }
     }
 
+    /** "Trocar": back to an empty search. */
+    fun onSongCleared() {
+        _uiState.update { it.copy(selectedSong = null, songQuery = "", filteredSongs = filter(it.allSongs, "")) }
+    }
+
     fun onContentChange(content: String) {
         _uiState.update { it.copy(content = content) }
     }

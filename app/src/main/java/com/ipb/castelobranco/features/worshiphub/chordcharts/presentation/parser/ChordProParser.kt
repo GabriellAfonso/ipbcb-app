@@ -49,6 +49,11 @@ object ChordProParser {
         return blocks
     }
 
+    /** Lines between `{ }` that are not a known section: shown as a warning in the new chord chart's preview. */
+    fun unknownDirectives(content: String): Int = content.lines().map { it.trim() }.count { line ->
+        DIRECTIVE.matches(line) && !SECTION_DIRECTIVE.matches(line)
+    }
+
     private fun parseLine(line: String): ChordLine {
         val regex = Regex("""\[([^\]]+)\]""")
         val cleanText = regex.replace(line, "")
@@ -125,6 +130,8 @@ object ChordProParser {
 
         return ChordLine(tokens)
     }
+
+    private val DIRECTIVE = Regex("""^\{.*\}$""")
 
     private val SECTION_DIRECTIVE = Regex(
         """^\{(intro|verse|chorus|bridge|pre-chorus|interlude|outro)(?::\s*([^}]*))?\}$""",

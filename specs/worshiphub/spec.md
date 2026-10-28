@@ -352,10 +352,17 @@ acima dos campos:
 
 ### 3.3 Criacao de Musica (`songs` ≥ `manage`)
 
-"Adicionar Música" no menu da lista navega para `SongCreateScreen` ("Nova Música", `SongCreateViewModel`).
+"Adicionar Música" no menu da lista navega para `SongCreateScreen` ("Nova música", `SongCreateViewModel`).
 
-**Tela:** campos "Título" e "Artista", os dois obrigatorios (o botao "Salvar" so habilita com os dois
-preenchidos). Salvar faz `POST api/songs/` com `{ title, artist }` ja sem espacos nas pontas
+**Formularios do louvor (musica, cifra e letra), layout "com previa":** campos tonais (fundo
+`surfaceContainerHigh`, cantos de 16dp, rotulo pequeno em cima; borda `primary` com foco). Rodape fixo com o botao
+em pilula verde ("Salvar música" / "Salvar cifra" / "Salvar letra") e, enquanto faltar algo, "Falta: {campos}" em
+cima dele (ex.: "Falta: tom, instrumento"); o botao fica cinza enquanto falta algo. Salvando: spinner e "Salvando…".
+O erro do envio aparece acima do rodape. Com o teclado aberto, a tela encolhe para caber acima dele: o rodape e o
+trecho sendo digitado ficam visiveis.
+
+**Tela:** campos "Título" e "Artista", os dois obrigatorios ("Falta: título, artista"), e a dica "Depois de salvar,
+a música aparece em Músicas e já pode receber cifra e letra.". Salvar faz `POST api/songs/` com `{ title, artist }` ja sem espacos nas pontas
 (`RegisterSongUseCase`, `WorshipRegisterRepository`). Categoria e link do YouTube nao entram pelo app (o link se
 edita depois no detalhe, §3.2).
 
@@ -421,14 +428,25 @@ Nome da musica vem do cruzamento com `AllSongs` por `song_id`.
 
 Na tela de lista de cifras, quem tem `manage` ou `owner` no escopo `songs` (Admin, Lideranca) ve menu overflow (⋮) na TopBar com item "Nova Cifra". Tap navega para tela `ChordChartCreateScreen`.
 
-**Tela de criacao:**
-- Campo de busca de musica (filtra `AllSongs` em tempo real, accent-insensitive)
-- Selecionar musica da lista preenche o campo e fecha a lista
-- Campos de tom e instrumento (singleLine)
-- Campo multiline para digitar a cifra (fonte monospace)
-- Com o teclado aberto, a tela encolhe para caber acima dele: o campo da cifra e o botao "Salvar" ficam
-  visiveis, e o trecho sendo digitado nunca fica atras do teclado
-- Botao "Salvar" (desabilitado se musica, tom, instrumento ou cifra vazios)
+**Tela de criacao** ("Nova cifra", formulario "com previa" de 3.3):
+- **Musica:** campo de busca (filtra `AllSongs` em tempo real, accent-insensitive). Com texto, um card lista ate 8
+  musicas com titulo e artista; nenhuma: "Nenhuma música com esse nome. Cadastre a música antes.". Escolher troca o
+  campo por um card com icone, titulo, artista e "Trocar" (volta para a busca vazia).
+- **Tom:** os 12 tons de `MUSIC_TONES` em botoes numa grade de 6 colunas; o escolhido em verde. Nao ha mais tom
+  digitado.
+- **Instrumento:** botoes "Baixo" (o mais usado, primeiro) e "Violão"; embaixo, o campo "Outro instrumento" (ex.:
+  "Ukulele"), que mostra o valor so quando nao e um dos dois. Tocar num botao limpa o campo; digitar no campo tira o
+  botao.
+- **Texto:** abas "Escrever | Prévia".
+  - Escrever: botoes "+ Estrofe", "+ Refrão", "+ Intro" (inserem `{verse: Estrofe}`, `{chorus: Refrão}`, `{intro}`
+    numa linha propria, no cursor) e "[ ] Acorde" (insere `[]` com o cursor dentro); a dica "Acorde entre colchetes
+    antes da sílaba: [G]Santo. Seção numa linha: {verse: Estrofe 1}, {chorus: Refrão}."; e o campo "Texto da cifra"
+    (fonte monospace).
+  - Previa: num card, "Tom {tom} · {instrumento}" (sem tom: "Sem tom") e a cifra como na tela de cifra (o mesmo
+    `ChordProParser` e o mesmo desenho: acordes sobre a silaba, secoes em etiqueta). Vazia: "Nada para mostrar
+    ainda.". Linhas entre `{ }` que nao sao secao reconhecida viram um aviso em vermelho: "1 linha entre { } não foi
+    reconhecida como seção." / "{n} linhas entre { } não foram reconhecidas como seção.".
+- Obrigatorios: musica, tom, instrumento e cifra ("Falta: música, tom, instrumento, cifra").
 - Apos salvar com sucesso, volta automaticamente para a lista
 
 **Envio:** `POST api/chord-charts/` com `{"song_id": int, "content": string, "tone": string, "instrument": string}` via API autenticada (escopo `songs`, nivel `manage`).
@@ -498,12 +516,12 @@ Nome da musica vem do cruzamento com `AllSongs` por `song_id`.
 
 Na tela de lista de letras, quem tem `manage` ou `owner` no escopo `songs` ve menu overflow (⋮) na TopBar com item "Nova Letra". Tap navega para tela `LyricsCreateScreen`.
 
-**Tela de criacao:**
-- Campo de busca de musica (filtra `AllSongs` em tempo real, accent-insensitive)
-- Selecionar musica da lista preenche o campo e fecha a lista
-- Campo multiline para digitar a letra (fonte monospace)
-- Com o teclado aberto, a tela encolhe para caber acima dele (mesmo comportamento da criacao de cifra)
-- Botao "Salvar" (desabilitado se musica ou letra nao selecionada)
+**Tela de criacao** ("Nova letra", formulario "com previa" de 3.3):
+- **Musica:** a mesma escolha da cifra (4.2), com o card e "Trocar".
+- **Texto:** abas "Escrever | Prévia". Escrever: a dica "Linha em branco separa as estrofes." e o campo "Texto da
+  letra" (fonte monospace). Previa: num card, as estrofes como o `LyricsParser` as separa; vazia: "Nada para mostrar
+  ainda.".
+- Obrigatorios: musica e letra ("Falta: música, letra").
 - Apos salvar com sucesso, volta automaticamente para a lista
 
 **Envio:** `POST api/lyrics/` com `{"song_id": int, "content": string}` via API autenticada (escopo `songs`, nivel `manage`).

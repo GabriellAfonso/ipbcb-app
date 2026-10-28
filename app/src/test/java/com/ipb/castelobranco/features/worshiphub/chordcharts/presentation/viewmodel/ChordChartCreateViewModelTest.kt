@@ -105,6 +105,33 @@ class ChordChartCreateViewModelTest {
     }
 
     @Test
+    fun `onSongCleared goes back to an empty search`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        vm.onSongSelected(fakeSongs.first())
+        advanceUntilIdle()
+
+        vm.onSongCleared()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(null, state.selectedSong)
+        assertEquals("", state.songQuery)
+    }
+
+    @Test
+    fun `missing lists what blocks saving, in the form's order`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertEquals(listOf("música", "tom", "instrumento", "cifra"), vm.uiState.value.missing)
+
+        vm.onSongSelected(fakeSongs.first())
+        advanceUntilIdle()
+
+        assertEquals(listOf("tom", "instrumento", "cifra"), vm.uiState.value.missing)
+    }
+
+    @Test
     fun `onContentChange updates content`() = runTest {
         val vm = createViewModel()
         advanceUntilIdle()

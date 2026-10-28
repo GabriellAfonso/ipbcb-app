@@ -8,4 +8,10 @@ data class SongCreateUiState(
     val savedSuccessfully: Boolean = false,
 ) {
     val canSave: Boolean get() = !isSaving && title.isNotBlank() && artist.isNotBlank()
+
+    /** What still blocks "Salvar música". */
+    val missing: List<String> get() = listOfNotNull(
+        "título".takeIf { title.isBlank() },
+        "artista".takeIf { artist.isBlank() },
+    )
 }

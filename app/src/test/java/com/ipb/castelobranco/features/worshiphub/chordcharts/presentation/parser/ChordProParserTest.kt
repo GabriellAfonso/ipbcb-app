@@ -182,4 +182,32 @@ class ChordProParserTest {
     }
 
     // endregion
+
+    // region unknown directives
+
+    @Test
+    fun `lines between braces that are not a section are counted`() {
+        val content = """
+            {verse: Estrofe}
+            {verso}
+            [G]Santo
+            { chorus }
+            {title: Agnus Dei}
+        """.trimIndent()
+
+        assertEquals(3, ChordProParser.unknownDirectives(content))
+    }
+
+    @Test
+    fun `known sections are not counted`() {
+        val content = """
+            {intro}
+            {chorus: Refrão}
+            {pre-chorus}
+        """.trimIndent()
+
+        assertEquals(0, ChordProParser.unknownDirectives(content))
+    }
+
+    // endregion
 }
