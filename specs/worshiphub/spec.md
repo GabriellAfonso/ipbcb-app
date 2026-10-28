@@ -261,31 +261,34 @@ branco nao vira chip. Estados de loading, erro e vazio: identicos aos da secao 4
 
 Tela com todas as informacoes consolidadas de uma musica. Dados vem de multiplas fontes cruzadas por `songId`.
 
-#### Layout
+#### Layout "numeros e lista de cifras"
 
-**Header:**
-- Nome da musica (titulo principal)
-- Artista (subtitulo)
+**Barra:** o nome da musica (no lugar de "Musica") e os tres pontos para quem pode editar.
 
-**Estatisticas:**
-- Vezes tocada aos domingos (contagem calculada client-side a partir de `songsBySunday`)
-- Tons utilizados (lista de tons distintos extraida client-side de `songsBySunday`, filtrada por `songId`)
-- Ultimo(s) domingo(s) em que foi tocada (ate 3, depende do espaco na tela)
+**Faixa verde** (`ipbGreen`, cantos inferiores de 28dp) com o artista. Tres cards brancos de numeros sobrepoem a
+faixa, lado a lado:
+- **Vezes tocada aos domingos** (contagem calculada client-side a partir de `songsBySunday`): numero grande e
+  "vez aos domingos" / "vezes aos domingos".
+- **Tons utilizados** (tons distintos de `songsBySunday`, filtrados por `songId`) separados por " · ": "tom tocado"
+  / "tons tocados".
+- **Ultima vez:** dia e mes (`dd/MM`) do domingo mais recente.
+Sem dado (musica nunca tocada), o card mostra "—".
 
-**Texto copiavel:** header e estatisticas (nome, artista, contagem, tons e datas) ficam dentro de um
-`SelectionContainer`: long press seleciona e abre o menu de copiar do sistema. Os botoes de acao nao entram.
+**"Abrir"** (titulo de secao com um traco `primary` a esquerda): um card com uma linha por item, cada uma com
+icone num circulo, nome, uma linha explicando e "›":
+- **Uma linha por cifra registrada:** "Cifra", o instrumento e a etiqueta "Tom {tom}"; toca e abre aquela cifra em
+  `ChordChartDetailScreen`. Nao ha mais dialogo de escolha. Sem cifra: uma linha "Cifra" / "Ainda não cadastrada"
+  apagada.
+- **Letra:** "Para cantar"; abre `LyricsDetailScreen`. Sem letra: "Ainda não cadastrada", apagada.
+- **YouTube** (circulo vermelho): "Abre no app do YouTube", via `Intent(ACTION_VIEW, uri)`. Sem `youtube_link`:
+  "Sem link", apagada.
+Linha apagada = opacidade reduzida, sem "›" e sem clique. Os icones de cifra e letra sao os do Hub do Louvor.
 
-**Acoes (botoes):**
-- **Cifra** — navega para tela de cifra existente:
-  - Se 1 cifra registrada: navega direto para `ChordChartDetailScreen`
-  - Se multiplas cifras: abre dialog/bottom sheet para escolher (mostra tom + instrumento de cada)
-  - Se nenhuma cifra: botao desabilitado (visualmente claro que esta indisponivel)
-- **Letra** — navega para `LyricsDetailScreen`:
-  - Se tem letra: navega direto
-  - Se nao tem: botao desabilitado
-- **YouTube** — abre link externo no navegador/app do YouTube:
-  - Se `youtube_link` presente: abre via `Intent(ACTION_VIEW, uri)`
-  - Se `youtube_link` null/vazio: botao desabilitado
+**"Ultimos domingos":** as datas (ate 3) em etiquetas sem contorno (nao parecem botao); a mais recente em verde
+(`ipbGreen`, texto branco), as outras em `secondaryContainer`. Nunca tocada: a secao some.
+
+**Texto copiavel:** artista, numeros e datas ficam dentro de um `SelectionContainer`: long press seleciona e abre o
+menu de copiar do sistema. A lista "Abrir" nao entra.
 
 #### Fontes de dados (todas client-side)
 
@@ -300,8 +303,11 @@ Tela com todas as informacoes consolidadas de uma musica. Dados vem de multiplas
 
 #### Edicao (`songs` ≥ `manage`)
 
-Quem tem `manage` ou `owner` no escopo `songs` ve menu overflow (⋮) na TopBar. Menu normal: "Editar" (e
-"Excluir", so para `owner`). Em modo edicao: "Salvar" e "Cancelar" — mesmo mecanismo de cifras e letras.
+Quem tem `manage` ou `owner` no escopo `songs` ve os tres pontos na barra; eles abrem o painel de acoes que desce da
+barra (`core/presentation/components/TopActionPanel`), com o nome da musica e o artista no topo: no grupo
+"Gerenciar", "Editar música" ("Nome, artista e link do YouTube"); no grupo "Cuidado", so para `owner`, "Excluir
+música" ("Apaga junto as cifras e a letra"). Em modo edicao a barra mostra "Cancelar" e "Salvar" — mesmo mecanismo
+de cifras e letras.
 
 **Modo edicao:** a tela troca header, estatisticas e botoes por um formulario com tres campos, ja preenchidos com
 os valores atuais: **Nome**, **Artista** e **Link do YouTube** (vazio quando a musica nao tem link). Categoria nao
