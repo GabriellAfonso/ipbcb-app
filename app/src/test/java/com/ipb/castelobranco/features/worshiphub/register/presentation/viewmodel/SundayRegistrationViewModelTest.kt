@@ -201,13 +201,15 @@ class SundayRegistrationViewModelTest {
     }
 
     @Test
-    fun `RemoveSundayRow with position lte 4 does not remove`() = runTest {
+    fun `RemoveSundayRow removes any row and renumbers the rest`() = runTest {
         createViewModel()
         val initialCount = viewModel.uiState.value.sundayRows.size
 
         viewModel.onEvent(SundayRegistrationEvent.RemoveSundayRow(1))
 
-        assertEquals(initialCount, viewModel.uiState.value.sundayRows.size)
+        val rows = viewModel.uiState.value.sundayRows
+        assertEquals(initialCount - 1, rows.size)
+        assertEquals((1..rows.size).toList(), rows.map { it.position })
     }
 
     @Test
@@ -246,7 +248,7 @@ class SundayRegistrationViewModelTest {
         viewModel.onEvent(SundayRegistrationEvent.Submit)
         advanceUntilIdle()
 
-        assertEquals("Enviado com sucesso.", viewModel.uiState.value.snackbarMessage)
+        assertEquals("Domingo registrado.", viewModel.uiState.value.snackbarMessage)
         assertFalse(viewModel.uiState.value.isSubmitting)
         // The Tables read the played songs: they pick up the new Sunday on return.
         coVerify(exactly = 1) { refreshPlayedTables() }

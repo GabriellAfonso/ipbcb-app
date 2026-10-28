@@ -69,7 +69,11 @@ class SundayRegistrationViewModel @Inject constructor(
             getSetlistForDate(date).fold(
                 onSuccess = { setlist ->
                     _uiState.update { state ->
-                        state.copy(sundayRows = rowsFrom(setlist), prefill = PrefillState.Loaded)
+                        state.copy(
+                            sundayRows = rowsFrom(setlist),
+                            prefill = PrefillState.Loaded,
+                            prefillSavedBy = setlist.savedByName?.takeIf { it.isNotBlank() },
+                        )
                             .recomputeSundayErrors()
                     }
                 },
@@ -242,7 +246,7 @@ class SundayRegistrationViewModel @Inject constructor(
                         isSubmitting = false
                     )
                     SubmitSundayPlaysUseCase.Result.Success -> current.copy(
-                        snackbarMessage = "Enviado com sucesso.",
+                        snackbarMessage = "Domingo registrado.",
                         isSubmitting = false
                     )
                     is SubmitSundayPlaysUseCase.Result.Failure -> current.copy(

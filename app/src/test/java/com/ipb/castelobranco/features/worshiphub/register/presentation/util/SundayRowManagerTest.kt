@@ -121,21 +121,20 @@ class SundayRowManagerTest {
     }
 
     @Test
-    fun `removeRow with position 4 leaves list unchanged`() {
-        val rows = listOf(row(1), row(2), row(3), row(4))
-
-        val result = removeRow(rows, position = 4)
-
-        assertEquals(rows, result)
-    }
-
-    @Test
-    fun `removeRow with position less than 4 leaves list unchanged`() {
-        val rows = listOf(row(1), row(2), row(3))
+    fun `removeRow takes out any row and renumbers the rest`() {
+        val rows = listOf(row(1), row(2, tone = "G"), row(3, tone = "D"))
 
         val result = removeRow(rows, position = 2)
 
-        assertEquals(rows, result)
+        assertEquals(listOf(1, 2), result.map { it.position })
+        assertEquals(listOf("", "D"), result.map { it.tone })
+    }
+
+    @Test
+    fun `removeRow keeps the last row`() {
+        val rows = listOf(row(1))
+
+        assertEquals(rows, removeRow(rows, position = 1))
     }
 
     @Test

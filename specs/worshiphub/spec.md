@@ -202,13 +202,30 @@ Entradas:
 - Card "Confirmar músicas de domingo" do painel de gestao e notificacao "Confirmar músicas de domingo": com a data
   do domingo pendente (pre-preenchido, abaixo). Voltar cai no painel.
 
-**Tela:** titulo "Registrar domingo", campo de data (abre o seletor; hoje por padrao) e as musicas tocadas em
-linhas ordenadas (no minimo 4; "adicionar mais" cria a 5a em diante, que pode ser removida). Cada linha tem musica
-(busca no catalogo; vazio mostra "Nª música", ex. "1ª música" — sem numero solto ao lado) e tom, que sai de uma lista com os 12 tons (`MUSIC_TONES`, core). O botao "Enviar ao servidor"
-so habilita com data, nenhuma linha incompleta (musica sem tom ou tom sem musica) e ao menos uma linha completa.
-Linha incompleta mostra "Posição N incompleta: preencha música e tom.".
+**Tela, layout "faixa e cards numerados":**
+- Barra "Registrar domingo" (sem titulo repetido no corpo).
+- Faixa verde (cantos inferiores de 24dp): "Culto de domingo", a data por extenso ("Domingo, 25/10/2026", dia da
+  semana em portugues) e "Trocar", que abre o seletor (hoje por padrao; some quando a data e fixa, abaixo). Embaixo,
+  a origem das linhas: "Repertório salvo por {nome}. Confira e ajuste." (sem nome: "Repertório salvo. Confira e
+  ajuste."), "Nenhum repertório salvo para esse domingo.", "Carregando o repertório do domingo..." ou o erro com
+  "Tentar novamente". Aberta pelas Tabelas, a faixa nao fala de repertorio.
+- As musicas tocadas em cards numerados (no minimo 4 ao abrir): o numero num circulo, o titulo e o artista (vazio:
+  "Escolher música"), o botao do tom (vazio: "Tom" com contorno; escolhido: verde) e "×" para remover. Qualquer linha
+  pode sair enquanto houver mais de uma; as posicoes sao renumeradas. "Adicionar música" (botao tracejado) cria mais
+  uma no fim.
+- Tocar na musica abre um painel de baixo "{N}ª música" com a busca "Buscar música ou artista" (titulo ou artista,
+  sem acentos) e a lista do catalogo com titulo e artista; nenhuma: "Nenhuma música encontrada". Tocar no tom abre
+  o painel "Tom da {N}ª música" com os 12 tons (`MUSIC_TONES`, core) numa grade de 6. Escolher fecha o painel.
+- Linha incompleta (musica sem tom ou tom sem musica) mostra "Posição N incompleta: preencha música e tom." embaixo
+  do card. Linhas vazias sao ignoradas no envio.
+- Rodape fixo com o botao "Registrar domingo" ("Registrando…" durante o envio). Enquanto nao puder registrar, em cima
+  dele: "Para registrar: escolha a data" / "complete música e tom da posição N" ("das posições 2 e 3") / "escolha ao
+  menos uma música". Habilita com data, nenhuma linha incompleta e ao menos uma completa.
+- **Confirmacao:** tocar em "Registrar domingo" abre o dialogo "Registrar domingo?" com "{n} músicas de {data por
+  extenso} vão para as Tabelas:" ("1 música") e a lista "1. Agnus Dei · A"; "Registrar" envia, "Revisar" fecha sem
+  enviar.
 
-- Sucesso: snackbar "Enviado com sucesso." e Ultimos Domingos, Mais tocadas e Top tons sao relidos
+- Sucesso: snackbar "Domingo registrado." e Ultimos Domingos, Mais tocadas e Top tons sao relidos
   (`RefreshPlayedTablesUseCase`), entao as Tabelas ja mostram o domingo ao voltar. Falha dessa releitura e
   silenciosa.
 - Falha de validacao no envio: "Existem posições incompletas. Corrija antes de enviar." e as linhas marcadas.

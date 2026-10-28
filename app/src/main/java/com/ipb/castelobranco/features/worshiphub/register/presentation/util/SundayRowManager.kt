@@ -27,7 +27,9 @@ fun addRow(rows: List<SundaySongRowState>): List<SundaySongRowState> {
     return rows + SundaySongRowState(position = nextPos)
 }
 
+/** Any row can go while another stays; the rest are renumbered 1..n. */
 fun removeRow(rows: List<SundaySongRowState>, position: Int): List<SundaySongRowState> {
-    if (position <= 4) return rows
+    if (rows.size <= 1 || rows.none { it.position == position }) return rows
     return rows.filterNot { it.position == position }
+        .mapIndexed { index, row -> row.copy(position = index + 1) }
 }
