@@ -3,6 +3,8 @@ package com.ipb.castelobranco.features.gallery.presentation.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,17 +17,18 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.alpha
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
@@ -35,56 +38,76 @@ import com.ipb.castelobranco.features.gallery.presentation.state.PhotoImage
 import com.ipb.castelobranco.features.gallery.presentation.state.PhotoTile
 
 private val PlaceholderGrey = Color(0xFFBDBDBD)
-private const val NAME_OVERLAY_ALPHA = 0.5f
+private const val SCRIM_ALPHA = 0.7f
+private const val SCRIM_HEIGHT_FRACTION = 0.55f
+private const val DATE_ALPHA = 0.85f
+private val AlbumCorner = 16.dp
+private val AlbumElevation = 4.dp
 private const val NOT_ON_DEVICE_ALPHA = 0.45f
 private const val BADGE_ALPHA = 0.55f
 private const val PLAY_LABEL = "Vídeo"
 private const val NOT_ON_DEVICE_LABEL = "Não está no aparelho"
 
-/** A square album tile: its cover, or black when there is none, with the name over the bottom. */
+/**
+ * An album card (`specs/gallery/spec.md` §1.1): the cover (black without one), a dark gradient on its lower half and,
+ * on it, the name and the event date.
+ */
 @Composable
 fun AlbumItem(
     album: AlbumTile,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    val shape = RoundedCornerShape(AlbumCorner)
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             // Hidden from members (only undownloaded videos below): shown dimmed while organizing.
             .alpha(if (album.onDevice) 1f else NOT_ON_DEVICE_ALPHA)
+            .shadow(AlbumElevation, shape)
+            .clip(shape)
+            .background(Color.Black)
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(4.dp),
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            if (album.cover != null) {
-                AsyncImage(
-                    model = album.cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(Color.Black.copy(alpha = NAME_OVERLAY_ALPHA))
-                    .padding(8.dp),
-            ) {
-                Text(
-                    text = album.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (!album.onDevice) NotOnDeviceIcon(Modifier.align(Alignment.TopEnd))
+        if (album.cover != null) {
+            AsyncImage(
+                model = album.cover,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(SCRIM_HEIGHT_FRACTION)
+                .align(Alignment.BottomCenter)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = SCRIM_ALPHA)))),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            Text(
+                text = album.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            album.date?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = DATE_ALPHA),
+                )
+            }
+        }
+        if (!album.onDevice) NotOnDeviceIcon(Modifier.align(Alignment.TopEnd))
     }
 }
 

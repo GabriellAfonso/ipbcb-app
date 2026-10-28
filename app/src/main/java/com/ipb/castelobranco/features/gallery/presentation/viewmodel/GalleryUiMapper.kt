@@ -29,6 +29,7 @@ internal object GalleryUiMapper {
         name = album.name,
         cover = album.coverUrl?.let { local.covers[it] },
         onDevice = visible == null || album.id in visible,
+        date = album.eventDate?.let(::formatDate),
     )
 
     fun photoImage(photo: GalleryPhoto, local: GalleryLocalState): PhotoImage =
@@ -66,6 +67,7 @@ internal object GalleryUiMapper {
             subAlbums = tree.children(albumId).map { albumTile(it, local, visibleAlbums) },
             photos = tree.photosOf(albumId).map { photoTile(it, local) },
             hasOwnCover = album.coverUrl != null && album.coverSourceAlbumId == album.id,
+            cover = album.coverUrl?.let { local.covers[it] },
         )
     }
 

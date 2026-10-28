@@ -16,25 +16,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarData
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,7 +35,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -56,13 +47,35 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.core.view.WindowCompat
+import com.ipb.castelobranco.core.presentation.base.findActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
-import com.ipb.castelobranco.R
-import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryVideoPage
@@ -80,16 +93,23 @@ import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryView
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 import java.io.File
 import java.io.OutputStream
 
-private const val LOADING_TITLE = "Carregando..."
-private const val SAVED_MESSAGE = "Baixado com sucesso"
+private const val SAVED_LABEL = "Baixada"
+private const val BACK_LABEL = "Voltar"
+private const val DETAIL_SEPARATOR = " · "
+private const val SAVED_FEEDBACK_MS = 2_000L
+private const val TOP_SHADE_ALPHA = 0.6f
+private const val BOTTOM_SHADE_ALPHA = 0.7f
+private const val MUTED_ALPHA = 0.75f
+private const val TAG_ALPHA = 0.45f
+private const val DISABLED_ALPHA = 0.38f
+/** "Baixada": the light green of the app's detail text on green. */
+private val SavedGreen = Color(0xFF8ED1BA)
 private const val SAVE_LABEL = "Baixar"
 private const val SHARE_LABEL = "Compartilhar"
 private const val SHARE_CHOOSER_TITLE = "Compartilhar"
-private const val SAVE_FEEDBACK_MS = 1_200L
 private const val MAX_ZOOM = 5f
 private const val SAVE_DIR = "ipb_castelobranco"
 private const val DEFAULT_MIME = "image/jpeg"
@@ -114,6 +134,21 @@ fun PhotoScreen(
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val muted by viewModel.videoMuted.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Black screen in both themes: light system bar icons while the viewer is open.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val lightStatus = controller?.isAppearanceLightStatusBars
+        val lightNavigation = controller?.isAppearanceLightNavigationBars
+        controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightNavigationBars = false
+        onDispose {
+            lightStatus?.let { controller.isAppearanceLightStatusBars = it }
+            lightNavigation?.let { controller.isAppearanceLightNavigationBars = it }
+        }
+    }
 
     // Nenhuma foto sobrou no álbum: volta para ele.
     LaunchedEffect(state.isClosed) {
@@ -172,12 +207,12 @@ fun PhotoContent(
     val player = rememberGalleryPlayer()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var showDetails by rememberSaveable { mutableStateOf(false) }
+    var showChrome by rememberSaveable { mutableStateOf(true) }
+    var savedPhotoId by remember { mutableStateOf<Long?>(null) }
     val photos = state.photos
     // Recriado quando as fotos chegam, para abrir já na foto tocada.
     val pagerState = key(state.isLoading) { rememberPagerState(initialPage = state.currentIndex) { photos.size } }
     var isZoomed by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     // A foto na tela saiu do álbum: o ViewModel aponta a próxima.
     LaunchedEffect(state.currentIndex, photos.size) {
@@ -189,6 +224,13 @@ fun PhotoContent(
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .collect { page -> photos.getOrNull(page)?.let { onPageChanged(it.id) } }
+    }
+    // "Baixada" stays a moment on the button, then it is "Baixar" again.
+    LaunchedEffect(savedPhotoId) {
+        if (savedPhotoId != null) {
+            delay(SAVED_FEEDBACK_MS)
+            savedPhotoId = null
+        }
     }
 
     val current = photos.getOrNull(pagerState.currentPage)
@@ -208,131 +250,213 @@ fun PhotoContent(
         return
     }
 
-    BaseScreen(
-        tabName = current?.title ?: LOADING_TITLE,
-        logoRes = R.drawable.ic_galery,
-        showBackArrow = true,
-        onBackClick = onBack,
-        extraActions = {
-            current?.let { photo ->
-                IconButton(onClick = { showDetails = true }) {
-                    Icon(Icons.Outlined.Info, contentDescription = DETAILS_LABEL)
-                }
-                ManageOverflowMenu(photoMenu(photo, state.permissions, manage))
-            }
-        },
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            if (state.isLoading || photos.isEmpty()) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-                return@Box
-            }
-            Column(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                    userScrollEnabled = !isZoomed,
-                    key = { photos[it].id },
-                ) { index ->
-                    val page = photos[index]
-                    val videoFile = page.videoFile
-                    if (page.isVideo && videoFile != null) {
-                        // Plays once the pager settles here, muted unless the sound was turned on.
-                        GalleryVideoPage(
-                            file = videoFile,
-                            player = player,
-                            isActive = pagerState.settledPage == index,
-                            muted = video.muted,
-                            onMutedChange = video.onMutedChange,
-                            failedText = VideoTexts.PLAYBACK_FAILED,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        ZoomablePage(
-                            resetKey = pagerState.currentPage,
-                            onZoomChanged = { isZoomed = it },
-                        ) {
-                            GalleryImage(
-                                image = page.image,
-                                previewLoader = previewLoader,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    var isSaveCoolingDown by remember { mutableStateOf(false) }
-                    Button(
-                        // Sem original no aparelho não há o que salvar ou compartilhar.
-                        enabled = !isSaveCoolingDown && current?.canSaveOrShare == true,
-                        onClick = {
-                            val photo = current ?: return@Button
-                            isSaveCoolingDown = true
-                            view.playSoundEffect(SoundEffectConstants.CLICK)
-                            onSave(photo)
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = SAVED_MESSAGE,
-                                    duration = SnackbarDuration.Indefinite
-                                )
-                            }
-                            scope.launch {
-                                delay(SAVE_FEEDBACK_MS)
-                                snackbarHostState.currentSnackbarData?.dismiss()
-                                isSaveCoolingDown = false
-                            }
-                        }
-                    ) {
-                        Text(SAVE_LABEL)
-                    }
-                    Button(
-                        enabled = current?.canSaveOrShare == true,
-                        onClick = {
-                            val photo = current ?: return@Button
-                            view.playSoundEffect(SoundEffectConstants.CLICK)
-                            onShare(photo)
-                        },
-                    ) {
-                        Text(SHARE_LABEL)
-                    }
-                }
-            }
-            if (showDetails && !isPickerOpen && current != null) {
-                PhotoDetailsSheet(
-                    photo = current,
-                    canTag = state.permissions.canManage,
-                    onTag = { manage.onTagPeople(current) },
-                    onDismiss = { showDetails = false },
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        if (state.isLoading || photos.isEmpty()) {
+            CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            ViewerTopBar(title = state.title, detail = null, onBack = onBack, menu = {})
+            return@Box
+        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = !isZoomed,
+            key = { photos[it].id },
+        ) { index ->
+            val page = photos[index]
+            val videoFile = page.videoFile
+            if (page.isVideo && videoFile != null) {
+                // Plays once the pager settles here, muted unless the sound was turned on.
+                GalleryVideoPage(
+                    file = videoFile,
+                    player = player,
+                    isActive = pagerState.settledPage == index,
+                    muted = video.muted,
+                    onMutedChange = video.onMutedChange,
+                    failedText = VideoTexts.PLAYBACK_FAILED,
+                    modifier = Modifier.fillMaxSize(),
                 )
-            }
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.Center),
-                snackbar = { data: SnackbarData ->
-                    Snackbar(
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    ) {
-                        Text(
-                            text = data.visuals.message,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
+            } else {
+                ZoomablePage(
+                    resetKey = pagerState.currentPage,
+                    onZoomChanged = { isZoomed = it },
+                    onTap = { showChrome = !showChrome },
+                ) {
+                    GalleryImage(
+                        image = page.image,
+                        previewLoader = previewLoader,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showChrome,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            ViewerTopBar(
+                title = state.title,
+                detail = current?.let { photo ->
+                    listOfNotNull("${pagerState.currentPage + 1} de ${photos.size}", photo.dateTaken)
+                        .joinToString(DETAIL_SEPARATOR)
+                },
+                onBack = onBack,
+                menu = { current?.let { ManageOverflowMenu(photoMenu(it, state.permissions, manage)) } },
             )
         }
+
+        AnimatedVisibility(
+            visible = showChrome,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                current?.people?.takeIf { it.isNotEmpty() }?.let { PeopleTags(it) }
+                ViewerBottomBar(
+                    canSaveOrShare = current?.canSaveOrShare == true,
+                    isSaved = current != null && savedPhotoId == current.id,
+                    onSave = {
+                        val photo = current ?: return@ViewerBottomBar
+                        view.playSoundEffect(SoundEffectConstants.CLICK)
+                        onSave(photo)
+                        savedPhotoId = photo.id
+                    },
+                    onShare = {
+                        val photo = current ?: return@ViewerBottomBar
+                        view.playSoundEffect(SoundEffectConstants.CLICK)
+                        onShare(photo)
+                    },
+                    onDetails = { showDetails = true },
+                )
+            }
+        }
+
+        if (showDetails && !isPickerOpen && current != null) {
+            PhotoDetailsSheet(
+                photo = current,
+                canTag = state.permissions.canManage,
+                onTag = { manage.onTagPeople(current) },
+                onDismiss = { showDetails = false },
+            )
+        }
+    }
+}
+
+/** Back, the album and "3 de 90 · date", and the photo's menu, over a dark gradient. */
+@Composable
+private fun ViewerTopBar(title: String, detail: String?, onBack: () -> Unit, menu: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalContentColor provides Color.White) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = TOP_SHADE_ALPHA), Color.Transparent)))
+                .statusBarsPadding()
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = BACK_LABEL)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                detail?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = MUTED_ALPHA))
+                }
+            }
+            menu()
+        }
+    }
+}
+
+/** The first names of who is tagged, over the photo, right above the bottom bar. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PeopleTags(people: List<String>) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        people.forEach { name ->
+            Text(
+                text = name.substringBefore(' '),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(Color.Black.copy(alpha = TAG_ALPHA))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+/** "Baixar" ("Baixada" for a moment after saving), "Compartilhar" and "Detalhes", white, over a dark gradient. */
+@Composable
+private fun ViewerBottomBar(
+    canSaveOrShare: Boolean,
+    isSaved: Boolean,
+    onSave: () -> Unit,
+    onShare: () -> Unit,
+    onDetails: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = BOTTOM_SHADE_ALPHA))))
+            .navigationBarsPadding()
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+    ) {
+        ViewerAction(
+            icon = if (isSaved) Icons.Filled.Check else Icons.Filled.Download,
+            label = if (isSaved) SAVED_LABEL else SAVE_LABEL,
+            enabled = canSaveOrShare && !isSaved,
+            color = if (isSaved) SavedGreen else Color.White,
+            onClick = onSave,
+        )
+        ViewerAction(Icons.Filled.Share, SHARE_LABEL, enabled = canSaveOrShare, onClick = onShare)
+        ViewerAction(Icons.Outlined.Info, DETAILS_LABEL, enabled = true, onClick = onDetails)
+    }
+}
+
+@Composable
+private fun ViewerAction(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    color: Color = Color.White,
+) {
+    // "Baixada" keeps its color while disabled: it is a confirmation, not an unavailable action.
+    val tint = if (enabled || color != Color.White) color else Color.White.copy(alpha = DISABLED_ALPHA)
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = tint)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = tint)
     }
 }
 
@@ -347,11 +471,12 @@ private fun photoMenu(photo: ViewerPhoto, permissions: GalleryPermissions, manag
         if (permissions.canDelete) add(ManageAction(DELETE_LABEL) { manage.onDelete(photo) })
     }
 
-/** Pinch to zoom, pan while zoomed, double tap to reset. Resets when [resetKey] changes. */
+/** Pinch to zoom, pan while zoomed, double tap to reset, a single tap is [onTap]. Resets when [resetKey] changes. */
 @Composable
 private fun ZoomablePage(
     resetKey: Any,
     onZoomChanged: (Boolean) -> Unit,
+    onTap: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
@@ -368,6 +493,7 @@ private fun ZoomablePage(
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onTap() },
                     onDoubleTap = {
                         scale = 1f
                         offset = Offset.Zero

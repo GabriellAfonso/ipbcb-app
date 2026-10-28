@@ -17,9 +17,34 @@ sealed interface PhotoImage {
 
 /**
  * An album in a grid. [cover] `null` = black tile. [onDevice] `false` = hidden outside "Organizar"
- * and the move picker (only undownloaded videos below it), shown dimmed there.
+ * and the move picker (only undownloaded videos below it), shown dimmed there. [date] `dd/MM/yyyy` under the name.
  */
-data class AlbumTile(val id: Long, val name: String, val cover: File?, val onDevice: Boolean = true)
+data class AlbumTile(
+    val id: Long,
+    val name: String,
+    val cover: File?,
+    val onDevice: Boolean = true,
+    val date: String? = null,
+)
+
+/** "86 fotos · 4 vídeos" on an album's band; `null` when empty. */
+fun albumCountLabel(photos: Int, videos: Int): String? =
+    listOfNotNull(countOf(photos, "foto", "fotos"), countOf(videos, "vídeo", "vídeos"))
+        .joinToString(" · ").ifEmpty { null }
+
+/** "549 fotos e 22 vídeos" on the root band; `null` when empty. */
+fun galleryCountLabel(photos: Int, videos: Int): String? =
+    listOfNotNull(countOf(photos, "foto", "fotos"), countOf(videos, "vídeo", "vídeos"))
+        .joinToString(" e ").ifEmpty { null }
+
+/** "7 álbuns". */
+fun albumsLabel(count: Int): String = if (count == 1) "1 álbum" else "$count álbuns"
+
+private fun countOf(count: Int, one: String, many: String): String? = when (count) {
+    0 -> null
+    1 -> "1 $one"
+    else -> "$count $many"
+}
 
 /** [duration] `m:ss` for a video; [onDevice] `false` = an undownloaded video, only shown in "Organizar". */
 data class PhotoTile(
@@ -64,6 +89,9 @@ data class GalleryRootUiState(
     val videoCard: VideoCard? = null,
     /** Video downloads stopped: finishing the next one would leave under 1 GB free. */
     val showLowSpace: Boolean = false,
+    /** Every photo and video of the visible tree, for the band. */
+    val photoCount: Int = 0,
+    val videoCount: Int = 0,
 ) {
     /** The trash icon: owners only, not while organizing. */
     val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
@@ -108,8 +136,13 @@ data class AlbumUiState(
     val uploads: AlbumUploadsUiState = AlbumUploadsUiState(),
     /** Someone is tagged in a selected photo: "Remover pessoas" has something to remove. */
     val canRemovePeople: Boolean = false,
+    /** The album's cover on the device, for the actions panel's header. */
+    val cover: File? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && !isRemoved && subAlbums.isEmpty() && photos.isEmpty()
+
+    /** "86 fotos · 4 vídeos": the album's own items. */
+    val countLabel: String? get() = albumCountLabel(photos.count { !it.isVideo }, photos.count { it.isVideo })
     val isSelecting: Boolean get() = selection.isNotEmpty()
     val canRemoveCover: Boolean get() = permissions.canDelete && hasOwnCover
 }
@@ -171,6 +204,8 @@ sealed interface ViewerSource {
 
 data class PhotoViewerUiState(
     val isLoading: Boolean = true,
+    /** The album's name, or "Pessoas" for a people filter's result. */
+    val title: String = "",
     val photos: List<ViewerPhoto> = emptyList(),
     /** The page to show; moves when the photo on screen leaves the album. */
     val currentIndex: Int = 0,

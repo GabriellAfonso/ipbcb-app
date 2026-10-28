@@ -52,14 +52,33 @@ import com.ipb.castelobranco.features.gallery.presentation.components.AlbumUploa
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
 import com.ipb.castelobranco.features.gallery.presentation.components.PhotoTileImage
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
 import com.ipb.castelobranco.features.gallery.presentation.components.SelectionActions
 import com.ipb.castelobranco.features.gallery.presentation.components.SelectionPeopleActions
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.AlbumUiState
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.HideImage
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import com.ipb.castelobranco.features.gallery.presentation.components.BandChips
+import com.ipb.castelobranco.features.gallery.presentation.components.BandText
+import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
+import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
+import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
+import com.ipb.castelobranco.features.gallery.presentation.components.PanelAction
+import com.ipb.castelobranco.features.gallery.presentation.components.PanelHeader
+import com.ipb.castelobranco.features.gallery.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.features.gallery.presentation.components.TopActionPanel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -70,7 +89,7 @@ private const val PHOTO_SPAN = 2
 private const val ALBUMS_SECTION = "Álbuns"
 private const val PHOTOS_SECTION = "Fotos"
 private const val MEDIA_SECTION = "Fotos e vídeos"
-private const val DEFAULT_TITLE = "Álbum"
+private const val GALLERY_TITLE = "Galeria"
 private const val EMPTY_MESSAGE = "Nenhuma foto neste álbum."
 private const val ORGANIZE_TITLE = "Organizar"
 private const val ORGANIZE_HINT = "Toque e segure para arrastar."
@@ -84,6 +103,15 @@ private const val CHANGE_COVER_LABEL = "Trocar capa"
 private const val REMOVE_COVER_LABEL = "Remover capa"
 private const val DELETE_ALBUM_LABEL = "Apagar álbum"
 private const val SELECTED_BORDER_DP = 3
+private const val EDIT_ALBUM_HINT = "Nome, data e descrição"
+private const val MOVE_ALBUM_HINT = "Para dentro de outro álbum"
+private const val ORGANIZE_HINT_SHORT = "Arrastar a ordem"
+private const val DELETE_ALBUM_HINT = "Vai para a lixeira"
+private const val DETAIL_SEPARATOR = " · "
+private val GridEdge = 8.dp
+private val PhotoCorner = 6.dp
+private val SectionBarWidth = 4.dp
+private val SectionBarHeight = 16.dp
 
 /** Everything the album screen can ask for; each is a plain event, decided in the ViewModel. */
 data class AlbumActions(
@@ -181,8 +209,10 @@ fun AlbumContent(
     val title = when {
         state.isOrganizing -> ORGANIZE_TITLE
         state.isSelecting -> selectedTitle(state.selection.size)
-        else -> state.title.ifBlank { DEFAULT_TITLE }
+        else -> GALLERY_TITLE
     }
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
+    val panelActions = albumPanelActions(state, actions)
     BaseScreen(
         tabName = title,
         logoRes = R.drawable.ic_galery,
@@ -192,7 +222,7 @@ fun AlbumContent(
             state.isSelecting -> actions.onSelectionClose
             else -> actions.onBack
         },
-        extraActions = { AlbumTopActions(state, actions) },
+        extraActions = { AlbumTopActions(state, actions, hasPanel = panelActions.isNotEmpty()) { isPanelOpen = true } },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -201,20 +231,28 @@ fun AlbumContent(
         ) {
             when {
                 state.isLoading || state.isRemoved -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                else -> Column(Modifier.fillMaxSize()) {
-                    AlbumUploadsPanel(state.uploads, actions.onDismissUpload)
-                    AlbumGrid(state, previewLoader, actions)
-                }
+                else -> AlbumGrid(state, previewLoader, actions)
             }
             if (state.permissions.canManage && !state.isOrganizing && !state.isSelecting && !state.isLoading) {
                 AddButton(actions, Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
+            TopActionPanel(
+                visible = isPanelOpen && !state.isOrganizing && !state.isSelecting,
+                actions = panelActions,
+                onDismiss = { isPanelOpen = false },
+                header = PanelHeader(
+                    cover = state.cover,
+                    name = state.title,
+                    detail = listOfNotNull(state.eventDate, state.countLabel).joinToString(DETAIL_SEPARATOR)
+                        .ifEmpty { null },
+                ),
+            )
         }
     }
 }
 
 @Composable
-private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions) {
+private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions, hasPanel: Boolean, onOpenPanel: () -> Unit) {
     when {
         state.isOrganizing -> OrganizeActions(state.isSavingOrder, actions.onOrganizeCancel, actions.onOrganizeSave)
         state.isSelecting -> SelectionActions(
@@ -232,22 +270,31 @@ private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions) {
                 null
             },
         )
-        else -> ManageOverflowMenu(albumMenu(state, actions))
+        else -> PanelMoreButton(hasActions = hasPanel, onClick = onOpenPanel)
     }
 }
 
-private fun albumMenu(state: AlbumUiState, actions: AlbumActions): List<ManageAction> {
+/** The actions panel of an album (`specs/gallery/spec.md` §1.5), by level (§8.1). */
+private fun albumPanelActions(state: AlbumUiState, actions: AlbumActions): List<PanelAction> {
     if (state.isLoading || state.isRemoved) return emptyList()
     val permissions = state.permissions
     return buildList {
         if (permissions.canManage) {
-            add(ManageAction(EDIT_ALBUM_LABEL, actions.onEditAlbum))
-            add(ManageAction(MOVE_ALBUM_LABEL, actions.onMoveAlbum))
-            add(ManageAction(CHANGE_COVER_LABEL, actions.onChangeCover))
-            if (state.subAlbums.size > 1 || state.photos.size > 1) add(ManageAction(ORGANIZE_LABEL, actions.onOrganize))
+            add(PanelAction(Icons.Filled.Edit, EDIT_ALBUM_LABEL, actions.onEditAlbum, EDIT_ALBUM_HINT))
+            add(PanelAction(Icons.AutoMirrored.Filled.DriveFileMove, MOVE_ALBUM_LABEL, actions.onMoveAlbum, MOVE_ALBUM_HINT))
+            add(PanelAction(Icons.Filled.Image, CHANGE_COVER_LABEL, actions.onChangeCover))
+            if (state.subAlbums.size > 1 || state.photos.size > 1) {
+                add(PanelAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, actions.onOrganize, ORGANIZE_HINT_SHORT))
+            }
         }
-        if (state.canRemoveCover) add(ManageAction(REMOVE_COVER_LABEL, actions.onRemoveCover))
-        if (permissions.canDelete) add(ManageAction(DELETE_ALBUM_LABEL, actions.onDeleteAlbum))
+        if (state.canRemoveCover) add(PanelAction(Icons.Filled.HideImage, REMOVE_COVER_LABEL, actions.onRemoveCover))
+        if (permissions.canDelete) {
+            add(
+                PanelAction(
+                    Icons.Filled.Delete, DELETE_ALBUM_LABEL, actions.onDeleteAlbum, DELETE_ALBUM_HINT, isDanger = true,
+                ),
+            )
+        }
     }
 }
 
@@ -263,17 +310,16 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         columns = GridCells.Fixed(GRID_COLUMNS),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = PaddingValues(start = GridEdge, end = GridEdge, bottom = GridEdge),
         modifier = Modifier.fillMaxSize(),
     ) {
         item(key = GalleryGridKeys.HEADER, span = { GridItemSpan(maxLineSpan) }) {
-            AlbumHeader(state)
+            AlbumHeader(state, actions.onDismissUpload)
         }
-        // With both kinds, a full-line title per group keeps the first photo off a sub-album's row.
-        val showSections = state.subAlbums.isNotEmpty() && state.photos.isNotEmpty()
-        if (showSections) {
+        // A full-line title per group keeps the first photo off a sub-album's row.
+        if (state.subAlbums.isNotEmpty()) {
             item(key = GalleryGridKeys.ALBUMS_SECTION, span = { GridItemSpan(maxLineSpan) }) {
-                SectionTitle(ALBUMS_SECTION, state.subAlbums.size)
+                SectionTitle(ALBUMS_SECTION)
             }
         }
         items(
@@ -289,10 +335,10 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
                 )
             }
         }
-        if (showSections) {
+        if (state.photos.isNotEmpty()) {
             item(key = GalleryGridKeys.PHOTOS_SECTION, span = { GridItemSpan(maxLineSpan) }) {
                 val label = if (state.photos.any { it.isVideo }) MEDIA_SECTION else PHOTOS_SECTION
-                SectionTitle(label, state.photos.size, Modifier.padding(top = 8.dp))
+                SectionTitle(label)
             }
         }
         items(
@@ -314,6 +360,7 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
+                        .clip(RoundedCornerShape(PhotoCorner))
                         .then(tileModifier),
                 ) {
                     PhotoTileImage(photo, previewLoader, Modifier.fillMaxSize())
@@ -324,13 +371,22 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
     }
 }
 
+/** A group's title, with a short `primary` bar before it. */
 @Composable
-private fun SectionTitle(label: String, count: Int, modifier: Modifier = Modifier) {
-    Text(
-        text = "$label · $count",
-        style = MaterialTheme.typography.titleSmall,
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
-    )
+private fun SectionTitle(label: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            Modifier
+                .size(width = SectionBarWidth, height = SectionBarHeight)
+                .clip(RoundedCornerShape(percent = 50))
+                .background(MaterialTheme.colorScheme.primary),
+        )
+        Text(text = label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable
@@ -371,22 +427,17 @@ private fun AddButton(actions: AlbumActions, modifier: Modifier) {
     }
 }
 
+/** The album's band — date and count, name, description — then the uploads and the empty message. */
 @Composable
-private fun AlbumHeader(state: AlbumUiState) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
-        if (state.isOrganizing) {
-            Text(text = ORGANIZE_HINT, style = MaterialTheme.typography.bodySmall)
-            return@Column
+private fun AlbumHeader(state: AlbumUiState, onDismissUpload: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        GalleryBand(modifier = Modifier.fullBleed(GridEdge)) {
+            BandChips(listOfNotNull(state.eventDate, state.countLabel))
+            BandTitle(state.title)
+            val text = if (state.isOrganizing) ORGANIZE_HINT else state.description
+            text?.let { BandText(it, Modifier.padding(top = 4.dp)) }
         }
-        state.subtitle?.let {
-            Text(text = it, style = MaterialTheme.typography.labelMedium)
-        }
-        state.eventDate?.let {
-            Text(text = it, style = MaterialTheme.typography.bodySmall)
-        }
-        state.description?.let {
-            Text(text = it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
-        }
+        AlbumUploadsPanel(state.uploads, onDismissUpload)
         if (state.isEmpty) {
             Text(
                 text = EMPTY_MESSAGE,

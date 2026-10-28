@@ -86,6 +86,9 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** The photo viewer's title over a people filter's result. */
+private const val PEOPLE_VIEWER_TITLE = "Pessoas"
+
 /**
  * Graph-scoped: one instance serves the root, every album entry on the back stack and the viewer.
  * Per-album and per-viewer state are memoized by key.
@@ -249,7 +252,10 @@ class GalleryViewModel @Inject constructor(
         } else {
             view?.tree?.roots()?.map { GalleryUiMapper.albumTile(it, view.local) }
         }.orEmpty()
+        val items = view?.tree?.allPhotosInTreeOrder().orEmpty()
         GalleryRootUiState(
+            photoCount = items.count { !it.isVideo },
+            videoCount = items.count { it.isVideo },
             isLoading = isLoading,
             isPaused = isPaused,
             hasIndex = index != null,
@@ -1091,6 +1097,10 @@ class GalleryViewModel @Inject constructor(
             lastIds = ids
             PhotoViewerUiState(
                 isLoading = false,
+                title = when (source) {
+                    is ViewerSource.Album -> tree.album(source.albumId)?.name.orEmpty()
+                    is ViewerSource.People -> PEOPLE_VIEWER_TITLE
+                },
                 photos = photos.map { GalleryUiMapper.viewerPhoto(it, view.local) },
                 currentIndex = index,
                 permissions = permissions,

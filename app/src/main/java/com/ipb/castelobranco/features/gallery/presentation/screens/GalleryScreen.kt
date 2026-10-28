@@ -31,10 +31,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,18 +52,36 @@ import com.ipb.castelobranco.features.gallery.presentation.components.AlbumItem
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogActions
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDialogHost
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
 import com.ipb.castelobranco.features.gallery.presentation.components.MediaDialogActions
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.OrganizeActions
 import com.ipb.castelobranco.features.gallery.presentation.components.PeoplePickerActions
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
-import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDownloadState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryRootUiState
 import com.ipb.castelobranco.features.gallery.presentation.state.VideoCard
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.ipb.castelobranco.features.gallery.presentation.components.BandDownload
+import com.ipb.castelobranco.features.gallery.presentation.components.BandLabel
+import com.ipb.castelobranco.features.gallery.presentation.components.BandNotice
+import com.ipb.castelobranco.features.gallery.presentation.components.BandOverlap
+import com.ipb.castelobranco.features.gallery.presentation.components.BandText
+import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
+import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
+import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
+import com.ipb.castelobranco.features.gallery.presentation.components.PanelAction
+import com.ipb.castelobranco.features.gallery.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.features.gallery.presentation.components.TopActionPanel
+import com.ipb.castelobranco.features.gallery.presentation.components.overlappedBelow
+import com.ipb.castelobranco.features.gallery.presentation.state.albumsLabel
+import com.ipb.castelobranco.features.gallery.presentation.state.galleryCountLabel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -74,6 +90,16 @@ private const val HTTP_FORBIDDEN = 403
 private const val TITLE = "Galeria"
 private const val LOGIN_MESSAGE = "Faça login para acessar a galeria."
 private const val PENDING_WIFI_MESSAGE = "Aguardando WiFi para baixar a galeria…"
+private const val WAITING_WIFI_MESSAGE = "Aguardando WiFi…"
+private const val MOBILE_DATA_LABEL = "Usar dados móveis"
+private const val STARTING_DOWNLOAD_MESSAGE = "Iniciando download…"
+private const val BAND_LABEL = "Galeria da igreja"
+private const val PEOPLE_HINT = "Quem aparece nas fotos"
+private const val TRASH_HINT = "Álbuns e fotos apagados"
+private const val ORGANIZE_HINT = "Arrastar a ordem dos álbuns"
+private const val VIDEO_CARD_KEY = "video_card"
+private val GridSpacing = 16.dp
+private val BandBottomExtra = 14.dp
 private const val RESUMING_MESSAGE = "Download pausado. Continua automaticamente em instantes."
 private const val NO_ACCESS_MESSAGE = "Disponível apenas para membros."
 private const val NO_ALBUMS_MESSAGE = "Nenhum álbum disponível."
@@ -223,8 +249,15 @@ fun GalleryContent(
     manage: RootManageActions,
     videoCard: VideoCardActions = VideoCardActions(),
 ) {
-    val download = state.download
     val canManage = isLoggedIn && state.permissions.canManage
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
+    val panelActions = buildList {
+        if (isLoggedIn && state.showPeople) add(PanelAction(Icons.Filled.Groups, PEOPLE_LABEL, onPeople, PEOPLE_HINT))
+        if (isLoggedIn && state.showTrash) add(PanelAction(Icons.Filled.Delete, TRASH_LABEL, onTrash, TRASH_HINT))
+        if (canManage && state.albums.size > 1) {
+            add(PanelAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, manage.onOrganize, ORGANIZE_HINT))
+        }
+    }
 
     BaseScreen(
         tabName = if (state.isOrganizing) ORGANIZE_TITLE else TITLE,
@@ -235,90 +268,28 @@ fun GalleryContent(
             if (state.isOrganizing) {
                 OrganizeActions(state.isSavingOrder, manage.onOrganizeCancel, manage.onOrganizeSave)
             } else {
-                ManageOverflowMenu(
-                    buildList {
-                        if (isLoggedIn && state.showPeople) add(ManageAction(PEOPLE_LABEL, onPeople))
-                        if (isLoggedIn && state.showTrash) add(ManageAction(TRASH_LABEL, onTrash))
-                        if (canManage && state.albums.size > 1) add(ManageAction(ORGANIZE_LABEL, manage.onOrganize))
-                    },
-                )
+                PanelMoreButton(hasActions = panelActions.isNotEmpty(), onClick = { isPanelOpen = true })
             }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                if (!isLoggedIn) {
-                    CenteredBox {
-                        PermissionErrorPlaceholder(
-                            message = LOGIN_MESSAGE,
-                            onLoginClick = onNavigateToAuth,
-                            showLoginButton = true,
-                        )
+            val showGrid = isLoggedIn && !state.isPaused && state.albums.isNotEmpty()
+            if (showGrid) {
+                RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove, videoCard) {
+                    GalleryBand(bottomPadding = BandOverlap + BandBottomExtra) {
+                        BandLabel(BAND_LABEL)
+                        BandTitle(albumsLabel(state.albums.size))
+                        RootBandStatus(state, onDownloadWithMobileData, showCount = true)
                     }
-                    return@Column
                 }
-
-                // Apagada nas configurações: nada sincroniza até a pessoa pedir.
-                if (state.isPaused) {
-                    CenteredBox { DeletedPlaceholder(onDownloadGallery) }
-                    return@Column
-                }
-
-                // Banner não-bloqueante (visível mesmo com álbuns na grid)
-                when {
-                    // 403 com a galeria no aparelho: a grid fica, e o aviso aparece acima dela.
-                    state.showMembersOnlyNotice -> MessageBanner(NO_ACCESS_MESSAGE)
-                    download.errorCode == HTTP_FORBIDDEN && state.albums.isNotEmpty() ->
-                        MessageBanner(download.error ?: NO_ACCESS_MESSAGE)
-                    download.error != null -> { /* tratado no bloco abaixo */ }
-                    download.isDownloading -> DownloadProgressBanner(download)
-                    download.isResuming -> MessageBanner(RESUMING_MESSAGE)
-                    download.isPending && !state.isOnWifi -> WaitingForWifiBanner(onDownloadWithMobileData)
-                    download.isPending -> MessageBanner(PENDING_WIFI_MESSAGE)
-                }
-                if (state.showLowSpace) MessageBanner(VideoTexts.LOW_SPACE)
-                state.videoCard?.let { card -> VideoDiscoveryCard(card, videoCard) }
-
-                when {
-                    state.albums.isNotEmpty() -> RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove)
-
-                    state.isLoading -> CenteredBox { CircularProgressIndicator() }
-
-                    // Sem índice: a galeria nunca carregou. Só 401 é problema de sessão; em 403 o usuário
-                    // está logado e não é membro — logar de novo não muda isso.
-                    state.syncError != null -> CenteredBox {
-                        when (state.syncErrorCode) {
-                            HTTP_UNAUTHORIZED -> PermissionErrorPlaceholder(
-                                message = state.syncError,
-                                onLoginClick = onNavigateToAuth,
-                                showLoginButton = true,
-                            )
-                            HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = state.syncError)
-                            else -> ErrorPlaceholder(message = state.syncError, onRetryClick = onRetrySync)
-                        }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    GalleryBand {
+                        BandLabel(BAND_LABEL)
+                        BandTitle(TITLE)
+                        if (isLoggedIn && !state.isPaused) RootBandStatus(state, onDownloadWithMobileData, showCount = false)
                     }
-
-                    download.error != null && !download.isDownloading -> CenteredBox {
-                        when (download.errorCode) {
-                            HTTP_UNAUTHORIZED -> PermissionErrorPlaceholder(
-                                message = download.error,
-                                onLoginClick = onNavigateToAuth,
-                                showLoginButton = true,
-                            )
-                            HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = download.error)
-                            else -> ErrorPlaceholder(message = download.error, onRetryClick = onRetryDownload)
-                        }
-                    }
-
-                    else -> CenteredBox {
-                        Text(
-                            text = NO_ALBUMS_MESSAGE,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+                    RootPlaceholder(state, isLoggedIn, onNavigateToAuth, onRetrySync, onRetryDownload, onDownloadGallery)
                 }
             }
             if (canManage && !state.isOrganizing && state.hasIndex) {
@@ -329,27 +300,119 @@ fun GalleryContent(
                     Icon(Icons.Filled.Add, contentDescription = NEW_ALBUM_LABEL)
                 }
             }
+            TopActionPanel(
+                visible = isPanelOpen && !state.isOrganizing,
+                actions = panelActions,
+                onDismiss = { isPanelOpen = false },
+            )
         }
     }
 }
 
-/** The root albums; in "Organizar" they are dragged after a long press instead of opened. */
+/**
+ * What the band says under the album count: a notice when there is one (`specs/gallery/spec.md` §6, item 3), else
+ * the photo and video count.
+ */
+@Composable
+private fun RootBandStatus(state: GalleryRootUiState, onDownloadWithMobileData: () -> Unit, showCount: Boolean) {
+    val download = state.download
+    when {
+        // 403 com a galeria no aparelho: a grid fica, e o aviso aparece na faixa.
+        state.showMembersOnlyNotice -> BandNotice(NO_ACCESS_MESSAGE)
+        download.errorCode == HTTP_FORBIDDEN && state.albums.isNotEmpty() ->
+            BandNotice(download.error ?: NO_ACCESS_MESSAGE)
+        download.isDownloading && download.error == null -> BandDownload(
+            text = if (download.total > 0) "Baixando fotos: ${download.downloaded} de ${download.total}"
+            else STARTING_DOWNLOAD_MESSAGE,
+            progress = download.total.takeIf { it > 0 }?.let { download.downloaded.toFloat() / it },
+        )
+        download.isResuming && download.error == null -> BandNotice(RESUMING_MESSAGE)
+        download.isPending && download.error == null && !state.isOnWifi ->
+            BandNotice(WAITING_WIFI_MESSAGE, MOBILE_DATA_LABEL, onDownloadWithMobileData)
+        download.isPending && download.error == null -> BandNotice(PENDING_WIFI_MESSAGE)
+        showCount -> galleryCountLabel(state.photoCount, state.videoCount)?.let { BandText(it) }
+    }
+    if (state.showLowSpace) BandNotice(VideoTexts.LOW_SPACE)
+}
+
+/** Below the band when there is no album to show: login, deleted, loading, errors or empty. */
+@Composable
+private fun RootPlaceholder(
+    state: GalleryRootUiState,
+    isLoggedIn: Boolean,
+    onNavigateToAuth: () -> Unit,
+    onRetrySync: () -> Unit,
+    onRetryDownload: () -> Unit,
+    onDownloadGallery: () -> Unit,
+) {
+    val download = state.download
+    CenteredBox {
+        when {
+            !isLoggedIn -> PermissionErrorPlaceholder(
+                message = LOGIN_MESSAGE,
+                onLoginClick = onNavigateToAuth,
+                showLoginButton = true,
+            )
+            // Apagada nas configurações: nada sincroniza até a pessoa pedir.
+            state.isPaused -> DeletedPlaceholder(onDownloadGallery)
+            state.isLoading -> CircularProgressIndicator()
+            // Sem índice: a galeria nunca carregou. Só 401 é problema de sessão; em 403 o usuário
+            // está logado e não é membro — logar de novo não muda isso.
+            state.syncError != null -> when (state.syncErrorCode) {
+                HTTP_UNAUTHORIZED -> PermissionErrorPlaceholder(
+                    message = state.syncError,
+                    onLoginClick = onNavigateToAuth,
+                    showLoginButton = true,
+                )
+                HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = state.syncError)
+                else -> ErrorPlaceholder(message = state.syncError, onRetryClick = onRetrySync)
+            }
+            download.error != null && !download.isDownloading -> when (download.errorCode) {
+                HTTP_UNAUTHORIZED -> PermissionErrorPlaceholder(
+                    message = download.error,
+                    onLoginClick = onNavigateToAuth,
+                    showLoginButton = true,
+                )
+                HTTP_FORBIDDEN -> MembersOnlyPlaceholder(message = download.error)
+                else -> ErrorPlaceholder(message = download.error, onRetryClick = onRetryDownload)
+            }
+            else -> Text(
+                text = NO_ALBUMS_MESSAGE,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+/**
+ * The band, then the root albums climbing over it; in "Organizar" the albums are dragged after a long press instead
+ * of opened. The videos card is the first row.
+ */
 @Composable
 private fun RootAlbumGrid(
     state: GalleryRootUiState,
     onAlbumClick: (Long) -> Unit,
     onOrganizeMove: (from: Any?, to: Any?) -> Unit,
+    videoCard: VideoCardActions,
+    band: @Composable () -> Unit,
 ) {
     val gridState = rememberLazyGridState()
     val reorderState = rememberReorderableLazyGridState(gridState) { from, to -> onOrganizeMove(from.key, to.key) }
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Fixed(2),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(GridSpacing),
+        horizontalArrangement = Arrangement.spacedBy(GridSpacing),
+        contentPadding = PaddingValues(start = GridSpacing, end = GridSpacing, bottom = GridSpacing),
         modifier = Modifier.fillMaxSize(),
     ) {
+        item(key = GalleryGridKeys.HEADER, span = { GridItemSpan(maxLineSpan) }) {
+            Box(Modifier.fullBleed(GridSpacing).overlappedBelow(BandOverlap + GridSpacing)) { band() }
+        }
+        state.videoCard?.let { card ->
+            item(key = VIDEO_CARD_KEY, span = { GridItemSpan(maxLineSpan) }) { VideoDiscoveryCard(card, videoCard) }
+        }
         items(state.albums, key = { GalleryGridKeys.album(it.id) }) { album ->
             ReorderableItem(reorderState, key = GalleryGridKeys.album(album.id), enabled = state.isOrganizing) {
                 AlbumItem(
@@ -365,7 +428,7 @@ private fun RootAlbumGrid(
 /** On the root only, above the albums, until either button is tapped — then never again. */
 @Composable
 private fun VideoDiscoveryCard(card: VideoCard, actions: VideoCardActions) {
-    Card(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Filled.Movie, contentDescription = null)
@@ -393,80 +456,6 @@ private fun CenteredBox(content: @Composable () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         content()
-    }
-}
-
-@Composable
-private fun DownloadProgressBanner(state: GalleryDownloadState) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Text(
-                    text = if (state.total > 0)
-                        "Baixando fotos: ${state.downloaded} / ${state.total}"
-                    else
-                        "Iniciando download…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-            if (state.total > 0) {
-                Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { state.downloaded.toFloat() / state.total.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
-/** Banner informativo de uma linha, sem ação — não é estado de erro. */
-@Composable
-private fun MessageBanner(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-        )
-    }
-}
-
-@Composable
-private fun WaitingForWifiBanner(onDownloadWithMobileData: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "Aguardando WiFi…",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onDownloadWithMobileData) {
-                Text("Usar dados móveis")
-            }
-        }
     }
 }
 

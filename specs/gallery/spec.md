@@ -28,8 +28,8 @@ gestão vive nas próprias telas da galeria — o painel de gestão não tem car
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
 | Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro (seção 10.6) |
-| Pessoas | `GalleryPeople`               | "Pessoas" no menu ⋮ da raiz (seção 10.6) |
-| Lixeira | `GalleryTrash`                | "Lixeira" no menu ⋮ da raiz (`owner`, seção 9) |
+| Pessoas | `GalleryPeople`               | "Pessoas" no painel de ações da raiz (seção 10.6) |
+| Lixeira | `GalleryTrash`                | "Lixeira" no painel de ações da raiz (`owner`, seção 9) |
 
 Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
 ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel` e Pessoas o próprio
@@ -47,28 +47,72 @@ Toda lista é ordenada por `position`, depois `id` — nunca por nome de arquivo
 
 ### 1.1 Galeria (raiz)
 
-Grid de 2 colunas com os álbuns raiz (`parent_id` nulo): capa quadrada (preta quando não há) e nome. Acima da grid,
-um banner não-bloqueante (seção 5); nada mais fica entre a barra e os álbuns. Na
-barra, um único menu ⋮ reúne "Pessoas" (abre o filtro, seção 10.6), "Lixeira" (`owner`) e "Organizar" (`manage`, com
-2+ álbuns) — sem ícones soltos, para não poluir a barra; o menu some durante o "Organizar". Abrir a galeria dispara um
-sync.
+**Faixa verde** (`ipbGreen`, igual nos dois temas, cantos inferiores de 28dp), como nas outras telas do app:
+"Galeria da igreja" (pequeno), "{n} álbuns" ("1 álbum"; os álbuns raiz) e "{f} fotos e {v} vídeos" (todos os itens da
+árvore visível; "1 foto", "1 vídeo"; sem vídeos, só "{f} fotos"). Os avisos da seção 6 (item 3) e o de espaço baixo
+(11.3) entram na faixa, num cartão translúcido no lugar da contagem: o download mostra "Baixando fotos: X de N" com a
+barra; "Aguardando WiFi…" traz o botão "Usar dados móveis". Sem álbuns para mostrar (deslogado, apagada, carregando,
+erro, vazia), a faixa fica só com "Galeria da igreja" e "Galeria", e o estado aparece abaixo dela.
+
+**Grid** de 2 colunas com os álbuns raiz (`parent_id` nulo), subindo 28dp sobre a faixa. Cada cartão: cantos de 16dp,
+sombra, capa quadrada (preta quando não há), degradê escuro na metade de baixo e, em branco, à esquerda, o nome (até 2
+linhas) e a data do evento (`dd/MM/yyyy`, quando existe). O card de descoberta de vídeos (11.4) é a primeira linha da
+grid. Na barra (título "Galeria"), os três pontos abrem o painel de ações (seção 1.5) com "Pessoas" (abre o filtro,
+seção 10.6), "Lixeira" (`owner`) e "Organizar" (`manage`, com 2+ álbuns); somem durante o "Organizar". Abrir a
+galeria dispara um sync.
 
 ### 1.2 Álbum
 
-Uma rolagem: sub-álbuns primeiro (2 por linha, com capa), depois as fotos (3 por linha). Com os dois, cada grupo
-abre com um título de linha inteira — "Álbuns · {n}" e "Fotos · {n}" —, e as fotos sempre começam numa linha nova,
-nunca ao lado de um sub-álbum; com um só dos dois, não há título. Título = nome do álbum;
-subtítulo = nome do álbum pai (raiz não tem). Data do evento (`dd/MM/yyyy`) e descrição quando existem. Sem fotos e
-sem sub-álbuns: "Nenhuma foto neste álbum.". Cada álbum aberto é uma entrada do back stack — voltar sobe um nível.
+Barra com o título "Galeria" ("Organizar" e "{n} selecionadas" nos modos de sempre). **Faixa verde** como a da raiz,
+sem sobreposição: chips com a data do evento (`dd/MM/yyyy`, quando existe) e a contagem dos itens do próprio álbum
+("86 fotos · 4 vídeos"; sem vídeos, "86 fotos"; vazio, sem chip), o nome do álbum como título e a descrição quando
+existe. No "Organizar", a faixa mostra "Toque e segure para arrastar." no lugar da descrição.
+
+Uma rolagem: sub-álbuns primeiro (2 por linha, o mesmo cartão da raiz), depois as fotos (3 por linha, cantos de 6dp).
+Cada grupo abre com um título de linha inteira com uma barrinha `primary` à esquerda — "Álbuns" e "Fotos" ("Fotos e
+vídeos" quando há vídeo) —, e as fotos sempre começam numa linha nova. Sem fotos e sem sub-álbuns: "Nenhuma foto neste
+álbum." abaixo da faixa. Os três pontos abrem o painel de ações (seção 1.5). Cada álbum aberto é uma entrada do back
+stack — voltar sobe um nível.
 
 ### 1.3 Foto
 
 Pager horizontal pelas fotos **de onde foi aberto** (`ViewerSource`): o álbum (o `albumId` da rota), na ordem da
 grid, ou o resultado de um filtro de pessoas (os `memberIds` da rota, seção 10.6); abre sempre na foto tocada, mesmo
-que uma visita anterior a partir dela tenha deslizado para outra; uma rotação mantém a página atual. Top bar = nome
-da foto sem extensão, "ⓘ" (detalhes, seção 10.2) e o menu de gestão. Zoom por pinça, duplo toque volta ao normal, "Baixar" (salva em
-`Pictures/ipb_castelobranco` com o nome da foto e o MIME pela extensão) e "Compartilhar". Foto ainda sem original no
-aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.
+que uma visita anterior a partir dela tenha deslizado para outra; uma rotação mantém a página atual.
+
+Layout "escuro com barra de ícones", fora do `BaseScreen`: fundo preto nos dois temas, com os ícones da barra de status
+claros enquanto a tela está aberta.
+
+- **Topo**, sobre um degradê: voltar, o nome do álbum (no resultado de um filtro, "Pessoas"), "{posição} de {total}" e
+  a data da foto (`dd/MM/yyyy`, quando existe) e o menu de gestão (três pontos).
+- **Etiquetas** com o primeiro nome de quem está marcado, sobre a foto, logo acima do rodapé.
+- **Rodapé**, sobre um degradê: "Baixar", "Compartilhar" e "Detalhes" (seção 10.2), ícone com o nome embaixo, em
+  branco. "Baixar" salva em `Pictures/ipb_castelobranco` com o nome da foto e o MIME pela extensão, e vira "Baixada"
+  com um ✓ verde-claro por 2 s — sem aviso por cima da foto.
+- Tocar na foto esconde ou mostra topo, etiquetas e rodapé. Zoom por pinça, duplo toque volta ao normal.
+- Foto ainda sem original no aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.
+
+### 1.5 Painel de ações
+
+Os três pontos da raiz e do álbum abrem um painel que desce colado na barra verde: fundo do card, cantos inferiores
+de 28dp e uma alça embaixo. Abaixo da barra, o resto da tela escurece; tocar fora ou voltar fecha. Cada opção tem um
+ícone num círculo `secondaryContainer`, o nome e uma linha dizendo o que faz:
+
+| Tela | Opção | Linha |
+|------|-------|-------|
+| Raiz | Pessoas | Quem aparece nas fotos |
+| Raiz | Lixeira | Álbuns e fotos apagados |
+| Raiz | Organizar | Arrastar a ordem dos álbuns |
+| Álbum | Editar álbum | Nome, data e descrição |
+| Álbum | Mover álbum | Para dentro de outro álbum |
+| Álbum | Trocar capa | — |
+| Álbum | Organizar | Arrastar a ordem |
+| Álbum | Remover capa | — |
+| Álbum | Apagar álbum | Vai para a lixeira |
+
+No álbum, o painel abre com a capa, o nome e "data · contagem" do álbum, e separa os grupos "Gerenciar" e "Cuidado";
+"Apagar álbum" fica no "Cuidado", em vermelho (`error`, círculo `errorContainer`). Quem vê cada opção segue a seção 8.1.
+O menu da foto continua um menu suspenso.
 
 ### 1.4 Item removido com a tela aberta
 
@@ -383,11 +427,11 @@ está em todo UiState. Sem nível, nenhum controle é composto — as telas são
 
 | Tela | Controle | Nível |
 |------|----------|-------|
-| Raiz | FAB "Novo álbum"; menu ⋮ "Organizar" (com 2+ álbuns) | `manage` |
-| Raiz | menu ⋮ "Lixeira" (fora do "Organizar") | `owner` |
+| Raiz | FAB "Novo álbum"; painel "Organizar" (com 2+ álbuns) | `manage` |
+| Raiz | painel "Lixeira" (fora do "Organizar") | `owner` |
 | Álbum | FAB "+" → "Adicionar fotos" / "Novo álbum" (sub-álbum) | `manage` |
-| Álbum | menu: "Editar álbum", "Mover álbum", "Trocar capa", "Organizar" (com 2+ sub-álbuns ou 2+ fotos) | `manage` |
-| Álbum | menu: "Remover capa" (só se a capa é própria: `cover_source_album_id == id`), "Apagar álbum" | `owner` |
+| Álbum | painel: "Editar álbum", "Mover álbum", "Trocar capa", "Organizar" (com 2+ sub-álbuns ou 2+ fotos) | `manage` |
+| Álbum | painel: "Remover capa" (só se a capa é própria: `cover_source_album_id == id`), "Apagar álbum" | `owner` |
 | Álbum | toque longo numa foto → seleção; barra: "Pessoas" e "Mover" (`manage`), "Apagar" (`owner`) | `manage` |
 | Álbum | faixa de envio ("Enviando X de N", "Preparando fotos…") e lista "Não enviadas" | — (itens da fila) |
 | Foto | menu: "Editar foto", "Marcar pessoas", "Mover", "Usar como capa"; "Marcar pessoas" também nos detalhes | `manage` |
