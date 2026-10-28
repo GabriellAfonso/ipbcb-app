@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -153,16 +154,16 @@ fun BibleReaderScreen(
         }
     }
 
+    // A pending verse (passage link, index, chapter arrows) keeps the placeholder up until its chapter is ready; the
+    // text then shows already at that verse — never the previous chapter, never a visible scroll.
     val pendingScroll by viewModel.pendingScroll.collectAsStateWithLifecycle()
-    LaunchedEffect(pendingScroll, state.isChapterReady, state.position) {
-        val target = pendingScroll ?: return@LaunchedEffect
-        val position = state.position
-        val onTarget = position.bookAbbrev.equals(target.bookAbbrev, ignoreCase = true) &&
-            position.chapter == target.chapter
-        if (!state.isChapterReady || !onTarget) return@LaunchedEffect
-        runCatching { listState.scrollToItem(verseItemIndex(target.verse, state.currentChapterHeadings)) }
-        viewModel.consumePendingScroll()
+    val target = pendingScroll
+    val targetReady = target != null && state.isShowing(target)
+    if (target != null && targetReady) {
+        listState.requestScrollToItem(verseItemIndex(target.verse, state.currentChapterHeadings))
+        SideEffect { viewModel.consumePendingScroll() }
     }
+    val awaitingTarget = target != null && !targetReady
 
     BackHandler(enabled = state.selectedVerses.isNotEmpty()) {
         viewModel.clearSelection()
@@ -253,10 +254,10 @@ fun BibleReaderScreen(
 
             Box(modifier = Modifier.fillMaxSize()) {
                 val verses = state.currentChapterVerses
-                if (verses == null) {
+                if (verses == null || awaitingTarget) {
                     // Same header and line height as the chapter: nothing jumps when the text arrives.
                     BibleVerseColumnPlaceholder(
-                        title = "${book.name} ${state.position.chapter}",
+                        title = target?.let(state::chapterTitle) ?: "${book.name} ${state.position.chapter}",
                         fontSizeSp = state.fontSize,
                         modifier = Modifier.fillMaxSize(),
                     )

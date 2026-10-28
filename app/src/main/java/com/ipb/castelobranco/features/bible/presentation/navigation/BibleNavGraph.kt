@@ -1,11 +1,8 @@
 package com.ipb.castelobranco.features.bible.presentation.navigation
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -90,17 +87,18 @@ fun NavGraphBuilder.bibleGraph(navController: NavHostController, isLoggedIn: Sta
         ) { entry ->
             val graphEntry = remember(entry) { navController.getBackStackEntry(AppRoutes.BIBLE_GRAPH) }
             val viewModel: BibleViewModel = hiltViewModel(graphEntry)
-            var applied by rememberSaveable { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                if (applied) return@LaunchedEffect
-                val args = entry.arguments ?: return@LaunchedEffect
-                viewModel.openPassage(
-                    bookAbbrev = args.getString(AppRoutes.BIBLE_PASSAGE_BOOK).orEmpty(),
-                    chapter = args.getInt(AppRoutes.BIBLE_PASSAGE_CHAPTER, 1),
-                    verse = args.getInt(AppRoutes.BIBLE_PASSAGE_VERSE, 1),
-                    highlighted = AppRoutes.parseVerseRanges(args.getString(AppRoutes.BIBLE_PASSAGE_VERSES)),
-                )
-                applied = true
+            // During the first composition, not in an effect: the first frame already asks for the passage instead
+            // of showing the last chapter read. Saved, so coming back to this entry does not apply it again.
+            rememberSaveable {
+                entry.arguments?.let { args ->
+                    viewModel.openPassage(
+                        bookAbbrev = args.getString(AppRoutes.BIBLE_PASSAGE_BOOK).orEmpty(),
+                        chapter = args.getInt(AppRoutes.BIBLE_PASSAGE_CHAPTER, 1),
+                        verse = args.getInt(AppRoutes.BIBLE_PASSAGE_VERSE, 1),
+                        highlighted = AppRoutes.parseVerseRanges(args.getString(AppRoutes.BIBLE_PASSAGE_VERSES)),
+                    )
+                }
+                true
             }
             val videosViewModel: BibleVideosViewModel = hiltViewModel(graphEntry)
             val loggedIn by isLoggedIn.collectAsStateWithLifecycle()

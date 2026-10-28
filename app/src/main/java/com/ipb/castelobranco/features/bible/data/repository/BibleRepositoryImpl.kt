@@ -59,12 +59,19 @@ class BibleRepositoryImpl @Inject constructor(
             initialValue = BibleTranslation.Default,
         )
 
+    /**
+     * The position just asked for, ahead of the disk: the reader moves now and the DataStore write follows. Once the
+     * write lands both agree; [clearAll] drops it so the reset position shows.
+     */
+    private val requestedPosition = MutableStateFlow<BibleReadingPosition?>(null)
+
     override val positionFlow: StateFlow<BibleReadingPosition> =
-        preferences.positionFlow.stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = BibleReadingPosition.default(),
-        )
+        combine(preferences.positionFlow, requestedPosition) { saved, requested -> requested ?: saved }
+            .stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = BibleReadingPosition.default(),
+            )
 
     override val fontSizeFlow: StateFlow<Float> =
         preferences.fontSizeFlow.stateIn(
@@ -147,6 +154,7 @@ class BibleRepositoryImpl @Inject constructor(
     }
 
     override suspend fun savePosition(bookAbbrev: String, chapter: Int, verse: Int) {
+        requestedPosition.value = BibleReadingPosition(bookAbbrev, chapter, verse)
         preferences.setPosition(bookAbbrev, chapter, verse)
     }
 
@@ -157,6 +165,7 @@ class BibleRepositoryImpl @Inject constructor(
     override suspend fun clearAll() = withContext(ioDispatcher) {
         BibleTranslation.entries.forEach { store.clear(it) }
         preferences.resetAll()
+        requestedPosition.value = null
         _cachedTranslations.value = emptySet()
         _outdatedTranslations.value = emptySet()
     }

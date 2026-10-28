@@ -24,9 +24,11 @@ apaga o termo.
 
 **Passagem** (`bible_passage?book={book}&chapter={chapter}&verse={verse}&verses={verses}`, montada por
 `AppRoutes.biblePassage`): é como outras features (as referências da Doutrina, `specs/studies/spec.md`) abrem a Bíblia
-sem importá-la. Na primeira composição da entrada, `openPassage` salva a posição (conta como leitura normal) e deixa o
-versículo pendente; o leitor rola até ele quando a tradução está decodificada e a posição atual bate com o pendente, e
-então o descarta. Voltar retorna para quem abriu. `book` é o `abbrev` da Bíblia, comparado sem diferenciar maiúsculas.
+sem importá-la. Durante a primeira composição da entrada (não num efeito depois do frame), `openPassage` salva a
+posição (conta como leitura normal) e deixa o versículo pendente; a escolha fica salva (`rememberSaveable`), então
+voltar para a entrada não reaplica. O primeiro frame já mostra o placeholder com o título do destino ("Romanos 8"),
+nunca o último capítulo lido, e o texto aparece direto no versículo (ver **Carregando**). Voltar retorna para quem
+abriu. `book` é o `abbrev` da Bíblia, comparado sem diferenciar maiúsculas.
 
 **Destaque da passagem.** `verses` (opcional) são os intervalos citados, no formato `3-5,7` (`AppRoutes` monta e lê;
 trecho malformado é ignorado). Esses versículos do capítulo aberto ficam destacados com um fundo próprio
@@ -51,7 +53,10 @@ títulos que o abrem. Tradução baixada antes dos títulos existirem aparece se
 **Carregando.** Enquanto o texto do capítulo não chegou, o leitor mostra um placeholder com o mesmo layout do
 capítulo: o título real ("Gênesis 1", vindo do índice) e barras pulsando no lugar dos versículos, na altura de
 linha da fonte atual. A toolbar já mostra o livro e o capítulo. Quando o texto chega, ocupa o mesmo espaço — nada
-pula. Mudar de capítulo rola para o versículo 1 só depois que o texto do novo capítulo está na tela.
+pula. Com um versículo pendente (passagem, índice, setas de capítulo), o placeholder com o título do destino fica
+até a posição bater com o pendente e o texto desse capítulo chegar (`BibleUiState.isShowing`); então a lista já nasce
+naquele versículo (`requestScrollToItem` na composição) e o pendente é descartado — não aparece o capítulo anterior
+nem uma rolagem visível.
 
 ## 2. Endpoint
 
@@ -94,6 +99,10 @@ convertida fica no formato antigo (o arquivo antigo não tem títulos).
 Expõe `booksFlow` (índice da tradução ativa), `currentBookFlow` (texto do livro da posição atual),
 `activeTranslationFlow`, `cachedTranslationsFlow` (traduções presentes no disco), `outdatedTranslationsFlow`
 (presentes, mas no formato antigo), `positionFlow` e `fontSizeFlow`.
+
+- **Posição em memória antes do disco.** `savePosition` muda `positionFlow` na hora (um `MutableStateFlow` na frente
+  do DataStore) e grava depois; quando a gravação chega, os dois concordam. `clearAll` descarta a posição em memória
+  para valer a do reset. Assim o livro novo começa a ser lido sem esperar a escrita.
 
 - **Traduções no disco sem decodificar.** `cachedTranslationsFlow` olha só a existência do `index.json`, e
   `outdatedTranslationsFlow` só o arquivo `format`. O repositório checa ao nascer, e `preload()` (boot, fim do

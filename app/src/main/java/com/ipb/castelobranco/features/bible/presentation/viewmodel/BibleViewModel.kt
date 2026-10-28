@@ -64,6 +64,15 @@ data class BibleUiState(
     val currentBook: BibleBook?
         get() = books.resolve(position.bookAbbrev)
 
+    /** Whether [ref]'s chapter is the one on screen, text included: the reader can show it at that verse. */
+    fun isShowing(ref: VerseRef): Boolean =
+        isChapterReady &&
+            position.bookAbbrev.equals(ref.bookAbbrev, ignoreCase = true) &&
+            position.chapter == ref.chapter
+
+    /** "Romanos 8" for a chapter not on screen yet; null while the index is loading. */
+    fun chapterTitle(ref: VerseRef): String? = books.resolve(ref.bookAbbrev)?.let { "${it.name} ${ref.chapter}" }
+
     /** Versículos do capítulo atual; null enquanto o texto do livro está a caminho. */
     val currentChapterVerses: List<String>?
         get() {

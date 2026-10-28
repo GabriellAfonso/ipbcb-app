@@ -172,6 +172,29 @@ class BibleViewModelTest {
     }
 
     @Test
+    fun `a pending verse is showing only once its chapter's text is there`() {
+        val onGenesis = BibleUiState(
+            books = listOf(genesis, exodus),
+            bookText = genesisText,
+            position = BibleReadingPosition("gn", 2, 1),
+        )
+
+        assertTrue(onGenesis.isShowing(VerseRef("GN", 2, 2)))
+        assertFalse(onGenesis.isShowing(VerseRef("gn", 1, 1)))
+        assertFalse(onGenesis.isShowing(VerseRef("ex", 1, 1)))
+        // Position already moved to Exodus, its text still on its way.
+        assertFalse(onGenesis.copy(position = BibleReadingPosition("ex", 1, 1)).isShowing(VerseRef("ex", 1, 1)))
+    }
+
+    @Test
+    fun `chapterTitle names the target chapter from the index`() {
+        val state = BibleUiState(books = listOf(genesis, exodus))
+
+        assertEquals("Êxodo 1", state.chapterTitle(VerseRef("ex", 1, 3)))
+        assertNull(BibleUiState().chapterTitle(VerseRef("ex", 1, 3)))
+    }
+
+    @Test
     fun `currentChapterHeadings follows the chapter of the position`() = runTest {
         val heading = BibleHeading(verse = 1, level = 1, title = "A criação do Universo")
         every { repository.currentBookFlow } returns MutableStateFlow(

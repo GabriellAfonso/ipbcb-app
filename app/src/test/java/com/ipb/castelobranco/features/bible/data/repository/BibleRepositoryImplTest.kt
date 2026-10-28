@@ -384,4 +384,32 @@ class BibleRepositoryImplTest {
     }
 
     // endregion
+
+    // region position
+
+    @Test
+    fun `a saved position shows before the disk write lands`() = runTest {
+        // The relaxed preferences never change the disk flow: only the in-memory position can move it.
+        val repo = buildRepository()
+        advanceUntilIdle()
+
+        repo.savePosition("ex", 1, 3)
+        advanceUntilIdle()
+
+        assertEquals(BibleReadingPosition("ex", 1, 3), repo.positionFlow.value)
+    }
+
+    @Test
+    fun `clearAll drops the in-memory position for the reset one`() = runTest {
+        val repo = buildRepository()
+        repo.savePosition("ex", 1, 3)
+        advanceUntilIdle()
+
+        repo.clearAll()
+        advanceUntilIdle()
+
+        assertEquals(BibleReadingPosition.default(), repo.positionFlow.value)
+    }
+
+    // endregion
 }
