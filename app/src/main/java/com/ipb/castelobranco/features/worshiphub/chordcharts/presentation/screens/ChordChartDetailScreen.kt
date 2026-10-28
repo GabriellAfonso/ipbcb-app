@@ -61,9 +61,25 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartDetailUiState
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmodel.ChordChartDetailViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.EditBarActions
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.PageProgress
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SectionTag
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongBand
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.ToneTag
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.chordColor
 
-private val ChordColor = BrandColors.Orange
-private val SectionTitleColor = BrandColors.Green
+private const val EDIT_LABEL = "Editar cifra"
+private const val EDIT_HINT = "Muda o texto e os acordes"
+private const val INTRO_LABEL = "Intro"
+
+/** A tap on the right half turns the page, on the left half goes back. */
+private const val HALF_SCREEN = 0.5f
 
 @Composable
 fun ChordChartDetailScreen(
@@ -96,53 +112,67 @@ private fun ChordChartDetailContent(
     onCancelEdit: () -> Unit,
     onSaveEdit: () -> Unit,
 ) {
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     BaseScreen(
         tabName       = state.songName.ifEmpty { "Cifra" },
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
         extraActions  = {
-            if (state.canEdit) {
-                EditOverflowMenu(
-                    isEditing  = state.isEditing,
-                    isSaving   = state.isSaving,
-                    onEdit     = onEnterEdit,
-                    onSave     = onSaveEdit,
-                    onCancel   = onCancelEdit,
-                )
+            when {
+                state.isEditing -> EditBarActions(state.isSaving, onCancel = onCancelEdit, onSave = onSaveEdit)
+                state.canEdit -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
             }
         },
     ) { innerPadding ->
-        when {
-            state.isLoading -> LoadingState(Modifier.padding(innerPadding))
-            state.error != null -> ErrorState(state.error, Modifier.padding(innerPadding))
-            state.isEditing -> EditContent(
-                editContent     = state.editContent,
-                isSaving        = state.isSaving,
-                saveError       = state.saveError,
-                onContentChange = onEditContentChange,
-                modifier        = Modifier
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding)
-                    .imePadding(),
-            )
-            state.blocks.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
-            // Opens straight in the saved mode: nothing is drawn until it is known.
-            scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
-            scrollMode == SongScrollMode.VERTICAL -> ChordVerticalContent(
-                blocks         = state.blocks,
-                tone           = state.tone,
-                scrollMode     = scrollMode,
-                onToggleScroll = onToggleScroll,
-                modifier       = Modifier.padding(innerPadding),
-            )
-            else -> ChordPager(
-                blocks         = state.blocks,
-                tone           = state.tone,
-                scrollMode     = scrollMode,
-                onToggleScroll = onToggleScroll,
-                modifier       = Modifier.padding(innerPadding),
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading -> LoadingState(Modifier.padding(innerPadding))
+                state.error != null -> ErrorState(state.error, Modifier.padding(innerPadding))
+                state.isEditing -> EditContent(
+                    editContent     = state.editContent,
+                    isSaving        = state.isSaving,
+                    saveError       = state.saveError,
+                    onContentChange = onEditContentChange,
+                    modifier        = Modifier
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding)
+                        .imePadding(),
+                )
+                state.blocks.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
+                // Opens straight in the saved mode: nothing is drawn until it is known.
+                scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
+                scrollMode == SongScrollMode.VERTICAL -> ChordVerticalContent(
+                    blocks         = state.blocks,
+                    tone           = state.tone,
+                    artist         = state.artist,
+                    scrollMode     = scrollMode,
+                    onToggleScroll = onToggleScroll,
+                    modifier       = Modifier.padding(innerPadding),
+                )
+                else -> ChordPager(
+                    blocks         = state.blocks,
+                    tone           = state.tone,
+                    artist         = state.artist,
+                    scrollMode     = scrollMode,
+                    onToggleScroll = onToggleScroll,
+                    modifier       = Modifier.padding(innerPadding),
+                )
+            }
+            Box(Modifier.padding(innerPadding)) {
+                TopActionPanel(
+                    visible = isPanelOpen && state.canEdit && !state.isEditing,
+                    actions = listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT)),
+                    onDismiss = { isPanelOpen = false },
+                    header = PanelHeader(
+                        name = state.songName,
+                        detail = listOfNotNull(
+                            state.artist.takeIf { it.isNotBlank() },
+                            state.tone.takeIf { it.isNotBlank() }?.let { "Tom $it" },
+                        ).joinToString(" · "),
+                    ),
+                )
+            }
         }
     }
 }
@@ -156,6 +186,7 @@ private fun ChordChartDetailContent(
 private fun ChordPager(
     blocks: List<ChordBlock>,
     tone: String,
+    artist: String,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -182,20 +213,11 @@ private fun ChordPager(
 
         // Phase 2: measure chrome (header + dots) to determine pager area height
         val headerHeight = subcompose("chrome_header") {
-            PagerHeader(
-                tone           = tone,
-                pageInfo       = "1 / 1",
-                scrollMode     = scrollMode,
-                onToggleScroll = {},
-            )
+            ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = {})
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         val dotsHeight = subcompose("chrome_dots") {
-            PageDotIndicator(
-                pageCount   = 1,
-                currentPage = 0,
-                modifier    = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            )
+            PageProgress(currentPage = 0, pageCount = 1)
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         // Phase 3: compute pages with the actual available height for block content
@@ -208,6 +230,7 @@ private fun ChordPager(
             PagerContent(
                 pages          = pages,
                 tone           = tone,
+                artist         = artist,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
             )
@@ -223,6 +246,7 @@ private fun ChordPager(
 private fun PagerContent(
     pages: List<List<ChordBlock>>,
     tone: String,
+    artist: String,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
 ) {
@@ -230,18 +254,13 @@ private fun PagerContent(
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PagerHeader(
-            tone           = tone,
-            pageInfo       = "${pagerState.currentPage + 1} / ${pages.size}",
-            scrollMode     = scrollMode,
-            onToggleScroll = onToggleScroll,
-        )
+        ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .tapToPaginate(pagerState, scope),
+                .tapToPaginate(pagerState, scope, zoneWidthFraction = HALF_SCREEN),
         ) {
             HorizontalPager(
                 state    = pagerState,
@@ -251,13 +270,7 @@ private fun PagerContent(
             }
         }
 
-        PageDotIndicator(
-            pageCount   = pages.size,
-            currentPage = pagerState.currentPage,
-            modifier    = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-        )
+        PageProgress(currentPage = pagerState.currentPage, pageCount = pages.size)
     }
 }
 
@@ -265,17 +278,13 @@ private fun PagerContent(
 private fun ChordVerticalContent(
     blocks: List<ChordBlock>,
     tone: String,
+    artist: String,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        PagerHeader(
-            tone           = tone,
-            pageInfo       = null,
-            scrollMode     = scrollMode,
-            onToggleScroll = onToggleScroll,
-        )
+        ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Column(
             modifier = Modifier
@@ -296,52 +305,11 @@ private fun ChordVerticalContent(
     }
 }
 
+/** The thin band: artist, "Tom D" and the pages/scroll switch. */
 @Composable
-private fun PagerHeader(
-    tone: String,
-    pageInfo: String?,
-    scrollMode: SongScrollMode,
-    onToggleScroll: () -> Unit,
-) {
-    Row(
-        modifier              = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        Text(
-            text       = "Key: $tone",
-            style      = MaterialTheme.typography.bodyMedium,
-            color      = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (pageInfo != null) {
-                Text(
-                    text  = pageInfo,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-            }
-            ScrollModeToggle(scrollMode = scrollMode, onToggle = onToggleScroll)
-        }
-    }
-}
-
-@Composable
-private fun ScrollModeToggle(scrollMode: SongScrollMode, onToggle: () -> Unit) {
-    val (icon, description) = when (scrollMode) {
-        SongScrollMode.HORIZONTAL -> Icons.AutoMirrored.Filled.ViewList to "Modo vertical"
-        SongScrollMode.VERTICAL   -> Icons.Filled.ViewColumn to "Modo horizontal"
-    }
-    IconButton(onClick = onToggle) {
-        Icon(
-            imageVector        = icon,
-            contentDescription = description,
-            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun ChordBand(artist: String, tone: String, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
+    SongBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {
+        if (tone.isNotBlank()) ToneTag(tone)
     }
 }
 
@@ -366,19 +334,15 @@ private fun ChordPageContent(blocks: List<ChordBlock>) {
 
 @Composable
 private fun IntroBlock(block: ChordBlock) {
+    val chordColor = chordColor()
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text       = "Intro:",
-            style      = MaterialTheme.typography.titleMedium,
-            color      = SectionTitleColor,
-            fontWeight = FontWeight.Bold,
-        )
+        SectionTag(INTRO_LABEL)
         Spacer(modifier = Modifier.width(8.dp))
         block.lines.forEach { line ->
             line.tokens.filterIsInstance<LineToken.Chord>().forEach { chord ->
                 Text(
                     text       = chord.value,
-                    color      = ChordColor,
+                    color      = chordColor,
                     fontWeight = FontWeight.Bold,
                     style      = MaterialTheme.typography.labelMedium,
                 )
@@ -390,14 +354,7 @@ private fun IntroBlock(block: ChordBlock) {
 
 @Composable
 private fun SectionBlock(block: ChordBlock) {
-    if (block.title != null) {
-        Text(
-            text       = block.title,
-            style      = MaterialTheme.typography.titleMedium,
-            color      = SectionTitleColor,
-            fontWeight = FontWeight.Bold,
-        )
-    }
+    if (block.title != null) SectionTag(block.title)
     Spacer(modifier = Modifier.height(8.dp))
     block.lines.forEach { line ->
         ChordLineRow(line = line)
@@ -430,16 +387,17 @@ private fun groupTokens(tokens: List<LineToken>): List<ChordLyricGroup> {
 @Composable
 private fun ChordLineRow(line: ChordLine) {
     val lyricColor = MaterialTheme.colorScheme.onSurface
+    val chordColor = chordColor()
     val groups = groupTokens(line.tokens)
     FlowRow {
         groups.forEach { group ->
-            ChordLyricGroupItem(group = group, lyricColor = lyricColor)
+            ChordLyricGroupItem(group = group, lyricColor = lyricColor, chordColor = chordColor)
         }
     }
 }
 
 @Composable
-private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color) {
+private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color, chordColor: Color) {
     var chordOffsetXPx by remember(group.chord, group.charOffset, group.lyrics) {
         mutableFloatStateOf(0f)
     }
@@ -447,7 +405,7 @@ private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color) {
     val chordContent: @Composable () -> Unit = {
         Text(
             text       = group.chord ?: "",
-            color      = ChordColor,
+            color      = chordColor,
             fontWeight = FontWeight.Bold,
             style      = MaterialTheme.typography.labelMedium,
             softWrap   = false,
@@ -486,70 +444,6 @@ private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color) {
         ) {
             chordPlaceable?.placeRelative(chordLeft, 0)
             lyricsPlaceable.placeRelative(0, chordH)
-        }
-    }
-}
-
-@Composable
-private fun PageDotIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier              = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        repeat(pageCount) { index ->
-            val isSelected = index == currentPage
-            Surface(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(if (isSelected) 8.dp else 6.dp),
-                shape    = CircleShape,
-                color    = if (isSelected) ChordColor
-                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-            ) {}
-        }
-    }
-}
-
-@Composable
-private fun EditOverflowMenu(
-    isEditing: Boolean,
-    isSaving: Boolean,
-    onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector        = Icons.Default.MoreVert,
-                contentDescription = "Menu",
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (isEditing) {
-                DropdownMenuItem(
-                    text    = { Text("Salvar") },
-                    onClick = { expanded = false; onSave() },
-                    enabled = !isSaving,
-                )
-                DropdownMenuItem(
-                    text    = { Text("Cancelar") },
-                    onClick = { expanded = false; onCancel() },
-                    enabled = !isSaving,
-                )
-            } else {
-                DropdownMenuItem(
-                    text    = { Text("Editar") },
-                    onClick = { expanded = false; onEdit() },
-                )
-            }
         }
     }
 }

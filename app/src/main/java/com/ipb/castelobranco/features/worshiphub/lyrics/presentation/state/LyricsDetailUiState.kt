@@ -4,6 +4,7 @@ import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.parser.Lyri
 
 data class LyricsDetailUiState(
     val songName: String = "",
+    val artist: String = "",
     val stanzas: List<LyricsStanza> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,

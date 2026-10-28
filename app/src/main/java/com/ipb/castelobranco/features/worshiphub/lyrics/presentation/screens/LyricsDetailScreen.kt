@@ -1,9 +1,7 @@
 package com.ipb.castelobranco.features.worshiphub.lyrics.presentation.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,30 +14,19 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -48,14 +35,30 @@ import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.data.local.SongScrollMode
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.modifier.tapToPaginate
-import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.parser.LyricsStanza
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.state.LyricsDetailUiState
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.viewmodel.LyricsDetailViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.EditBarActions
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.LyricsTextSize
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.PageProgress
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongBand
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TextSizeButtons
 
-private val DotColor   = BrandColors.Blue
-private val TitleColor = BrandColors.Orange
+private const val EDIT_LABEL = "Editar letra"
+private const val EDIT_HINT = "Muda o texto"
+
+/** A tap on the right half turns the page, on the left half goes back. */
+private const val HALF_SCREEN = 0.5f
+private const val LINE_HEIGHT = 1.3f
 
 @Composable
 fun LyricsDetailScreen(
@@ -88,23 +91,27 @@ private fun LyricsDetailContent(
     onCancelEdit: () -> Unit,
     onSaveEdit: () -> Unit,
 ) {
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
+    // Only while the lyrics stay open (`specs/worshiphub/spec.md` §5.3).
+    var textSize by rememberSaveable { mutableIntStateOf(LyricsTextSize.DEFAULT) }
+    val size = TextSizeControl(
+        sp = textSize,
+        onShrink = { textSize = (textSize - LyricsTextSize.STEP).coerceAtLeast(LyricsTextSize.MIN) },
+        onGrow = { textSize = (textSize + LyricsTextSize.STEP).coerceAtMost(LyricsTextSize.MAX) },
+    )
     BaseScreen(
-        tabName       = "Letra",
+        tabName       = state.songName.ifEmpty { "Letra" },
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
         extraActions  = {
-            if (state.canEdit) {
-                EditOverflowMenu(
-                    isEditing  = state.isEditing,
-                    isSaving   = state.isSaving,
-                    onEdit     = onEnterEdit,
-                    onSave     = onSaveEdit,
-                    onCancel   = onCancelEdit,
-                )
+            when {
+                state.isEditing -> EditBarActions(state.isSaving, onCancel = onCancelEdit, onSave = onSaveEdit)
+                state.canEdit -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
             }
         },
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading -> LoadingState(Modifier.padding(innerPadding))
             state.error != null -> ErrorState(state.error, Modifier.padding(innerPadding))
@@ -123,20 +130,37 @@ private fun LyricsDetailContent(
             scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
             scrollMode == SongScrollMode.VERTICAL -> LyricsVerticalContent(
                 stanzas        = state.stanzas,
-                songName       = state.songName,
+                artist         = state.artist,
+                size           = size,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
                 modifier       = Modifier.padding(innerPadding),
             )
             else -> LyricsPager(
                 stanzas        = state.stanzas,
-                songName       = state.songName,
+                artist         = state.artist,
+                size           = size,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
                 modifier       = Modifier.padding(innerPadding),
             )
         }
+        Box(Modifier.padding(innerPadding)) {
+            TopActionPanel(
+                visible = isPanelOpen && state.canEdit && !state.isEditing,
+                actions = listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT)),
+                onDismiss = { isPanelOpen = false },
+                header = PanelHeader(name = state.songName, detail = state.artist.takeIf { it.isNotBlank() }),
+            )
+        }
+        }
     }
+}
+
+/** The lyrics' text size and the band's "A−" / "A+". */
+private data class TextSizeControl(val sp: Int, val onShrink: () -> Unit, val onGrow: () -> Unit) {
+    val canShrink: Boolean get() = sp > LyricsTextSize.MIN
+    val canGrow: Boolean get() = sp < LyricsTextSize.MAX
 }
 
 /**
@@ -146,7 +170,8 @@ private fun LyricsDetailContent(
 @Composable
 private fun LyricsPager(
     stanzas: List<LyricsStanza>,
-    songName: String,
+    artist: String,
+    size: TextSizeControl,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -160,7 +185,7 @@ private fun LyricsPager(
         // Phase 1: measure each stanza at the correct render width
         val stanzaHeights = stanzas.mapIndexed { i, stanza ->
             subcompose("m_$i") {
-                Column { StanzaBlock(stanza) }
+                Column { StanzaBlock(stanza, size.sp) }
             }.firstOrNull()
                 ?.measure(Constraints(maxWidth = measureWidth))
                 ?.height ?: 0
@@ -168,15 +193,11 @@ private fun LyricsPager(
 
         // Phase 2: measure chrome (header + dots) for available height calculation
         val headerHeight = subcompose("chrome_header") {
-            LyricsHeader(songName = songName, scrollMode = scrollMode, onToggleScroll = {})
+            LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = {})
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         val dotsHeight = subcompose("chrome_dots") {
-            PageDotIndicator(
-                pageCount   = 1,
-                currentPage = 0,
-                modifier    = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-            )
+            PageProgress(currentPage = 0, pageCount = 1)
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         // Phase 3: compute pages
@@ -188,7 +209,8 @@ private fun LyricsPager(
         val contentPlaceable = subcompose("pager") {
             PagerContent(
                 pages          = pages,
-                songName       = songName,
+                artist         = artist,
+                size           = size,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
             )
@@ -231,7 +253,8 @@ private fun paginate(
 @Composable
 private fun PagerContent(
     pages: List<List<LyricsStanza>>,
-    songName: String,
+    artist: String,
+    size: TextSizeControl,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
 ) {
@@ -239,42 +262,37 @@ private fun PagerContent(
     val scope      = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        LyricsHeader(songName = songName, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .tapToPaginate(pagerState, scope),
+                .tapToPaginate(pagerState, scope, zoneWidthFraction = HALF_SCREEN),
         ) {
             HorizontalPager(
                 state    = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                LyricsPageContent(stanzas = pages[index])
+                LyricsPageContent(stanzas = pages[index], textSize = size.sp)
             }
         }
 
-        PageDotIndicator(
-            pageCount   = pages.size,
-            currentPage = pagerState.currentPage,
-            modifier    = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-        )
+        PageProgress(currentPage = pagerState.currentPage, pageCount = pages.size)
     }
 }
 
 @Composable
 private fun LyricsVerticalContent(
     stanzas: List<LyricsStanza>,
-    songName: String,
+    artist: String,
+    size: TextSizeControl,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        LyricsHeader(songName = songName, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Column(
             modifier = Modifier
@@ -287,7 +305,7 @@ private fun LyricsVerticalContent(
                 Column {
                     stanzas.forEachIndexed { index, stanza ->
                         if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                        StanzaBlock(stanza)
+                        StanzaBlock(stanza, size.sp)
                     }
                 }
             }
@@ -295,47 +313,16 @@ private fun LyricsVerticalContent(
     }
 }
 
+/** The thin band: artist, "A−" / "A+" and the pages/scroll switch. */
 @Composable
-private fun LyricsHeader(
-    songName: String,
-    scrollMode: SongScrollMode,
-    onToggleScroll: () -> Unit,
-) {
-    Row(
-        modifier          = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text     = songName,
-            color    = TitleColor,
-            style    = MaterialTheme.typography.titleLarge,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        )
-        ScrollModeToggle(scrollMode = scrollMode, onToggle = onToggleScroll)
+private fun LyricsBand(artist: String, size: TextSizeControl, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
+    SongBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {
+        TextSizeButtons(size.canShrink, size.canGrow, size.onShrink, size.onGrow)
     }
 }
 
 @Composable
-private fun ScrollModeToggle(scrollMode: SongScrollMode, onToggle: () -> Unit) {
-    val (icon, description) = when (scrollMode) {
-        SongScrollMode.HORIZONTAL -> Icons.AutoMirrored.Filled.ViewList to "Modo vertical"
-        SongScrollMode.VERTICAL   -> Icons.Filled.ViewColumn to "Modo horizontal"
-    }
-    IconButton(onClick = onToggle) {
-        Icon(
-            imageVector        = icon,
-            contentDescription = description,
-            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun LyricsPageContent(stanzas: List<LyricsStanza>) {
+private fun LyricsPageContent(stanzas: List<LyricsStanza>, textSize: Int) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -346,7 +333,7 @@ private fun LyricsPageContent(stanzas: List<LyricsStanza>) {
             Column {
                 stanzas.forEachIndexed { index, stanza ->
                     if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                    StanzaBlock(stanza)
+                    StanzaBlock(stanza, textSize)
                 }
             }
         }
@@ -354,79 +341,17 @@ private fun LyricsPageContent(stanzas: List<LyricsStanza>) {
 }
 
 @Composable
-private fun StanzaBlock(stanza: LyricsStanza) {
+private fun StanzaBlock(stanza: LyricsStanza, textSize: Int) {
+    val style = MaterialTheme.typography.titleLarge
+        .copy(fontSize = textSize.sp, lineHeight = (textSize * LINE_HEIGHT).sp)
     Column {
         stanza.lines.forEach { line ->
             Text(
                 text  = line,
-                style = MaterialTheme.typography.titleLarge,
+                style = style,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.height(2.dp))
-        }
-    }
-}
-
-@Composable
-private fun PageDotIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier              = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment     = Alignment.CenterVertically,
-    ) {
-        repeat(pageCount) { index ->
-            val isSelected = index == currentPage
-            Surface(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(if (isSelected) 8.dp else 6.dp),
-                shape    = CircleShape,
-                color    = if (isSelected) DotColor
-                           else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-            ) {}
-        }
-    }
-}
-
-@Composable
-private fun EditOverflowMenu(
-    isEditing: Boolean,
-    isSaving: Boolean,
-    onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector        = Icons.Default.MoreVert,
-                contentDescription = "Menu",
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (isEditing) {
-                DropdownMenuItem(
-                    text    = { Text("Salvar") },
-                    onClick = { expanded = false; onSave() },
-                    enabled = !isSaving,
-                )
-                DropdownMenuItem(
-                    text    = { Text("Cancelar") },
-                    onClick = { expanded = false; onCancel() },
-                    enabled = !isSaving,
-                )
-            } else {
-                DropdownMenuItem(
-                    text    = { Text("Editar") },
-                    onClick = { expanded = false; onEdit() },
-                )
-            }
         }
     }
 }

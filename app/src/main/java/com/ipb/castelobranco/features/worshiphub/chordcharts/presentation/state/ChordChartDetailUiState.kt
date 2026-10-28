@@ -4,6 +4,7 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser
 
 data class ChordChartDetailUiState(
     val songName: String = "",
+    val artist: String = "",
     val tone: String = "",
     val blocks: List<ChordBlock> = emptyList(),
     val isLoading: Boolean = false,

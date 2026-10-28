@@ -70,6 +70,7 @@ class LyricsDetailViewModel @Inject constructor(
 
                 LyricsDetailUiState(
                     songName    = songMap[lyrics.songId]?.title ?: "Song #${lyrics.songId}",
+                    artist      = songMap[lyrics.songId]?.artist.orEmpty(),
                     stanzas     = LyricsParser.parse(lyrics.content),
                     rawContent  = lyrics.content,
                     canEdit     = canEdit,

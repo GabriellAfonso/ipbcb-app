@@ -70,6 +70,7 @@ class ChordChartDetailViewModel @Inject constructor(
 
                 ChordChartDetailUiState(
                     songName    = songMap[chart.songId]?.title ?: "Song #${chart.songId}",
+                    artist      = songMap[chart.songId]?.artist.orEmpty(),
                     tone        = chart.tone,
                     blocks      = ChordProParser.parse(chart.content),
                     rawContent  = chart.content,

@@ -435,7 +435,19 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
 
-**Modo de leitura:** horizontal (paginas) ou vertical (rolagem), alternado no cabecalho e salvo no aparelho
+**Layout "ajuste fino com faixa"** (o mesmo na letra, 5.3):
+
+- Barra verde do `BaseScreen` com o nome da musica e os tres pontos (painel de acoes, abaixo).
+- Logo abaixo, uma **faixa verde fina** (`ipbGreen`, cantos inferiores de 20dp): o artista numa linha; embaixo, a
+  etiqueta branca "Tom {tom}" e, a direita, o seletor "Paginas | Rolagem" (o selecionado com fundo branco
+  translucido).
+- Secoes (Verso, Coro...) em etiquetas pequenas em caixa alta (`primary` sobre `secondaryContainer`). Acordes em
+  laranja escuro (`#A85F00`) no tema claro e no laranja claro (`#F7B733`) no escuro: o laranja da marca sobre fundo
+  claro tinha contraste de 2:1.
+- No modo paginas, embaixo, uma barra de progresso fina (`primary`) com "{pagina} de {total}". Toque na metade
+  direita vira a pagina, na esquerda volta.
+
+**Modo de leitura:** horizontal (paginas) ou vertical (rolagem), escolhido no seletor da faixa e salvo no aparelho
 (`song_scroll_mode`), o mesmo para cifras e letras. A tela ja abre no modo salvo: enquanto a preferencia nao foi
 lida, mostra o carregando — nunca um modo provisorio que depois troca.
 
@@ -443,7 +455,10 @@ lida, mostra o carregando — nunca um modo provisorio que depois troca.
 long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua virando a pagina. O cabecalho
 (tom, paginas) nao entra.
 
-**Edicao (`songs` ≥ `manage`):** quem pode editar ve menu overflow (⋮) na TopBar. Menu normal: "Editar". Em modo edicao: "Salvar" e "Cancelar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada. Com o teclado aberto, o campo encolhe para caber acima dele — o trecho sendo editado nunca fica atras do teclado, mesmo no fim do texto.
+**Edicao (`songs` ≥ `manage`):** quem pode editar ve os tres pontos na barra; eles abrem o painel de acoes que desce
+da barra (o mesmo da galeria, `core/presentation/components/TopActionPanel`), com o nome da musica e "artista · Tom
+{tom}" no topo e, no grupo "Gerenciar", "Editar cifra" ("Muda o texto e os acordes"). Sem permissao, os tres pontos
+somem. Em modo edicao a barra mostra "Cancelar" e "Salvar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada. Com o teclado aberto, o campo encolhe para caber acima dele — o trecho sendo editado nunca fica atras do teclado, mesmo no fim do texto.
 
 ---
 
@@ -493,9 +508,14 @@ Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsS
 
 **Texto copiavel:** a letra e copiavel como na cifra (4.3), nos dois modos de rolagem.
 
+**Layout:** o da cifra (4.3), com o nome da musica na barra (nao mais "Letra" na barra e o nome repetido no corpo) e,
+na faixa fina, "A−" / "A+" no lugar do tom: mudam o tamanho do texto de 2 em 2sp, entre 16 e 34sp (comeca em 22). O
+tamanho vale enquanto a letra esta aberta; as paginas sao recalculadas com ele.
+
 **Modo de leitura:** o mesmo da cifra (4.3) — compartilhado, salvo no aparelho e ja aplicado ao abrir.
 
-**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras. Menu overflow (⋮) com "Editar"/"Salvar"/"Cancelar". Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras: painel com "Editar letra" ("Muda o texto");
+"Cancelar" e "Salvar" na barra durante a edicao. Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
 
 ---
 
