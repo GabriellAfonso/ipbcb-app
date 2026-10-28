@@ -11,14 +11,18 @@ import javax.inject.Inject
 /**
  * The events still running today, in the server's order. The server already stops sending an event after
  * its last day, but the saved list can be days old: this keeps an expired event off the screen offline.
- * Nothing loaded yet, or nothing loadable, reads as no events — the carousel never shows an error page.
+ * Null while nothing is loaded yet; a failed load reads as no events — the carousel never shows an error page.
  */
 class ObserveActiveEventsUseCase @Inject constructor(
     private val repository: EventsRepository,
     private val dateProvider: DateProvider,
 ) {
-    operator fun invoke(): Flow<List<Event>> = repository.observeEvents().map { state ->
-        val events = (state as? SnapshotState.Data)?.value.orEmpty()
+    operator fun invoke(): Flow<List<Event>?> = repository.observeEvents().map { state ->
+        val events = when (state) {
+            is SnapshotState.Loading -> return@map null
+            is SnapshotState.Data -> state.value
+            is SnapshotState.Error -> emptyList()
+        }
         val today = dateProvider.today()
         events.filter { it.isActiveOn(today) }
     }

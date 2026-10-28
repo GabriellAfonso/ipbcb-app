@@ -5,11 +5,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-/** The carousel's event pages: the first [HIGHLIGHT_LIMIT] active events. */
+/** The carousel's event pages: the first [HIGHLIGHT_LIMIT] active events; null while nothing is loaded yet. */
 class ObserveHighlightEventsUseCase @Inject constructor(
     private val observeActiveEvents: ObserveActiveEventsUseCase,
 ) {
-    operator fun invoke(): Flow<List<Event>> = observeActiveEvents().map { it.take(HIGHLIGHT_LIMIT) }
+    operator fun invoke(): Flow<List<Event>?> = observeActiveEvents().map { it?.take(HIGHLIGHT_LIMIT) }
 
     companion object {
         const val HIGHLIGHT_LIMIT = 3

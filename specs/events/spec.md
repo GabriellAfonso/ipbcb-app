@@ -34,6 +34,9 @@ aparece apenas na gestão.
 - Páginas do carrossel, nesta ordem: aniversariantes, escala e, em seguida, **uma página por evento ativo**, no
   máximo **3** (os primeiros da lista pública, que vem ordenada por data e horário de início).
 - Sem evento para mostrar, entra a página "Eventos — Nenhum evento esse mês" (`HighlightEvents`).
+- Nada carregado ainda (sem cache, rede não respondeu) e a sincronização em andamento: a página "Eventos" com um
+  spinner (`HighlightEventsLoading`), não "Nenhum evento" (`specs/core/spec.md` §6.3). `ObserveActiveEventsUseCase`
+  devolve `null` enquanto o snapshot está em `Loading`; erro continua sendo lista vazia.
 - Página de evento (`HighlightEvent`): a imagem preenche o card, também 3:2, então aparece inteira; título (até 2
   linhas) e data sobre um gradiente na base. Sem imagem (falha, 404, offline sem cache), fica um fundo neutro com
   título e data. Imagem antiga em 16:9 (enviada antes da troca para 3:2) perde um pouco das laterais no card.

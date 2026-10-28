@@ -8,6 +8,7 @@ import com.ipb.castelobranco.features.events.testing.event
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -24,7 +25,7 @@ class ObserveHighlightEventsUseCaseTest {
             listOf(event(1, start = today.minusDays(1)), event(2, start = today))
         )
 
-        assertEquals(listOf(2), useCase().first().map { it.id })
+        assertEquals(listOf(2), useCase().first()!!.map { it.id })
     }
 
     @Test
@@ -33,21 +34,25 @@ class ObserveHighlightEventsUseCaseTest {
             listOf(event(1, start = today.minusDays(2), end = today))
         )
 
-        assertEquals(listOf(1), useCase().first().map { it.id })
+        assertEquals(listOf(1), useCase().first()!!.map { it.id })
     }
 
     @Test
     fun `only the first three are kept, in the server order`() = runTest {
         repository.state.value = SnapshotState.Data((1..5).map { event(it, start = today.plusDays(it.toLong())) })
 
-        assertEquals(listOf(1, 2, 3), useCase().first().map { it.id })
+        assertEquals(listOf(1, 2, 3), useCase().first()!!.map { it.id })
     }
 
     @Test
-    fun `an error or nothing loaded reads as no events`() = runTest {
-        assertTrue(useCase().first().isEmpty())
+    fun `nothing loaded yet is null`() = runTest {
+        assertNull(useCase().first())
+    }
 
+    @Test
+    fun `an error reads as no events`() = runTest {
         repository.state.value = SnapshotState.Error(AppError.Network())
-        assertTrue(useCase().first().isEmpty())
+
+        assertTrue(useCase().first()!!.isEmpty())
     }
 }

@@ -528,6 +528,10 @@ Unica Activity do app (`@AndroidEntryPoint`), `launchMode="singleTop"`.
 - Cria `NavController` + `AppNavHost`
 - In-app updates: enforces Play Store immediate update no launch. Cancelamento = `finish()`.
 - Extension: `Activity.restartApp(message?)` — reinicia app via Intent para CoreActivity.
+- Primeiro frame: um `OnPreDrawListener` segura o desenho ate `CoreViewModel.isBootReady` (caches do disco em
+  memoria), no maximo 1 s. Desenhada antes, a home mostraria "Nenhum aniversariante" / "Escala indisponivel" e
+  trocaria logo depois. No Android 12+ a splash do sistema fica na tela enquanto isso; antes, o fundo da janela. A
+  Activity pega o mesmo `CoreViewModel` (`by viewModels()`) e chama `initialize()` (idempotente).
 - Toque em notificacao: os extras viram `NotificationTarget` (`SundaySetlist` | `ConfirmPlays(date)`) em
   `onCreate` (sem estado salvo) e `onNewIntent` (app ja aberto, gracas ao `singleTop`). O `AppNavHost` navega quando
   `isBootReady` (caches do disco carregados): `SundaySetlist` -> lista de Letras (`navigateToLyrics()`);
@@ -546,6 +550,11 @@ Orquestra inicializacao e estado global.
 - `isBootReady: StateFlow<Boolean>` — caches do disco ja em memoria (o `PreloadDataUseCase` avisa entre a fase de
   disco e a de rede); libera a navegacao de um toque em notificacao
 - `canManageSongs: StateFlow<Boolean>` — `songs` >= `manage`, para o toque em "Confirmar musicas de domingo"
+- `birthdays: StateFlow<List<Birthday>?>` — aniversariantes do mes; `null` sem nada para mostrar (snapshot em
+  `Loading` ou `Error`)
+- `isSyncing: StateFlow<Boolean>` — a fase de rede do boot, ou a que o `LoginSuccess` roda de novo, esta em
+  andamento (contador: login durante o boot sobrepoe as duas). Pagina do carousel sem dado vira "carregando" so
+  enquanto isso
 
 **Events (SharedFlow):**
 - `LogoutSuccess`
@@ -605,6 +614,15 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 | 2 | Escala do proximo culto (tabela dia x membro) — clicavel, abre a tela de escala (`AppRoutes.SCHEDULE`) |
 | 3+ | Um card por evento ativo, no maximo 3 (`HighlightEvent`) — clicavel, abre o detalhe (`AppRoutes.EVENT_DETAIL`); sem evento, "Eventos — Nenhum evento esse mes" (`HighlightEvents`). Ver `specs/events/spec.md` §2 |
 | Fallback | "Escala indisponivel" (se dados nao carregaram) — tambem clicavel, abre a tela de escala |
+
+**Carregando, nunca vazio antes da hora.** A home nao mostra "Nenhum aniversariante", "Escala indisponivel" nem
+"Nenhum evento" enquanto o dado ainda pode chegar. Com cache em disco, o primeiro frame ja espera por ele (secao
+6.1). Sem cache (primeira instalacao) ou depois de um login (o boot anonimo guardou 401), cada pagina sem dado,
+enquanto `CoreViewModel.isSyncing`, mostra icone + titulo e um spinner pequeno no lugar da mensagem
+(`HighlightBirthdaysLoading`, `HighlightScheduleLoading`, `HighlightEventsLoading`). Terminada a sincronizacao sem
+dado, entra a mensagem de vazio/indisponivel de sempre. A `CoreView` junta tudo em `HighlightsUi` (escala sem dado =
+`ScheduleUiState` que nao e `Success` nem `Empty`; aniversariantes e eventos sem dado = `null`).
+`ScheduleViewModel.nextSection` comeca do snapshot ja em memoria, nao de `null`.
 
 **Paginas de evento.** Vem do `EventsHighlightViewModel` (`features/events`), coletado na `CoreView` como o
 `ScheduleViewModel`. A `CoreView` pede a lista de novo em todo `ON_RESUME` e quando `isLoggedIn` muda: o logout fica

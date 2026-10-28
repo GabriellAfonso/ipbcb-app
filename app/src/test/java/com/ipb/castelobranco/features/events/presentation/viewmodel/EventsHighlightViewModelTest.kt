@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
@@ -52,10 +53,18 @@ class EventsHighlightViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        val page = vm.pages.value.single()
+        val page = vm.pages.value!!.single()
         assertEquals(7, page.id)
         assertEquals("Culto", page.title)
         assertEquals("14 nov · 19:30", page.dateLabel)
+    }
+
+    @Test
+    fun `pages are null while nothing is loaded`() = runTest(dispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertNull(vm.pages.value)
     }
 
     @Test

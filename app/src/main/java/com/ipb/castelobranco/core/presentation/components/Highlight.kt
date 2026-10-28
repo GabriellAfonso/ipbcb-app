@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -250,12 +251,40 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) 
 }
 // ─── Default Composables ─────────────────────────────────────────────────────
 
+private const val SCHEDULE_ICON = "📅"
+private const val SCHEDULE_TITLE = "Escala"
+private const val BIRTHDAYS_ICON = "🎂"
+private const val BIRTHDAYS_TITLE = "Aniversariantes do Mês"
+private const val EVENTS_ICON = "📌"
+private const val EVENTS_TITLE = "Eventos"
+
 @Composable
 fun HighlightScheduleUnavailable(onClick: () -> Unit = {}) {
     HighlightPlaceholder(
-        icon = "📅",
-        title = "Escala",
+        icon = SCHEDULE_ICON,
+        title = SCHEDULE_TITLE,
         message = "Escala indisponível",
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
+
+/** Nothing loaded yet and the network may still bring it: a spinner instead of "unavailable". */
+@Composable
+fun HighlightScheduleLoading(onClick: () -> Unit = {}) {
+    HighlightPlaceholder(
+        icon = SCHEDULE_ICON,
+        title = SCHEDULE_TITLE,
+        message = null,
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
+
+@Composable
+fun HighlightBirthdaysLoading(onClick: () -> Unit = {}) {
+    HighlightPlaceholder(
+        icon = BIRTHDAYS_ICON,
+        title = BIRTHDAYS_TITLE,
+        message = null,
         modifier = Modifier.clickable(onClick = onClick)
     )
 }
@@ -264,8 +293,8 @@ fun HighlightScheduleUnavailable(onClick: () -> Unit = {}) {
 fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
     if (birthdays.isEmpty()) {
         HighlightPlaceholder(
-            icon = "\uD83C\uDF82",
-            title = "Aniversariantes do M\u00EAs",
+            icon = BIRTHDAYS_ICON,
+            title = BIRTHDAYS_TITLE,
             message = "Nenhum aniversariante esse m\u00EAs",
             modifier = Modifier.clickable(onClick = onClick)
         )
@@ -314,7 +343,7 @@ fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
             .fillMaxSize()
             .clickable(onClick = onClick)
     ) {
-        HighlightHeader(title = "Aniversariantes do M\u00EAs", leading = "\uD83C\uDF82")
+        HighlightHeader(title = BIRTHDAYS_TITLE, leading = BIRTHDAYS_ICON)
 
         // Adaptive grid
         Row(
@@ -415,17 +444,26 @@ fun HighlightEvent(
 @Composable
 fun HighlightEvents() {
     HighlightPlaceholder(
-        icon = "📌",
-        title = "Eventos",
+        icon = EVENTS_ICON,
+        title = EVENTS_TITLE,
         message = "Nenhum evento esse mês"
     )
 }
 
 @Composable
+fun HighlightEventsLoading() {
+    HighlightPlaceholder(icon = EVENTS_ICON, title = EVENTS_TITLE, message = null)
+}
+
+private val LoadingIndicatorSize = 18.dp
+private val LoadingIndicatorStroke = 2.dp
+
+/** Icon and title over a message; no message means still loading, and a small spinner takes its place. */
+@Composable
 private fun HighlightPlaceholder(
     icon: String,
     title: String,
-    message: String,
+    message: String?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -445,12 +483,20 @@ private fun HighlightPlaceholder(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = message,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 13.sp,
-            textAlign = TextAlign.Center
-        )
+        if (message == null) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(LoadingIndicatorSize),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                strokeWidth = LoadingIndicatorStroke,
+            )
+        } else {
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -464,6 +510,18 @@ private fun HighlightPreview() {
             { HighlightScheduleUnavailable() },
             { HighlightBirthdays(birthdays = emptyList()) },
             { HighlightEvents() }
+        )
+    )
+}
+
+@Preview(showBackground = true, name = "Card - loading")
+@Composable
+private fun HighlightLoadingPreview() {
+    Highlight(
+        pages = listOf(
+            { HighlightBirthdaysLoading() },
+            { HighlightScheduleLoading() },
+            { HighlightEventsLoading() }
         )
     )
 }

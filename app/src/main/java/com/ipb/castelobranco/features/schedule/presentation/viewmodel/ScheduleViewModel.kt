@@ -96,30 +96,32 @@ class ScheduleViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = mapSnapshotToUiState(repository.getCurrentSnapshot())
         )
+    /** Starts from the snapshot already in memory: a null first value would flash "Escala indisponível". */
     val nextSection: StateFlow<NextScheduleUi?> = uiState
-        .map { state ->
-            if (state is ScheduleUiState.Success) {
-                findNextSection(state.sections)?.let { section ->
-                    val calendar = Calendar.getInstance()
-                    NextScheduleUi(
-                        section = section,
-                        nextDay = resolveNextDay(
-                            days = section.rows.map { it.day },
-                            scheduleYear = state.data.year,
-                            scheduleMonth = state.data.month,
-                            todayYear = calendar.get(Calendar.YEAR),
-                            todayMonth = calendar.get(Calendar.MONTH) + 1,
-                            todayDay = calendar.get(Calendar.DAY_OF_MONTH),
-                        )
-                    )
-                }
-            } else null
-        }
+        .map(::toNextSection)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = null
+            initialValue = toNextSection(uiState.value)
         )
+
+    private fun toNextSection(state: ScheduleUiState): NextScheduleUi? {
+        if (state !is ScheduleUiState.Success) return null
+        return findNextSection(state.sections)?.let { section ->
+            val calendar = Calendar.getInstance()
+            NextScheduleUi(
+                section = section,
+                nextDay = resolveNextDay(
+                    days = section.rows.map { it.day },
+                    scheduleYear = state.data.year,
+                    scheduleMonth = state.data.month,
+                    todayYear = calendar.get(Calendar.YEAR),
+                    todayMonth = calendar.get(Calendar.MONTH) + 1,
+                    todayDay = calendar.get(Calendar.DAY_OF_MONTH),
+                )
+            )
+        }
+    }
 
     private fun findNextSection(sections: List<ScheduleSectionUi>): ScheduleSectionUi? {
         val calendar = Calendar.getInstance()

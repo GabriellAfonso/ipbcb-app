@@ -21,9 +21,12 @@ import com.ipb.castelobranco.core.presentation.components.CustomButton
 import com.ipb.castelobranco.core.presentation.components.Highlight
 import com.ipb.castelobranco.core.domain.model.Birthday
 import com.ipb.castelobranco.core.presentation.components.HighlightBirthdays
+import com.ipb.castelobranco.core.presentation.components.HighlightBirthdaysLoading
 import com.ipb.castelobranco.core.presentation.components.HighlightEvent
 import com.ipb.castelobranco.core.presentation.components.HighlightEventUi
 import com.ipb.castelobranco.core.presentation.components.HighlightEvents
+import com.ipb.castelobranco.core.presentation.components.HighlightEventsLoading
+import com.ipb.castelobranco.core.presentation.components.HighlightScheduleLoading
 import com.ipb.castelobranco.core.presentation.components.HighlightScheduleUnavailable
 import com.ipb.castelobranco.core.presentation.components.HighlightSundaySchedule
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
@@ -33,6 +36,7 @@ import coil.ImageLoader
 import com.ipb.castelobranco.features.events.presentation.viewmodel.EventsHighlightViewModel
 import com.ipb.castelobranco.features.profile.presentation.viewmodel.ProfileViewModel
 import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
+import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleUiState
 import com.ipb.castelobranco.features.schedule.presentation.viewmodel.ScheduleViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -77,8 +81,10 @@ fun CoreView(
     val isLoggedIn      by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     val canOpenPanel    by viewModel.canOpenPanel.collectAsStateWithLifecycle()
     val nextSection     by scheduleViewModel.nextSection.collectAsStateWithLifecycle()
+    val scheduleState   by scheduleViewModel.uiState.collectAsStateWithLifecycle()
     val birthdays       by viewModel.birthdays.collectAsStateWithLifecycle()
     val eventPages      by eventsViewModel.pages.collectAsStateWithLifecycle()
+    val isSyncing       by viewModel.isSyncing.collectAsStateWithLifecycle()
 
     // Back from management (or anywhere) the carousel shows what changed; a login change swaps the
     // members-only events in or out (`specs/events/spec.md` §2.1).
@@ -116,9 +122,14 @@ fun CoreView(
         onNavigateToBirthdays  = onNavigateToBirthdays,
         onNavigateToEvent      = onNavigateToEvent,
         authState              = authState,
-        nextSection            = nextSection,
-        birthdays              = birthdays,
-        eventPages             = eventPages,
+        highlights             = HighlightsUi(
+            nextSection = nextSection,
+            // Loading, or an error the sync may still fix (a login replaces the anonymous 401).
+            hasScheduleData = scheduleState is ScheduleUiState.Success || scheduleState is ScheduleUiState.Empty,
+            birthdays = birthdays,
+            eventPages = eventPages,
+            isSyncing = isSyncing,
+        ),
         eventImageLoader       = eventsViewModel.imageLoader,
         onLogout               = viewModel::logout,
     )
@@ -138,9 +149,7 @@ fun CoreScreen(
     onNavigateToBirthdays: () -> Unit,
     onNavigateToEvent: (Int) -> Unit,
     authState: UserAuthState,
-    nextSection: NextScheduleUi?,
-    birthdays: List<Birthday>,
-    eventPages: List<HighlightEventUi>,
+    highlights: HighlightsUi,
     eventImageLoader: ImageLoader,
     onLogout: () -> Unit,
 ) {
@@ -167,9 +176,7 @@ fun CoreScreen(
 
                 Highlight(
                     pages = buildHighlightPages(
-                        nextSection      = nextSection,
-                        birthdays        = birthdays,
-                        eventPages       = eventPages,
+                        highlights       = highlights,
                         eventImageLoader = eventImageLoader,
                         onBirthdaysClick = onNavigateToBirthdays,
                         onScheduleClick  = onNavigateToSchedule,
@@ -192,29 +199,47 @@ fun CoreScreen(
     }
 }
 
+/**
+ * What the carousel shows. A page with nothing to show while [isSyncing] reads as loading, never as empty: the
+ * network may still bring its data.
+ *
+ * @param birthdays null while nothing is loaded. @param eventPages null while nothing is loaded.
+ */
+data class HighlightsUi(
+    val nextSection: NextScheduleUi? = null,
+    val hasScheduleData: Boolean = false,
+    val birthdays: List<Birthday>? = null,
+    val eventPages: List<HighlightEventUi>? = null,
+    val isSyncing: Boolean = false,
+)
+
 private fun buildHighlightPages(
-    nextSection: NextScheduleUi?,
-    birthdays: List<Birthday>,
-    eventPages: List<HighlightEventUi>,
+    highlights: HighlightsUi,
     eventImageLoader: ImageLoader,
     onBirthdaysClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onEventClick: (Int) -> Unit,
 ): List<@Composable () -> Unit> = buildList {
-    add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
+    val (nextSection, hasScheduleData, birthdays, eventPages, isSyncing) = highlights
 
-    if (nextSection != null) {
-        add { HighlightSundaySchedule(schedule = nextSection, onClick = onScheduleClick) }
-    } else {
-        add { HighlightScheduleUnavailable(onClick = onScheduleClick) }
+    when {
+        birthdays != null -> add { HighlightBirthdays(birthdays, onClick = onBirthdaysClick) }
+        isSyncing -> add { HighlightBirthdaysLoading(onClick = onBirthdaysClick) }
+        else -> add { HighlightBirthdays(emptyList(), onClick = onBirthdaysClick) }
     }
 
-    if (eventPages.isEmpty()) {
-        add { HighlightEvents() }
-    } else {
-        eventPages.forEach { page ->
+    when {
+        nextSection != null -> add { HighlightSundaySchedule(schedule = nextSection, onClick = onScheduleClick) }
+        !hasScheduleData && isSyncing -> add { HighlightScheduleLoading(onClick = onScheduleClick) }
+        else -> add { HighlightScheduleUnavailable(onClick = onScheduleClick) }
+    }
+
+    when {
+        !eventPages.isNullOrEmpty() -> eventPages.forEach { page ->
             add { HighlightEvent(page = page, imageLoader = eventImageLoader, onClick = { onEventClick(page.id) }) }
         }
+        eventPages == null && isSyncing -> add { HighlightEventsLoading() }
+        else -> add { HighlightEvents() }
     }
 }
 

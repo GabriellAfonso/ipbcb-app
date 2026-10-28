@@ -30,9 +30,10 @@ class EventsHighlightViewModel @Inject constructor(
     @param:EventImageLoader val imageLoader: ImageLoader,
 ) : ViewModel() {
 
-    val pages: StateFlow<List<HighlightEventUi>> = observeHighlightEvents()
-        .map { events -> events.map { it.toHighlightUi() } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    /** Null while nothing is loaded yet: the home shows the events page as loading. */
+    val pages: StateFlow<List<HighlightEventUi>?> = observeHighlightEvents()
+        .map { events -> events?.map { it.toHighlightUi() } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private var lastLoginState: Boolean? = null
 

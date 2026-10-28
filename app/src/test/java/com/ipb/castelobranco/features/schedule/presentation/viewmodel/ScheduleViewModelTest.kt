@@ -231,6 +231,24 @@ class ScheduleViewModelTest {
     }
 
     @Test
+    fun `nextSection starts from the snapshot already in memory`() = runTest {
+        val everyService = MonthSchedule(
+            year = 2024,
+            month = 4,
+            schedule = mapOf(
+                "Terça" to ScheduleEntry("19:30", listOf(ScheduleItem(2, "Maria"))),
+                "Quinta" to ScheduleEntry("19:30", listOf(ScheduleItem(4, "Ana"))),
+                "Domingo" to ScheduleEntry("18:00", listOf(ScheduleItem(7, "João"))),
+            )
+        )
+
+        val vm = buildViewModel(initial = SnapshotState.Data(everyService), observed = emptyFlow())
+
+        // No dispatcher run: the home's first frame must not see null ("Escala indisponível").
+        assertTrue(vm.nextSection.value != null)
+    }
+
+    @Test
     fun `nextSection is null when uiState is Empty`() = runTest {
         val flow = flowOf(SnapshotState.Data(emptySchedule))
         val vm = buildViewModel(observed = flow)

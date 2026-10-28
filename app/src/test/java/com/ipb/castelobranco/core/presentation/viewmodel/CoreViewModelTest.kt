@@ -39,6 +39,9 @@ import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
 import com.ipb.castelobranco.features.schedule.domain.repository.ScheduleRepository
 import com.ipb.castelobranco.core.domain.repository.MembersRepository
 import com.ipb.castelobranco.core.domain.usecase.GetMonthlyBirthdaysUseCase
+import com.ipb.castelobranco.core.domain.model.Birthday
+import com.ipb.castelobranco.core.domain.model.Gender
+import kotlinx.coroutines.CompletableDeferred
 import app.cash.turbine.test
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -371,6 +374,67 @@ class CoreViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 0) { fetchProfileUseCase.refresh() }
+    }
+
+    // endregion
+
+    // region home highlights — birthdays and sync
+
+    @Test
+    fun `birthdays are null while nothing is loaded and the month's list once it is`() = runTest {
+        val state = MutableStateFlow<SnapshotState<List<Birthday>>>(SnapshotState.Loading)
+        every { getMonthlyBirthdaysUseCase.observe() } returns state
+
+        viewModel.initialize()
+        advanceUntilIdle()
+        assertNull(viewModel.birthdays.value)
+
+        val ana = Birthday(name = "Ana", month = 3, day = 3, gender = Gender.FEMALE)
+        state.value = SnapshotState.Data(listOf(ana))
+        advanceUntilIdle()
+        assertEquals(listOf(ana), viewModel.birthdays.value)
+    }
+
+    @Test
+    fun `a failed birthdays load leaves nothing to show`() = runTest {
+        every { getMonthlyBirthdaysUseCase.observe() } returns
+            flowOf(SnapshotState.Error(AppError.Network()))
+
+        viewModel.initialize()
+        advanceUntilIdle()
+
+        assertNull(viewModel.birthdays.value)
+    }
+
+    @Test
+    fun `isSyncing holds while the boot runs and drops when it ends`() = runTest {
+        val bootGate = CompletableDeferred<Unit>()
+        coEvery { preloadDataUseCase(any()) } coAnswers { bootGate.await() }
+
+        viewModel.initialize()
+        advanceUntilIdle()
+        assertTrue(viewModel.isSyncing.value)
+
+        bootGate.complete(Unit)
+        advanceUntilIdle()
+        assertFalse(viewModel.isSyncing.value)
+    }
+
+    @Test
+    fun `isSyncing holds while a login refetches the network data`() = runTest {
+        val refreshGate = CompletableDeferred<Unit>()
+        coEvery { preloadDataUseCase.refreshDataFromNetwork() } coAnswers { refreshGate.await() }
+        viewModel.initialize()
+        advanceUntilIdle()
+        assertFalse(viewModel.isSyncing.value)
+
+        authEventsFlow.emit(AuthEventBus.Event.LoginSuccess)
+        advanceUntilIdle()
+        assertTrue(viewModel.isSyncing.value)
+
+        refreshGate.complete(Unit)
+        advanceUntilIdle()
+        assertFalse(viewModel.isSyncing.value)
     }
 
     // endregion

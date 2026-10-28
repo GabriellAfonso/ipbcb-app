@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -85,8 +86,19 @@ class CoreViewModel @Inject constructor(
     val keepScreenOn: StateFlow<Boolean> = themePreferences.keepScreenOnFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
-    private val _birthdays = MutableStateFlow<List<Birthday>>(emptyList())
-    val birthdays: StateFlow<List<Birthday>> = _birthdays.asStateFlow()
+    /** The month's birthdays; null while there is nothing to show (not loaded yet, or the load failed). */
+    private val _birthdays = MutableStateFlow<List<Birthday>?>(null)
+    val birthdays: StateFlow<List<Birthday>?> = _birthdays.asStateFlow()
+
+    /**
+     * The network phase of the boot, or the one a login runs again, is under way: a home highlight with nothing to
+     * show yet reads as "loading", not as empty — the answer may still bring its data. A count: a login during the
+     * boot overlaps the two.
+     */
+    private val runningSyncs = MutableStateFlow(0)
+    val isSyncing: StateFlow<Boolean> = runningSyncs
+        .map { it > 0 }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Any role in the profile opens the management panel; what it shows inside is per level. */
     val canOpenPanel: StateFlow<Boolean> = observeAccess()
@@ -147,7 +159,7 @@ class CoreViewModel @Inject constructor(
                         // A galeria só é acessível a membros: antes do login não havia o que sincronizar.
                         launch { galleryAutoDownload.onLoginSuccess() }
                         // O boot anônimo guardou 401 na escala, aniversariantes etc.: busca de novo com a sessão.
-                        launch { preloadDataUseCase.refreshDataFromNetwork() }
+                        launch { syncing { preloadDataUseCase.refreshDataFromNetwork() } }
                     }
                     // O perfil guardado pode estar desatualizado: um papel removido vale já no servidor.
                     AuthEventBus.Event.PermissionDenied -> launch {
@@ -171,10 +183,7 @@ class CoreViewModel @Inject constructor(
         // Observa aniversariantes
         viewModelScope.launch {
             getMonthlyBirthdaysUseCase.observe().collect { state ->
-                _birthdays.value = when (state) {
-                    is SnapshotState.Data -> state.value
-                    else -> emptyList()
-                }
+                _birthdays.value = (state as? SnapshotState.Data)?.value
             }
         }
 
@@ -188,7 +197,7 @@ class CoreViewModel @Inject constructor(
             _isPreloading.value = true
 
             // 1 & 2. PRELOAD (disk) + REFRESH (network) delegated to use case
-            preloadDataUseCase(onDiskLoaded = { _isBootReady.value = true })
+            syncing { preloadDataUseCase(onDiskLoaded = { _isBootReady.value = true }) }
 
             // Bíblia: preload do cache + auto-download se faltar tradução (WiFi only)
             runCatching { bibleRepository.preload() }
@@ -210,6 +219,15 @@ class CoreViewModel @Inject constructor(
 
             _isPreloading.value = false
             Timber.d("App initialization completed")
+        }
+    }
+
+    private suspend fun syncing(block: suspend () -> Unit) {
+        runningSyncs.update { it + 1 }
+        try {
+            block()
+        } finally {
+            runningSyncs.update { it - 1 }
         }
     }
 
