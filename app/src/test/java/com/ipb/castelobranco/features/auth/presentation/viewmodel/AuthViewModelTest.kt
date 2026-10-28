@@ -1,15 +1,14 @@
 package com.ipb.castelobranco.features.auth.presentation.viewmodel
 
-import app.cash.turbine.test
-import com.ipb.castelobranco.features.auth.domain.model.RegisterErrors
+import com.ipb.castelobranco.core.domain.auth.AuthEventBusImpl
+import com.ipb.castelobranco.features.auth.domain.model.AuthTokens
+import com.ipb.castelobranco.features.auth.domain.repository.AuthRepository
 import com.ipb.castelobranco.features.auth.domain.usecase.LoginUseCase
 import com.ipb.castelobranco.features.auth.domain.usecase.RegisterUseCase
-import io.mockk.coEvery
-import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -17,24 +16,20 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import com.ipb.castelobranco.features.auth.presentation.state.FIX_FIELDS_MESSAGE
+import com.ipb.castelobranco.features.auth.presentation.state.USERNAME_HINT
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
-
-    private lateinit var loginUseCase: LoginUseCase
-    private lateinit var registerUseCase: RegisterUseCase
-    private lateinit var viewModel: AuthViewModel
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        loginUseCase = mockk()
-        registerUseCase = mockk()
-        viewModel = AuthViewModel(loginUseCase, registerUseCase)
     }
 
     @After
@@ -42,179 +37,140 @@ class AuthViewModelTest {
         Dispatchers.resetMain()
     }
 
-    // region singIn (credentials)
+    private class FakeAuthRepository : AuthRepository {
+        var signInCalls = 0
+        var gate: CompletableDeferred<Result<AuthTokens>>? = null
+        var signInResult: Result<AuthTokens> = Result.success(AuthTokens(access = "a", refresh = "r"))
 
-    @Test
-    fun `singIn success emits LoginSuccess event`() = runTest {
-        coEvery { loginUseCase.withCredentials(any(), any()) } returns LoginUseCase.Result.Success
-
-        viewModel.events.test {
-            viewModel.singIn("user", "pass")
-            advanceUntilIdle()
-            assertEquals(AuthViewModel.AuthEvent.LoginSuccess, awaitItem())
-            cancelAndIgnoreRemainingEvents()
+        override suspend fun signIn(username: String, password: String): Result<AuthTokens> {
+            signInCalls++
+            return gate?.await() ?: signInResult
         }
+
+        var signUpCalls = 0
+        var signUpUsername: String? = null
+        var signUpGate: CompletableDeferred<Result<AuthTokens>>? = null
+        var signUpResult: Result<AuthTokens> = Result.success(AuthTokens(access = "a", refresh = "r"))
+
+        override suspend fun signInWithGoogle(idToken: String): Result<AuthTokens> = signInResult
+        override suspend fun signUp(
+            username: String,
+            firstName: String,
+            lastName: String,
+            password: String,
+            passwordConfirm: String,
+        ): Result<AuthTokens> {
+            signUpCalls++
+            signUpUsername = username
+            return signUpGate?.await() ?: signUpResult
+        }
+
+        override suspend fun getAuthToken(): String? = null
+        override suspend fun signOut() = Unit
+    }
+
+    private fun buildViewModel(repository: AuthRepository): AuthViewModel {
+        val bus = AuthEventBusImpl()
+        return AuthViewModel(LoginUseCase(repository, bus), RegisterUseCase(repository, bus))
     }
 
     @Test
-    fun `singIn success leaves loginError null`() = runTest {
-        coEvery { loginUseCase.withCredentials(any(), any()) } returns LoginUseCase.Result.Success
+    fun `blank credentials show an error without calling the backend`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository()
+        val viewModel = buildViewModel(repository)
 
-        viewModel.singIn("user", "pass")
-        advanceUntilIdle()
+        viewModel.singIn("joao.silva", " ")
 
+        assertEquals(AuthViewModel.EMPTY_CREDENTIALS_MESSAGE, viewModel.loginError.value)
+        assertEquals(0, repository.signInCalls)
+        assertFalse(viewModel.isLoginLoading.value)
+    }
+
+    @Test
+    fun `sign in is loading while the backend answers and ignores a second tap`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository().apply { gate = CompletableDeferred() }
+        val viewModel = buildViewModel(repository)
+
+        viewModel.singIn("joao.silva", "senha")
+        assertTrue(viewModel.isLoginLoading.value)
+
+        viewModel.singIn("joao.silva", "senha")
+        assertEquals(1, repository.signInCalls)
+
+        repository.gate!!.complete(Result.success(AuthTokens(access = "a", refresh = "r")))
+        assertFalse(viewModel.isLoginLoading.value)
         assertNull(viewModel.loginError.value)
     }
 
     @Test
-    fun `singIn failure sets loginError via parseLoginError`() = runTest {
-        coEvery { loginUseCase.withCredentials(any(), any()) } returns
-            LoginUseCase.Result.Failure("{\"detail\": \"Credenciais inválidas\"}")
-
-        viewModel.singIn("user", "pass")
-        advanceUntilIdle()
-
-        assertEquals("Credenciais inválidas", viewModel.loginError.value)
-    }
-
-    @Test
-    fun `singIn failure does not emit event`() = runTest {
-        coEvery { loginUseCase.withCredentials(any(), any()) } returns
-            LoginUseCase.Result.Failure("error")
-
-        viewModel.events.test {
-            viewModel.singIn("user", "pass")
-            advanceUntilIdle()
-            expectNoEvents()
-            cancelAndIgnoreRemainingEvents()
+    fun `backend failure shows its message and stops loading`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository().apply {
+            signInResult = Result.failure(Exception("""{"detail": "Usuário ou senha inválidos."}"""))
         }
+        val viewModel = buildViewModel(repository)
+
+        viewModel.singIn("joao.silva", "errada")
+
+        assertEquals("Usuário ou senha inválidos.", viewModel.loginError.value)
+        assertFalse(viewModel.isLoginLoading.value)
     }
 
-    // endregion
-
-    // region signInWithGoogle
+    private fun AuthViewModel.fillValidForm() {
+        onFirstNameChange("Maria")
+        onLastNameChange("Oliveira")
+        onUsernameChange("Maria.Oliveira")
+        onPasswordChange("abc123")
+        onPasswordConfirmChange("abc123")
+    }
 
     @Test
-    fun `signInWithGoogle success emits LoginSuccess event`() = runTest {
-        coEvery { loginUseCase.withGoogle(any()) } returns LoginUseCase.Result.Success
+    fun `invalid register form is refused without calling the backend`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository()
+        val viewModel = buildViewModel(repository)
 
-        viewModel.events.test {
-            viewModel.signInWithGoogle("id_token")
-            advanceUntilIdle()
-            assertEquals(AuthViewModel.AuthEvent.LoginSuccess, awaitItem())
-            cancelAndIgnoreRemainingEvents()
+        viewModel.onPasswordChange("abc")
+        viewModel.singUp()
+
+        val form = viewModel.registerForm.value
+        assertEquals(0, repository.signUpCalls)
+        assertTrue(form.submitted)
+        assertEquals(FIX_FIELDS_MESSAGE, form.bannerMessage)
+    }
+
+    @Test
+    fun `register is loading while the backend answers, ignores a second tap and sends the lowercased username`() =
+        runTest(testDispatcher) {
+            val repository = FakeAuthRepository().apply { signUpGate = CompletableDeferred() }
+            val viewModel = buildViewModel(repository)
+            viewModel.fillValidForm()
+
+            viewModel.singUp()
+            assertTrue(viewModel.registerForm.value.isLoading)
+            viewModel.singUp()
+            assertEquals(1, repository.signUpCalls)
+            assertEquals("maria.oliveira", repository.signUpUsername)
+
+            repository.signUpGate!!.complete(Result.success(AuthTokens(access = "a", refresh = "r")))
+            assertFalse(viewModel.registerForm.value.isLoading)
         }
-    }
 
     @Test
-    fun `signInWithGoogle failure sets loginError`() = runTest {
-        coEvery { loginUseCase.withGoogle(any()) } returns
-            LoginUseCase.Result.Failure("Token inválido")
-
-        viewModel.signInWithGoogle("bad_token")
-        advanceUntilIdle()
-
-        assertEquals("Token inválido", viewModel.loginError.value)
-    }
-
-    @Test
-    fun `signInWithGoogle resets isGoogleLoading to false after success`() = runTest {
-        coEvery { loginUseCase.withGoogle(any()) } returns LoginUseCase.Result.Success
-
-        viewModel.signInWithGoogle("id_token")
-        advanceUntilIdle()
-
-        assertFalse(viewModel.isGoogleLoading.value)
-    }
-
-    @Test
-    fun `signInWithGoogle resets isGoogleLoading to false after failure`() = runTest {
-        coEvery { loginUseCase.withGoogle(any()) } returns
-            LoginUseCase.Result.Failure("error")
-
-        viewModel.signInWithGoogle("bad_token")
-        advanceUntilIdle()
-
-        assertFalse(viewModel.isGoogleLoading.value)
-    }
-
-    // endregion
-
-    // region singUp
-
-    @Test
-    fun `singUp success emits RegisterSuccess event`() = runTest {
-        coEvery { registerUseCase(any(), any(), any(), any(), any()) } returns RegisterUseCase.Result.Success
-
-        viewModel.events.test {
-            viewModel.singUp("user", "First", "Last", "pass", "pass")
-            advanceUntilIdle()
-            assertEquals(AuthViewModel.AuthEvent.RegisterSuccess, awaitItem())
-            cancelAndIgnoreRemainingEvents()
+    fun `backend field error stays until that field is edited`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository().apply {
+            signUpResult = Result.failure(
+                Exception("""{"error_code": "VALIDATION_ERROR", "detail": "Erro", "field_errors": {"username": ["Este nome de usuário já está em uso."]}}"""),
+            )
         }
+        val viewModel = buildViewModel(repository)
+        viewModel.fillValidForm()
+
+        viewModel.singUp()
+        assertEquals("Este nome de usuário já está em uso.", viewModel.registerForm.value.usernameHelp.text)
+
+        viewModel.onPasswordChange("abc1234")
+        assertEquals("Este nome de usuário já está em uso.", viewModel.registerForm.value.usernameHelp.text)
+
+        viewModel.onUsernameChange("maria.o")
+        assertEquals(USERNAME_HINT, viewModel.registerForm.value.usernameHelp.text)
     }
-
-    @Test
-    fun `singUp failure sets registerErrors via parseRegisterError`() = runTest {
-        coEvery { registerUseCase(any(), any(), any(), any(), any()) } returns
-            RegisterUseCase.Result.Failure("{\"username\": [\"Usuário já existe\"]}")
-
-        viewModel.singUp("user", "First", "Last", "pass", "pass")
-        advanceUntilIdle()
-
-        assertEquals("Usuário já existe", viewModel.registerErrors.value.username)
-    }
-
-    @Test
-    fun `singUp failure does not emit event`() = runTest {
-        coEvery { registerUseCase(any(), any(), any(), any(), any()) } returns
-            RegisterUseCase.Result.Failure("error")
-
-        viewModel.events.test {
-            viewModel.singUp("user", "First", "Last", "pass", "pass")
-            advanceUntilIdle()
-            expectNoEvents()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `singUp success leaves registerErrors empty`() = runTest {
-        coEvery { registerUseCase(any(), any(), any(), any(), any()) } returns RegisterUseCase.Result.Success
-
-        viewModel.singUp("user", "First", "Last", "pass", "pass")
-        advanceUntilIdle()
-
-        assertEquals(RegisterErrors(), viewModel.registerErrors.value)
-    }
-
-    // endregion
-
-    // region clearLoginError / clearRegisterErrors
-
-    @Test
-    fun `clearLoginError sets loginError to null`() = runTest {
-        coEvery { loginUseCase.withCredentials(any(), any()) } returns
-            LoginUseCase.Result.Failure("{\"detail\": \"Erro\"}")
-        viewModel.singIn("user", "pass")
-        advanceUntilIdle()
-
-        viewModel.clearLoginError()
-
-        assertNull(viewModel.loginError.value)
-    }
-
-    @Test
-    fun `clearRegisterErrors resets registerErrors to empty`() = runTest {
-        coEvery { registerUseCase(any(), any(), any(), any(), any()) } returns
-            RegisterUseCase.Result.Failure("{\"username\": [\"taken\"]}")
-        viewModel.singUp("user", "First", "Last", "pass", "pass")
-        advanceUntilIdle()
-
-        viewModel.clearRegisterErrors()
-
-        assertEquals(RegisterErrors(), viewModel.registerErrors.value)
-    }
-
-    // endregion
 }
