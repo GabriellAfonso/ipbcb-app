@@ -3,7 +3,6 @@ package com.ipb.castelobranco.features.studies.presentation.components.sundaysch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -116,7 +113,7 @@ fun inlineText(text: String): AnnotatedString = buildAnnotatedString {
 }
 
 @Composable
-private fun InlineText(text: String, style: TextStyle, modifier: Modifier = Modifier) {
+internal fun InlineText(text: String, style: TextStyle, modifier: Modifier = Modifier) {
     val annotated = remember(text) { inlineText(text) }
     Text(text = annotated, style = style, modifier = modifier)
 }
@@ -314,39 +311,6 @@ private fun StepsBlock(block: LessonBlock.Steps, style: LessonStyle, modifier: M
 }
 
 @Composable
-private fun TableBlock(block: LessonBlock.Table, style: LessonStyle, modifier: Modifier) {
-    val colors = style.colors
-    Box(
-        modifier = modifier
-            .clip(BLOCK_SHAPE)
-            .border(1.dp, colors.rule, BLOCK_SHAPE)
-            .horizontalScroll(rememberScrollState()),
-    ) {
-        Column {
-            TableRow(block.header, style.small.copy(fontWeight = FontWeight.SemiBold), colors.highlight, colors)
-            block.rows.forEach { row -> TableRow(row, style.small, colors.page, colors) }
-        }
-    }
-}
-
-@Composable
-private fun TableRow(cells: List<String>, textStyle: TextStyle, background: Color, colors: SundaySchoolColors) {
-    Row(Modifier.background(background).height(IntrinsicSize.Min)) {
-        cells.forEach { cell ->
-            Box(
-                Modifier
-                    .width(TABLE_CELL_WIDTH)
-                    .fillMaxHeight()
-                    .border(BorderStroke(0.5.dp, colors.rule))
-                    .padding(8.dp),
-            ) {
-                InlineText(cell, textStyle)
-            }
-        }
-    }
-}
-
-@Composable
 private fun StatsBlock(block: LessonBlock.Stats, style: LessonStyle, modifier: Modifier) {
     FlowRow(
         modifier = modifier.fillMaxWidth(),
@@ -472,7 +436,6 @@ fun IconBadge(icon: LessonIcon, style: LessonStyle) {
     }
 }
 
-private val BLOCK_SHAPE = RoundedCornerShape(12.dp)
-private val TABLE_CELL_WIDTH = 140.dp
+internal val BLOCK_SHAPE = RoundedCornerShape(12.dp)
 private const val KEY_VERSE = 1.2f
 private const val STAT_VALUE = 1.9f

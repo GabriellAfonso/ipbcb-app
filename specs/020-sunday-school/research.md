@@ -155,6 +155,13 @@ number tells the order, which matters in a year that walks through the Bible. Th
 defaults to old-style figures, where the "2" of "2 Samuel" is x-height tall; every `LessonStyle` text style sets
 `fontFeatureSettings = "lnum"`.
 
+## R-13b — Table column widths
+
+**Decision**: a `table` block fills the width, each column taking its share of the text (its longest cell,
+clamped to 6..60 characters), but never narrower than its longest word; a column that would be narrower keeps that
+minimum and the others share the rest. It scrolls sideways only when the minimums alone exceed the width. Fixed
+140 dp columns made Josué's "Capítulos" (1–12) as wide as the description and forced a needless scroll.
+
 ## R-14 — Unsaved changes and new lessons
 
 **Decision**: the form compares the draft with the loaded/initial lesson; back with changes asks "Descartar
