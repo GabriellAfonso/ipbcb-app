@@ -24,7 +24,6 @@ constraintlayout = "2.2.1"
 firebaseAppdistributionGradle = "5.2.1"
 runtimeLivedata = "1.10.3"
 foundationLayout = "1.10.3"
-uiTextGoogleFonts = "1.10.3"
 hilt = "2.59.1"
 navigationCompose = "2.9.7"
 okhttpLoggingInterceptor = "5.3.2"
@@ -76,7 +75,6 @@ retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit
 firebase-appdistribution-gradle = { group = "com.google.firebase", name = "firebase-appdistribution-gradle", version.ref = "firebaseAppdistributionGradle" }
 androidx-compose-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
-androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }

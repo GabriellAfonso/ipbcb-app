@@ -81,7 +81,7 @@ motivos: `specs/020-sunday-school/research.md`.
   `*itálico*`; o resto aparece literal. Tipo de bloco desconhecido é pulado e ícone desconhecido não é desenhado.
 - **Referências**: os mesmos chips da Doutrina (§1).
 - **Visual**: fundo creme liso atrás do texto, textura de pergaminho só no cabeçalho e nos versículos-chave, títulos
-  em Cormorant Garamond e texto em Literata (Google Fonts baixadas; serifa do sistema até lá), marrom muito escuro
+  em Cormorant Garamond e texto em Literata (embutidas em `res/font`, como as fontes do app), marrom muito escuro
   no modo escuro. Ícones Phosphor duotone (MIT) como vetores do app (`res/drawable/ic_ph_*.xml`), dourados.
 - **Tamanho do texto**: o mesmo "Aa" e a mesma preferência dos leitores de Doutrina.
 - **Editor** (só o básico nesta versão): cria, edita, move e apaga seções (título e ícone da lista fechada ou

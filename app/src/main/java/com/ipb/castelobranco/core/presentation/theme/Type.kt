@@ -1,30 +1,25 @@
 package com.ipb.castelobranco.core.presentation.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-
-import androidx.compose.ui.text.googlefonts.GoogleFont
-import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.font.FontWeight
 import com.ipb.castelobranco.R
 
-val provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs
-)
-
+// Bundled (Latin subset) instead of downloaded: a downloadable font arrives after the first frame, so the text
+// would render in Roboto and then swap. Each weight is a real file — no synthesized bold.
 val bodyFontFamily = FontFamily(
-    Font(
-        googleFont = GoogleFont("Inter"),
-        fontProvider = provider,
-    )
+    Font(R.font.inter_400, FontWeight.Normal),
+    Font(R.font.inter_500, FontWeight.Medium),
+    Font(R.font.inter_600, FontWeight.SemiBold),
+    Font(R.font.inter_700, FontWeight.Bold),
 )
 
 val displayFontFamily = FontFamily(
-    Font(
-        googleFont = GoogleFont("Poppins"),
-        fontProvider = provider,
-    )
+    Font(R.font.poppins_400, FontWeight.Normal),
+    Font(R.font.poppins_500, FontWeight.Medium),
+    Font(R.font.poppins_600, FontWeight.SemiBold),
+    Font(R.font.poppins_700, FontWeight.Bold),
 )
 
 // Default Material 3 typography values
@@ -47,4 +42,3 @@ val AppTypography = Typography(
     labelMedium = baseline.labelMedium.copy(fontFamily = bodyFontFamily),
     labelSmall = baseline.labelSmall.copy(fontFamily = bodyFontFamily),
 )
-

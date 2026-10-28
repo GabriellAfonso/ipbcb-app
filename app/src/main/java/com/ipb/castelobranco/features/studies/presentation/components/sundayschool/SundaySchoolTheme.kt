@@ -10,14 +10,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.font.DeviceFontFamilyName
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
-import com.ipb.castelobranco.core.presentation.theme.provider
-import androidx.compose.ui.text.font.Font as DeviceFont
+import com.ipb.castelobranco.R
 
 /**
  * The aged-parchment look of the EBD reader (`specs/020-sunday-school/research.md` R-07): plain cream page behind
@@ -65,26 +62,17 @@ val sundaySchoolColors: SundaySchoolColors
 
 private const val DARK_LUMINANCE = 0.5f
 
-private val serifFallback = DeviceFont(DeviceFontFamilyName("serif"))
-
-/** Titles: Cormorant Garamond, downloaded once by Play services; the system serif until then. */
+/** Titles: Cormorant Garamond, bundled like the app fonts (`core/presentation/theme/Type.kt`). */
 val SundaySchoolTitleFont = FontFamily(
-    Font(googleFont = GoogleFont("Cormorant Garamond"), fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = GoogleFont("Cormorant Garamond"), fontProvider = provider, weight = FontWeight.Bold),
-    serifFallback,
+    Font(R.font.cormorant_garamond_600, FontWeight.SemiBold),
+    Font(R.font.cormorant_garamond_700, FontWeight.Bold),
 )
 
 /** Running text: Literata. */
 val SundaySchoolTextFont = FontFamily(
-    Font(googleFont = GoogleFont("Literata"), fontProvider = provider, weight = FontWeight.Normal),
-    Font(
-        googleFont = GoogleFont("Literata"),
-        fontProvider = provider,
-        weight = FontWeight.Normal,
-        style = FontStyle.Italic,
-    ),
-    Font(googleFont = GoogleFont("Literata"), fontProvider = provider, weight = FontWeight.SemiBold),
-    serifFallback,
+    Font(R.font.literata_400, FontWeight.Normal),
+    Font(R.font.literata_400_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(R.font.literata_600, FontWeight.SemiBold),
 )
 
 /**

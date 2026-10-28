@@ -719,8 +719,9 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 
 #### Tipografia
 
-- Display: Poppins (Google Fonts)
-- Body: Inter (Google Fonts)
+- Display: Poppins; Body: Inter — embutidas em `res/font` (subset latino, pesos 400/500/600/700), nao baixadas do
+  Google Fonts: a fonte baixavel chega depois do primeiro frame, entao o texto saia em Roboto e trocava. Peso real
+  por arquivo, sem negrito sintetizado. Sem dependencia de `ui-text-google-fonts`
 - 15 estilos Material 3 mapeados (displayLarge ate labelSmall)
 
 ### 6.7 Componentes Reutilizaveis
