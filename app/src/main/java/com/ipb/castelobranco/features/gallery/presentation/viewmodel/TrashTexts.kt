@@ -6,6 +6,7 @@ import com.ipb.castelobranco.features.gallery.domain.trash.RestoreResult
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import com.ipb.castelobranco.features.gallery.presentation.state.TrashRow
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -27,29 +28,60 @@ internal object TrashTexts {
     const val ACCESS_LOST = "Você não tem mais acesso à lixeira."
     const val ALBUM_RESTORED = "Álbum restaurado"
     const val PHOTO_RESTORED = "Foto restaurada"
+    const val SOON_GROUP = "Somem nesta semana"
+    const val LATER_GROUP = "Mais tarde"
+    const val NOTHING_SOON = "Nada some nesta semana"
     private const val KIND_ALBUM = "Álbum"
     private const val KIND_PHOTO = "Foto"
     private const val UNKNOWN_USER = "usuário desconhecido"
 
+    /** "Nesta semana": the purge day at most this many days after today. */
+    private const val SOON_DAYS = 7L
+
     private val DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+    private val DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM")
 
-    fun row(entry: TrashEntry, zone: ZoneId) = TrashRow(
-        key = entry.key,
-        title = entry.name,
-        kindLabel = if (entry.kind == TrashKind.ALBUM) KIND_ALBUM else KIND_PHOTO,
-        deletedLine = "Apagado por ${entry.deletedBy ?: UNKNOWN_USER} em ${dateTime(entry.deletedAt, zone)}",
-        countsLine = if (entry.kind == TrashKind.ALBUM) counts(entry.subAlbumCount, entry.photoCount) else null,
-        uploadedLine = entry.uploadedBy?.takeIf { entry.kind == TrashKind.PHOTO }?.let { "Enviada por $it" },
-        purgeLine = "Some em ${GalleryUiMapper.formatDate(entry.purgeOn)}",
-        thumbnailUrl = entry.thumbnailUrl,
-    )
+    /** [today] is the device's local date, which decides what goes "nesta semana". */
+    fun row(entry: TrashEntry, zone: ZoneId, today: LocalDate): TrashRow {
+        val purgeDay = date(entry.purgeOn)
+        val kind = if (entry.kind == TrashKind.ALBUM) KIND_ALBUM else KIND_PHOTO
+        val counts = if (entry.kind == TrashKind.ALBUM) counts(entry.subAlbumCount, entry.photoCount) else null
+        val deleter = entry.deletedBy?.trim()?.substringBefore(' ')?.takeIf { it.isNotEmpty() } ?: UNKNOWN_USER
+        val purge = purgeDay?.format(DAY_MONTH) ?: GalleryUiMapper.formatDate(entry.purgeOn)
+        return TrashRow(
+            key = entry.key,
+            title = entry.name,
+            kindLine = listOfNotNull(kind, counts).joinToString(" · "),
+            detailLine = "Apagado por $deleter em ${dateTime(entry.deletedAt, zone, DAY_MONTH)} · some em $purge",
+            isPurgeSoon = purgeDay != null && !purgeDay.isAfter(today.plusDays(SOON_DAYS)),
+            thumbnailUrl = entry.thumbnailUrl,
+        )
+    }
 
-    /** An ISO instant in [zone] as `dd/MM/yyyy HH:mm`; anything unreadable is shown as it came. */
-    fun dateTime(raw: String, zone: ZoneId): String = try {
-        OffsetDateTime.parse(raw).atZoneSameInstant(zone).format(DATE_TIME)
+    /** "1 item", "5 itens". */
+    fun itemCount(count: Int): String = if (count == 1) "1 item" else "$count itens"
+
+    /** The band's line: how many go within a week. */
+    fun soonLine(count: Int): String = when (count) {
+        0 -> NOTHING_SOON
+        1 -> "1 some nesta semana"
+        else -> "$count somem nesta semana"
+    }
+
+    /** An ISO instant in [zone] as `dd/MM/yyyy HH:mm` (or [format]); anything unreadable is shown as it came. */
+    fun dateTime(raw: String, zone: ZoneId, format: DateTimeFormatter = DATE_TIME): String = try {
+        OffsetDateTime.parse(raw).atZoneSameInstant(zone).format(format)
     } catch (_: DateTimeParseException) {
         raw
     }
+
+    private fun date(raw: String): LocalDate? = try {
+        LocalDate.parse(raw.take(ISO_DATE_LENGTH))
+    } catch (_: DateTimeParseException) {
+        null
+    }
+
+    private const val ISO_DATE_LENGTH = 10
 
     /** "{n} subálbuns · {m} fotos", singular forms, zero parts left out; `null` when both are zero. */
     fun counts(subAlbums: Int, photos: Int): String? = listOfNotNull(

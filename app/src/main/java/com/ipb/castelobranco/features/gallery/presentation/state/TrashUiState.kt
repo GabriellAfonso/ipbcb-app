@@ -6,13 +6,12 @@ import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 data class TrashRow(
     val key: TrashKey,
     val title: String,
-    val kindLabel: String,
-    val deletedLine: String,
-    /** Albums only: what went with it; `null` when nothing did. */
-    val countsLine: String?,
-    /** Photos only, when the uploader is known. */
-    val uploadedLine: String?,
-    val purgeLine: String,
+    /** "Álbum · 2 subálbuns · 41 fotos" or "Foto". */
+    val kindLine: String,
+    /** "Apagado por Maria em 29/09 · some em 29/10". */
+    val detailLine: String,
+    /** Gone within a week: listed under "Somem nesta semana". */
+    val isPurgeSoon: Boolean,
     val thumbnailUrl: String?,
 )
 
@@ -30,6 +29,8 @@ data class TrashUiState(
     val highlighted: TrashKey? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && error == null && rows.isEmpty()
+    val soonRows: List<TrashRow> get() = rows.filter { it.isPurgeSoon }
+    val laterRows: List<TrashRow> get() = rows.filterNot { it.isPurgeSoon }
     val canRefresh: Boolean get() = restoring == null
 }
 

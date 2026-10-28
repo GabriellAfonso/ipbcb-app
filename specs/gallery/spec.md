@@ -570,15 +570,21 @@ se restaura sozinho.
 ### 9.2 Tela
 
 Abre lendo a lista (carregando / erro com "Tentar novamente" — sem rede: "Sem conexão. A lixeira precisa de
-internet." / vazia: "A lixeira está vazia." / lista) e tem pull-to-refresh. No topo: "Os itens ficam 30 dias na
+internet." / vazia: "A lixeira está vazia." / lista) e tem pull-to-refresh.
+
+**Layout "lixeira por prazo":** faixa verde (cantos inferiores de 28dp) com "Lixeira", "{n} itens" ("1 item") e
+"{k} somem nesta semana" ("1 some nesta semana"; nenhum: "Nada some nesta semana"). "Nesta semana" = `purge_on` até 7
+dias depois de hoje (data local). A lista vem em dois grupos, cada um na ordem do servidor: "SOMEM NESTA SEMANA" (com
+um ponto laranja) e "MAIS TARDE"; um grupo vazio some. No rodapé, em texto pequeno: "Os itens ficam 30 dias na
 lixeira e depois são apagados para sempre. Restaurar um álbum traz de volta tudo o que foi apagado com ele."
 
-Cada linha, na ordem do servidor: preview pelo `@GalleryThumbnailLoader` (cinza sem preview ou em erro; sem tela
-cheia), nome, "Álbum"/"Foto", "Apagado por {nome} em {dd/MM/yyyy HH:mm}" (hora local; "usuário desconhecido" sem
-nome), para álbuns "{n} subálbuns · {m} fotos" (singular "1 subálbum", "1 foto"; partes zero omitidas), para fotos
-"Enviada por {nome}" quando conhecido, e "Some em {dd/MM/yyyy}". Botão "Restaurar", sem confirmação.
+Cada linha, compacta: preview de 48dp com cantos de 10dp pelo `@GalleryThumbnailLoader` (cinza sem preview ou em
+erro; sem tela cheia); o nome; "Álbum · {n} subálbuns · {m} fotos" (singular "1 subálbum", "1 foto"; partes zero
+omitidas) ou "Foto"; e "Apagado por {primeiro nome} em {dd/MM} · some em {dd/MM}" (hora local; "usuário
+desconhecido" sem nome). Quem enviou a foto não aparece mais. A direita, um botão redondo com o icone de restaurar
+("Restaurar" para leitores de tela), sem confirmação.
 
-Um restauro por vez: a linha mostra progresso, os outros botões e o pull-to-refresh ficam desativados. Perder
+Um restauro por vez: a linha mostra progresso no lugar do botão, os outros botões e o pull-to-refresh ficam desativados. Perder
 `owner` com a tela aberta fecha a tela: "Você não tem mais acesso à lixeira.". Sair da tela durante um restauro para
 de esperar a resposta; o que o servidor fez chega no próximo sync.
 
@@ -658,13 +664,26 @@ sync roda no fim. Resultado: "Marcações atualizadas em {n} fotos" ("1 foto") e
 
 ### 10.6 Filtro por pessoas (todo membro, offline)
 
-"Pessoas" na raiz abre `GalleryPeople`. Com algum vídeo visível, chips "Tudo / Fotos / Vídeos" no topo (11.5). A lista vem do índice (`GalleryPeople.taggedPeople`): toda pessoa marcada em ao
-menos uma foto alcançável, com "{n} fotos" ("1 foto"), por nome (sem acentos), com busca local. Ninguém marcado:
-"Ninguém foi marcado nas fotos ainda.". Seleção múltipla; as escolhidas ficam como chips no topo. Com alguém escolhido
-e a busca vazia, a tela mostra o resultado **E**: as fotos em que todas as pessoas escolhidas estão marcadas
-(`photosWithAll`), numa grid de 3 colunas na ordem da árvore (pré-ordem; dentro do álbum por `position`, depois `id`),
-com "Fotos com todas as pessoas selecionadas" a partir de duas pessoas e "Nenhuma foto com todas essas pessoas." quando
-vazio. Escolher na lista limpa a busca. Seleção e índice atualizam o resultado ao vivo; uma pessoa que deixou de estar
+"Pessoas" na raiz abre `GalleryPeople`. A lista vem do índice (`GalleryPeople.taggedPeople`): toda pessoa marcada
+em ao menos uma foto alcançável, com "{n} fotos" ("1 foto"), por nome (sem acentos), com busca local. Ninguém marcado:
+"Ninguém foi marcado nas fotos ainda.". Seleção múltipla.
+
+**Layout "faixa e lista com avatares":**
+- Faixa verde (cantos inferiores de 28dp) com "Quem aparece nas fotos", "{n} pessoas" ("1 pessoa") e "{m} fotos com
+  alguém marcado" ("1 foto com alguém marcado"; conta cada item com ao menos uma marcação uma vez). A busca é a pílula
+  branca "Buscar pessoa" dentro da faixa. As escolhidas ficam na faixa como etiquetas brancas com o primeiro nome e
+  "×" (tocar tira do filtro).
+- Com algum vídeo visível, o seletor "Tudo / Fotos / Vídeos" (11.5) fica sobre a borda de baixo da faixa, o
+  selecionado em verde.
+- **Resultado** (alguém escolhido, ou Fotos/Vídeos, e a busca vazia): o resultado **E** — as fotos em que todas as
+  pessoas escolhidas estão marcadas (`photosWithAll`), numa grid de 3 colunas de cantos arredondados, na ordem da
+  árvore (pré-ordem; dentro do álbum por `position`, depois `id`). Antes da grid, um título com a contagem à direita:
+  "Fotos de Ana", "Fotos com Ana e João", "Fotos com Ana, João e Bruno" (primeiros nomes); só o filtro de mídia: "Todas
+  as fotos" / "Todos os vídeos". Vazio: "Nenhuma foto com todas essas pessoas." (sem ninguém: "Nenhuma foto." /
+  "Nenhum vídeo.").
+- **"Pessoas"** ("toque para filtrar") vem sempre, depois do resultado: um card com uma linha por pessoa — avatar com
+  as iniciais numa cor fixa por pessoa (nunca a foto do rol), o nome, "{n} fotos" e um círculo que fica verde com ✓
+  quando ela está escolhida. Busca sem resultado: "Nenhuma pessoa encontrada." no lugar do card. Escolher na lista limpa a busca. Seleção e índice atualizam o resultado ao vivo; uma pessoa que deixou de estar
 marcada em qualquer foto sai da lista e da seleção. A seleção dura a visita (volta do visualizador intacta).
 
 Tocar numa foto abre o visualizador pela rota `PeoplePhoto/{ids separados por vírgula}/{photoId}`, que pagina pelo

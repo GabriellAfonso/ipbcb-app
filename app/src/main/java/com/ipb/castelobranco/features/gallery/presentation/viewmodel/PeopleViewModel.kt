@@ -110,10 +110,13 @@ class PeopleViewModel @Inject constructor(
             .map { it.toRow(checked = it.id in selectedIds, ownMemberId) }
         val showResults = (selectedIds.isNotEmpty() || mediaFilter != MediaFilter.ALL) && query.isBlank()
         val results = if (showResults) tiles(tree, local.local, selectedIds, mediaFilter) else emptyList()
+        val taggedPhotos = tree.allPhotosInTreeOrder().count { it.members.isNotEmpty() }
         return PeopleUiState(
             isLoading = false,
             query = query,
             showSearch = true,
+            peopleCountText = TagTexts.peopleCount(local.people.size),
+            taggedPhotosText = TagTexts.taggedPhotos(taggedPhotos),
             people = matching,
             selected = selected,
             showResults = showResults,
@@ -121,15 +124,20 @@ class PeopleViewModel @Inject constructor(
             memberIds = selectedIds,
             showMediaFilter = showMediaFilter,
             mediaFilter = mediaFilter,
-            hint = TagTexts.RESULT_HINT.takeIf { showResults && selectedIds.size > 1 },
+            resultTitle = if (showResults) {
+                TagTexts.resultTitle(selected.map { it.firstName }, videosOnly = mediaFilter == MediaFilter.VIDEOS)
+            } else {
+                null
+            },
+            resultEmptyText = when {
+                !showResults || results.isNotEmpty() -> null
+                selectedIds.isNotEmpty() -> TagTexts.NO_RESULT
+                mediaFilter == MediaFilter.VIDEOS -> TagTexts.NO_VIDEOS
+                else -> TagTexts.NO_PHOTOS
+            },
             emptyText = when {
-                showResults && results.isEmpty() -> when {
-                    selectedIds.isNotEmpty() -> TagTexts.NO_RESULT
-                    mediaFilter == MediaFilter.VIDEOS -> TagTexts.NO_VIDEOS
-                    else -> TagTexts.NO_PHOTOS
-                }
-                !showResults && local.people.isEmpty() -> TagTexts.NO_TAGS
-                !showResults && matching.isEmpty() -> TagTexts.NO_PERSON_FOUND
+                local.people.isEmpty() -> TagTexts.NO_TAGS
+                matching.isEmpty() -> TagTexts.NO_PERSON_FOUND
                 else -> null
             },
         )
@@ -147,6 +155,8 @@ class PeopleViewModel @Inject constructor(
         name = if (id == ownMemberId) TagTexts.ownName(name) else name,
         countText = TagTexts.photoCount(photoCount),
         isChecked = checked,
+        firstName = TagTexts.firstName(name),
+        initials = TagTexts.initials(name),
     )
 
     companion object {

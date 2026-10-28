@@ -96,6 +96,9 @@ class PeopleViewModelTest {
         assertEquals(listOf("3 fotos", "1 foto", "2 fotos"), people.map { it.countText })
         assertFalse(state().showResults)
         assertTrue(state().showSearch)
+        assertEquals("3 pessoas", state().peopleCountText)
+        assertEquals("3 fotos com alguém marcado", state().taggedPhotosText)
+        assertEquals(listOf("A", "B", "J"), people.map { it.initials })
     }
 
     @Test
@@ -120,22 +123,23 @@ class PeopleViewModelTest {
     }
 
     @Test
-    fun `selecting people shows the AND result in tree order, with the hint from two people`() =
+    fun `selecting people shows the AND result in tree order, titled by their first names`() =
         runTest(dispatcher) {
             val viewModel = viewModel()
             val state = observe(viewModel)
 
             viewModel.toggle(1)
             assertEquals(listOf(10L, 11L, 20L), state().results.map { it.id })
-            assertNull(state().hint)
+            assertEquals("Fotos de Ana", state().resultTitle)
 
             viewModel.toggle(2)
             assertEquals(listOf(11L, 20L), state().results.map { it.id })
-            assertEquals(TagTexts.RESULT_HINT, state().hint)
+            assertEquals("Fotos com Ana e João", state().resultTitle)
             assertEquals(setOf(1L, 2L), state().memberIds)
 
             viewModel.toggle(3)
             assertEquals(listOf(20L), state().results.map { it.id })
+            assertEquals("Fotos com Ana, Bruno e João", state().resultTitle)
         }
 
     @Test
@@ -148,7 +152,8 @@ class PeopleViewModelTest {
         viewModel.toggle(4)
 
         assertTrue(state().results.isEmpty())
-        assertEquals(TagTexts.NO_RESULT, state().emptyText)
+        assertEquals(TagTexts.NO_RESULT, state().resultEmptyText)
+        assertNull(state().emptyText)
     }
 
     @Test

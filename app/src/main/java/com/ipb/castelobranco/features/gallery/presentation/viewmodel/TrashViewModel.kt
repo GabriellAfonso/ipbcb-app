@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
@@ -127,7 +128,7 @@ class TrashViewModel @Inject constructor(
                             isLoading = false,
                             isRefreshing = false,
                             error = null,
-                            rows = list.map { TrashTexts.row(it, zone) },
+                            rows = list.map { TrashTexts.row(it, zone, LocalDate.now(zone)) },
                         )
                     }
                 },

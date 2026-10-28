@@ -5,13 +5,17 @@ import com.ipb.castelobranco.features.gallery.domain.trash.RestoreResult
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashEntry
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.ZoneId
 
 class TrashTextsTest {
 
     private val saoPaulo = ZoneId.of("America/Sao_Paulo")
+    private val today = LocalDate.of(2026, 10, 1)
 
     private fun entry(
         kind: TrashKind,
@@ -33,32 +37,37 @@ class TrashTextsTest {
     )
 
     @Test
-    fun `album row - local time, counts and purge day`() {
-        val row = TrashTexts.row(entry(TrashKind.ALBUM, subAlbums = 2, photos = 41), saoPaulo)
+    fun `album row - counts, deleter's first name, local day and purge day`() {
+        val row = TrashTexts.row(entry(TrashKind.ALBUM, subAlbums = 2, photos = 41), saoPaulo, today)
 
         assertEquals("Retiro 2026", row.title)
-        assertEquals("Álbum", row.kindLabel)
-        assertEquals("Apagado por Maria Souza em 29/09/2026 11:03", row.deletedLine)
-        assertEquals("2 subálbuns · 41 fotos", row.countsLine)
-        assertNull(row.uploadedLine)
-        assertEquals("Some em 29/10/2026", row.purgeLine)
+        assertEquals("Álbum · 2 subálbuns · 41 fotos", row.kindLine)
+        assertEquals("Apagado por Maria em 29/09 · some em 29/10", row.detailLine)
     }
 
     @Test
-    fun `unknown deleter and uploader`() {
-        val row = TrashTexts.row(entry(TrashKind.PHOTO, deletedBy = null, uploadedBy = null), ZoneId.of("UTC"))
+    fun `photo row with an unknown deleter`() {
+        val row = TrashTexts.row(entry(TrashKind.PHOTO, deletedBy = null, uploadedBy = "Ana"), ZoneId.of("UTC"), today)
 
-        assertEquals("Foto", row.kindLabel)
-        assertEquals("Apagado por usuário desconhecido em 29/09/2026 14:03", row.deletedLine)
-        assertNull(row.uploadedLine)
-        assertNull(row.countsLine)
+        assertEquals("Foto", row.kindLine)
+        assertEquals("Apagado por usuário desconhecido em 29/09 · some em 29/10", row.detailLine)
     }
 
     @Test
-    fun `photo row names its uploader`() {
-        val row = TrashTexts.row(entry(TrashKind.PHOTO, uploadedBy = "Ana Paula"), saoPaulo)
+    fun `soon means the purge day at most a week away`() {
+        val album = entry(TrashKind.ALBUM)
 
-        assertEquals("Enviada por Ana Paula", row.uploadedLine)
+        assertTrue(TrashTexts.row(album, saoPaulo, LocalDate.of(2026, 10, 22)).isPurgeSoon)
+        assertFalse(TrashTexts.row(album, saoPaulo, LocalDate.of(2026, 10, 21)).isPurgeSoon)
+    }
+
+    @Test
+    fun `band texts`() {
+        assertEquals("1 item", TrashTexts.itemCount(1))
+        assertEquals("5 itens", TrashTexts.itemCount(5))
+        assertEquals(TrashTexts.NOTHING_SOON, TrashTexts.soonLine(0))
+        assertEquals("1 some nesta semana", TrashTexts.soonLine(1))
+        assertEquals("2 somem nesta semana", TrashTexts.soonLine(2))
     }
 
     @Test
