@@ -26,6 +26,8 @@ class ProfileWorshipAccessRepository @Inject constructor(
         return profileSnapshot.getCurrentState().toWorshipAccess()
     }
 
+    override fun peek(): WorshipAccess = profileSnapshot.getCurrentState().toWorshipAccess()
+
     private fun SnapshotState<MeProfile>.toWorshipAccess(): WorshipAccess {
         val profile = (this as? SnapshotState.Data)?.value ?: return WorshipAccess.NONE
         return WorshipAccess(isWorshipMember = profile.isWorshipMember, canSaveSetlist = profile.canSaveSetlist)

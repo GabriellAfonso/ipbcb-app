@@ -13,7 +13,11 @@ class ObserveSundaySetlistUseCase @Inject constructor(
     private val repository: SundaySetlistRepository,
     private val dateProvider: DateProvider,
 ) {
-    operator fun invoke(): Flow<SundaySetlist?> = repository.stored.map { setlist ->
+    operator fun invoke(): Flow<SundaySetlist?> = repository.stored.map(::stillValid)
+
+    /** The same, read now: a screen's first frame starts from it instead of an empty state. */
+    fun current(): SundaySetlist? = stillValid(repository.stored.value)
+
+    private fun stillValid(setlist: SundaySetlist?): SundaySetlist? =
         setlist?.takeIf { !dateProvider.today().isAfter(it.date) }
-    }
 }

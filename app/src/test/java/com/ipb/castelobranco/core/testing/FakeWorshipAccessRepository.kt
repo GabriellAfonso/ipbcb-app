@@ -11,6 +11,8 @@ class FakeWorshipAccessRepository(initial: WorshipAccess = WorshipAccess.NONE) :
     override val worshipAccess = state
 
     override suspend fun current(): WorshipAccess = state.value
+
+    override fun peek(): WorshipAccess = state.value
 }
 
 val WORSHIP_MEMBER = WorshipAccess(isWorshipMember = true, canSaveSetlist = false)

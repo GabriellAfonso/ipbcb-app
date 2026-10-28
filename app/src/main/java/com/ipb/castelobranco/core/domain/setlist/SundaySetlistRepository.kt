@@ -1,6 +1,6 @@
 package com.ipb.castelobranco.core.domain.setlist
 
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The device's copy of the current Sunday setlist, for worship members. Lives in core because it is
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface SundaySetlistRepository {
 
     /** The stored setlist, whatever its date; `null` when none. Available offline. */
-    val stored: Flow<SundaySetlist?>
+    val stored: StateFlow<SundaySetlist?>
 
     /**
      * Reads the current setlist from the server and stores it. "No current setlist" and a `403` (not a

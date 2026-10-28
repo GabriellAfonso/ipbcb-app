@@ -16,4 +16,7 @@ interface WorshipAccessRepository {
      * started by a push or a worker never ran the boot preload.
      */
     suspend fun current(): WorshipAccess
+
+    /** The flags in memory now, without loading anything: [WorshipAccess.NONE] when the profile is not loaded. */
+    fun peek(): WorshipAccess
 }
