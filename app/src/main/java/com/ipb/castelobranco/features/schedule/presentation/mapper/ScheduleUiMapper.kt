@@ -36,6 +36,7 @@ fun MonthSchedule.toSectionsUi(): List<ScheduleSectionUi> {
                         ScheduleRowUi(
                             day = item.day,
                             member = item.member,
+                            memberId = item.memberId,
                             weekday = weekdayAbbr(year, month, item.day),
                         )
                     }

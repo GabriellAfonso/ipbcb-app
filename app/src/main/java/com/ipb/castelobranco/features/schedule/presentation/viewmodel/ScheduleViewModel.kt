@@ -10,6 +10,7 @@ import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.schedule.domain.model.MonthSchedule
 import com.ipb.castelobranco.features.schedule.domain.repository.ScheduleRepository
 import com.ipb.castelobranco.features.schedule.presentation.components.NextScheduleUi
+import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleBandUi
 import com.ipb.castelobranco.features.schedule.presentation.components.ScheduleSectionUi
 import com.ipb.castelobranco.features.schedule.presentation.mapper.toSectionsUi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +18,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
+import java.util.Locale
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -56,6 +60,60 @@ internal fun findSectionIndexForDate(
     if (date.year != scheduleYear || date.monthValue != scheduleMonth) return null
     return sections.indexOfFirst { section -> section.rows.any { it.day == date.dayOfMonth } }.takeIf { it >= 0 }
 }
+
+private val BAND_LOCALE = Locale.forLanguageTag("pt-BR")
+private const val SERVING_PREFIX = "Escalado: "
+private const val WEEKDAY_SUFFIX = "-feira"
+private const val TODAY_LABEL = "É hoje"
+private const val TOMORROW_LABEL = "Amanhã"
+
+/**
+ * The home band's schedule card: the first date from [today] on, in any section, whose row is [memberId]'s; failing
+ * that, the next date of [nextSection] and who serves on it. Null when neither exists (`specs/core/spec.md` §6.3).
+ */
+internal fun buildScheduleBand(
+    sections: List<ScheduleSectionUi>,
+    scheduleYear: Int,
+    scheduleMonth: Int,
+    memberId: Long?,
+    nextSection: ScheduleSectionUi?,
+    today: LocalDate,
+): ScheduleBandUi? {
+    val upcoming = sections.flatMap { section ->
+        section.rows.mapNotNull { row ->
+            runCatching { LocalDate.of(scheduleYear, scheduleMonth, row.day) }.getOrNull()
+                ?.takeUnless { it.isBefore(today) }
+                ?.let { date -> Triple(section, row, date) }
+        }
+    }
+    val own = memberId?.let { id -> upcoming.filter { it.second.memberId == id }.minByOrNull { it.third } }
+    if (own != null) {
+        val (section, _, date) = own
+        return bandOf(section, date, isOwn = true, detail = countdownLabel(today, date))
+    }
+    val next = upcoming.filter { it.first == nextSection }.minByOrNull { it.third } ?: return null
+    val (section, row, date) = next
+    return bandOf(section, date, isOwn = false, detail = SERVING_PREFIX + row.member)
+}
+
+private fun bandOf(section: ScheduleSectionUi, date: LocalDate, isOwn: Boolean, detail: String): ScheduleBandUi {
+    val dayMonth = "%02d/%02d".format(date.dayOfMonth, date.monthValue)
+    val time = section.time.trim().takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty()
+    return ScheduleBandUi(
+        isOwn = isOwn,
+        monthLabel = date.month.getDisplayName(TextStyle.SHORT, BAND_LOCALE).removeSuffix(".").uppercase(BAND_LOCALE),
+        day = date.dayOfMonth,
+        title = "${section.shortTitle.removeSuffix(WEEKDAY_SUFFIX)}, $dayMonth$time",
+        detail = detail,
+    )
+}
+
+private fun countdownLabel(today: LocalDate, date: LocalDate): String =
+    when (val days = ChronoUnit.DAYS.between(today, date)) {
+        0L -> TODAY_LABEL
+        1L -> TOMORROW_LABEL
+        else -> "Faltam $days dias"
+    }
 
 sealed interface ScheduleUiState {
     object Loading : ScheduleUiState
@@ -104,6 +162,33 @@ class ScheduleViewModel @Inject constructor(
             started = SharingStarted.Eagerly,
             initialValue = toNextSection(uiState.value)
         )
+
+    /** The logged-in user's member record; set by the home, null when logged out or not linked. */
+    private val memberId = MutableStateFlow<Long?>(null)
+
+    /** The home band's schedule card (`specs/core/spec.md` §6.3). */
+    val band: StateFlow<ScheduleBandUi?> = combine(uiState, memberId, ::toBand)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = toBand(uiState.value, memberId.value)
+        )
+
+    fun setMemberId(id: Long?) {
+        memberId.value = id
+    }
+
+    private fun toBand(state: ScheduleUiState, memberId: Long?): ScheduleBandUi? {
+        if (state !is ScheduleUiState.Success) return null
+        return buildScheduleBand(
+            sections = state.sections,
+            scheduleYear = state.data.year,
+            scheduleMonth = state.data.month,
+            memberId = memberId,
+            nextSection = findNextSection(state.sections),
+            today = LocalDate.now(),
+        )
+    }
 
     private fun toNextSection(state: ScheduleUiState): NextScheduleUi? {
         if (state !is ScheduleUiState.Success) return null

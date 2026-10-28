@@ -15,7 +15,8 @@ fun MonthScheduleDto.toDomain(): MonthSchedule =
                 items = entryDto.items.map { itemDto ->
                     ScheduleItem(
                         day = itemDto.day,
-                        member = itemDto.member.name
+                        member = itemDto.member.name,
+                        memberId = itemDto.member.id.toLong(),
                     )
                 }
             )

@@ -23,7 +23,8 @@ Destaques).
 ```
 
 **Modelos de dominio:** `MonthSchedule(year, month, schedule: Map<String, ScheduleEntry>)`,
-`ScheduleEntry(time, items)`, `ScheduleItem(day, member)` (so o nome do membro).
+`ScheduleEntry(time, items)`, `ScheduleItem(day, member, memberId)` (nome e id do membro; o id liga a linha ao
+usuario logado na home, `specs/core/spec.md` §6.3).
 
 **Ordem dos cultos:** terca, quinta, domingo (pelo inicio do titulo, sem diferenciar maiusculas); titulos fora
 disso vao para o fim, em ordem alfabetica. Datas de cada culto em ordem crescente.

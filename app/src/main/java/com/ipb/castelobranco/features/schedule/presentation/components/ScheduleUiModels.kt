@@ -6,6 +6,7 @@ import androidx.compose.runtime.Immutable
 data class ScheduleRowUi(
     val day: Int,
     val member: String,
+    val memberId: Long? = null,
     /** Abbreviated weekday of [day] ("ter"); blank when the date is invalid. */
     val weekday: String = "",
 )
@@ -24,4 +25,20 @@ data class ScheduleSectionUi(
 data class NextScheduleUi(
     val section: ScheduleSectionUi,
     val nextDay: Int?
+)
+
+/**
+ * The schedule card on the home's green band: the user's own next date ([isOwn]) or, when they have none, the next
+ * service and who serves. Already formatted.
+ *
+ * @param monthLabel "NOV". @param title "Domingo, 15/11 · 18h". @param detail "Faltam 18 dias" or
+ * "Escalado: Marcos Vinícius".
+ */
+@Immutable
+data class ScheduleBandUi(
+    val isOwn: Boolean,
+    val monthLabel: String,
+    val day: Int,
+    val title: String,
+    val detail: String,
 )

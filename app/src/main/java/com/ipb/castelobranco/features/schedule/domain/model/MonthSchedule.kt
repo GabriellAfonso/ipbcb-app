@@ -13,5 +13,7 @@ data class ScheduleEntry(
 
 data class ScheduleItem(
     val day: Int,
-    val member: String
+    val member: String,
+    /** The member record's id; matches `MeProfile.memberId` on the user's own rows. */
+    val memberId: Long? = null,
 )
