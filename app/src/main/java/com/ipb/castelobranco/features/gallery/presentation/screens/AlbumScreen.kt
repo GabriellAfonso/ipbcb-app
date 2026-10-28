@@ -75,10 +75,10 @@ import com.ipb.castelobranco.features.gallery.presentation.components.BandText
 import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
-import com.ipb.castelobranco.features.gallery.presentation.components.PanelAction
-import com.ipb.castelobranco.features.gallery.presentation.components.PanelHeader
-import com.ipb.castelobranco.features.gallery.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.features.gallery.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -241,10 +241,11 @@ fun AlbumContent(
                 actions = panelActions,
                 onDismiss = { isPanelOpen = false },
                 header = PanelHeader(
-                    cover = state.cover,
                     name = state.title,
                     detail = listOfNotNull(state.eventDate, state.countLabel).joinToString(DETAIL_SEPARATOR)
                         .ifEmpty { null },
+                    cover = state.cover,
+                    showCover = true,
                 ),
             )
         }

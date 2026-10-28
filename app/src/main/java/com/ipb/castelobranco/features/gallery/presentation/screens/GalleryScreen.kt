@@ -76,9 +76,9 @@ import com.ipb.castelobranco.features.gallery.presentation.components.BandText
 import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
-import com.ipb.castelobranco.features.gallery.presentation.components.PanelAction
-import com.ipb.castelobranco.features.gallery.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.features.gallery.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.features.gallery.presentation.components.overlappedBelow
 import com.ipb.castelobranco.features.gallery.presentation.state.albumsLabel
 import com.ipb.castelobranco.features.gallery.presentation.state.galleryCountLabel
