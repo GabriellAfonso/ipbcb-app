@@ -141,8 +141,19 @@ saving the full order on drop. A stale order (`SUNDAY_SCHOOL_ORDER_MISMATCH`) re
 
 ## R-13 — Year tabs and theme
 
-**Decision**: `PrimaryScrollableTabRow` with the year only (themes are long); above the list a header line
-"2026 — O Drama das Escrituras" (or "2026"). Tabs newest first, as the server sends.
+**Decision**: `GreenTabBar` (`core/presentation/components`) in `BaseScreen.topBarExtension`, with the year only
+(themes are long), and the list on a cream sheet with rounded top corners over the green, like Tabelas and
+Escala. Above the list, a parchment year header: "ANO 2026", the theme, "18 aulas". Tabs newest first, as the
+server sends; none when there is a single year. Chosen in the design round of 28/10/2026 (option 1, "cartões
+numerados") over a timeline and a highlight-plus-compact-list layout.
+
+## R-13a — Lesson cards and lining figures
+
+**Decision**: each lesson is a card (cream-white, ruled border, 14 dp corners) with its position + 1 in a 42 dp
+circle ringed in gold, the title in the title font, the date "dd/MM/yyyy · Prof. X" below and a chevron. The
+number tells the order, which matters in a year that walks through the Bible. The title font (Cormorant Garamond)
+defaults to old-style figures, where the "2" of "2 Samuel" is x-height tall; every `LessonStyle` text style sets
+`fontFeatureSettings = "lnum"`.
 
 ## R-14 — Unsaved changes and new lessons
 

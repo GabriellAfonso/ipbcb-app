@@ -63,6 +63,7 @@ data class LessonStyle(
             fontSize = fontSize.sp,
             lineHeight = (fontSize * BODY_LINE_HEIGHT).sp,
             color = colors.text,
+            fontFeatureSettings = LINING_FIGURES,
         )
 
     val small: TextStyle
@@ -75,6 +76,7 @@ data class LessonStyle(
             fontSize = (fontSize * TITLE).sp,
             lineHeight = (fontSize * TITLE * 1.2f).sp,
             color = colors.text,
+            fontFeatureSettings = LINING_FIGURES,
         )
 
     val cardTitle: TextStyle
@@ -87,9 +89,12 @@ data class LessonStyle(
             fontSize = (fontSize * LABEL).sp,
             letterSpacing = 0.08.em,
             color = colors.gold,
+            fontFeatureSettings = LINING_FIGURES,
         )
 
     private companion object {
+        /** Cormorant Garamond defaults to old-style figures: the "2" of "2 Samuel" would be x-height tall (R-13a). */
+        const val LINING_FIGURES = "lnum"
         const val BODY_LINE_HEIGHT = 1.6f
         const val SMALL = 0.85f
         const val SMALL_LINE_HEIGHT = 1.4f

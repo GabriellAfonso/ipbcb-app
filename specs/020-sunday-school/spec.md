@@ -157,7 +157,9 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
   current years.
 - A lesson saved offline is later unpublished: online the reader shows "Esta aula não está mais disponível" and
   drops the copy.
-- The theme does not fit the tab: the tab shows only the year, and the theme appears above the lesson list.
+- The theme does not fit the tab: the tab shows only the year, and the theme appears in the year header above the
+  lesson list.
+- Only one year: no tabs, only the year header.
 - A year without theme: shows only the year.
 - Very long lesson (8 thousand characters): scrolling stays smooth and the font size bar works throughout.
 - Dark mode: dark brown background, readable contrast; the parchment texture only on header and key verses.
@@ -176,10 +178,12 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
   cards stay as they are.
 - **FR-002**: The EBD screen MUST show one tab per year returned by the server, newest first, and open the
   server's default year; no year is hard-coded.
-- **FR-003**: The year's theme MUST be shown with the year ("2026 — O Drama das Escrituras"); with no theme only
-  the year is shown.
-- **FR-004**: The lesson list MUST follow the server's order and show title, date (when known) and teacher (when
-  not blank).
+- **FR-003**: The year's theme MUST be shown with the year in a parchment header above the list ("ANO 2026", "O
+  Drama das Escrituras", "18 aulas"); with no theme only the year and the count are shown.
+- **FR-004**: The lesson list MUST follow the server's order and show each lesson as a card with its number in the
+  year (1, 2, 3… in list order, in a gold-ringed circle), title, date (when known) and teacher (when not blank).
+  Year tabs, when there is more than one year, sit inside the green top bar like the Tabelas tabs.
+- **FR-004a**: Digits in the EBD title font MUST use lining figures, so "2 Samuel" shows a full-height "2".
 - **FR-005**: The lesson reader MUST render every block type listed in the backend contract, with section titles
   and icons, and `**bold**` / `*italic*` inline formatting; no other markup is interpreted.
 - **FR-006**: An unknown block type MUST be skipped and an unknown icon not drawn, never failing the screen.

@@ -53,6 +53,8 @@ class SundaySchoolViewModelTest {
         assertEquals(listOf(2027, 2026), state.years.map { it.year })
         assertEquals(2027, state.selectedYear)
         assertEquals("2027", state.yearLabel)
+        assertEquals("", state.yearTheme)
+        assertEquals("1 aula", state.lessonCountLabel)
         assertEquals("Gênesis", state.lessons.single().title)
     }
 
@@ -69,6 +71,8 @@ class SundaySchoolViewModelTest {
         val state = vm.uiState.value
         assertEquals(listOf(null, 2026), repository.indexLoads)
         assertEquals("2026 — O Drama das Escrituras", state.yearLabel)
+        assertEquals("O Drama das Escrituras", state.yearTheme)
+        assertEquals("2 aulas", state.lessonCountLabel)
         assertEquals(listOf("Josué", "Rute"), state.lessons.map { it.title })
         assertEquals(listOf(2027, 2026), state.years.map { it.year })
     }

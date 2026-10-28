@@ -68,7 +68,7 @@ motivos: `specs/020-sunday-school/research.md`.
 
 | Tela | Rota | Conteúdo |
 |------|------|----------|
-| EBD | `SundaySchool` | Abas por ano (as do servidor, mais recente primeiro; abre o ano padrão do servidor), "2026 — Tema" acima da lista, aulas na ordem do servidor com data e professor quando conhecidos. Sem aula publicada: "Nenhuma aula publicada ainda" |
+| EBD | `SundaySchool` | Abas por ano dentro da barra verde (as do servidor, mais recente primeiro; abre o ano padrão do servidor; nenhuma aba com um ano só), cabeçalho em pergaminho "ANO 2026 / Tema / N aulas", aulas na ordem do servidor em cartões com o número da aula, título, data e professor quando conhecidos. Sem aula publicada: "Nenhuma aula publicada ainda" |
 | Aula | `SundaySchoolLesson/{lessonId}` | Cabeçalho em pergaminho (título, ano e tema, data · professor), seções com ícone e blocos; "Aa" |
 | Gestão | `SundaySchoolManage` (`AppRoutes.SUNDAY_SCHOOL_MANAGE`, aberta pelo card "EBD" do painel) | Seletor de ano, aulas do ano com "Rascunho" nas não publicadas, arrastar pela alça (pressão longa) para reordenar, apagar, "Nova aula", menu "Anos da EBD" |
 | Formulário | `SundaySchoolLessonForm?lessonId={id}&year={ano}` (`-1` = nova) | Título, ano, data, professor, status (Rascunho/Publicado) e o conteúdo; abas "Editar" e "Pré-visualizar" |

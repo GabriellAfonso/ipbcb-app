@@ -25,12 +25,17 @@ data class SundaySchoolUiState(
     val selectedYear: Int? = null,
     /** "2026 — O Drama das Escrituras" for the header above the list. */
     val yearLabel: String = "",
+    /** The shown year's theme for the parchment header; blank when the year has none. */
+    val yearTheme: String = "",
     val lessons: List<LessonSummary> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
 ) {
     /** No published lesson at all. */
     val isEmpty: Boolean get() = !isLoading && error == null && years.isEmpty()
+
+    /** "18 aulas" / "1 aula" under the theme. */
+    val lessonCountLabel: String get() = if (lessons.size == 1) "1 aula" else "${lessons.size} aulas"
 }
 
 /**
@@ -75,6 +80,7 @@ class SundaySchoolViewModel @Inject constructor(
                     years = years.ifEmpty { index.years },
                     selectedYear = index.year?.year ?: year,
                     yearLabel = index.year?.label.orEmpty(),
+                    yearTheme = index.year?.theme.orEmpty(),
                     lessons = index.lessons,
                     isLoading = false,
                 )
