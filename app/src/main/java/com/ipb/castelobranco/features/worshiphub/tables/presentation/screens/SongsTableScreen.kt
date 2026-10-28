@@ -112,7 +112,8 @@ fun WorshipSongsTableScreen(
     onBackClick: () -> Unit,
     onSongClick: (songId: Int) -> Unit,
     onRegisterSundayClick: () -> Unit,
-    viewModel: SongsTableViewModel
+    viewModel: SongsTableViewModel,
+    initialTabIndex: Int = 0,
 ) {
     val state = WorshipSongsUiState(
         sundays = viewModel.filteredSundays.collectAsStateWithLifecycle().value,
@@ -159,6 +160,7 @@ fun WorshipSongsTableScreen(
         state = state,
         actions = actions,
         snackbarHostState = snackbarHostState,
+        initialTabIndex = initialTabIndex,
     )
 }
 
@@ -167,6 +169,7 @@ fun WorshipSongsTableContent(
     state: WorshipSongsUiState,
     actions: WorshipSongsActions,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    initialTabIndex: Int = 0,
 ) {
     state.save.pendingSaveDate?.let { date ->
         AlertDialog(
@@ -180,7 +183,7 @@ fun WorshipSongsTableContent(
 
     val tabs = listOf("Últimos Domingos", "Mais tocadas", "Top tons", "Repertório")
     // Saveable: the NavHost keeps it while Song detail is on top, so back returns to the same tab.
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTabIndex) }
     val searchQuery = state.searchQuery
     // The query outlives this composition in the ViewModel: reopen the bar so an active filter stays visible.
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
@@ -377,7 +380,7 @@ private fun <T> SnapshotContent(
     }
 }
 
-private const val REPERTOIRE_TAB_INDEX = 3
+const val REPERTOIRE_TAB_INDEX = 3
 private val SheetRadius = 18.dp
 
 @Composable

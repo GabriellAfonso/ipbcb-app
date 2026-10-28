@@ -16,7 +16,7 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmo
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation.WorshipHubRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 
-private object ChordChartsRoutes {
+object ChordChartsRoutes {
     const val List   = "chord_charts_list"
     const val Detail = "chord_chart_detail/{chordChartId}"
     const val Create = "chord_chart_create"

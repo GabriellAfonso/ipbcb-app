@@ -12,18 +12,24 @@ import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.components.InDevelopmentScreen
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
+import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.navigation.ChordChartsRoutes
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.navigation.chordChartsGraph
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.navigation.lyricsGraph
 import com.ipb.castelobranco.features.worshiphub.register.presentation.screens.SundayRegistrationScreen
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.navigation.SongsRoutes
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.navigation.songsGraph
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.screens.WorshipHubScreen
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.screens.REPERTOIRE_TAB_INDEX
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.screens.WorshipSongsTableScreen
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.SongsTableViewModel
 
 @Stable
 data class WorshipHubNav(
     val tables: () -> Unit,
+    /** Tables opened on the Repertório tab: "Montar repertório". */
+    val repertoire: () -> Unit,
+    val chordChart: (chordChartId: Int) -> Unit,
+    val songDetail: (songId: Int) -> Unit,
     val songs: () -> Unit,
     val button3: () -> Unit,
     val button4: () -> Unit,
@@ -36,7 +42,10 @@ data class WorshipHubNav(
 
 object WorshipHubRoutes {
     const val Hub     = "WorshipMain"
-    const val Tables  = "WorshipTables"
+    const val ARG_TAB = "tab"
+    const val Tables  = "WorshipTables?$ARG_TAB={$ARG_TAB}"
+
+    fun tables(tab: Int = 0) = "WorshipTables?$ARG_TAB=$tab"
     const val Songs   = "songs"
     const val Button3 = "button_3"
     const val Button4 = "button_4"
@@ -54,7 +63,10 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
         composable(WorshipHubRoutes.Hub) {
             val nav = remember {
                 WorshipHubNav(
-                    tables  = { navController.navigate(WorshipHubRoutes.Tables) },
+                    tables  = { navController.navigate(WorshipHubRoutes.tables()) },
+                    repertoire = { navController.navigate(WorshipHubRoutes.tables(REPERTOIRE_TAB_INDEX)) },
+                    chordChart = { id -> navController.navigate(ChordChartsRoutes.detail(id)) },
+                    songDetail = { id -> navController.navigate(SongsRoutes.detail(id)) },
                     songs   = { navController.navigate(WorshipHubRoutes.Songs) },
                     button3 = { navController.navigate(WorshipHubRoutes.Button3) },
                     button4 = { navController.navigate(WorshipHubRoutes.Button4) },
@@ -65,16 +77,20 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
                     back    = { navController.safePopBackStack() },
                 )
             }
-            WorshipHubScreen(nav = nav)
+            WorshipHubScreen(nav = nav, viewModel = hiltViewModel())
         }
 
-        composable(WorshipHubRoutes.Tables) {
+        composable(
+            route = WorshipHubRoutes.Tables,
+            arguments = listOf(navArgument(WorshipHubRoutes.ARG_TAB) { type = NavType.IntType; defaultValue = 0 }),
+        ) { entry ->
             val viewModel: SongsTableViewModel = hiltViewModel()
             WorshipSongsTableScreen(
                 onBackClick = { navController.safePopBackStack() },
                 onSongClick = { songId -> navController.navigate(SongsRoutes.detail(songId)) },
                 onRegisterSundayClick = { navController.navigate(AppRoutes.sundayRegister()) },
                 viewModel   = viewModel,
+                initialTabIndex = entry.arguments?.getInt(WorshipHubRoutes.ARG_TAB) ?: 0,
             )
         }
 

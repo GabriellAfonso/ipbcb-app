@@ -1,19 +1,51 @@
 # Worship Hub — Spec
 
-O Worship Hub (Min. Louvor) e o hub central do ministerio de louvor da igreja. Concentra todas as ferramentas relacionadas a musicas: tabelas de historico, cifras, letras, e catalogo de musicas.
+O Worship Hub (Louvor) e o hub central do ministerio de louvor da igreja. Concentra todas as ferramentas relacionadas a musicas: tabelas de historico, cifras, letras, e catalogo de musicas.
 
 ---
 
 ## 1. Estrutura do Hub
 
-Tela principal com grid de botoes 2x2 (expansivel):
+Layout "domingo em destaque". Título "Louvor" na barra do `BaseScreen` (logo `ic_worshiphub`, seta de voltar).
 
-| Posicao | Botao     | Icone           | Destino                |
-|---------|-----------|-----------------|------------------------|
-| 1       | Tabelas   | `ic_table`      | Tela de tabelas (tabs) |
-| 2       | Musicas   | `ic_songs`      | Lista de musicas       |
-| 3       | Cifras    | `ic_chord_chart` | Lista de cifras       |
-| 4       | Letras    | `ic_lyrics`     | Lista de letras        |
+**Faixa verde** (`ipbGreen`, igual nos dois temas, cantos inferiores de 28dp), só para membros do Louvor
+(`is_worship_member`): o repertório de domingo é só deles, como a seção de Cifras e Letras (seção 4.1). Quem não é
+membro (ou está sem login) vê a mesma faixa, sem repertório: "Ministério de Louvor" (pequeno) e "Músicas, cifras e
+letras", com os cartões subindo sobre ela como sempre.
+
+- "Repertório de domingo" (pequeno) e "Domingo, dd/MM" — a data do repertório guardado; sem repertório, o domingo
+  de `setlistDateFor(hoje)`.
+- **Com repertório** (`ObserveSundaySetlistUseCase`, core: vale até o fim do domingo dele, funciona offline): um
+  cartão translúcido com uma linha por música, na ordem das posições — posição, "título · artista" (reticências)
+  e o selo do tom. Tocar numa música abre a cifra dela (a mesma cifra que a seção do domingo em Cifras escolhe
+  para a música); sem cifra, abre o detalhe da música. Embaixo, "Cifras" (pílula branca) e "Letras" (pílula de
+  contorno) abrem as listas, que já começam pela seção do domingo. Rodapé "Salvo por {nome} · dd/MM às HH:mm",
+  no fuso do aparelho; sem nome (conta apagada), "Salvo em dd/MM às HH:mm"; data ilegível, sem rodapé.
+- **Sem repertório:** "Ainda não foi salvo.". Com `can_save_setlist`, o botão "Montar repertório" abre Tabelas
+  direto na aba Repertório (seção 2.4).
+- **Remover:** com repertório na faixa e `can_save_setlist`, um botão "Remover" (lixeira) ao lado da data. Pede
+  confirmação ("Remover repertório de dd/MM?" / "As músicas planejadas para esse domingo serão apagadas.") e apaga
+  no servidor (`DELETE api/setlists/{date}/`, o mesmo da gestão — admin spec §2), em qualquer dia: a gestão só
+  mostra o domingo depois que ele passa. `404` conta como removido. No sucesso o repertório sai do aparelho na hora,
+  o snackbar diz "Repertório de domingo dd/MM removido." e o app relê o repertório atual (pode vir o de um domingo
+  seguinte). Falha mantém tudo e mostra "Não foi possível remover o repertório de dd/MM.". Enquanto apaga, o botão
+  fica desabilitado com um spinner.
+- Abrir o hub relê o repertório em silêncio (`SyncSundaySetlistUseCase`), como o pull-to-refresh das listas.
+
+**Cartões 2x2** (104dp de altura, cantos de 18dp, fundo e sombra do card da home): ícone branco num círculo
+`primaryContainer` de 44dp e o rótulo. Sobem 24dp sobre a faixa.
+
+| Posicao | Botao     | Icone            | Desenho | Destino                |
+|---------|-----------|------------------|---------|------------------------|
+| 1       | Tabelas   | `ic_table`       | tabela (o de sempre) | Tela de tabelas (tabs) |
+| 2       | Musicas   | `ic_songs`       | duas notas ligadas, em traço | Lista de musicas |
+| 3       | Cifras    | `ic_chord_chart` | diagrama de acorde (trastes, cordas, dedos), em traço | Lista de cifras |
+| 4       | Letras    | `ic_lyrics`      | linhas de texto com uma nota, em traço | Lista de letras |
+
+O primeiro quadro já mostra a faixa certa: repertório e permissões estão na memória e o estado começa deles
+(`ObserveSundaySetlistUseCase.current`, `ObserveWorshipAccessUseCase.current`), não de um estado vazio. A tela rola
+quando não cabe (celular deitado, repertório longo). Estado em `WorshipHubViewModel`
+(`hub/presentation`), faixa montada por `buildHubBand` (função pura).
 
 Navegacao: `CoreScreen → WorshipHubScreen → [Tabelas | Musicas | Cifras | Letras]`
 
@@ -539,8 +571,8 @@ content: String             // texto puro
 
 ```
 worshipHubGraph (AppRoutes.WORSHIP_HUB_GRAPH)
-├── WorshipHubScreen (hub com botoes)
-├── Tables (tela unica, inline)
+├── WorshipHubScreen (hub: faixa do domingo + cartoes)
+├── Tables (tela unica, inline; `tab` opcional abre numa aba — o hub abre Repertorio)
 ├── SundayRegistrationScreen (`AppRoutes.SUNDAY_REGISTER` — `songs` ≥ `manage`)
 ├── songsGraph (sub-graph novo)
 │   ├── SongsListScreen (lista com busca)
