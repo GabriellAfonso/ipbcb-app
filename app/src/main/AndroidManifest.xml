@@ -79,7 +79,7 @@
             android:name=".core.presentation.CoreActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.IPBCasteloBranco">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

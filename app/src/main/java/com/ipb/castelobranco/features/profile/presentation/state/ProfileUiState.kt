@@ -12,6 +12,10 @@ data class ProfileUiState(
     val localPhotoPath: String? = null,
     val localPhotoVersion: Int = 0,
     val userName: String? = null,
+    /** First word of the profile name, for the home greeting; `null` while unknown or blank. */
+    val firstName: String? = null,
+    /** The member record linked to the user (`MeProfile.memberId`); `null` while unknown or not linked. */
+    val memberId: Long? = null,
     /** "março de 2025"; `null` while unknown (the line is hidden). */
     val joinedSince: String? = null,
     /** `null` while unknown: the top bar menu ("Trocar senha") hidden and "Excluir conta" disabled. */

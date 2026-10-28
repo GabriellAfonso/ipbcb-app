@@ -523,6 +523,11 @@ object StorageDirConstants {
 
 Unica Activity do app (`@AndroidEntryPoint`), `launchMode="singleTop"`.
 
+**Orientacao:** livre (em pe e deitado). A Activity declara `configChanges` de orientacao e tamanho
+(`orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden`): girar o celular nao recria a Activity, o
+Compose so recompoe com a nova configuracao, entao o estado em `remember` sobrevive. O recorte de foto
+(`UCropActivity`) continua travado em retrato.
+
 - `enableEdgeToEdge()`
 - Aplica `IPBCasteloBrancoTheme`
 - Cria `NavController` + `AppNavHost`
@@ -584,7 +589,11 @@ se ele mudou no servidor.
 
 ### 6.3 CoreScreen (Tela Principal)
 
-Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
+Tela home com drawer de navegacao e, de cima para baixo: faixa verde, cartoes de atalho e carousel de destaques.
+Tudo cabe numa tela, sem rolagem, em qualquer altura de tela (`HomeLayout`). A faixa tem a altura do conteudo. A
+grade de atalhos fica centralizada na vertical da tela inteira (da barra de status a barra de navegacao), separada
+da faixa: nao sobe por cima dela. O carousel fica centralizado no espaco que sobra embaixo. Quando nao da para
+centralizar, a grade se move o minimo: fica pelo menos 16dp abaixo da faixa e deixa o carousel em largura total.
 
 #### Drawer
 
@@ -595,33 +604,69 @@ Tela home com drawer de navegacao + grid de botoes + carousel de destaques.
 | Configuracoes | sempre | navega para settings |
 | Sair | logado | executa logout |
 
-#### Grid de Botoes (2x3)
+Largura: 80% da tela em pe e 40% deitado (altura menor que 480dp), no maximo 360dp. Girar o celular fecha o menu.
 
-| Posicao | Botao | Destino |
-|---------|-------|---------|
-| 1 | Agenda | ScheduleScreen |
-| 2 | Galeria | GalleryGraph |
-| 3 | Hinario | HymnalGraph |
-| 4 | Biblia | BibleGraph |
-| 5 | Min. Louvor | WorshipHubGraph |
-| 6 | Estudos | StudiesGraph |
+#### Celular deitado
+
+Com altura de tela menor que 480dp (altura compacta do Material: celular deitado), a home troca de layout
+(`HomeLandscapeLayout`), com as mesmas pecas e sem rolagem:
+
+- **Faixa fina em cima:** a faixa verde vira uma linha (cantos inferiores de 22dp). Data e saudacao a esquerda, numa
+  linha cada, com reticencias; o cartao da escala (300dp de largura) ou o botao de entrar a direita.
+- **Embaixo, lado a lado:** os 6 cartoes de atalho em 3x2 a esquerda (80dp de altura, circulo de 34dp, icone de 19dp)
+  e o carousel de destaques a direita, centralizado, em 3:2 pela altura que sobra.
+
+Tablet em pe (altura >= 480dp) continua com o layout em pe.
+
+#### Faixa verde
+
+Continua a top bar (`ipbGreen`, igual nos dois temas), com cantos inferiores arredondados (28dp). Texto branco.
+
+- Linha de data: dia da semana e data por extenso ("Quarta, 28 de outubro").
+- Saudacao pela hora do aparelho: "Bom dia" (05h-11h59), "Boa tarde" (12h-17h59), "Boa noite" (18h-04h59). Logado
+  e com nome no perfil, segue o primeiro nome ("Boa noite, Gabriel"); visitante ve "Bem-vindo à IPB Castelo Branco".
+- Abaixo, um cartao translucido clicavel (abre a escala) com um bloco de data (mes abreviado + dia) e duas linhas
+  (`ScheduleViewModel.band`, tipo `ScheduleBandUi`):
+  - **Escalado:** "Sua próxima escala" / "Domingo, 15/11 · 18h" / "Faltam 18 dias" ("Amanhã" a 1 dia, "É hoje" no
+    dia). E a primeira data do mes, de hoje em diante, em qualquer secao da escala, cuja linha e do membro ligado ao
+    usuario (`MeProfile.memberId` igual ao `member.id` da escala). Bloco de data branco.
+  - **Fora da escala:** "Próximo culto" / "Quinta, 29/10 · 19h30" / "Escalado: Marcos Vinícius" — a proxima data
+    da secao do card da escala (`nextSection`). Bloco de data translucido.
+  - Sem escala carregada, sem data futura no mes ou sem acesso: o cartao nao aparece, ficam data e saudacao.
+- Visitante: no lugar do cartao, o botao branco "Entrar para ver sua escala" (abre auth).
+
+O horario some do titulo quando a secao nao tem horario.
+
+#### Cartoes de atalho (3x2)
+
+Seis cartoes iguais, 90dp de altura, em 3 colunas com 10dp entre eles e 16dp de margem lateral. Fundo e sombra do card do carousel (`surfaceContainerLowest` no claro, `surfaceContainerHigh`
+no escuro), cantos de 18dp. Dentro: icone branco num circulo `primaryContainer` de 38dp e o rotulo abaixo.
+
+| Posicao | Rotulo | Icone | Destino |
+|---------|--------|-------|---------|
+| 1 | Louvor | `ic_worshiphub` | WorshipHubGraph |
+| 2 | Escala | `ic_schedule` | ScheduleScreen |
+| 3 | Galeria | `ic_galery` | GalleryGraph |
+| 4 | Hinário | `ic_sarca_ipb` | HymnalGraph |
+| 5 | Estudos | `ic_studies` (capelo, Material Symbols `school`) | StudiesGraph |
+| 6 | Bíblia | `ic_bible` | BibleGraph |
 
 #### Carousel de Destaques (auto-scroll 5s)
 
 | Pagina | Conteudo |
 |--------|----------|
-| 1 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
-| 2 | Escala do proximo culto (tabela dia x membro) — clicavel, abre a tela de escala (`AppRoutes.SCHEDULE`) |
-| 3+ | Um card por evento ativo, no maximo 3 (`HighlightEvent`) — clicavel, abre o detalhe (`AppRoutes.EVENT_DETAIL`); sem evento, "Eventos — Nenhum evento esse mes" (`HighlightEvents`). Ver `specs/events/spec.md` §2 |
+| 1 | Escala do proximo culto (tabela dia x membro) — clicavel, abre a tela de escala (`AppRoutes.SCHEDULE`) |
+| 2 | Aniversariantes do mes — clicavel, abre `BirthdaysScreen` (`AppRoutes.BIRTHDAYS`) |
+| 3+ | Um card por evento ativo, no maximo 3 (`HighlightEvent`) — clicavel, abre o detalhe (`AppRoutes.EVENT_DETAIL`). Sem evento (ou ainda carregando), nenhuma pagina de evento. Ver `specs/events/spec.md` §2 |
 | Fallback | "Escala indisponivel" (se dados nao carregaram) — tambem clicavel, abre a tela de escala |
 
-**Carregando, nunca vazio antes da hora.** A home nao mostra "Nenhum aniversariante", "Escala indisponivel" nem
-"Nenhum evento" enquanto o dado ainda pode chegar. Com cache em disco, o primeiro frame ja espera por ele (secao
-6.1). Sem cache (primeira instalacao) ou depois de um login (o boot anonimo guardou 401), cada pagina sem dado,
-enquanto `CoreViewModel.isSyncing`, mostra icone + titulo e um spinner pequeno no lugar da mensagem
-(`HighlightBirthdaysLoading`, `HighlightScheduleLoading`, `HighlightEventsLoading`). Terminada a sincronizacao sem
-dado, entra a mensagem de vazio/indisponivel de sempre. A `CoreView` junta tudo em `HighlightsUi` (escala sem dado =
-`ScheduleUiState` que nao e `Success` nem `Empty`; aniversariantes e eventos sem dado = `null`).
+**Carregando, nunca vazio antes da hora.** A home nao mostra "Nenhum aniversariante" nem "Escala indisponivel"
+enquanto o dado ainda pode chegar. Com cache em disco, o primeiro frame ja espera por ele (secao 6.1). Sem cache
+(primeira instalacao) ou depois de um login (o boot anonimo guardou 401), cada pagina sem dado, enquanto
+`CoreViewModel.isSyncing`, mostra icone + titulo e um spinner pequeno no lugar da mensagem
+(`HighlightBirthdaysLoading`, `HighlightScheduleLoading`). Terminada a sincronizacao sem dado, entra a mensagem de
+vazio/indisponivel de sempre. A `CoreView` junta tudo em `HighlightsUi` (escala sem dado = `ScheduleUiState` que nao
+e `Success` nem `Empty`; aniversariantes e eventos sem dado = `null`).
 `ScheduleViewModel.nextSection` comeca do snapshot ja em memoria, nao de `null`.
 
 **Paginas de evento.** Vem do `EventsHighlightViewModel` (`features/events`), coletado na `CoreView` como o
@@ -637,8 +682,13 @@ calculado no ViewModel (`nextDay`):
 - **datas passadas** (dia < `nextDay`, ou todas quando `nextDay` e nulo): texto esmaecido;
 - escala de mes futuro: nenhuma data passada, a primeira e a proxima; escala de mes anterior: todas passadas.
 
+A linha do proprio usuario (mesmo `memberId`) ganha " · você" depois do nome, em `primary`.
+
+**Card dos aniversariantes.** O aniversario de hoje tem o badge destacado (`BirthdayEntry.highlighted`).
+
 HorizontalPager com auto-scroll (tween 600ms) dentro de um card elevado em 3:2 — proporcao fixa, para o card nao
-achatar em telas largas; e a proporcao do flyer de evento, que aparece inteiro. Cantos de 20dp, sombra externa suave
+achatar em telas largas; e a proporcao do flyer de evento, que aparece inteiro. Em tela baixa, onde a largura toda
+nao cabe na altura que sobra, o card encolhe mantendo o 3:2. Cantos de 20dp, sombra externa suave
 e fundo que se destaca da tela (`surfaceContainerLowest` no claro, `surfaceContainerHigh` no escuro); sem sombra
 interna. Abaixo do card, um indicador de pagina (pontos; o da pagina atual alongado, cor `primaryContainer`),
 escondido quando ha uma pagina so.
@@ -646,9 +696,11 @@ escondido quando ha uma pagina so.
 Cabecalho das paginas de escala e aniversariantes: sem faixa colorida — titulo (e o emoji, nos aniversariantes) e,
 na escala, o horario num chip, separados do conteudo por um divisor fino. Na escala, a proxima data fica numa faixa
 arredondada `secondaryContainer`, sem rotulo, com dia e nome alinhados as outras linhas; as linhas nao tem
-divisores. Placeholders (escala indisponivel, sem evento, sem aniversariante) usam `onSurface`/`onSurfaceVariant`.
+divisores. Placeholders (escala indisponivel, sem aniversariante) usam `onSurface`/`onSurfaceVariant`.
 Ao voltar para a home, o carousel sempre mostra uma pagina inteira: sair da home no meio da animacao cancela o
 scroll e o estado salvo guarda o deslocamento parcial, entao o auto-scroll encaixa na pagina atual antes do loop.
+
+**Fora do escopo por enquanto:** versiculo do dia (pensado como pagina do carousel, lido da Biblia offline).
 
 #### BirthdaysScreen (aniversariantes do ano)
 

@@ -64,9 +64,11 @@ fun Highlight(
 
     val shape = RoundedCornerShape(HighlightCorner)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // On a short screen the card shrinks, keeping 3:2, and the page dots still fit below it.
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
+                .weight(1f, fill = false)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 // Event flyers are cropped to 3:2 on upload; a fixed ratio also keeps the card from flattening on
@@ -116,7 +118,7 @@ private val DotGap = 6.dp
 
 /** The card stands out from the screen: white on the light background, a lighter gray on the dark one. */
 @Composable
-private fun highlightCardColor(): Color {
+fun highlightCardColor(): Color {
     val scheme = MaterialTheme.colorScheme
     return if (scheme.surface.luminance() < DARK_SURFACE_LUMINANCE) scheme.surfaceContainerHigh
     else scheme.surfaceContainerLowest
@@ -185,8 +187,11 @@ private const val CHIP_ALPHA = 0.06f
 private const val DIVIDER_ALPHA = 0.08f
 private const val PAST_ROW_ALPHA = 0.45f
 
+private const val OWN_ROW_SUFFIX = " · você"
+
+/** @param ownMemberId the logged-in user's member record: their row gets " · você" (`specs/core/spec.md` §6.3). */
 @Composable
-fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) {
+fun HighlightSundaySchedule(schedule: NextScheduleUi, ownMemberId: Long? = null, onClick: () -> Unit = {}) {
     val section = schedule.section
     val rows = section.rows.sortedBy { it.day }
 
@@ -235,8 +240,9 @@ fun HighlightSundaySchedule(schedule: NextScheduleUi, onClick: () -> Unit = {}) 
                         fontWeight = if (isNext) FontWeight.Bold else FontWeight.SemiBold,
                         color = color
                     )
+                    val isOwn = ownMemberId != null && row.memberId == ownMemberId
                     Text(
-                        text = row.member,
+                        text = if (isOwn) row.member + OWN_ROW_SUFFIX else row.member,
                         modifier = Modifier.weight(0.75f),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isNext) FontWeight.Bold else null,
@@ -255,8 +261,6 @@ private const val SCHEDULE_ICON = "📅"
 private const val SCHEDULE_TITLE = "Escala"
 private const val BIRTHDAYS_ICON = "🎂"
 private const val BIRTHDAYS_TITLE = "Aniversariantes do Mês"
-private const val EVENTS_ICON = "📌"
-private const val EVENTS_TITLE = "Eventos"
 
 @Composable
 fun HighlightScheduleUnavailable(onClick: () -> Unit = {}) {
@@ -289,8 +293,9 @@ fun HighlightBirthdaysLoading(onClick: () -> Unit = {}) {
     )
 }
 
+/** @param todayDay day of the month today: that birthday's badge is highlighted. */
 @Composable
-fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
+fun HighlightBirthdays(birthdays: List<Birthday>, todayDay: Int? = null, onClick: () -> Unit = {}) {
     if (birthdays.isEmpty()) {
         HighlightPlaceholder(
             icon = BIRTHDAYS_ICON,
@@ -362,6 +367,7 @@ fun HighlightBirthdays(birthdays: List<Birthday>, onClick: () -> Unit = {}) {
                             badgeRadius = badgeRadius,
                             badgeTextStyle = badgeTextStyle,
                             nameStyle = nameStyle,
+                            highlighted = birthday.day == todayDay,
                         )
                     }
                 }
@@ -441,20 +447,6 @@ fun HighlightEvent(
     }
 }
 
-@Composable
-fun HighlightEvents() {
-    HighlightPlaceholder(
-        icon = EVENTS_ICON,
-        title = EVENTS_TITLE,
-        message = "Nenhum evento esse mês"
-    )
-}
-
-@Composable
-fun HighlightEventsLoading() {
-    HighlightPlaceholder(icon = EVENTS_ICON, title = EVENTS_TITLE, message = null)
-}
-
 private val LoadingIndicatorSize = 18.dp
 private val LoadingIndicatorStroke = 2.dp
 
@@ -509,7 +501,6 @@ private fun HighlightPreview() {
         pages = listOf(
             { HighlightScheduleUnavailable() },
             { HighlightBirthdays(birthdays = emptyList()) },
-            { HighlightEvents() }
         )
     )
 }
@@ -521,7 +512,6 @@ private fun HighlightLoadingPreview() {
         pages = listOf(
             { HighlightBirthdaysLoading() },
             { HighlightScheduleLoading() },
-            { HighlightEventsLoading() }
         )
     )
 }

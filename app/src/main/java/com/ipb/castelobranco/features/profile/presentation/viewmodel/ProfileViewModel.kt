@@ -82,6 +82,8 @@ class ProfileViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 userName = profile.name.trim().ifBlank { "Usuário" },
+                                firstName = profile.name.trim().substringBefore(' ').ifBlank { null },
+                                memberId = profile.memberId,
                                 photoUrl = profile.photoUrl,
                                 joinedSince = profile.dateJoined?.let(::formatJoinedSince),
                                 hasPassword = profile.hasPassword,
