@@ -1,7 +1,7 @@
 # Estudos — Spec
 
 Aba de estudos do app. Tem duas seções, **Doutrina** (os Símbolos de Westminster) e **Escola Bíblica Dominical**
-(EBD, §5), e duas anunciadas como "Em breve" (Personagens Bíblicos, História da Igreja). A leitura não exige
+(EBD, §5), e duas anunciadas como "Em breve" (Personagens Bíblicos, História do Cristianismo). A leitura não exige
 autenticação; a gestão da EBD exige o escopo `sunday_school`. Origem: `specs/013-doctrine-reader` e
 `specs/020-sunday-school`.
 
@@ -14,7 +14,7 @@ o estado compartilhado fica no repositório singleton.
 
 | Tela | Rota | Conteúdo |
 |------|------|----------|
-| Hub | `StudiesHub` | Cards "Doutrina" e "Escola Bíblica Dominical" + dois cards "Em breve" (não clicáveis) |
+| Hub | `StudiesHub` | Faixa verde + grade 2x2: "Doutrina", "EBD" e dois cards "Em breve" (não clicáveis) — §1.1 |
 | Doutrina | `DoctrineList` | Documentos na ordem do servidor, com contagem ("107 perguntas e respostas", "33 capítulos") |
 | Catecismo | `DoctrineCatechism/{slug}` | Cards de pergunta (número, pergunta, resposta com quebras de linha, chips de referência); busca, "Ir para nº…", tamanho do texto |
 | Confissão | `DoctrineConfession/{slug}` | Lista de capítulos (número + título em caixa de frase); busca |
@@ -32,6 +32,18 @@ o estado compartilhado fica no repositório singleton.
   mantendo maiúsculas em Deus, Cristo, Mediador, Espírito Santo, Sagradas Escrituras, Santíssima Trindade, Lei, Igreja,
   Senhor e Antigo/Novo Testamento.
 - Documento de `kind` desconhecido não aparece na lista.
+
+### 1.1 Hub
+
+Mesma cara do Hub do Louvor (`specs/worshiphub/spec.md` §1). Título "Estudos" na barra do `BaseScreen`.
+
+- **Faixa verde** (`ipbGreen`, cantos inferiores de 28dp): "Estudos" (pequeno), "Aprenda e aprofunde sua fé" e
+  "Material da igreja: doutrina, aulas da EBD e mais.".
+- **Grade 2x2** subindo 24dp sobre a faixa, cartões de 104dp (cantos de 18dp, fundo e sombra do card da home), ícone
+  branco num círculo `primaryContainer` de 44dp e o nome: "Doutrina" (abre a lista da doutrina), "EBD" (abre a EBD),
+  "Personagens Bíblicos" e "História do Cristianismo". Os dois últimos ainda não existem: ficam apagados, com o círculo
+  `outlineVariant`, uma etiqueta "EM BREVE" no canto e sem toque. Quando saírem, perdem a etiqueta.
+- A tela rola quando não cabe (celular deitado).
 
 ## 2. Endpoints
 
