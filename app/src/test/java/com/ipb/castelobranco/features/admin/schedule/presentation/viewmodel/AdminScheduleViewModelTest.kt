@@ -246,6 +246,52 @@ class AdminScheduleViewModelTest {
     }
 
     @Test
+    fun `saving marks the month saved, so it can be shared, until the next change`() = runTest {
+        coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
+        coEvery { repository.saveSchedule(any(), any(), any()) } returns Result.success(Unit)
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.canShare)
+
+        viewModel.onEvent(AdminScheduleEvent.SaveSchedule)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSaved)
+        assertTrue(viewModel.uiState.value.canShare)
+
+        viewModel.onEvent(AdminScheduleEvent.MemberSelected(itemIndex = 0, member = member2))
+        assertFalse(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.canShare)
+    }
+
+    @Test
+    fun `MemberCleared empties the service and marks unsaved changes`() = runTest {
+        coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+
+        viewModel.onEvent(AdminScheduleEvent.MemberCleared(itemIndex = 0))
+
+        assertNull(viewModel.uiState.value.items[0].selectedMember)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `counts and same-week repeats come from the schedule on screen`() = runTest {
+        val thursday = scheduleItem.copy(date = "2026-04-03", day = 3, scheduleTypeId = 2)
+        val nextWeek = scheduleItem.copy(date = "2026-04-08", day = 8)
+        coEvery { repository.generateSchedule(any(), any()) } returns
+            Result.success(listOf(scheduleItem, thursday, nextWeek))
+        viewModel.onEvent(AdminScheduleEvent.GenerateSchedule)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(mapOf(1 to 3), state.countsByMember)
+        assertEquals(3, state.filledCount)
+        assertTrue(state.isRepeatedThisWeek(0))
+        assertFalse(state.isRepeatedThisWeek(2))
+    }
+
+    @Test
     fun `saveSchedule failure sets Error saveResult with the authored userMessage`() = runTest {
         coEvery { repository.generateSchedule(any(), any()) } returns Result.success(listOf(scheduleItem))
         coEvery { repository.saveSchedule(any(), any(), any()) } returns

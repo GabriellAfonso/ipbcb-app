@@ -144,6 +144,25 @@ A leitura dos pendentes, a remoção de um repertório e a leitura de um domingo
 
 Eventos de uma vez saem por `AdminScheduleEvent`.
 
+**Layout "faixa e cards por culto":**
+- Barra "Escala" (sem título repetido no corpo).
+- Faixa verde (cantos inferiores de 24dp): setas de mês e, no meio, "Escala de" / "{Mês} {ano}". Embaixo, etiquetas:
+  "{f} de {n} dias preenchidos" e o estado — "Alterações não salvas" (amarela) ou "Salva" (branca, depois de salvar
+  esse mês sem mexer de novo).
+- Um card por culto, na ordem terça, quinta, domingo: o nome do tipo com "19:30 · {n} cultos" e uma linha por dia.
+  Cada linha: a data numa caixa ("TER" / "03"), o responsável com "{n}× no mês" embaixo (vazio: "Escolher
+  responsável" e um ponto tracejado). Se a mesma pessoa está em outro culto a até 3 dias, a linha diz "Também
+  escalado(a) nesta semana" (laranja, só aviso). As contagens saem da escala na tela.
+- Tocar numa linha abre um painel de baixo "{tipo}, dd/MM" / "Quem dirige esse culto?" com a busca "Buscar pessoa"
+  (sem acentos) e os membros do que menos aparece no mês ao que mais aparece: avatar com as iniciais, nome e "{n}× no
+  mês" ("Ainda não está no mês"); o atual em destaque. Com alguém escolhido, "Deixar sem responsável" no fim.
+- Rodapé fixo: botão redondo com dado ("Gerar aleatória"; spinner enquanto gera) e "Salvar escala" ("Salvando…"),
+  que só habilita com todos os dias preenchidos. Depois de salvar o mês, sem alterações, o botão vira
+  "Compartilhar": abre um painel "Compartilhar escala" / "Texto que vai para o WhatsApp" com a prévia do texto e o
+  botão "Compartilhar" (o `Intent.ACTION_SEND` do grafo). Salvo com sucesso: snackbar "Escala salva".
+- Trocar de mês com alterações não salvas pergunta antes: "Trocar de mês?" / "As alterações de {mês} ainda não foram
+  salvas." com "Ficar" e "Trocar sem salvar".
+
 "Salvar escala" não grava direto: abre um diálogo "Salvar escala de {mês} {ano}?" com "Salvar" e "Cancelar"
 (tocar fora também cancela). O mês no título é o que evita salvar no mês errado depois de navegar pelas setas.
 O diálogo não avisa se o mês já tem escala — a tela não sabe disso (não há endpoint que diga).

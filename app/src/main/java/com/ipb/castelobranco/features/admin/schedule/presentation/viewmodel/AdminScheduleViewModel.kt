@@ -37,6 +37,7 @@ class AdminScheduleViewModel @Inject constructor(
             AdminScheduleEvent.LoadMembers -> loadMembers()
             is AdminScheduleEvent.MonthChanged -> changeMonth(event.year, event.month)
             is AdminScheduleEvent.MemberSelected -> selectMember(event.itemIndex, event.member)
+            is AdminScheduleEvent.MemberCleared -> selectMember(event.itemIndex, null)
             AdminScheduleEvent.GenerateSchedule -> generateSchedule()
             AdminScheduleEvent.SaveRequested -> _uiState.update {
                 it.copy(showSaveConfirmation = it.canSave && !it.isSaving)
@@ -74,18 +75,20 @@ class AdminScheduleViewModel @Inject constructor(
                 year = year,
                 month = month,
                 items = AdminScheduleSkeleton.build(year, month),
-                hasUnsavedChanges = false
+                hasUnsavedChanges = false,
+                isSaved = false,
             )
         }
     }
 
-    private fun selectMember(index: Int, member: Member) {
+    private fun selectMember(index: Int, member: Member?) {
         _uiState.update { state ->
             state.copy(
                 items = state.items.mapIndexed { i, item ->
                     if (i == index) item.copy(selectedMember = member) else item
                 },
-                hasUnsavedChanges = true
+                hasUnsavedChanges = true,
+                isSaved = false,
             )
         }
     }
@@ -100,6 +103,7 @@ class AdminScheduleViewModel @Inject constructor(
                         it.copy(
                             isGenerating = false,
                             hasUnsavedChanges = true,
+                            isSaved = false,
                             items = items.map { item ->
                                 EditableScheduleUiState(
                                     date = item.date,
@@ -145,6 +149,7 @@ class AdminScheduleViewModel @Inject constructor(
                         it.copy(
                             isSaving = false,
                             hasUnsavedChanges = false,
+                            isSaved = true,
                             saveResult = SaveResult.Success
                         )
                     }
