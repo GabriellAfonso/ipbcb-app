@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 /** Reads the event from the saved list: the detail opens offline, exactly as the carousel showed it. */
@@ -40,12 +41,25 @@ class EventDetailViewModel @Inject constructor(
     }
 }
 
-internal fun Event.toDetailUi() = EventDetailUi(
-    title = title,
-    dateLabel = EventDateLabel.fullDateLabel(startDate, endDate),
-    timeLabel = startTime?.let(EventDateLabel::timeLabel),
-    location = location,
-    description = description,
-    imageUrl = imageUrl,
-    isMembersOnly = isMembersOnly,
-)
+internal fun Event.toDetailUi(): EventDetailUi {
+    val fullDate = EventDateLabel.fullDateLabel(startDate, endDate)
+    val time = startTime?.let(EventDateLabel::timeLabel)
+    val days = endDate?.let { ChronoUnit.DAYS.between(startDate, it).toInt() + 1 } ?: 1
+    return EventDetailUi(
+        title = title,
+        dateLabel = fullDate,
+        timeLabel = time,
+        location = location,
+        description = description,
+        imageUrl = imageUrl,
+        isMembersOnly = isMembersOnly,
+        shortDateLabel = EventDateLabel.dateLabel(startDate, endDate, time = null),
+        durationLabel = "$days dias".takeIf { days > 1 },
+        shareText = listOfNotNull(
+            title,
+            listOfNotNull(fullDate, time).joinToString(" · "),
+            location,
+            description?.let { "\n$it" },
+        ).joinToString("\n"),
+    )
+}

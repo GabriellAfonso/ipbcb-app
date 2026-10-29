@@ -73,8 +73,14 @@ aparece apenas na gestão.
 ## 3. Detalhe
 
 - Rota `AppRoutes.EVENT_DETAIL` (`events/{eventId}`): uma única tela, `composable` inline no `AppNavHost`.
-- Mostra a imagem inteira (3:2), o título, a data por extenso ("Sábado, 14 de novembro" / "14 a 16 de novembro") e,
-  só quando existem, o horário, o local e a descrição.
+- Layout "cartaz em tela cheia": barra verde "Evento" com o botão de compartilhar à direita; o cartaz inteiro (3:2,
+  sem nada por cima) logo abaixo; depois o título, as etiquetas da data curta ("14 a 16 nov"), do horário e "Só
+  membros" (as duas últimas só quando existem/valem); um card com a data por extenso ("Sábado, 14 de novembro" /
+  "14 a 16 de novembro", com "{n} dias" embaixo quando dura mais de um dia) e, quando existe, o local com "IPB Castelo
+  Branco" embaixo e o botão "Mapa"; e "Sobre" (título com o traço verde) com a descrição, quando existe.
+- **Compartilhar** abre o compartilhar do Android com um texto: título, data por extenso (e " · {hora}"), local e
+  descrição, cada um só quando existe. O cartaz não vai junto (só texto).
+- **Mapa** abre o app de mapas buscando o local (`geo:0,0?q={local}`); sem app que abra, nada acontece.
 - Lê o evento da lista ativa em memória, por isso funciona offline. Se o evento não está mais na lista (venceu ou
   foi apagado), mostra "Este evento não está mais disponível.".
 
@@ -147,6 +153,7 @@ nunca o nome do papel.
 
 - Push quando um evento é publicado.
 - "Adicionar à agenda".
+- Compartilhar o cartaz junto com o texto.
 - Link de inscrição.
 - Tela "Todos os eventos".
 - Tela de "Eventos passados" para membros.

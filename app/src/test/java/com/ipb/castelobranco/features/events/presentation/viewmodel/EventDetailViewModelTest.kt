@@ -23,6 +23,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EventDetailViewModelTest {
@@ -58,6 +59,36 @@ class EventDetailViewModelTest {
         assertEquals("Templo", event.location)
         assertNull(event.timeLabel)
         assertNull(event.description)
+    }
+
+    @Test
+    fun `tags, duration and the shared text are worded for the poster layout`() = runTest(dispatcher) {
+        repository.state.value = SnapshotState.Data(
+            listOf(
+                event(
+                    3,
+                    start = LocalDate.of(2026, 11, 14),
+                    end = LocalDate.of(2026, 11, 16),
+                    time = LocalTime.of(19, 30),
+                    title = "Congresso de Jovens",
+                    location = "Templo",
+                    description = "Traga um amigo!",
+                ),
+                event(4, start = LocalDate.of(2026, 11, 14), title = "Ceia"),
+            )
+        )
+
+        val event = requireNotNull(viewModel(3).uiState.first { !it.isLoading }.event)
+        assertEquals("14 a 16 nov", event.shortDateLabel)
+        assertEquals("3 dias", event.durationLabel)
+        assertEquals(
+            "Congresso de Jovens\n14 a 16 de novembro · 19:30\nTemplo\n\nTraga um amigo!",
+            event.shareText,
+        )
+
+        val oneDay = requireNotNull(viewModel(4).uiState.first { !it.isLoading }.event)
+        assertNull(oneDay.durationLabel)
+        assertEquals("Ceia\nSábado, 14 de novembro", oneDay.shareText)
     }
 
     @Test

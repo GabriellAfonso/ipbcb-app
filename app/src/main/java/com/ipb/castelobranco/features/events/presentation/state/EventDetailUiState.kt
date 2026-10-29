@@ -9,6 +9,12 @@ data class EventDetailUi(
     val description: String?,
     val imageUrl: String,
     val isMembersOnly: Boolean,
+    /** "14 a 16 nov": the date tag under the title. */
+    val shortDateLabel: String = dateLabel,
+    /** "3 dias" under the full date; `null` for a one-day event. */
+    val durationLabel: String? = null,
+    /** What "Compartilhar" sends. */
+    val shareText: String = title,
 )
 
 /**
