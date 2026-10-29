@@ -14,6 +14,7 @@ import com.ipb.castelobranco.features.admin.members.domain.usecase.RefreshMember
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberCardUi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersListUiState
+import com.ipb.castelobranco.features.admin.members.presentation.state.StatusFilterUi
 import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
 import com.ipb.castelobranco.features.admin.members.presentation.util.normalizeForSearch
@@ -50,6 +51,7 @@ class MembersListViewModel @Inject constructor(
     private val canAdd = observeAccess().map { it.allows(Scope.MEMBERS, AccessLevel.MANAGE) }
 
     private val query = MutableStateFlow("")
+    private val statusFilter = MutableStateFlow<String?>(null)
     private val isRefreshing = MutableStateFlow(true)
     private val loadError = MutableStateFlow<String?>(null)
 
@@ -59,12 +61,12 @@ class MembersListViewModel @Inject constructor(
     val uiState: StateFlow<MembersListUiState> =
         combine(
             observeMembers().combine(observePhotoRevisions().onStart { emit(emptyMap()) }, ::Pair),
-            query,
+            query.combine(statusFilter, ::Pair),
             isRefreshing,
             loadError,
             canAdd,
-        ) { (members, revisions), query, refreshing, error, add ->
-            buildState(members, revisions, query, refreshing, error).copy(canAdd = add)
+        ) { (members, revisions), (query, status), refreshing, error, add ->
+            buildState(members, revisions, query, status, refreshing, error).copy(canAdd = add)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MembersListUiState())
 
     init {
@@ -88,16 +90,28 @@ class MembersListViewModel @Inject constructor(
         query.value = value
     }
 
+    /** [status] `null` shows everyone. */
+    fun onStatusFilter(status: String?) {
+        statusFilter.value = status
+    }
+
     private fun buildState(
         members: List<MemberSummary>?,
         revisions: Map<String, Int>,
         query: String,
+        requestedStatus: String?,
         refreshing: Boolean,
         error: String?,
     ): MembersListUiState {
         val all = members.orEmpty()
+        val counts = all.groupingBy { statusLabel(it.status) }.eachCount()
+        // A status nobody carries any more falls back to "Todos".
+        val status = requestedStatus?.takeIf { it in counts }
         val needle = normalizeForSearch(query)
-        val visible = if (needle.isEmpty()) all else all.filter { needle in normalizeForSearch(it.name) }
+        val visible = all.filter { member ->
+            (status == null || statusLabel(member.status) == status) &&
+                (needle.isEmpty() || needle in normalizeForSearch(member.name))
+        }
         return MembersListUiState(
             // A list already in memory stays on screen while it revalidates.
             isLoading = members == null && refreshing,
@@ -105,7 +119,16 @@ class MembersListViewModel @Inject constructor(
             query = query,
             members = visible.map { it.toCard(revisions) },
             totalCount = all.size,
+            statusFilters = statusFilters(all.size, counts, status),
         )
+    }
+
+    private fun statusFilters(total: Int, counts: Map<String, Int>, selected: String?): List<StatusFilterUi> {
+        if (total == 0) return emptyList()
+        // The most common status first.
+        val byCount = counts.entries.sortedWith(compareBy({ -it.value }, { it.key }))
+        return listOf(StatusFilterUi(null, "$ALL_LABEL · $total", selected == null)) +
+            byCount.map { (label, count) -> StatusFilterUi(label, "$label · $count", label == selected) }
     }
 
     private fun MemberSummary.toCard(revisions: Map<String, Int>) = MemberCardUi(
@@ -117,4 +140,8 @@ class MembersListViewModel @Inject constructor(
         isValid = isValid,
         photoRevision = photoUrl?.let { revisions[it] } ?: 0,
     )
+
+    private companion object {
+        const val ALL_LABEL = "Todos"
+    }
 }

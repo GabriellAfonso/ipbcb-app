@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -47,14 +49,25 @@ private fun Modifier.cardSurface(): Modifier {
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier = Modifier.cardSurface().padding(horizontal = 18.dp, vertical = 6.dp)) {
-        Text(
-            text = title.uppercase(),
-            fontSize = 13.sp,
-            letterSpacing = 0.8.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+        // Title with the green dash, as in the other redesigned screens.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
-        )
+        ) {
+            Box(
+                Modifier
+                    .size(width = 4.dp, height = 16.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
         content()
     }
 }

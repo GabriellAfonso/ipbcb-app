@@ -297,7 +297,7 @@ Dois atributos diferentes que a tela nunca mistura:
 
 - **Situação** (`status`) — cadastro do servidor (hoje Ativo, Inativo, Visitante). Aparece exatamente
   com o nome que o servidor manda; vazia = "Sem situação". **Nenhum nome de situação é fixado no
-  código** e não há filtro por situação.
+  código**: o filtro da lista (7.3) é montado com as situações que vierem nos membros.
 - **Validade** (`is_active`) — se a ficha vale. Ficha inválida some da lista comum de membros e dos
   aniversários. Na tela é sempre "Perfil válido" / "Perfil inválido", nunca "ativo/inativo".
 
@@ -313,18 +313,28 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
 
 ### 7.3 Telas
 
-- **Lista** — grade de 2 colunas (foto ou iniciais, nome, chip de situação, tag "Perfil inválido" com
-  cartão esmaecido), busca por nome no aparelho (sem acento/maiúscula), sem filtros, botão
-  "Novo membro". Estados: carregando, erro com "Tentar novamente", rol vazio, busca sem resultado.
-- **Perfil** — faixa verde, foto grande sem botão próprio (toque traz a foto para frente da tela em quadrado,
+- **Lista, layout "lista compacta com faixa"** — faixa verde (cantos inferiores de 24dp) com "Rol de membros",
+  "{n} cadastrados" ("1 cadastrado"), a busca por nome em pílula branca (no aparelho, sem acento/maiúscula) e os
+  filtros por situação: "Todos · {n}" e uma etiqueta "{situação} · {n}" para cada situação presente nos membros
+  (a mais numerosa primeiro; "Sem situação" quando houver), uma só escolhida, o filtro somando-se à busca. Embaixo,
+  um card com uma linha por membro: foto ou iniciais num círculo de 46dp (esmaecido com perfil inválido), nome,
+  chip de situação e tag "Perfil inválido", e "›". "Novo membro" em pílula verde no canto. Estados: carregando,
+  erro com "Tentar novamente", rol vazio, nenhum membro na busca/filtro ("Nenhum membro encontrado.").
+- **Perfil** — faixa verde fixa da igreja (`ipbGreen`, cantos inferiores de 24dp, igual nos dois temas), foto
+  grande sem botão próprio (toque traz a foto para frente da tela em quadrado,
   segundo toque abre em tela cheia com o botão "Trocar foto" (lápis) no canto superior esquerdo, que abre o
   seletor direto, o X no direito e, embaixo, lado a lado e centralizados, "Apagar" (lixeira + texto) e "Baixar"
   (download + texto), os dois só quando há foto; sem foto, as
   iniciais fazem o mesmo caminho), nome, idade · sexo, chips de situação e
   cargo, seções "Dados pessoais" e "Vida na igreja" (batismo
-  com "há N anos", ministérios), card "Perfil válido" / "Perfil inválido" só de leitura (a validade muda no formulário, para um toque
-  sem querer não esconder o membro), card da
-  última alteração, "Cadastrado em" e "Excluir membro".
+  com "há N anos", ministérios; títulos com o traço verde), card "Perfil válido" / "Perfil inválido" só de leitura
+  (a validade muda no formulário, para um toque sem querer não esconder o membro), card da
+  última alteração e "Cadastrado em". Não há lápis na barra nem "Excluir membro" solto no fim: os três pontos
+  abrem o painel de ações que desce da barra (`core/presentation/components/TopActionPanel`), com o nome e
+  "{situação} · {cargo}" no topo; em "Gerenciar", "Editar membro" ("Dados pessoais e vida na igreja"), "Ver
+  histórico" ("Quem mudou o quê"), "Trocar foto", "Baixar foto" e "Remover foto"; em "Cuidado", "Excluir membro"
+  ("Pede para digitar o nome antes"). Cada ação só aparece com a permissão dela (e as de foto, com foto quando
+  pedem uma); sem nenhuma, os três pontos somem.
   Os textos de "Dados pessoais" e "Vida na igreja" são copiáveis (long press seleciona e abre o menu de copiar do
   sistema); o resto da tela não.
 - **Formulário** — um só para criar e editar; opções de situação, cargo e ministérios vêm do

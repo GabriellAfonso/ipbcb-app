@@ -109,6 +109,33 @@ class MembersListViewModelTest {
     }
 
     @Test
+    fun `status filters come from the roll, the most common first, and add to the search`() = runTest {
+        api.onGetMembers = { ok(roll) }
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        val filters = vm.uiState.value.statusFilters
+        assertEquals("Todos · 3", filters.first().label)
+        assertTrue(filters.first().isSelected)
+        assertEquals(1, filters.count { it.status == "Sem situação" })
+        val active = filters.single { it.status != null && it.status != "Sem situação" }
+        assertEquals(filters[1], active)
+        assertTrue(active.label.endsWith("· 2"))
+
+        vm.onStatusFilter("Sem situação")
+        advanceUntilIdle()
+        assertEquals(listOf("José Ribeiro"), vm.uiState.value.members.map { it.name })
+
+        vm.onQueryChange("ana")
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.members.isEmpty())
+
+        vm.onStatusFilter(null)
+        advanceUntilIdle()
+        assertEquals(listOf("Ana Souza"), vm.uiState.value.members.map { it.name })
+    }
+
+    @Test
     fun `no search result is told apart from an empty roll`() = runTest {
         api.onGetMembers = { ok(roll) }
         val vm = viewModel()

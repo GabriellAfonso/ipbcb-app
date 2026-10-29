@@ -12,6 +12,15 @@ data class MembersListUiState(
     val totalCount: Int = 0,
     /** "Novo membro": `manage` on `members`. */
     val canAdd: Boolean = false,
+    /** "Todos" first, then one per status the members carry, as the server names it. */
+    val statusFilters: List<StatusFilterUi> = emptyList(),
+)
+
+/** A filter of the band: [status] `null` is "Todos". */
+data class StatusFilterUi(
+    val status: String?,
+    val label: String,
+    val isSelected: Boolean,
 )
 
 data class MemberCardUi(

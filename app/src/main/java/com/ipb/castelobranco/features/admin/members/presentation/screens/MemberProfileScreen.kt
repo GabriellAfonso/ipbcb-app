@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.admin.members.presentation.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,14 +21,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.HideImage
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -58,8 +59,13 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
+import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.members.presentation.components.DeleteMemberDialog
 import com.ipb.castelobranco.features.admin.members.presentation.components.HistoryCard
 import com.ipb.castelobranco.features.admin.members.presentation.components.InfoRow
@@ -124,40 +130,66 @@ fun MemberProfileScreen(
     }
 
     val memberId = state.profile?.id
+    val actions = MemberProfileActions(
+        onRetry = viewModel::load,
+        onEdit = { memberId?.let(onEdit) },
+        onPickPhoto = pickPhoto,
+        onRemovePhotoRequested = viewModel::onRemovePhotoRequested,
+        onDownloadPhoto = downloadPhoto,
+        onRemovePhotoConfirmed = viewModel::onRemovePhotoConfirmed,
+        onRemovePhotoDismissed = viewModel::onRemovePhotoDismissed,
+        onOpenHistory = { memberId?.let(onOpenHistory) },
+        onDeleteRequested = viewModel::onDeleteRequested,
+        onDeleteTypedChange = viewModel::onDeleteTypedChange,
+        onDeleteConfirmed = viewModel::onDeleteConfirmed,
+        onDeleteDismissed = viewModel::onDeleteDismissed,
+    )
+    val panelActions = panelActions(state, actions)
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     BaseScreen(
         tabName = "Membro",
         showBackArrow = true,
         onBackClick = onBack,
         extraActions = {
-            if (memberId != null && state.canEdit) {
-                IconButton(onClick = { onEdit(memberId) }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Editar membro")
-                }
-            }
+            PanelMoreButton(hasActions = panelActions.isNotEmpty(), onClick = { isPanelOpen = true })
         },
     ) { innerPadding ->
         Box(Modifier.padding(innerPadding)) {
-            MemberProfileContent(
-                state = state,
-                imageLoader = viewModel.imageLoader,
-                actions = MemberProfileActions(
-                    onRetry = viewModel::load,
-                    onEdit = { memberId?.let(onEdit) },
-                    onPickPhoto = pickPhoto,
-                    onRemovePhotoRequested = viewModel::onRemovePhotoRequested,
-                    onDownloadPhoto = downloadPhoto,
-                    onRemovePhotoConfirmed = viewModel::onRemovePhotoConfirmed,
-                    onRemovePhotoDismissed = viewModel::onRemovePhotoDismissed,
-                    onOpenHistory = { memberId?.let(onOpenHistory) },
-                    onDeleteRequested = viewModel::onDeleteRequested,
-                    onDeleteTypedChange = viewModel::onDeleteTypedChange,
-                    onDeleteConfirmed = viewModel::onDeleteConfirmed,
-                    onDeleteDismissed = viewModel::onDeleteDismissed,
+            MemberProfileContent(state = state, imageLoader = viewModel.imageLoader, actions = actions)
+            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
+            val profile = state.profile
+            TopActionPanel(
+                visible = isPanelOpen && panelActions.isNotEmpty(),
+                actions = panelActions,
+                onDismiss = { isPanelOpen = false },
+                header = PanelHeader(
+                    name = profile?.name.orEmpty(),
+                    detail = listOfNotNull(profile?.statusLabel, profile?.roleLabel).joinToString(" · "),
                 ),
             )
-            SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }
     }
+}
+
+/** What the three dots offer, each only with its permission (§7.3). */
+private fun panelActions(state: MemberProfileUiState, actions: MemberProfileActions): List<PanelAction> {
+    if (state.profile == null) return emptyList()
+    return listOfNotNull(
+        PanelAction(Icons.Filled.Edit, "Editar membro", actions.onEdit, "Dados pessoais e vida na igreja")
+            .takeIf { state.canEdit },
+        PanelAction(Icons.Filled.History, "Ver histórico", actions.onOpenHistory, "Quem mudou o quê"),
+        PanelAction(Icons.Filled.PhotoCamera, "Trocar foto", actions.onPickPhoto).takeIf { state.canChangePhoto },
+        PanelAction(Icons.Filled.Download, "Baixar foto", actions.onDownloadPhoto).takeIf { state.canDownloadPhoto },
+        PanelAction(Icons.Filled.HideImage, "Remover foto", actions.onRemovePhotoRequested)
+            .takeIf { state.canRemovePhoto },
+        PanelAction(
+            icon = Icons.Filled.DeleteOutline,
+            label = "Excluir membro",
+            onClick = actions.onDeleteRequested,
+            description = "Pede para digitar o nome antes",
+            isDanger = true,
+        ).takeIf { state.canDelete },
+    )
 }
 
 @Composable
@@ -222,11 +254,13 @@ private fun ProfileBody(
             .verticalScroll(rememberScrollState()),
     ) {
         Box(Modifier.fillMaxWidth()) {
+            // The church's fixed green, the same in both themes.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(HEADER_BAND.dp)
-                    .background(colors.primary),
+                    .clip(RoundedCornerShape(bottomStart = BAND_CORNER.dp, bottomEnd = BAND_CORNER.dp))
+                    .background(ipbGreen),
             )
             ExpandablePhoto(
                 profile = profile,
@@ -278,20 +312,6 @@ private fun ProfileBody(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (state.canDelete) {
-                OutlinedButton(
-                    onClick = actions.onDeleteRequested,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, colors.error.copy(alpha = 0.4f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                ) {
-                    Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = colors.error)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Excluir membro", color = colors.error, fontWeight = FontWeight.Bold)
-                }
-            }
         }
     }
 }
@@ -390,6 +410,7 @@ private fun ProfileHeadline(profile: MemberProfileUi) {
 }
 
 private const val HEADER_BAND = 120
+private const val BAND_CORNER = 24
 private const val PHOTO_OVERLAP = 84
 private const val PHOTO_SIZE = 148
 private const val PHOTO_INITIALS = 44
