@@ -222,6 +222,18 @@ hino cantado antes disso aparece como "não é cantado há mais de um ano", sem 
 (rótulos continuam texto de verdade), barras verticais em `Canvas`. Nenhuma biblioteca de gráficos
 foi adicionada. O domínio entrega `BarPoint` já agregado.
 
+**Layout "abas verdes e filtros numa linha":**
+- A visualização vira abas na barra verde (`topBarExtension`, roláveis na horizontal; a ativa com fundo branco
+  translúcido e sublinhado menta): é ela que troca a tela inteira.
+- Logo abaixo, numa linha: o seletor "Semana | Mês | Ano | Outro" (o selecionado em verde; "Outro" abre o
+  intervalo personalizado) e o botão do recorte ("Todos os cultos ▾", ou o nome do recorte escolhido) que abre um
+  painel de baixo "O que ver": "Todos os cultos" ("Dentro e fora do culto"); "Cultos" com as janelas ativas;
+  "Fora do culto" ("Hinos abertos fora dos horários de culto"); "Dia da semana" em botões Dom…Sáb. Embaixo, o
+  intervalo do período (e o erro do intervalo personalizado, se houver). Na Cobertura, a linha some e fica "Todo o
+  histórico".
+- O conteúdo de cada leitura vem em cards brancos: destaques (rótulo, valor e a variação em verde/vermelho),
+  ranking (barras dentro do card), boletins de culto e os demais gráficos e listas como antes.
+
 **Vazios**, produzidos no domínio como `ReportEmptyReason` selado: nunca houve coleta, nada no
 período, nada no recorte, culto inativo/ausente no período, culto sem registro, hinário
 indisponível. O caso "culto sem registro" nomeia as duas possibilidades e **não afirma nenhuma** —
@@ -229,8 +241,10 @@ o app coleta visualização de hino e não tem como saber se o culto aconteceu.
 
 ### 6.3 Janelas de culto e parâmetros de coleta
 
-Alcançadas pelo menu da TopBar do relatório, não pelo hub — o hub lista áreas com relatório, não
-administração.
+Alcançadas pelos três pontos da barra do relatório, não pelo hub — o hub lista áreas com relatório, não
+administração. Os três pontos abrem o painel de ações que desce da barra
+(`core/presentation/components/TopActionPanel`), com "Administração da coleta" no topo: "Janelas de culto"
+("Horários que contam como culto") e, só para `owner`, "Parâmetros de coleta" ("Só para o dono do relatório").
 
 **Acesso:** relatório e lista de janelas exigem `view` em `reports.hymnal_history`. Configurar exige `owner`
 (backend 012): abaixo disso a tela de janelas fica só leitura — sem criar, editar, apagar nem o switch de ativar —
@@ -246,7 +260,17 @@ parâmetros é pública, então só o salvar pode ser recusado.
   Validação local antes de qualquer requisição; `field_errors` do servidor caem no campo
   correspondente, via `AppError.Server.fieldErrors`. Chave desconhecida cai no texto genérico.
 
-### 6.4 Camadas
+### 6.4 Ficha do hino
+
+Faixa verde (cantos inferiores de 24dp) com o número do hino em destaque e o título. Embaixo, três cards de números
+sobre a faixa: as vezes em todo o histórico, a última vez (dd/MM, do último ano; sem registro: "—") e o alcance
+típico em aparelhos. Depois, "Onde costuma aparecer" num card com uma linha por culto e a contagem ("Fora de culto"
+sem culto), o "Padrão" (a frase da recorrência e uma marca por registro) num card verde-claro, e no fim "Primeira vez
+em dd/MM/yyyy" (último ano). Nunca registrado: só a faixa e o aviso "Este hino nunca foi aberto por ninguém desde o
+início da coleta.". As linhas de "Onde costuma aparecer" não têm barras: a proporção teria de ser montada na tela, e
+toda proporção vem pronta do domínio (6.5).
+
+### 6.5 Camadas
 
 - A feature vive em `features/admin/reports/` e **não importa** `features/hymnal`. O catálogo do
   hinário chega por `core/domain/repository/HymnCatalogRepository`.

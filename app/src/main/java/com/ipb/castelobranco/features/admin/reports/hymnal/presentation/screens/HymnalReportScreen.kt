@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,12 +18,9 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,11 +28,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,6 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.PanelAction
+import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
+import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.model.Highlight
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.model.HighlightDelta
@@ -53,9 +57,10 @@ import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.componen
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.CalendarGrid
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.EmptyReading
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.HorizontalBarChart
-import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.PeriodSelector
-import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.ReadingSelector
-import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.SliceSelector
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.ReadingTabs
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.ReportFilters
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.SliceSheet
+import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.label
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.components.VerticalBarChart
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportEvent
 import com.ipb.castelobranco.features.admin.reports.hymnal.presentation.state.HymnalReportUiState
@@ -84,65 +89,50 @@ fun HymnalReportScreen(
         }
     }
 
+    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
+    val panelActions = listOfNotNull(
+        PanelAction(Icons.Filled.Schedule, "Janelas de culto", onOpenServiceWindows, "Horários que contam como culto"),
+        // Configuring collection is `owner` on the report; below that the entry does not exist.
+        PanelAction(
+            icon = Icons.Filled.Tune,
+            label = "Parâmetros de coleta",
+            onClick = onOpenCollectionSettings,
+            description = "Só para o dono do relatório",
+        ).takeIf { state.canOpenSettings },
+    )
     BaseScreen(
         tabName = "Histórico do hinário",
         logoRes = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick = onBack,
-        extraActions = {
-            ReportOverflowMenu(
-                onOpenServiceWindows = onOpenServiceWindows,
-                // Configuring collection is `owner` on the report; below that the entry does not exist.
-                onOpenCollectionSettings = onOpenCollectionSettings.takeIf { state.canOpenSettings },
-            )
+        extraActions = { PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true }) },
+        topBarExtension = {
+            ReadingTabs(selected = state.reading, onReadingSelected = viewModel::onReadingSelected)
         },
     ) { innerPadding ->
-        HymnalReportContent(
-            state = state,
-            innerPadding = innerPadding,
-            onPeriodSelected = viewModel::onPeriodSelected,
-            onSliceSelected = viewModel::onSliceSelected,
-            onReadingSelected = viewModel::onReadingSelected,
-            onRankingExpandToggled = viewModel::onRankingExpandToggled,
-            onDaySelected = viewModel::onDaySelected,
-            onRetry = viewModel::onRetry,
-            onHymnClick = { number ->
-                viewModel.onHymnSelected(number)
-                onOpenHymnCard(number)
-            },
-        )
-    }
-}
-
-@Composable
-private fun ReportOverflowMenu(
-    onOpenServiceWindows: () -> Unit,
-    onOpenCollectionSettings: (() -> Unit)?,
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    IconButton(onClick = { expanded = true }) {
-        Icon(
-            imageVector = Icons.Filled.MoreVert,
-            contentDescription = "Administração da coleta",
-        )
-    }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        DropdownMenuItem(
-            text = { Text("Janelas de culto") },
-            onClick = {
-                expanded = false
-                onOpenServiceWindows()
-            },
-        )
-        if (onOpenCollectionSettings != null) {
-            DropdownMenuItem(
-                text = { Text("Parâmetros de coleta") },
-                onClick = {
-                    expanded = false
-                    onOpenCollectionSettings()
+        Box(Modifier.fillMaxSize()) {
+            HymnalReportContent(
+                state = state,
+                innerPadding = innerPadding,
+                onPeriodSelected = viewModel::onPeriodSelected,
+                onSliceSelected = viewModel::onSliceSelected,
+                onReadingSelected = viewModel::onReadingSelected,
+                onRankingExpandToggled = viewModel::onRankingExpandToggled,
+                onDaySelected = viewModel::onDaySelected,
+                onRetry = viewModel::onRetry,
+                onHymnClick = { number ->
+                    viewModel.onHymnSelected(number)
+                    onOpenHymnCard(number)
                 },
             )
+            Box(Modifier.padding(innerPadding)) {
+                TopActionPanel(
+                    visible = isPanelOpen,
+                    actions = panelActions,
+                    onDismiss = { isPanelOpen = false },
+                    header = PanelHeader(name = PANEL_TITLE, detail = null),
+                )
+            }
         }
     }
 }
@@ -162,6 +152,7 @@ fun HymnalReportContent(
     // Coverage covers all recorded history, so the period and slice selectors do not apply to it
     // and are hidden rather than left on screen doing nothing.
     val periodApplies = state.reading != ReportReading.COVERAGE
+    var showSlices by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -172,24 +163,15 @@ fun HymnalReportContent(
     ) {
         item { Spacer(modifier = Modifier.height(4.dp)) }
 
-        item {
-            ReadingSelector(selected = state.reading, onReadingSelected = onReadingSelected)
-        }
-
         if (periodApplies) {
             item {
-                PeriodSelector(
+                ReportFilters(
                     selected = state.period,
                     rangeLabel = state.rangeLabel,
                     rangeError = state.rangeError,
+                    sliceLabel = state.slice.label(),
                     onPeriodSelected = onPeriodSelected,
-                )
-            }
-            item {
-                SliceSelector(
-                    selected = state.slice,
-                    services = state.availableServices,
-                    onSliceSelected = onSliceSelected,
+                    onOpenSlices = { showSlices = true },
                 )
             }
         }
@@ -207,6 +189,18 @@ fun HymnalReportContent(
                 onHymnClick = onHymnClick,
             )
         }
+    }
+
+    if (showSlices) {
+        SliceSheet(
+            selected = state.slice,
+            services = state.availableServices,
+            onSliceSelected = { slice ->
+                showSlices = false
+                onSliceSelected(slice)
+            },
+            onDismiss = { showSlices = false },
+        )
     }
 }
 
@@ -230,11 +224,12 @@ private fun LazyListScope.readingBody(
         ReportReading.RANKING -> {
             val ranking = state.ranking ?: return
             item {
-                HorizontalBarChart(
-                    bars = ranking.bars,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    onBarClick = { bar -> bar.hymnNumber?.let(onHymnClick) },
-                )
+                ReportCard {
+                    HorizontalBarChart(
+                        bars = ranking.bars,
+                        onBarClick = { bar -> bar.hymnNumber?.let(onHymnClick) },
+                    )
+                }
             }
             if (ranking.isCapped || state.rankingExpanded) {
                 item {
@@ -252,9 +247,7 @@ private fun LazyListScope.readingBody(
         }
 
         ReportReading.EVOLUTION -> item {
-            state.evolution?.let {
-                VerticalBarChart(bars = it.bars, modifier = Modifier.padding(horizontal = 16.dp))
-            }
+            state.evolution?.let { ReportCard { VerticalBarChart(bars = it.bars) } }
         }
 
         ReportReading.SERVICES -> {
@@ -282,17 +275,13 @@ private fun LazyListScope.readingBody(
         }
 
         ReportReading.CALENDAR -> items(state.calendar) { month ->
-            CalendarGrid(
-                month = month,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                onDayClick = onDaySelected,
-            )
+            ReportCard { CalendarGrid(month = month, onDayClick = onDaySelected) }
         }
 
         ReportReading.IN_VS_OUTSIDE -> {
             val comparison = state.inVsOutside ?: return
             item {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                ReportCard(innerPadding = PaddingValues(vertical = 16.dp)) {
                     SideHeading("No culto", comparison.onlyInService.size)
                     RankingOrEmpty(
                         ranking = comparison.inService,
@@ -366,6 +355,25 @@ private fun LazyListScope.coverageBody(
             }
         }
     }
+}
+
+/** The white card each reading sits in. */
+@Composable
+private fun ReportCard(
+    innerPadding: PaddingValues = PaddingValues(16.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(CARD_CORNER.dp)
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .shadow(CARD_ELEVATION.dp, shape, spotColor = Color.Black.copy(alpha = SHADOW_ALPHA))
+            .clip(shape)
+            .background(highlightCardColor())
+            .padding(innerPadding),
+        content = content,
+    )
 }
 
 @Composable
@@ -446,11 +454,13 @@ private fun SimpleHymnRow(
 
 @Composable
 private fun HighlightCard(highlight: Highlight, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(CARD_CORNER.dp)
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .shadow(CARD_ELEVATION.dp, shape, spotColor = Color.Black.copy(alpha = SHADOW_ALPHA))
+            .clip(shape)
+            .background(highlightCardColor())
             .padding(16.dp),
     ) {
         Text(
@@ -513,6 +523,11 @@ private fun ErrorBlock(message: String, onRetry: (() -> Unit)?) {
         }
     }
 }
+
+private const val PANEL_TITLE = "Administração da coleta"
+private const val CARD_CORNER = 18
+private const val CARD_ELEVATION = 6
+private const val SHADOW_ALPHA = 0.12f
 
 @Preview(showBackground = true)
 @Composable
