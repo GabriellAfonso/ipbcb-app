@@ -6,7 +6,7 @@ Source: `../TODO/specify_bible_videos_backend.md`. Re-check against the backend'
 |---|---|---|---|---|
 | `GET api/bible/videos/` | authless | `If-None-Match` | `200` list / `304` | — |
 | `POST api/bible/videos/` | authed | `{"url", "places": [{"book", "chapter"}]}` | `201` video | `409 BIBLE_VIDEO_EXISTS` (+ `video`), `400 BIBLE_VIDEO_INVALID_URL`, `400 BIBLE_VIDEO_UNAVAILABLE`, `502/503 BIBLE_VIDEO_LOOKUP_FAILED` |
-| `PUT api/bible/videos/{id}/places/` | authed | `[{"book", "chapter"}]` (full list; empty = delete) | `2xx` | `404`, `400` |
+| `PUT api/bible/videos/{id}/places/` | authed | `{"places": [{"book", "chapter"}]}` (full list; empty = delete) | `2xx` | `404`, `400` |
 | `DELETE api/bible/videos/{id}/places/?book=gn&chapter=1` | authed | no `chapter` = whole book | `2xx` | `404` |
 | `DELETE api/bible/videos/{id}/` | authed | — | `204` | `403`, `404` |
 | `PUT api/bible/videos/order/` | authed | `{"book", "chapter", "video_ids"}` | `2xx` | `400` (list mismatch) |

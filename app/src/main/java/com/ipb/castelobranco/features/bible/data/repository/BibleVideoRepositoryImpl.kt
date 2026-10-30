@@ -10,9 +10,9 @@ import com.ipb.castelobranco.core.network.error.toAppError
 import com.ipb.castelobranco.features.bible.data.api.BibleVideosManageApi
 import com.ipb.castelobranco.features.bible.data.dto.BibleVideoDto
 import com.ipb.castelobranco.features.bible.data.dto.addVideoBody
-import com.ipb.castelobranco.features.bible.data.dto.toBody
 import com.ipb.castelobranco.features.bible.data.dto.toDomain
 import com.ipb.castelobranco.features.bible.data.dto.videoOrderBody
+import com.ipb.castelobranco.features.bible.data.dto.videoPlacesBody
 import com.ipb.castelobranco.features.bible.domain.model.BiblePlace
 import com.ipb.castelobranco.features.bible.domain.model.BibleVideo
 import com.ipb.castelobranco.features.bible.domain.repository.AddVideoResult
@@ -89,7 +89,7 @@ class BibleVideoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setPlaces(videoId: Long, places: List<BiblePlace>): Result<Unit> =
-        write { api.setPlaces(videoId, places.toBody()) }
+        write { api.setPlaces(videoId, videoPlacesBody(places)) }
 
     override suspend fun removePlace(videoId: Long, place: BiblePlace): Result<Unit> =
         write { api.removePlace(videoId, place.book, place.chapter) }

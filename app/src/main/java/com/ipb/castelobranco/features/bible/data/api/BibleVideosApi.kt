@@ -1,7 +1,6 @@
 package com.ipb.castelobranco.features.bible.data.api
 
 import com.ipb.castelobranco.features.bible.data.dto.BibleVideoDto
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
@@ -25,7 +24,7 @@ interface BibleVideosManageApi {
     suspend fun addVideo(@Body body: JsonObject): Response<BibleVideoDto>
 
     @PUT(BibleEndpoints.VIDEO_PLACES)
-    suspend fun setPlaces(@Path(BibleEndpoints.ID) id: Long, @Body body: JsonArray): Response<Unit>
+    suspend fun setPlaces(@Path(BibleEndpoints.ID) id: Long, @Body body: JsonObject): Response<Unit>
 
     @DELETE(BibleEndpoints.VIDEO_PLACES)
     suspend fun removePlace(

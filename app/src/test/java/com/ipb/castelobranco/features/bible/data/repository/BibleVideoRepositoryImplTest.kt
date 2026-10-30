@@ -106,7 +106,8 @@ class BibleVideoRepositoryImplTest {
     fun `whole-book places send an explicit null chapter`() = runTest(dispatcher) {
         repository.setPlaces(42, listOf(BiblePlace.of("ex", null)))
 
-        assertEquals(JsonNull, api.lastPlaces!!.single().jsonObject["chapter"])
+        val places = api.lastPlaces!!["places"] as JsonArray
+        assertEquals(JsonNull, places.single().jsonObject["chapter"])
     }
 
     private class FakeCache : SnapshotCache<List<BibleVideoDto>> {
@@ -129,14 +130,14 @@ class BibleVideoRepositoryImplTest {
     private class FakeApi : BibleVideosManageApi {
         var addResponse: Response<BibleVideoDto> = Response.error(500, "".toResponseBody())
         var lastAddBody: JsonObject? = null
-        var lastPlaces: JsonArray? = null
+        var lastPlaces: JsonObject? = null
 
         override suspend fun addVideo(body: JsonObject): Response<BibleVideoDto> {
             lastAddBody = body
             return addResponse
         }
 
-        override suspend fun setPlaces(id: Long, body: JsonArray): Response<Unit> {
+        override suspend fun setPlaces(id: Long, body: JsonObject): Response<Unit> {
             lastPlaces = body
             return Response.success(204, Unit)
         }

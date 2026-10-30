@@ -32,6 +32,8 @@ fun addVideoBody(url: String, places: List<BiblePlace>): JsonObject = buildJsonO
     put(PLACES, places.toBody())
 }
 
+fun videoPlacesBody(places: List<BiblePlace>): JsonObject = buildJsonObject { put(PLACES, places.toBody()) }
+
 fun videoOrderBody(place: BiblePlace, videoIds: List<Long>): JsonObject = buildJsonObject {
     put(BOOK, place.book)
     put(CHAPTER, place.chapter?.let(::JsonPrimitive) ?: JsonNull)
