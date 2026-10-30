@@ -704,10 +704,21 @@ scroll e o estado salvo guarda o deslocamento parcial, entao o auto-scroll encai
 
 #### BirthdaysScreen (aniversariantes do ano)
 
-Tela unica (`composable` inline), aberta pela pagina de aniversariantes do carousel. Grade de 2 colunas
-com um card por mes, janeiro a dezembro; abre rolada no mes atual. Cada card repete o layout do
-highlight (`BirthdayEntry`: badge do dia + nome). Mes atual com cabecalho destacado; aniversario de hoje
-com badge destacado. Mes vazio: "Nenhum aniversariante". Pull-to-refresh; erro sem cache mostra
+Tela unica (`composable` inline), aberta pela pagina de aniversariantes do carousel. No topo da lista (rola
+junto), uma faixa verde de cantos inferiores arredondados:
+- a data de hoje ("Sexta, 30 de outubro") e o titulo "Hoje tem aniversario" quando alguem faz aniversario
+  hoje, senao "Aniversariantes";
+- quem faz hoje num cartao com bolo em laranja ("Hoje" + nomes unidos por "e");
+- os proximos 4 aniversarios depois de hoje, em etiquetas que rolam na horizontal: "dd/MM · {dia da semana
+  abreviado}" e o primeiro nome. Passado dezembro, continua em janeiro do ano seguinte; sem nenhum, a fileira
+  some.
+
+Abaixo, grade de 2 colunas com um card por mes, janeiro a dezembro; abre rolada no mes atual. Card com
+titulo com traco verde e o mes atual contornado em verde; cada linha: dia em caixa arredondada
+(`secondaryContainer`, laranja quando e hoje) + nome com ellipsis. Aniversarios que ja passaram no ano
+ficam apagados (meses anteriores inteiros e dias anteriores do mes atual). 29/02 em ano nao bissexto
+conta como 28/02 para dia da semana e ordem. Mes vazio: "Nenhum aniversariante". Pull-to-refresh; erro sem
+cache mostra
 `PermissionErrorPlaceholder`. `BirthdaysViewModel` le `GetYearBirthdaysUseCase` — mesmo cache do
 card, sem request extra. Regras de dominio em `specs/001-monthly-birthdays-card/spec.md`.
 
@@ -802,7 +813,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
 | `Highlight` | Carousel com auto-scroll, HorizontalPager, card elevado em 3:2 (largura da tela) + indicador de pagina. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
 | `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro |
-| `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight e pela `BirthdaysScreen` |
+| `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |
 | `ElasticPullToRefresh` | Wrapper para Material 3 PullToRefreshBox |

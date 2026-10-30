@@ -79,6 +79,39 @@ class BirthdaysViewModelTest {
     }
 
     @Test
+    fun `header shows today's names and the next four, wrapping into next year`() {
+        val today = LocalDate.of(2026, 12, 30) // Wednesday
+        val header = birthdaysHeader(
+            listOf(
+                Birthday(name = "Helena Costa", month = 12, day = 30),
+                Birthday(name = "Rafael Nunes", month = 12, day = 30),
+                Birthday(name = "Marta Souza", month = 12, day = 4),
+                Birthday(name = "Carlos Lima", month = 12, day = 31),
+                Birthday(name = "Ana Souza", month = 1, day = 2),
+                Birthday(name = "Bruno Dias", month = 1, day = 10),
+                Birthday(name = "Débora Prado", month = 2, day = 29),
+            ),
+            today,
+        )
+
+        assertEquals("Quarta, 30 de dezembro", header.dateLabel)
+        assertEquals(listOf("Helena Costa", "Rafael Nunes"), header.todayNames)
+        assertEquals(
+            listOf("31/12 · qui", "02/01 · sáb", "10/01 · dom", "28/02 · dom"),
+            header.upcoming.map { it.dateLabel },
+        )
+        assertEquals(listOf("Carlos", "Ana", "Bruno", "Débora"), header.upcoming.map { it.firstName })
+    }
+
+    @Test
+    fun `header without birthdays today has no names and no chips`() {
+        val header = birthdaysHeader(emptyList(), LocalDate.of(2026, 10, 30))
+
+        assertTrue(header.todayNames.isEmpty())
+        assertTrue(header.upcoming.isEmpty())
+    }
+
+    @Test
     fun `loading snapshot shows loading`() = runTest(testDispatcher) {
         val viewModel = buildViewModel(FakeMembersRepository(SnapshotState.Loading))
         backgroundScope.launch { viewModel.uiState.collect() }
