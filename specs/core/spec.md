@@ -812,7 +812,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `TopBar` | Logo + tab name + back/menu + account image. Fundo ipbGreen, icones brancos |
 | `CustomButton` | Icone + texto, rounded 16dp, som de clique, tamanho dinamico |
 | `Highlight` | Carousel com auto-scroll, HorizontalPager, card elevado em 3:2 (largura da tela) + indicador de pagina. O auto-scroll le `pagerState.pageCount`, pois as paginas de evento entram e saem |
-| `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro |
+| `HighlightEvent` | Pagina de evento do carousel: flyer preenchendo o card, titulo e data sobre gradiente; sem imagem, fundo neutro. Tambem e a previa "No destaque da Home" do formulario de eventos, que passa o cartaz escolhido (bytes) antes de enviar |
 | `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |

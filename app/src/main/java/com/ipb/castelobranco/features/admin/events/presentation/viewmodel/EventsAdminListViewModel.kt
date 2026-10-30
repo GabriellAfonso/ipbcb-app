@@ -98,4 +98,19 @@ internal fun EventRecord.toItemUi(today: LocalDate) = EventAdminItemUi(
     isMembersOnly = visibility == EventVisibility.MEMBERS,
     isPast = isPastOn(today),
     authorLabel = authorLabel(),
+    monthLabel = EventDateLabel.monthYearLabel(startDate),
+    monthShort = EventDateLabel.shortMonth(startDate).uppercase(),
+    dayLabel = "%02d".format(startDate.dayOfMonth),
+    whenLabel = whenLabel(),
 )
+
+private const val ALL_DAY_LABEL = "Dia todo"
+
+/** The range only when the event spans days; the time when known. */
+private fun EventRecord.whenLabel(): String {
+    val spansDays = endDate != null && endDate != startDate
+    val range = if (spansDays) EventDateLabel.dateLabel(startDate, endDate, null) else null
+    return listOfNotNull(range, startTime?.let(EventDateLabel::timeLabel))
+        .joinToString(" · ")
+        .ifEmpty { ALL_DAY_LABEL }
+}

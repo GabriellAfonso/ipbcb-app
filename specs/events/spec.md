@@ -103,23 +103,36 @@ nunca o nome do papel.
 
 ### 4.1 Lista
 
-- Filtro Ativos / Passados / Todos, padrão Todos. Os mais recentes primeiro, pela data de início.
-- Cada item mostra: miniatura 3:2, título, data, quem anunciou ("por Ana Paula") e o selo "Só membros" quando é
-  o caso. Sem nome (conta apagada ou perfil sem nome), a linha do autor não aparece. Evento passado aparece
-  esmaecido.
+- Filtro Ativos / Passados / Todos em abas verdes na barra (`GreenTabBar`), padrão Todos. Os mais recentes
+  primeiro, pela data de início.
+- Os eventos ficam agrupados pelo mês de início ("Novembro de 2026"), cada mês num card sobre a folha de cantos
+  arredondados. Cada linha mostra: a data de início em caixa verde (mês abreviado e dia), o título e uma linha
+  com quando ("14 a 16 nov" se tiver mais de um dia, o horário se houver; "Dia todo" quando não há nenhum dos
+  dois), quem anunciou ("por Ana Paula") e "só membros" quando é o caso, unidos por " · "; à direita, a
+  miniatura 3:2. Sem nome (conta apagada ou perfil sem nome), a parte do autor não aparece. Evento passado
+  aparece esmaecido, com a caixa da data cinza.
 - O botão "Novo evento" aparece para `manage` ou mais.
 - Recarrega ao voltar para a tela e ao trocar o filtro.
 
 ### 4.2 Formulário (novo, editar, somente leitura)
 
-- Num evento que já existe, uma linha só de leitura no topo diz quem criou e quem editou por último, com as datas
+- Duas abas no topo: "Editar" e "Como fica no app".
+  - **Editar**: o cartaz grande no topo (3:2), com "Trocar imagem" por cima (sem cartaz, "Escolher imagem (3:2)");
+    campos tonais em grupos: "Evento" (título, descrição), "Quando e onde" (começa | termina, horário | local,
+    lado a lado) e "Quem vê" (dois cartões: "Todos — Aparece para qualquer pessoa no app" e "Só membros — Quem
+    não é membro não vê").
+  - **Como fica no app**: "No destaque da Home" com o mesmo card do destaque (`HighlightEvent`), usando o cartaz
+    escolhido ou o atual; e "Ao abrir o evento" com título, etiquetas (data, horário, local, "Só membros") e a
+    descrição. Mostra o que está preenchido, mesmo sem salvar.
+  - Rodapé fixo "Salvar evento" (não aparece no somente leitura).
+- Num evento que já existe, uma linha só de leitura no fim do formulário diz quem criou e quem editou por último, com as datas
   em horário de Brasília: "Criado por Ana Paula em 21/10/2026 · editado por Gabriel em 22/10/2026".
   - Sem nome, a parte fica sem ele: "Criado em 21/10/2026", "editado em 22/10/2026".
   - A parte "editado" só aparece quando o servidor informa um editor (`updated_by`); o servidor guarda só o último.
   - Num evento novo a linha não existe.
 - Campos do modelo (seção 1).
   - Data de fim e horário têm a ação "remover".
-  - A visibilidade é um seletor Público / Só membros.
+  - A visibilidade é escolhida nos cartões de "Quem vê" (Todos / Só membros).
   - A imagem passa pelo recorte travado em 3:2 (até 1800×1200).
 - Regras locais, conferidas antes de enviar:
   - título obrigatório, até 120 caracteres;
@@ -136,7 +149,8 @@ nunca o nome do papel.
 
 ### 4.3 Exclusão
 
-- Só para `owner`: ação na barra do formulário. A confirmação diz "A exclusão é permanente e não pode ser
+- Só para `owner`: os três pontos da barra do formulário abrem o painel de ações com "Excluir evento" em "Cuidado".
+  A confirmação diz "A exclusão é permanente e não pode ser
   desfeita.".
 - Apaga o evento e a imagem para sempre; não há lixeira.
 

@@ -398,6 +398,8 @@ fun HighlightEvent(
     page: HighlightEventUi,
     imageLoader: ImageLoader,
     onClick: () -> Unit = {},
+    /** What Coil draws; the events form's preview passes the picked flyer's bytes before it is uploaded. */
+    imageModel: Any? = page.imageUrl,
 ) {
     Box(
         modifier = Modifier
@@ -406,7 +408,7 @@ fun HighlightEvent(
             .clickable(onClick = onClick)
     ) {
         AsyncImage(
-            model = page.imageUrl,
+            model = imageModel,
             imageLoader = imageLoader,
             contentDescription = page.title,
             contentScale = ContentScale.Crop,

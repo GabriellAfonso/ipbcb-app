@@ -31,6 +31,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EventsAdminListViewModelTest {
@@ -74,6 +75,31 @@ class EventsAdminListViewModelTest {
         assertEquals("por Ana", items[0].authorLabel)
         assertEquals(null, items[1].authorLabel)
         assertFalse(vm.uiState.value.canCreate)
+    }
+
+    @Test
+    fun `rows are grouped by start month in the list's order with a date box and when line`() = runTest(dispatcher) {
+        repository.listResult = Result.success(
+            listOf(
+                record(id = 1, start = LocalDate.of(2026, 12, 20), time = LocalTime.of(19, 0)),
+                record(id = 2, start = LocalDate.of(2026, 11, 14), end = LocalDate.of(2026, 11, 16)),
+                record(id = 3, start = LocalDate.of(2026, 11, 5), time = null),
+            )
+        )
+        val vm = viewModel()
+
+        vm.load()
+        advanceUntilIdle()
+
+        val months = vm.uiState.value.months
+        assertEquals(listOf("Dezembro de 2026", "Novembro de 2026"), months.map { it.label })
+        assertEquals(listOf(2, 3), months[1].items.map { it.id })
+        val congress = months[1].items[0]
+        assertEquals("NOV", congress.monthShort)
+        assertEquals("14", congress.dayLabel)
+        assertEquals("14 a 16 nov · 19:30", congress.whenLabel)
+        assertEquals("19:00", months[0].items[0].whenLabel)
+        assertEquals("Dia todo", months[1].items[1].whenLabel)
     }
 
     @Test

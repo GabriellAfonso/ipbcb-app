@@ -45,6 +45,13 @@ object EventDateLabel {
 
     fun timeLabel(time: LocalTime): String = "%02d:%02d".format(time.hour, time.minute)
 
+    /** "Novembro de 2026". */
+    fun monthYearLabel(date: LocalDate): String =
+        FULL_MONTHS[date.monthValue - 1].replaceFirstChar { it.uppercase() } + " de ${date.year}"
+
+    /** "nov". */
+    fun shortMonth(date: LocalDate): String = SHORT_MONTHS[date.monthValue - 1]
+
     private fun isOneDay(start: LocalDate, end: LocalDate?) = end == null || end == start
 
     private fun short(date: LocalDate) = "${date.dayOfMonth} ${SHORT_MONTHS[date.monthValue - 1]}"
