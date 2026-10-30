@@ -64,12 +64,12 @@ fun Highlight(
 
     val shape = RoundedCornerShape(HighlightCorner)
 
-    // On a short screen the card shrinks, keeping 3:2, and the page dots still fit below it.
+    // On a short screen the card shrinks, keeping 3:2, and the page dots still fit below it. No fillMaxWidth on the
+    // card: a fixed width would make aspectRatio ignore the height left, and the card would spill over its neighbors.
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .weight(1f, fill = false)
-                .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 // Event flyers are cropped to 3:2 on upload; a fixed ratio also keeps the card from flattening on
                 // wide screens.
