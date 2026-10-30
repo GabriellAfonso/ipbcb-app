@@ -82,13 +82,13 @@ class EventDetailViewModelTest {
         assertEquals("14 a 16 nov", event.shortDateLabel)
         assertEquals("3 dias", event.durationLabel)
         assertEquals(
-            "Congresso de Jovens\n14 a 16 de novembro · 19:30\nTemplo\n\nTraga um amigo!",
+            "*Congresso de Jovens*\n\n📅 14 a 16 de novembro\n⏰ 19:30\n📍 Templo\n\nTraga um amigo!",
             event.shareText,
         )
 
         val oneDay = requireNotNull(viewModel(4).uiState.first { !it.isLoading }.event)
         assertNull(oneDay.durationLabel)
-        assertEquals("Ceia\nSábado, 14 de novembro", oneDay.shareText)
+        assertEquals("*Ceia*\n\n📅 Sábado, 14 de novembro", oneDay.shareText)
     }
 
     @Test

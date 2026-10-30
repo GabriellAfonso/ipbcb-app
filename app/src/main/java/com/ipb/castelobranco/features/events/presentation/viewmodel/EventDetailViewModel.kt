@@ -56,10 +56,15 @@ internal fun Event.toDetailUi(): EventDetailUi {
         shortDateLabel = EventDateLabel.dateLabel(startDate, endDate, time = null),
         durationLabel = "$days dias".takeIf { days > 1 },
         shareText = listOfNotNull(
-            title,
-            listOfNotNull(fullDate, time).joinToString(" · "),
-            location,
+            "*$title*\n",
+            "$SHARE_DATE_EMOJI $fullDate",
+            time?.let { "$SHARE_TIME_EMOJI $it" },
+            location?.let { "$SHARE_PLACE_EMOJI $it" },
             description?.let { "\n$it" },
         ).joinToString("\n"),
     )
 }
+
+private const val SHARE_DATE_EMOJI = "📅"
+private const val SHARE_TIME_EMOJI = "⏰"
+private const val SHARE_PLACE_EMOJI = "📍"

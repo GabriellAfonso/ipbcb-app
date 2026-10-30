@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.events.presentation.screens
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,15 +52,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUi
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUiState
 import com.ipb.castelobranco.features.events.presentation.viewmodel.EventDetailViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val SCREEN_TITLE = "Evento"
 private const val GONE_MESSAGE = "Este evento não está mais disponível."
@@ -68,6 +77,11 @@ private const val SHARE_LABEL = "Compartilhar"
 private const val MAP_LABEL = "Mapa"
 private const val ABOUT_TITLE = "Sobre"
 private const val CHURCH_NAME = "IPB Castelo Branco"
+private const val TEXT_MIME = "text/plain"
+private const val IMAGE_MIME = "image/jpeg"
+private const val SHARE_DIR = "shared"
+private const val SHARE_FILE_NAME = "evento.jpg"
+private const val JPEG_QUALITY = 90
 private const val DIVIDER_ALPHA = 0.07f
 private const val SHADOW_ALPHA = 0.12f
 private val CARD_CORNER = 18.dp
@@ -79,6 +93,7 @@ fun EventDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val event = state.event
 
     BaseScreen(
@@ -87,7 +102,7 @@ fun EventDetailScreen(
         onBackClick   = onBackClick,
         extraActions  = {
             if (event != null) {
-                IconButton(onClick = { context.shareText(event.shareText) }) {
+                IconButton(onClick = { scope.launch { context.shareEvent(event, viewModel.imageLoader) } }) {
                     Icon(Icons.Filled.Share, contentDescription = SHARE_LABEL, tint = Color.White)
                 }
             }
@@ -280,12 +295,34 @@ private fun SectionTitle(text: String) {
     }
 }
 
-private fun Context.shareText(text: String) {
+/** The poster with [EventDetailUi.shareText] as its caption; just the text when the poster can't be loaded. */
+private suspend fun Context.shareEvent(event: EventDetailUi, imageLoader: ImageLoader) {
+    val poster = savePosterForSharing(event.imageUrl, imageLoader)
     val send = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_TEXT, event.shareText)
+        if (poster == null) {
+            type = TEXT_MIME
+        } else {
+            type = IMAGE_MIME
+            putExtra(Intent.EXTRA_STREAM, poster)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
     }
     startActivity(Intent.createChooser(send, null))
+}
+
+/** Reads the poster through the event loader (usually from its cache) into a shareable JPEG. */
+private suspend fun Context.savePosterForSharing(url: String, imageLoader: ImageLoader): Uri? {
+    if (url.isBlank()) return null
+    val request = ImageRequest.Builder(this).data(url).allowHardware(false).build()
+    val drawable = (imageLoader.execute(request) as? SuccessResult)?.drawable ?: return null
+    return withContext(Dispatchers.IO) {
+        runCatching {
+            val file = cacheDir.resolve(SHARE_DIR).apply { mkdirs() }.resolve(SHARE_FILE_NAME)
+            file.outputStream().use { drawable.toBitmap().compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+            FileProvider.getUriForFile(this@savePosterForSharing, "$packageName.provider", file)
+        }.getOrNull()
+    }
 }
 
 /** The maps app, searching for [place]; nothing happens without one. */
