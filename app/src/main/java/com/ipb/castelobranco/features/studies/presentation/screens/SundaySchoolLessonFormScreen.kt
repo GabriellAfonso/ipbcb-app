@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.studies.presentation.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,28 +9,29 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,14 +42,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.DateFieldWithPicker
+import com.ipb.castelobranco.core.presentation.components.GreenTab
+import com.ipb.castelobranco.core.presentation.components.GreenTabBar
+import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.BibleReference
 import com.ipb.castelobranco.features.studies.domain.model.LessonDraft
 import com.ipb.castelobranco.features.studies.domain.model.LessonStatus
+import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineErrorView
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineLoadingView
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.LessonContentView
@@ -56,7 +66,6 @@ import com.ipb.castelobranco.features.studies.presentation.components.sundayscho
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.LessonStyle
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.lessonEditor
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.sundaySchoolColors
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
 import com.ipb.castelobranco.features.studies.presentation.viewmodel.LessonFormMode
 import com.ipb.castelobranco.features.studies.presentation.viewmodel.SundaySchoolLessonFormEvent
 import com.ipb.castelobranco.features.studies.presentation.viewmodel.SundaySchoolLessonFormUiState
@@ -96,60 +105,63 @@ fun SundaySchoolLessonFormScreen(
     }
     BackHandler(onBack = viewModel::onBack)
 
+    val hasDraft = state.draft != null
     BaseScreen(
         tabName = if (state.isNew) "Nova aula" else "Editar aula",
         showBackArrow = true,
         onBackClick = viewModel::onBack,
-        extraActions = {
-            if (state.draft != null) {
-                if (state.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(12.dp).padding(end = 4.dp))
-                } else {
-                    IconButton(onClick = viewModel::save) { Icon(Icons.Filled.Check, contentDescription = "Salvar") }
-                }
+        // The green behind the sheet's rounded corners continues the tabs.
+        containerColor = if (hasDraft) ipbGreen else MaterialTheme.colorScheme.background,
+        topBarExtension = if (hasDraft) {
+            {
+                GreenTabBar(
+                    tabs = listOf(GreenTab("Editar"), GreenTab("Pré-visualizar")),
+                    selectedIndex = state.mode.ordinal,
+                    onSelect = { viewModel.setMode(LessonFormMode.entries[it]) },
+                )
             }
-        },
-        topBarExtension = {
-            if (state.draft != null) {
-                PrimaryTabRow(selectedTabIndex = state.mode.ordinal) {
-                    Tab(
-                        selected = state.mode == LessonFormMode.EDIT,
-                        onClick = { viewModel.setMode(LessonFormMode.EDIT) },
-                        text = { Text("Editar") },
-                    )
-                    Tab(
-                        selected = state.mode == LessonFormMode.PREVIEW,
-                        onClick = { viewModel.setMode(LessonFormMode.PREVIEW) },
-                        text = { Text("Pré-visualizar") },
-                    )
-                }
-            }
+        } else {
+            null
         },
     ) { innerPadding ->
-        Box(Modifier.padding(innerPadding).fillMaxSize()) {
-            SundaySchoolLessonFormContent(
-                state = state,
-                formActions = LessonFormActions(
-                    onTitle = viewModel::setTitle,
-                    onYear = viewModel::setYear,
-                    onDate = viewModel::setDate,
-                    onTeacher = viewModel::setTeacher,
-                    onStatus = viewModel::setStatus,
-                ),
-                editorActions = LessonEditorActions(
-                    onSectionTitle = viewModel::setSectionTitle,
-                    onSectionIcon = viewModel::setSectionIcon,
-                    onMoveSection = viewModel::moveSection,
-                    onDeleteSection = viewModel::deleteSection,
-                    onAddSection = viewModel::addSection,
-                    onAddBlock = viewModel::addBlock,
-                    onUpdateBlock = viewModel::updateBlock,
-                    onMoveBlock = viewModel::moveBlock,
-                    onDeleteBlock = viewModel::deleteBlock,
-                ),
-                onRetry = viewModel::load,
-            )
-            SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+        val contentModifier = if (hasDraft) {
+            Modifier
+                .padding(top = innerPadding.calculateTopPadding())
+                .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
+                .background(MaterialTheme.colorScheme.surfaceDim)
+                .padding(bottom = innerPadding.calculateBottomPadding())
+        } else {
+            Modifier.padding(innerPadding)
+        }
+        Column(contentModifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                SundaySchoolLessonFormContent(
+                    state = state,
+                    formActions = LessonFormActions(
+                        onTitle = viewModel::setTitle,
+                        onYear = viewModel::setYear,
+                        onDate = viewModel::setDate,
+                        onTeacher = viewModel::setTeacher,
+                        onStatus = viewModel::setStatus,
+                    ),
+                    editorActions = LessonEditorActions(
+                        onSectionTitle = viewModel::setSectionTitle,
+                        onSectionIcon = viewModel::setSectionIcon,
+                        onMoveSection = viewModel::moveSection,
+                        onDeleteSection = viewModel::deleteSection,
+                        onAddSection = viewModel::addSection,
+                        onAddBlock = viewModel::addBlock,
+                        onUpdateBlock = viewModel::updateBlock,
+                        onMoveBlock = viewModel::moveBlock,
+                        onDeleteBlock = viewModel::deleteBlock,
+                    ),
+                    onRetry = viewModel::load,
+                )
+                SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+            }
+            state.draft?.let { draft ->
+                SaveBar(status = draft.status, isSaving = state.isSaving, onSave = viewModel::save)
+            }
         }
     }
 
@@ -161,6 +173,29 @@ fun SundaySchoolLessonFormScreen(
             confirmButton = { TextButton(onClick = viewModel::discard) { Text("Descartar") } },
             dismissButton = { TextButton(onClick = viewModel::dismissDiscard) { Text("Continuar editando") } },
         )
+    }
+}
+
+/** Fixed at the bottom; the label follows the chosen status. */
+@Composable
+private fun SaveBar(status: LessonStatus, isSaving: Boolean, onSave: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Button(
+            onClick = onSave,
+            enabled = !isSaving,
+            colors = ButtonDefaults.buttonColors(containerColor = ipbGreen, contentColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .height(50.dp),
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+            } else {
+                Text(if (status == LessonStatus.PUBLISHED) "Salvar e publicar" else "Salvar rascunho")
+            }
+        }
     }
 }
 
@@ -178,8 +213,11 @@ fun SundaySchoolLessonFormContent(
         state.mode == LessonFormMode.PREVIEW -> LessonPreview(state, draft)
         else -> {
             val style = LessonStyle(colors = sundaySchoolColors, fontSize = DEFAULT_FONT_SIZE)
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "metadata") { MetadataFields(draft, state, formActions) }
+                item(key = "content-title") {
+                    FormSectionTitle("Conteúdo", Modifier.padding(start = 16.dp, top = 8.dp))
+                }
                 lessonEditor(
                     content = draft.content,
                     books = state.books,
@@ -214,53 +252,139 @@ private fun LessonPreview(state: SundaySchoolLessonFormUiState, draft: LessonDra
     }
 }
 
+/** "Aula": the lesson's data in a card with tonal fields and the status selector. */
 @Composable
 private fun MetadataFields(draft: LessonDraft, state: SundaySchoolLessonFormUiState, actions: LessonFormActions) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        state.formErrors.forEach {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        FormSectionTitle("Aula")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(CardRadius))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            state.formErrors.forEach {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            }
+            TonalField(
+                value = draft.title,
+                onValueChange = actions.onTitle,
+                label = "Título",
+                error = state.fieldErrors[FIELD_TITLE],
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TonalField(
+                    value = if (draft.year == 0) "" else draft.year.toString(),
+                    onValueChange = actions.onYear,
+                    label = "Ano",
+                    error = state.fieldErrors[FIELD_YEAR],
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                TonalField(
+                    value = draft.teacher,
+                    onValueChange = actions.onTeacher,
+                    label = "Professor (opcional)",
+                    error = state.fieldErrors[FIELD_TEACHER],
+                    modifier = Modifier.weight(2f),
+                )
+            }
+            LessonDateField(date = draft.date, error = state.fieldErrors[FIELD_DATE], onChange = actions.onDate)
+            StatusSelector(selected = draft.status, onSelect = actions.onStatus)
         }
-        OutlinedTextField(
-            value = draft.title,
-            onValueChange = actions.onTitle,
-            label = { Text("Título") },
-            isError = state.fieldErrors[FIELD_TITLE] != null,
-            supportingText = state.fieldErrors[FIELD_TITLE]?.let { { Text(it) } },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+    }
+}
+
+@Composable
+private fun FormSectionTitle(title: String, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.padding(horizontal = 4.dp),
+    ) {
+        Box(
+            Modifier
+                .size(width = 4.dp, height = 15.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.primary),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedTextField(
-                value = if (draft.year == 0) "" else draft.year.toString(),
-                onValueChange = actions.onYear,
-                label = { Text("Ano") },
-                isError = state.fieldErrors[FIELD_YEAR] != null,
-                supportingText = state.fieldErrors[FIELD_YEAR]?.let { { Text(it) } },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(1f),
-            )
-            OutlinedTextField(
-                value = draft.teacher,
-                onValueChange = actions.onTeacher,
-                label = { Text("Professor (opcional)") },
-                isError = state.fieldErrors[FIELD_TEACHER] != null,
-                supportingText = state.fieldErrors[FIELD_TEACHER]?.let { { Text(it) } },
-                singleLine = true,
-                modifier = Modifier.weight(2f),
-            )
-        }
-        LessonDateField(date = draft.date, error = state.fieldErrors[FIELD_DATE], onChange = actions.onDate)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Status", style = MaterialTheme.typography.labelLarge)
-            LessonStatus.entries.forEach { status ->
-                FilterChip(
-                    selected = draft.status == status,
-                    onClick = { actions.onStatus(status) },
-                    label = { Text(if (status == LessonStatus.DRAFT) "Rascunho" else "Publicado") },
+        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun TonalField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    error: String?,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        isError = error != null,
+        supportingText = error?.let { { Text(it) } },
+        singleLine = true,
+        keyboardOptions = keyboardOptions,
+        shape = RoundedCornerShape(14.dp),
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            errorIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            errorContainerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+        modifier = modifier,
+    )
+}
+
+/** Rascunho / Publicada as a two-way pill; Publicada lights up green. */
+@Composable
+private fun StatusSelector(selected: LessonStatus, onSelect: (LessonStatus) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(4.dp),
+    ) {
+        LessonStatus.entries.forEach { status ->
+            val isSelected = status == selected
+            val background = when {
+                !isSelected -> Color.Transparent
+                status == LessonStatus.PUBLISHED -> ipbGreen
+                else -> MaterialTheme.colorScheme.surface
+            }
+            val content = when {
+                !isSelected -> MaterialTheme.colorScheme.onSurfaceVariant
+                status == LessonStatus.PUBLISHED -> Color.White
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(background)
+                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(status) })
+                    .padding(vertical = 8.dp),
+            ) {
+                Text(
+                    text = if (status == LessonStatus.DRAFT) "Rascunho" else "Publicada",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = content,
                 )
             }
         }
@@ -317,3 +441,5 @@ private fun LessonDatePickerDialog(initial: LocalDate?, onDismiss: () -> Unit, o
 }
 
 private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+private val SheetRadius = 18.dp
+private val CardRadius = 18.dp

@@ -1,16 +1,23 @@
 package com.ipb.castelobranco.features.studies.presentation.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -26,6 +33,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
@@ -44,7 +55,7 @@ fun SundaySchoolYearsScreen(
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(viewModel) { viewModel.messages.collect { snackbar.showSnackbar(it) } }
     BaseScreen(tabName = "Anos da EBD", showBackArrow = true, onBackClick = onBackClick) { innerPadding ->
-        Box(Modifier.padding(innerPadding).fillMaxSize()) {
+        Box(Modifier.padding(innerPadding).fillMaxSize().background(MaterialTheme.colorScheme.surfaceDim)) {
             SundaySchoolYearsContent(state = state, onEdit = viewModel::edit, onRetry = viewModel::load)
             SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
         }
@@ -66,31 +77,74 @@ fun SundaySchoolYearsContent(
     onRetry: () -> Unit,
 ) {
     when {
-        state.years.isNotEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
+        state.years.isNotEmpty() -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(state.years, key = { it.year }) { year ->
-                ListItem(
-                    headlineContent = { Text(year.year.toString(), style = MaterialTheme.typography.titleMedium) },
-                    supportingContent = {
-                        Column {
-                            Text(year.theme.ifBlank { "Sem tema" })
-                            Text(
-                                text = countsLabel(year),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = state.canManage) { onEdit(year) },
+                YearCard(year, enabled = state.canManage, onClick = { onEdit(year) })
+            }
+            item(key = "note") {
+                Text(
+                    text = "Um ano aparece aqui quando a primeira aula dele é criada.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp),
                 )
-                HorizontalDivider()
             }
         }
         state.isLoading -> DoctrineLoadingView()
         state.error != null -> DoctrineErrorView(message = state.error, onRetry = onRetry)
         else -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Text("Os anos aparecem quando a primeira aula deles é criada.")
+        }
+    }
+}
+
+@Composable
+private fun YearCard(year: SundaySchoolYearAdmin, enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = year.year.toString(),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.widthIn(min = 62.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            if (year.theme.isBlank()) {
+                Text(
+                    text = "Sem tema",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(year.theme, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                text = countsLabel(year),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (enabled) {
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

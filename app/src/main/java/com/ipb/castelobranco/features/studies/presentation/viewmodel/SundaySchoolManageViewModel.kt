@@ -8,6 +8,7 @@ import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.core.domain.util.DateProvider
 import com.ipb.castelobranco.core.domain.error.toAppError
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
+import com.ipb.castelobranco.features.studies.domain.model.LessonStatus
 import com.ipb.castelobranco.features.studies.domain.model.LessonSummary
 import com.ipb.castelobranco.features.studies.domain.model.ReorderResult
 import com.ipb.castelobranco.features.studies.domain.usecase.DeleteSundaySchoolLessonUseCase
@@ -30,6 +31,8 @@ data class SundaySchoolManageUiState(
     /** Years with lessons, newest first, plus the selected one when it has none yet. */
     val years: List<Int> = emptyList(),
     val selectedYear: Int? = null,
+    /** Theme per year, from the years list; a year without lessons has none. */
+    val themes: Map<Int, String> = emptyMap(),
     val lessons: List<LessonSummary> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -38,7 +41,11 @@ data class SundaySchoolManageUiState(
     /** Lesson waiting for the delete confirmation. */
     val pendingDelete: LessonSummary? = null,
     val isSavingOrder: Boolean = false,
-)
+) {
+    /** Blank when the selected year has no theme. */
+    val theme: String get() = selectedYear?.let { themes[it] }.orEmpty()
+    val draftCount: Int get() = lessons.count { it.status == LessonStatus.DRAFT }
+}
 
 sealed interface SundaySchoolManageEvent {
     data class ShowMessage(val text: String) : SundaySchoolManageEvent
@@ -86,7 +93,12 @@ class SundaySchoolManageViewModel @Inject constructor(
                     val selected = _uiState.value.selectedYear
                         ?: withLessons.firstOrNull()
                         ?: dateProvider.today().year
-                    _uiState.update { it.copy(years = (withLessons + selected).distinct().sortedDescending()) }
+                    _uiState.update { state ->
+                        state.copy(
+                            years = (withLessons + selected).distinct().sortedDescending(),
+                            themes = years.associate { it.year to it.theme },
+                        )
+                    }
                     loadLessons(selected)
                 },
                 onFailure = { error ->
