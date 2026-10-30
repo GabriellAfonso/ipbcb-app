@@ -19,4 +19,11 @@ data class HistoryLine(
     val editorName: String,
     val text: String,
     val changedAt: Instant,
+    /** The sentence without the values: "alterou Situação", "trocou a foto". */
+    val action: String = text,
+    /** A field change's old and new value, already in Portuguese; both null for the other entries. */
+    val oldValue: String? = null,
+    val newValue: String? = null,
+    /** The editor's account was deleted. */
+    val isEditorUnknown: Boolean = false,
 )

@@ -9,6 +9,7 @@ import com.ipb.castelobranco.features.admin.members.data.dto.HistoryDto
 import com.ipb.castelobranco.features.admin.members.data.repository.MembersAdminRepositoryImpl
 import com.ipb.castelobranco.features.admin.members.domain.usecase.BuildHistorySentenceUseCase
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberHistoryUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMembersUseCase
 import com.ipb.castelobranco.features.admin.members.historyDto
 import com.ipb.castelobranco.features.admin.members.ok
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
@@ -41,10 +42,14 @@ class MemberHistoryViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = MemberHistoryViewModel(
-        SavedStateHandle(mapOf(MembersRoutes.ARG_MEMBER_ID to 12)),
-        GetMemberHistoryUseCase(MembersAdminRepositoryImpl(api, FakeMemberPhotoStore()), BuildHistorySentenceUseCase()),
-    )
+    private fun viewModel(): MemberHistoryViewModel {
+        val repository = MembersAdminRepositoryImpl(api, FakeMemberPhotoStore())
+        return MemberHistoryViewModel(
+            SavedStateHandle(mapOf(MembersRoutes.ARG_MEMBER_ID to 12)),
+            GetMemberHistoryUseCase(repository, BuildHistorySentenceUseCase()),
+            ObserveMembersUseCase(repository),
+        )
+    }
 
     @Test
     fun `lines keep the server order with local time`() = runTest {
@@ -62,6 +67,11 @@ class MemberHistoryViewModelTest {
         assertEquals(listOf("trocou a foto", "cadastrou o membro"), lines.map { it.text })
         assertEquals("Usuário removido", lines[1].editor)
         assertEquals(formatDateTime(Instant.parse("2026-09-25T17:05:00Z")), lines[0].time)
+        assertEquals("?", lines[1].initials)
+        assertTrue(lines[1].isEditorUnknown)
+        val state = vm.uiState.value
+        assertEquals(state.days.sumOf { it.lines.size }, lines.size)
+        assertEquals("2 alterações desde ${lines[1].day}", state.summary)
     }
 
     @Test

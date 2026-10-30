@@ -18,23 +18,26 @@ import javax.inject.Inject
  */
 class BuildHistorySentenceUseCase @Inject constructor() {
 
-    operator fun invoke(entry: HistoryEntry): HistoryLine = HistoryLine(
-        editorName = entry.editor?.name ?: UNKNOWN_EDITOR,
-        text = sentenceFor(entry),
-        changedAt = entry.changedAt,
-    )
-
-    private fun sentenceFor(entry: HistoryEntry): String = when (entry.field) {
-        FIELD_CREATED -> "cadastrou o membro"
-        FIELD_PHOTO ->
-            if (entry.newValue == PHOTO_REMOVED) "removeu a foto" else "trocou a foto"
-        else -> {
-            val label = FIELD_LABELS[entry.field] ?: entry.field
-            val old = valueText(entry.field, entry.oldValue)
-            val new = valueText(entry.field, entry.newValue)
-            "alterou $label de $old para $new"
+    operator fun invoke(entry: HistoryEntry): HistoryLine {
+        val base = HistoryLine(
+            editorName = entry.editor?.name ?: UNKNOWN_EDITOR,
+            text = "",
+            changedAt = entry.changedAt,
+            isEditorUnknown = entry.editor == null,
+        )
+        return when (entry.field) {
+            FIELD_CREATED -> base.withAction("cadastrou o membro")
+            FIELD_PHOTO -> base.withAction(if (entry.newValue == PHOTO_REMOVED) "removeu a foto" else "trocou a foto")
+            else -> {
+                val action = "alterou ${FIELD_LABELS[entry.field] ?: entry.field}"
+                val old = valueText(entry.field, entry.oldValue)
+                val new = valueText(entry.field, entry.newValue)
+                base.copy(text = "$action de $old para $new", action = action, oldValue = old, newValue = new)
+            }
         }
     }
+
+    private fun HistoryLine.withAction(action: String) = copy(text = action, action = action)
 
     private fun valueText(field: String, value: String?): String {
         if (value == null) return EMPTY_VALUE

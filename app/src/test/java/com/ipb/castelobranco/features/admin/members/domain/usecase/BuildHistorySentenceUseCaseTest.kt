@@ -29,6 +29,18 @@ class BuildHistorySentenceUseCaseTest {
     }
 
     @Test
+    fun `a field entry also carries the action and both values apart`() {
+        val line = build(historyDto(1, "status", "Visitante", "Ativo").toDomain())
+        assertEquals("alterou Situação", line.action)
+        assertEquals("Visitante", line.oldValue)
+        assertEquals("Ativo", line.newValue)
+
+        val photo = build(historyDto(1, "photo", new = "photo changed").toDomain())
+        assertEquals("trocou a foto", photo.action)
+        assertEquals(null, photo.newValue)
+    }
+
+    @Test
     fun `birth parts are labelled one by one`() {
         assertEquals("alterou Ano de nascimento de 1990 para 1991", text("birth_year", "1990", "1991"))
         assertEquals("alterou Ano de nascimento de 1990 para vazio", text("birth_year", "1990", null))

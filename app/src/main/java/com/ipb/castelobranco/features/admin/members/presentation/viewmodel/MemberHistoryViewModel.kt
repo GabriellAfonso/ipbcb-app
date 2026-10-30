@@ -4,11 +4,13 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.features.admin.members.domain.usecase.GetMemberHistoryUseCase
+import com.ipb.castelobranco.features.admin.members.domain.usecase.ObserveMembersUseCase
 import com.ipb.castelobranco.features.admin.members.presentation.navigation.MembersRoutes
 import com.ipb.castelobranco.features.admin.members.presentation.state.HistoryLineUi
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberHistoryUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.util.formatDateTime
+import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
 import com.ipb.castelobranco.features.admin.members.presentation.util.FailureKind
 import com.ipb.castelobranco.features.admin.members.presentation.util.toMembersEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,6 +30,7 @@ import javax.inject.Inject
 class MemberHistoryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getHistory: GetMemberHistoryUseCase,
+    private val observeMembers: ObserveMembersUseCase,
 ) : ViewModel() {
 
     private val memberId: Int = checkNotNull(savedStateHandle[MembersRoutes.ARG_MEMBER_ID])
@@ -44,13 +48,28 @@ class MemberHistoryViewModel @Inject constructor(
     fun load() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
+            val name = observeMembers().first()?.firstOrNull { it.id == memberId }?.name
+            _uiState.update { it.copy(memberName = name) }
             getHistory(memberId)
                 .onSuccess { lines ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             lines = lines.map { line ->
-                                HistoryLineUi(line.editorName, line.text, formatDateTime(line.changedAt))
+                                HistoryLineUi(
+                                    editor = line.editorName,
+                                    text = line.text,
+                                    time = formatDateTime(line.changedAt),
+                                    initials = if (line.isEditorUnknown) {
+                                        UNKNOWN_INITIALS
+                                    } else {
+                                        initialsOf(line.editorName)
+                                    },
+                                    isEditorUnknown = line.isEditorUnknown,
+                                    action = line.action,
+                                    oldValue = line.oldValue,
+                                    newValue = line.newValue,
+                                )
                             },
                         )
                     }
@@ -65,3 +84,5 @@ class MemberHistoryViewModel @Inject constructor(
         }
     }
 }
+
+private const val UNKNOWN_INITIALS = "?"

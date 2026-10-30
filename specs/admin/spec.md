@@ -341,11 +341,22 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   servidor; validação local (nome obrigatório, ≤ 255, datas não futuras, batismo não antes do
   nascimento) e `field_errors` do servidor no campo certo; edição envia só o que mudou; sair com
   alteração pendente pede confirmação. A validade (switch "Perfil válido") só se altera aqui e vale ao
-  salvar, como os demais campos. Na criação e na edição, a foto aparece no topo com câmera (na criação, as
-  iniciais acompanham o nome digitado): a escolhida fica em pré-visualização e só sobe ao salvar, depois dos
-  campos — na criação, depois que o servidor devolve o id do membro novo.
-- **Histórico** — do mais novo ao mais antigo, frases em português ("X alterou Situação de A para B",
-  "X cadastrou o membro", "X trocou/removeu a foto"); editor apagado = "Usuário removido".
+  salvar, como os demais campos. Na criação e na edição, a foto aparece numa faixa verde na barra, com câmera
+  (toque para trocar), ao lado do nome ("Novo membro" enquanto vazio) e de "situação · cargo" (o que estiver
+  escolhido); na criação, as iniciais acompanham o nome digitado. A foto escolhida fica em pré-visualização e só
+  sobe ao salvar, depois dos campos — na criação, depois que o servidor devolve o id do membro novo.
+  - Campos tonais em quatro cards, sobre uma folha de cantos arredondados: **Nome** (primeiro nome | sobrenome e
+    "Nome que aparece no app *", que é o nome de exibição), **Dados pessoais** (nascimento dia | mês | ano e o
+    seletor Masculino / Feminino / Não informado), **Vida na igreja** (situação | cargo, batismo e os
+    ministérios em etiquetas, verdes quando escolhidos) e **No app** ("Perfil válido", com "Aparece na lista de
+    membros e nos aniversários" / "Não aparece na lista de membros nem nos aniversários" conforme o estado).
+  - Rodapé fixo "Salvar".
+- **Histórico** — faixa verde na barra com o nome do membro (quando a lista já foi carregada) e "N alterações
+  desde dd/MM/aaaa" (a data da mais antiga; "1 alteração" no singular). Do mais novo ao mais antigo, agrupado por
+  dia (dd/MM/aaaa), cada dia num card. Cada alteração: as iniciais de quem fez num círculo (cinza com "?" para
+  editor apagado = "Usuário removido"), o nome em negrito e a ação ("alterou Situação", "cadastrou o membro",
+  "trocou/removeu a foto"), a hora (HH:mm) e, nas alterações de campo, etiquetas "de → para" (o valor antigo
+  riscado, o novo destacado; valor vazio = "vazio").
 - **Excluir** — diálogo avisa que ficha, histórico e foto somem para sempre; o botão só libera quando o
   nome digitado bate (sem diferenciar maiúsculas nem espaços nas pontas).
 

@@ -26,4 +26,17 @@ data class MemberFormUiState(
     val pickedPhoto: ByteArray? = null,
     /** Bumps when the device copy of [photoUrl] changed, so it loads again. */
     val photoRevision: Int = 0,
-)
+) {
+    /** The band's title: the typed name, or "Novo membro" while it is empty. */
+    val bandTitle: String get() = draft.name.trim().ifEmpty { NEW_MEMBER_TITLE }
+
+    /** "Ativo · Diaconisa": whatever of status and role is chosen; null when neither is. */
+    val bandSubtitle: String?
+        get() {
+            val status = options?.statuses?.firstOrNull { it.id == draft.statusId }?.name
+            val role = options?.roles?.firstOrNull { it.id == draft.roleId }?.name
+            return listOfNotNull(status, role).joinToString(" · ").ifEmpty { null }
+        }
+}
+
+private const val NEW_MEMBER_TITLE = "Novo membro"

@@ -1,16 +1,18 @@
 package com.ipb.castelobranco.features.admin.members.presentation.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,13 +23,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,6 +53,7 @@ import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
+import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberDraft
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberField
 import com.ipb.castelobranco.features.admin.members.domain.model.MemberOptions
@@ -62,6 +67,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.components.Memb
 import com.ipb.castelobranco.features.admin.members.presentation.components.MinistriesPicker
 import com.ipb.castelobranco.features.admin.members.presentation.components.OnInvalidContainer
 import com.ipb.castelobranco.features.admin.members.presentation.components.OptionPicker
+import com.ipb.castelobranco.features.admin.members.presentation.components.TonalTextField
 import com.ipb.castelobranco.features.admin.members.presentation.state.MemberFormUiState
 import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEvent
 import com.ipb.castelobranco.features.admin.members.presentation.viewmodel.MemberFormViewModel
@@ -88,16 +94,31 @@ fun MemberFormScreen(
         }
     }
 
+    val showBand = !state.isLoading && state.options != null
     BaseScreen(
         tabName = if (state.isEditing) "Editar membro" else "Novo membro",
         showBackArrow = true,
         onBackClick = leave,
+        // The green behind the sheet's rounded corners continues the band.
+        containerColor = if (showBand) ipbGreen else MaterialTheme.colorScheme.background,
+        topBarExtension = if (showBand) {
+            { MemberBand(state, viewModel.imageLoader, pickPhoto) }
+        } else {
+            null
+        },
     ) { innerPadding ->
-        Box(Modifier.padding(innerPadding)) {
+        val contentModifier = if (showBand) {
+            Modifier
+                .padding(top = innerPadding.calculateTopPadding())
+                .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
+                .background(MaterialTheme.colorScheme.surfaceDim)
+                .padding(bottom = innerPadding.calculateBottomPadding())
+        } else {
+            Modifier.padding(innerPadding)
+        }
+        Box(contentModifier) {
             MemberFormContent(
                 state = state,
-                imageLoader = viewModel.imageLoader,
-                onPickPhoto = pickPhoto,
                 onDraftChanged = viewModel::onDraftChanged,
                 onSave = viewModel::onSave,
                 onRetry = viewModel::load,
@@ -122,8 +143,6 @@ fun MemberFormScreen(
 @Composable
 fun MemberFormContent(
     state: MemberFormUiState,
-    imageLoader: ImageLoader?,
-    onPickPhoto: () -> Unit,
     onDraftChanged: (MemberDraft) -> Unit,
     onSave: () -> Unit,
     onRetry: () -> Unit,
@@ -142,19 +161,20 @@ fun MemberFormContent(
                 Text(state.loadError.orEmpty(), textAlign = TextAlign.Center)
                 Button(onClick = onRetry) { Text("Tentar novamente") }
             }
-            else -> FormFields(state, options, imageLoader, onPickPhoto, onDraftChanged, onSave)
+            else -> Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { FormFields(state, options, onDraftChanged) }
+                SaveBar(isSaving = state.isSaving, onSave = onSave)
+            }
         }
     }
 }
 
+/** The same fields as before, in four cards: Nome, Dados pessoais, Vida na igreja and No app. */
 @Composable
 private fun FormFields(
     state: MemberFormUiState,
     options: MemberOptions,
-    imageLoader: ImageLoader?,
-    onPickPhoto: () -> Unit,
     onChange: (MemberDraft) -> Unit,
-    onSave: () -> Unit,
 ) {
     val draft = state.draft
     val errors = state.fieldErrors
@@ -165,7 +185,6 @@ private fun FormFields(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FormPhoto(state, imageLoader, onPickPhoto, Modifier.align(Alignment.CenterHorizontally))
         state.generalError?.let { message ->
             Text(
                 text = message,
@@ -177,69 +196,122 @@ private fun FormFields(
                     .padding(12.dp),
             )
         }
-        TextInput("Nome de exibição *", draft.name, errors[MemberField.NAME]) { onChange(draft.copy(name = it)) }
-        TextInput("Primeiro nome", draft.firstName, errors[MemberField.FIRST_NAME]) {
-            onChange(draft.copy(firstName = it))
+        FormGroup("Nome") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TonalTextField("Primeiro nome", draft.firstName, errors[MemberField.FIRST_NAME], Modifier.weight(1f)) {
+                    onChange(draft.copy(firstName = it))
+                }
+                TonalTextField("Sobrenome", draft.lastName, errors[MemberField.LAST_NAME], Modifier.weight(1f)) {
+                    onChange(draft.copy(lastName = it))
+                }
+            }
+            TonalTextField("Nome que aparece no app *", draft.name, errors[MemberField.NAME]) {
+                onChange(draft.copy(name = it))
+            }
         }
-        TextInput("Sobrenome", draft.lastName, errors[MemberField.LAST_NAME]) { onChange(draft.copy(lastName = it)) }
-        BirthDateField(
-            birth = draft.birth,
-            onChange = { onChange(draft.copy(birth = it)) },
-            birthdayError = errors[MemberField.BIRTH_DAY] ?: errors[MemberField.BIRTH_MONTH],
-            yearError = errors[MemberField.BIRTH_YEAR],
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Sexo", style = MaterialTheme.typography.labelLarge)
+        FormGroup("Dados pessoais") {
+            BirthDateField(
+                birth = draft.birth,
+                onChange = { onChange(draft.copy(birth = it)) },
+                birthdayError = errors[MemberField.BIRTH_DAY] ?: errors[MemberField.BIRTH_MONTH],
+                yearError = errors[MemberField.BIRTH_YEAR],
+            )
             GenderSelector(selected = draft.gender, onSelect = { onChange(draft.copy(gender = it)) })
             FieldError(errors[MemberField.GENDER])
         }
-        OptionPicker(
-            label = "Situação",
-            options = options.statuses,
-            selectedId = draft.statusId,
-            onSelect = { onChange(draft.copy(statusId = it)) },
-            error = errors[MemberField.STATUS],
-        )
-        OptionPicker(
-            label = "Cargo",
-            options = options.roles,
-            selectedId = draft.roleId,
-            onSelect = { onChange(draft.copy(roleId = it)) },
-            error = errors[MemberField.ROLE],
-        )
-        MinistriesPicker(
-            options = options.ministries,
-            selectedIds = draft.ministryIds,
-            onChange = { onChange(draft.copy(ministryIds = it)) },
-            error = errors[MemberField.MINISTRIES],
-        )
-        MemberDateField(
-            label = "Batismo",
-            date = draft.baptismDate,
-            onChange = { onChange(draft.copy(baptismDate = it)) },
-            error = errors[MemberField.BAPTISM_DATE],
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Perfil válido", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    "Perfil inválido não aparece na lista de membros nem nos aniversários.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        FormGroup("Vida na igreja") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OptionPicker(
+                    label = "Situação",
+                    options = options.statuses,
+                    selectedId = draft.statusId,
+                    onSelect = { onChange(draft.copy(statusId = it)) },
+                    error = errors[MemberField.STATUS],
+                    modifier = Modifier.weight(1f),
+                )
+                OptionPicker(
+                    label = "Cargo",
+                    options = options.roles,
+                    selectedId = draft.roleId,
+                    onSelect = { onChange(draft.copy(roleId = it)) },
+                    error = errors[MemberField.ROLE],
+                    modifier = Modifier.weight(1f),
                 )
             }
-            Switch(checked = draft.isValid, onCheckedChange = { onChange(draft.copy(isValid = it)) })
+            MemberDateField(
+                label = "Batismo",
+                date = draft.baptismDate,
+                onChange = { onChange(draft.copy(baptismDate = it)) },
+                error = errors[MemberField.BAPTISM_DATE],
+            )
+            MinistriesPicker(
+                options = options.ministries,
+                selectedIds = draft.ministryIds,
+                onChange = { onChange(draft.copy(ministryIds = it)) },
+                error = errors[MemberField.MINISTRIES],
+            )
         }
-        Button(
-            onClick = onSave,
-            enabled = !state.isSaving,
-            shape = RoundedCornerShape(16.dp),
+        FormGroup("No app") {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Perfil válido", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (draft.isValid) VALID_PROFILE_NOTE else INVALID_PROFILE_NOTE,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = draft.isValid, onCheckedChange = { onChange(draft.copy(isValid = it)) })
+            }
+        }
+    }
+}
+
+/** A green bar and the title, then the fields in a card. */
+@Composable
+private fun FormGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 4.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(width = 4.dp, height = 15.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .clip(RoundedCornerShape(CardRadius))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .padding(12.dp),
+            content = content,
+        )
+    }
+}
+
+/** Fixed at the bottom; disabled while saving. */
+@Composable
+private fun SaveBar(isSaving: Boolean, onSave: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Button(
+            onClick = onSave,
+            enabled = !isSaving,
+            colors = ButtonDefaults.buttonColors(containerColor = ipbGreen, contentColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .height(50.dp),
         ) {
-            if (state.isSaving) {
-                CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+            if (isSaving) {
+                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
                 Text("Salvar")
             }
@@ -247,63 +319,74 @@ private fun FormFields(
     }
 }
 
-/** Previews a picked photo; it is uploaded only on "Salvar". */
+/**
+ * The photo (tap to pick; a picked one is a preview, uploaded only on "Salvar"), the name and "situação · cargo",
+ * inside the green top-bar block.
+ */
 @Composable
-private fun FormPhoto(
-    state: MemberFormUiState,
-    imageLoader: ImageLoader?,
-    onPickPhoto: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaterialTheme.colorScheme
-    Box(modifier) {
-        MemberAvatar(
-            initials = state.initials,
-            photoUrl = state.photoUrl,
-            imageLoader = imageLoader,
-            pickedPhoto = state.pickedPhoto,
-            photoRevision = state.photoRevision,
-            initialsSize = 32.sp,
-            modifier = Modifier
-                .size(FORM_PHOTO_SIZE.dp)
-                .clip(CircleShape)
-                .clickable(enabled = !state.isSaving, onClick = onPickPhoto),
-        )
-        Surface(
-            onClick = onPickPhoto,
-            enabled = !state.isSaving,
-            shape = CircleShape,
-            color = colors.primary,
-            contentColor = colors.onPrimary,
-            border = BorderStroke(3.dp, colors.background),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .size(36.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = "Trocar foto", Modifier.size(18.dp))
+private fun MemberBand(state: MemberFormUiState, imageLoader: ImageLoader?, onPickPhoto: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ipbGreen)
+            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 18.dp),
+    ) {
+        Box(Modifier.clickable(enabled = !state.isSaving, onClick = onPickPhoto)) {
+            MemberAvatar(
+                initials = state.initials,
+                photoUrl = state.photoUrl,
+                imageLoader = imageLoader,
+                pickedPhoto = state.pickedPhoto,
+                photoRevision = state.photoRevision,
+                initialsSize = 22.sp,
+                modifier = Modifier
+                    .size(BAND_PHOTO_SIZE.dp)
+                    .border(2.dp, Color.White.copy(alpha = BAND_BORDER_ALPHA), CircleShape),
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 4.dp, y = 4.dp)
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+            ) {
+                Icon(
+                    Icons.Filled.PhotoCamera,
+                    contentDescription = "Trocar foto",
+                    tint = ipbGreen,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
+        }
+        Column {
+            Text(
+                text = state.bandTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+            state.bandSubtitle?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = BAND_SECONDARY_ALPHA),
+                )
             }
         }
     }
 }
 
-@Composable
-private fun TextInput(label: String, value: String, error: String?, onValueChange: (String) -> Unit) {
-    Column {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            singleLine = true,
-            isError = error != null,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        FieldError(error)
-    }
-}
-
-private const val FORM_PHOTO_SIZE = 96
-
+private const val VALID_PROFILE_NOTE = "Aparece na lista de membros e nos aniversários"
+private const val INVALID_PROFILE_NOTE = "Não aparece na lista de membros nem nos aniversários"
+private const val BAND_PHOTO_SIZE = 64
+private const val BAND_BORDER_ALPHA = 0.6f
+private const val BAND_SECONDARY_ALPHA = 0.82f
+private val SheetRadius = 18.dp
+private val CardRadius = 18.dp
 @Preview(showBackground = true, widthDp = 390, heightDp = 1400)
 @Composable
 private fun MemberFormContentPreview() {
@@ -321,8 +404,6 @@ private fun MemberFormContentPreview() {
                 ),
                 fieldErrors = mapOf(MemberField.NAME to "Informe o nome."),
             ),
-            imageLoader = null,
-            onPickPhoto = {},
             onDraftChanged = {},
             onSave = {},
             onRetry = {},
