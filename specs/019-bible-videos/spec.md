@@ -85,12 +85,12 @@ on Rm 5 as a signed-out user and check the icon, the two sections, the badge and
 1. **Given** a video placed on Rm 5 and a playlist placed on the whole book Rm, **When** a member opens Rm 5,
    **Then** the play icon shows next to the font-size icon.
 2. **Given** no video on Rm 6 nor on the book Rm except the playlist, **When** the member opens Rm 6, **Then** the
-   icon still shows (the book has a video) and the sheet has only the "Romanos" section.
+   icon still shows (the book has a video) and the sheet has only the "Livro inteiro" section.
 3. **Given** no video on the chapter nor on the book, **When** a member opens it, **Then** no play icon is shown.
 4. **Given** the sheet, **When** the member taps a card, **Then** its URL opens in the YouTube app if installed,
    otherwise in the browser, keeping any start time in the link.
 5. **Given** a video placed on both Rm 5 and the whole book Rm, **When** the sheet opens on Rm 5, **Then** it
-   appears only in the "Romanos 5" section.
+   appears only in the "Deste capítulo" section.
 6. **Given** the device is offline after the list was fetched once, **When** the member opens the sheet, **Then**
    the cards show with their titles (and cached thumbnails).
 
@@ -99,7 +99,7 @@ on Rm 5 as a signed-out user and check the icon, the two sections, the badge and
 ### User Story 2 - A leader adds a video and chooses its places (Priority: P1)
 
 Pastor João (Liderança) reads Gênesis 1. The play icon is always visible for him. He opens the sheet, taps
-"+ Adicionar link", pastes a YouTube URL and confirms. The video appears under "Gênesis 1" and the "Locais do vídeo"
+"+ Adicionar link", pastes a YouTube URL and confirms. The video appears under "Deste capítulo" and the "Locais do vídeo"
 screen opens with "Gênesis 1" in the list. He taps "+ Local", picks Gênesis, selects chapters 2 and 3 and saves;
 the video is now in Gn 1, 2 and 3.
 
@@ -128,7 +128,7 @@ save, and check the sheet on each place.
 
 ### User Story 3 - A leader orders and removes videos (Priority: P2)
 
-João wants the overview video first in Gn 1. He taps "Reordenar" on the "Gênesis 1" section, drags it to the top
+João wants the overview video first in Gn 1. He taps "Reordenar" on the "Deste capítulo" section, drags it to the top
 and the order is saved for Gn 1 only. Later he removes another video from Gn 1 with the card menu.
 
 **Why this priority**: order and cleanup matter once there are several videos; the feature works without them.
@@ -252,8 +252,8 @@ state on another device.
 
 - **FR-004**: The reader toolbar MUST show a play icon next to the font-size icon when the current chapter or the
   current book has at least one video; for managers, always.
-- **FR-005**: The play icon MUST open a sheet with a chapter section ("{Livro} {capítulo}") and a book section
-  ("{Livro}"), each in the order of its place; a video on both shows only in the chapter section; an empty section
+- **FR-005**: The play icon MUST open a sheet with a book section ("Livro inteiro") first and a chapter section
+  ("Deste capítulo") below it, each in the order of its place; a video on both shows only in the chapter section; an empty section
   is hidden.
 - **FR-006**: Each card MUST show the 16:9 thumbnail, the title in up to two lines, and a "Playlist" badge for
   playlists. Tapping opens the link outside the app (YouTube app or browser).

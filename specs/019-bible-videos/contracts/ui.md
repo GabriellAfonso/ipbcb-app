@@ -5,7 +5,8 @@
 videos, or always for managers.
 
 ## Videos sheet (`ModalBottomSheet`)
-- Section header: "Gênesis 1" / "Gênesis" + "Reordenar" (managers, ≥ 2 videos).
+- Sections in this order: "Livro inteiro" (whole-book videos), then "Deste capítulo"; header + "Reordenar"
+  (managers, ≥ 2 videos).
 - Card: thumbnail 16:9 (rounded 8 dp; placeholder with play icon), "Playlist" badge over the thumbnail, "Visto"
   badge and 50 % alpha when watched; title `titleSmall`, 2 lines; watched check (`CheckCircle` / outline) for
   signed-in; ⋮ for managers: "Editar locais", "Remover deste capítulo|livro", "Excluir vídeo".

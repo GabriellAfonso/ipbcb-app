@@ -81,6 +81,8 @@ data class BibleVideosSheetActions(
 private const val WATCHED_ALPHA = 0.5f
 private const val REMOVE_FROM_BOOK = "Remover deste livro"
 private const val REMOVE_FROM_CHAPTER = "Remover deste capítulo"
+private const val BOOK_SECTION_TITLE = "Livro inteiro"
+private const val CHAPTER_SECTION_TITLE = "Deste capítulo"
 private const val THUMB_WIDTH_DP = 136
 
 /** The current chapter's and book's videos, opened from the play icon of the reader. */
@@ -167,8 +169,8 @@ private fun VideoList(
             }
         }
         listOf(
-            Triple(state.chapterTitle, chapterPlace, state.sections.chapter),
-            Triple(state.bookName, bookPlace, state.sections.book),
+            Triple(BOOK_SECTION_TITLE, bookPlace, state.sections.book),
+            Triple(CHAPTER_SECTION_TITLE, chapterPlace, state.sections.chapter),
         ).forEach { (title, place, videos) ->
             if (videos.isEmpty()) return@forEach
             item(key = "header-${place.chapter}") {
@@ -361,7 +363,7 @@ private fun ReorderList(state: BibleVideosUiState, actions: BibleVideosSheetActi
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (reorder.place.isWholeBook) state.bookName else state.chapterTitle,
+                text = if (reorder.place.isWholeBook) BOOK_SECTION_TITLE else CHAPTER_SECTION_TITLE,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,

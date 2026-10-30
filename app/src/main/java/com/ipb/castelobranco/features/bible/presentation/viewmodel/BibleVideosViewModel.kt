@@ -40,7 +40,6 @@ data class BibleVideoReorder(
 data class BibleVideosUiState(
     /** Book and chapter being read; null while the Bible index is not in memory. */
     val chapterPlace: BiblePlace? = null,
-    val bookName: String = "",
     val sections: BibleVideoSections = BibleVideoSections.EMPTY,
     val canManage: Boolean = false,
     val canDelete: Boolean = false,
@@ -51,8 +50,6 @@ data class BibleVideosUiState(
     val reorder: BibleVideoReorder? = null,
     val isBusy: Boolean = false,
 ) {
-    val chapterTitle: String get() = "$bookName ${chapterPlace?.chapter ?: ""}".trim()
-
     /** Members see the play icon only when there is something to watch; managers always (the entry to add). */
     val showPlayIcon: Boolean get() = chapterPlace != null && (canManage || !sections.isEmpty)
 }
@@ -82,9 +79,9 @@ class BibleVideosViewModel @Inject constructor(
         val isBusy: Boolean = false,
     )
 
-    private val chapterInfo = combine(bibleRepository.booksFlow, bibleRepository.positionFlow) { books, position ->
+    private val chapterPlace = combine(bibleRepository.booksFlow, bibleRepository.positionFlow) { books, position ->
         val book = books.orEmpty().resolve(position.bookAbbrev) ?: return@combine null
-        BiblePlace.of(book.abbrev, position.chapter) to book.name
+        BiblePlace.of(book.abbrev, position.chapter)
     }
 
     private val progress = combine(progressRepository.progress, _isSignedIn) { progress, signedIn ->
@@ -93,15 +90,13 @@ class BibleVideosViewModel @Inject constructor(
 
     val uiState: StateFlow<BibleVideosUiState> = combine(
         videoRepository.videos,
-        chapterInfo,
+        chapterPlace,
         observeAccess(),
         progress,
         _local,
-    ) { videos, chapter, access, progress, local ->
-        val place = chapter?.first
+    ) { videos, place, access, progress, local ->
         BibleVideosUiState(
             chapterPlace = place,
-            bookName = chapter?.second.orEmpty(),
             sections = place?.chapter?.let { videos.sectionsFor(place.book, it) } ?: BibleVideoSections.EMPTY,
             canManage = access.allows(Scope.BIBLE_VIDEOS, AccessLevel.MANAGE),
             canDelete = access.allows(Scope.BIBLE_VIDEOS, AccessLevel.OWNER),
