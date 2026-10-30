@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +55,9 @@ import com.ipb.castelobranco.features.hymnal.presentation.viewmodel.HymnalViewMo
 private val SheetRadius = 18.dp
 private val CardRadius = 12.dp
 private val CardSideMargin = 10.dp
+
+// In sp so the column grows with the system font scale and three-digit numbers are never clipped.
+private val NumberColumnWidth = 48.sp
 private const val SEARCH_FIELD_ALPHA = 0.14f
 private const val PLACEHOLDER_ALPHA = 0.7f
 private const val COUNT_ALPHA = 0.75f
@@ -273,12 +277,13 @@ private fun HymnRow(
     ) {
         Text(
             text = item.number,
-            modifier = Modifier.width(44.dp),
+            modifier = Modifier.width(with(LocalDensity.current) { NumberColumnWidth.toDp() }),
             color = BrandColors.Green,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            softWrap = false,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
