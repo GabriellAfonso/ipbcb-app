@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.profiles.presentation.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +11,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
@@ -27,14 +34,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.core.domain.access.AccessRequestType
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
+import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.members.presentation.components.MemberAvatar
 import com.ipb.castelobranco.features.admin.members.presentation.util.initialsOf
 import com.ipb.castelobranco.features.admin.profiles.domain.model.AccessRequest
@@ -44,6 +57,7 @@ import com.ipb.castelobranco.features.admin.profiles.domain.model.RequestStatus
 import com.ipb.castelobranco.features.admin.profiles.presentation.components.ConfirmActionDialog
 import com.ipb.castelobranco.features.admin.profiles.presentation.components.DenyRequestDialog
 import com.ipb.castelobranco.features.admin.profiles.presentation.components.MemberPickerDialog
+import com.ipb.castelobranco.features.admin.profiles.presentation.components.RequestQuote
 import com.ipb.castelobranco.features.admin.profiles.presentation.state.ProfileDetailUiState
 import com.ipb.castelobranco.features.admin.profiles.presentation.state.ProfilesEvent
 import com.ipb.castelobranco.features.admin.profiles.presentation.util.formatDateTime
@@ -90,12 +104,29 @@ fun ProfileDetailScreen(
         }
     }
 
-    BaseScreen(tabName = state.account?.name ?: "Perfil", showBackArrow = true, onBackClick = onBack) { padding ->
+    val account = state.account
+    BaseScreen(
+        tabName = "Perfil",
+        showBackArrow = true,
+        onBackClick = onBack,
+        // The green behind the sheet's rounded corners continues the band.
+        containerColor = if (account != null) ipbGreen else MaterialTheme.colorScheme.background,
+        topBarExtension = account?.let { { AccountBand(it, viewModel.imageLoader) } },
+    ) { padding ->
+        val contentModifier = if (account != null) {
+            Modifier
+                .padding(top = padding.calculateTopPadding())
+                .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
+                .background(MaterialTheme.colorScheme.surfaceDim)
+                .padding(bottom = padding.calculateBottomPadding())
+        } else {
+            Modifier.padding(padding)
+        }
         ProfileDetailContent(
             state = state,
             imageLoader = viewModel.imageLoader,
             snackbarHostState = snackbarHostState,
-            modifier = Modifier.padding(padding),
+            modifier = contentModifier,
             actions = ProfileDetailActions(
                 onRetry = viewModel::load,
                 onApprove = viewModel::approve,
@@ -166,6 +197,7 @@ fun ProfileDetailContent(
     }
 }
 
+/** Pending requests come first: deciding them is why a leader opens the profile. */
 @Composable
 private fun AccountDetail(
     account: ManagedAccount,
@@ -179,62 +211,43 @@ private fun AccountDetail(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
     ) {
-        Header(account, imageLoader)
+        account.pendingRequests.forEach { request ->
+            PendingRequestCard(request, state.canManage, enabled, actions)
+        }
 
         Section("Acesso") {
-            if (state.canManage) {
+            SettingRow(title = "Acesso de membro", subtitle = accessSubtitle(account)) {
                 // A switch over the stored flag, like assigning a role; the ViewModel asks before acting.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Acesso de membro", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                if (state.canManage) {
                     Switch(checked = account.memberAccess, onCheckedChange = actions.onAskSetAccess, enabled = enabled)
                 }
-            } else {
-                val status = if (account.memberAccess) "Liberado" else "Não liberado"
-                Text(status, style = MaterialTheme.typography.bodyLarge)
             }
-            if (account.memberAccess) {
-                grantedLabel(account.accessGrantedBy, account.accessGrantedAt)?.let { Note(it) }
-            }
-            if (account.accessViaRole) Note("Acesso pelo papel")
-            if (state.canManage) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Bloquear pedidos", modifier = Modifier.weight(1f))
+            RowDivider()
+            SettingRow(
+                title = "Bloquear pedidos",
+                subtitle = if (account.requestsBlocked) {
+                    "A pessoa não consegue pedir de novo"
+                } else {
+                    "A pessoa pode fazer novos pedidos"
+                },
+            ) {
+                if (state.canManage) {
                     Switch(checked = account.requestsBlocked, onCheckedChange = actions.onSetBlocked, enabled = enabled)
                 }
-            } else if (account.requestsBlocked) {
-                Note("Pedidos bloqueados")
             }
         }
 
         Section("Rol") {
-            Text(account.member?.name ?: "Sem vínculo", style = MaterialTheme.typography.bodyLarge)
-            if (state.canManage) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = actions.onOpenPicker, enabled = enabled) {
-                        Text(if (account.member == null) "Vincular ao rol" else "Trocar vínculo")
-                    }
-                    if (account.member != null) {
-                        TextButton(onClick = actions.onAskUnlink, enabled = enabled) { Text("Remover vínculo") }
-                    }
-                }
-            }
-        }
-
-        if (account.pendingRequests.isNotEmpty()) {
-            Section("Pendentes") {
-                account.pendingRequests.forEach { request ->
-                    PendingRequestCard(request, state.canManage, enabled, actions)
-                }
-            }
+            MemberRow(account.member, imageLoader, state.canManage, enabled, actions)
         }
 
         val history = account.requests.filter { it.status != RequestStatus.PENDING }
         if (history.isNotEmpty()) {
             Section("Histórico") {
                 history.forEachIndexed { index, request ->
-                    if (index > 0) HorizontalDivider()
+                    if (index > 0) RowDivider()
                     HistoryEntry(request)
                 }
             }
@@ -242,19 +255,39 @@ private fun AccountDetail(
     }
 }
 
+/** Avatar, name, "@login · no app desde …" inside the green top-bar block. */
 @Composable
-private fun Header(account: ManagedAccount, imageLoader: ImageLoader?) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+private fun AccountBand(account: ManagedAccount, imageLoader: ImageLoader?) {
+    val subtitle = listOfNotNull(
+        account.username?.let { "@$it" },
+        account.dateJoined?.let { joinedSinceLabel(it).replaceFirstChar(Char::lowercase) },
+    ).joinToString(" · ")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(ipbGreen)
+            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 18.dp),
+    ) {
         MemberAvatar(
             initials = initialsOf(account.name),
             photoUrl = account.photoUrl,
             imageLoader = imageLoader,
-            modifier = Modifier.size(72.dp),
+            initialsSize = 20.sp,
+            modifier = Modifier
+                .size(60.dp)
+                .border(2.dp, Color.White.copy(alpha = BAND_BORDER_ALPHA), CircleShape),
         )
         Column {
-            Text(account.name, style = MaterialTheme.typography.titleLarge)
-            account.username?.let { Note("@$it") }
-            account.dateJoined?.let { Note(joinedSinceLabel(it)) }
+            Text(account.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = BAND_SUBTITLE_ALPHA),
+                )
+            }
         }
     }
 }
@@ -266,15 +299,41 @@ private fun PendingRequestCard(
     enabled: Boolean,
     actions: ProfileDetailActions,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(requestTypeLabel(request.type), style = MaterialTheme.typography.titleSmall)
-            request.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            request.createdAt?.let { Note(formatDateTime(it)) }
-            if (canManage) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { actions.onApprove(request.id) }, enabled = enabled) { Text("Aprovar") }
-                    OutlinedButton(onClick = { actions.onOpenDeny(request.id) }, enabled = enabled) { Text("Negar") }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(CardRadius))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(2.dp, BrandColors.Orange, RoundedCornerShape(CardRadius))
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Filled.Schedule, contentDescription = null, tint = PendingInk, modifier = Modifier.size(20.dp))
+            Text(
+                text = "${requestTypeLabel(request.type)} aguardando".uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = PendingInk,
+            )
+        }
+        request.message?.let { RequestQuote(it) }
+        request.createdAt?.let { Note(formatDateTime(it)) }
+        if (canManage) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                OutlinedButton(
+                    onClick = { actions.onOpenDeny(request.id) },
+                    enabled = enabled,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.weight(1f),
+                ) { Text("Negar") }
+                Button(
+                    onClick = { actions.onApprove(request.id) },
+                    enabled = enabled,
+                    colors = ButtonDefaults.buttonColors(containerColor = ipbGreen, contentColor = Color.White),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (request.type == AccessRequestType.ACCESS) "Liberar acesso" else "Marcar resolvida")
                 }
             }
         }
@@ -282,31 +341,141 @@ private fun PendingRequestCard(
 }
 
 @Composable
-private fun HistoryEntry(request: AccessRequest) {
-    Column(modifier = Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            "${requestTypeLabel(request.type)} · ${requestStatusLabel(request.type, request.status)}",
-            style = MaterialTheme.typography.bodyLarge,
+private fun MemberRow(
+    member: LinkedMember?,
+    imageLoader: ImageLoader?,
+    canManage: Boolean,
+    enabled: Boolean,
+    actions: ProfileDetailActions,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+    ) {
+        MemberAvatar(
+            initials = member?.name?.let(::initialsOf) ?: "?",
+            photoUrl = null,
+            imageLoader = imageLoader,
+            initialsSize = 12.sp,
+            modifier = Modifier.size(36.dp),
         )
-        request.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        val decided = listOfNotNull(request.decidedBy, request.decidedAt?.let(::formatDateTime)).joinToString(" · ")
-        if (decided.isNotEmpty()) Note(decided)
-        request.denialReason?.let { Note("Motivo: $it") }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(member?.name ?: "Sem vínculo", style = MaterialTheme.typography.bodyLarge)
+            Note(if (member != null) "Membro do rol vinculado a esta conta" else "Ligue a conta a um membro do rol")
+        }
+        if (canManage) {
+            TextButton(onClick = actions.onOpenPicker, enabled = enabled) {
+                Text(if (member == null) "Vincular" else "Trocar")
+            }
+            if (member != null) {
+                TextButton(
+                    onClick = actions.onAskUnlink,
+                    enabled = enabled,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("Remover") }
+            }
+        }
+    }
+}
+
+/** One step of the timeline: green dot when approved/resolved, red when denied. */
+@Composable
+private fun HistoryEntry(request: AccessRequest) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        val dotColor = if (request.status == RequestStatus.DENIED) MaterialTheme.colorScheme.error else ipbGreen
+        Box(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                "${requestTypeLabel(request.type)} · ${requestStatusLabel(request.type, request.status)}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            request.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            val decided = listOfNotNull(request.decidedBy, request.decidedAt?.let(::formatDateTime))
+                .joinToString(" · ")
+            if (decided.isNotEmpty()) Note(decided)
+            request.denialReason?.let { Note("Motivo: $it") }
+        }
+    }
+}
+
+/** "Liberado por …" when known, plus "Acesso pelo papel" when a role grants it anyway. */
+private fun accessSubtitle(account: ManagedAccount): String {
+    val stored = if (account.memberAccess) {
+        grantedLabel(account.accessGrantedBy, account.accessGrantedAt) ?: "Liberado"
+    } else {
+        "Não liberado"
+    }
+    return if (account.accessViaRole) "$stored · Acesso pelo papel" else stored
+}
+
+@Composable
+private fun SettingRow(title: String, subtitle: String, trailing: @Composable () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Note(subtitle)
+        }
+        trailing()
+    }
+}
+
+/** A title with a green bar, over a card holding [content]. */
+@Composable
+private fun Section(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 4.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 15.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Text(title, style = MaterialTheme.typography.titleSmall)
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(CardRadius))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
+        ) { content() }
     }
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-        content()
-    }
+private fun RowDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = DIVIDER_ALPHA))
 }
 
 @Composable
 private fun Note(text: String) {
-    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
+
+private val SheetRadius = 18.dp
+private val CardRadius = 18.dp
+private val PendingInk = Color(0xFF9A5B00)
+private const val BAND_BORDER_ALPHA = 0.6f
+private const val BAND_SUBTITLE_ALPHA = 0.82f
+private const val DIVIDER_ALPHA = 0.6f
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
@@ -337,6 +506,7 @@ private fun ProfileDetailContentPreview() {
             ),
             imageLoader = null,
             snackbarHostState = remember { SnackbarHostState() },
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceDim),
         )
     }
 }

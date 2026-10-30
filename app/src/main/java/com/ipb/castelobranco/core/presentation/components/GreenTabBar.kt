@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -34,16 +35,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.core.presentation.theme.onPrimaryContainerLight
 
 private const val ACTIVE_TAB_ALPHA = 0.16f
 private const val INACTIVE_TAB_ALPHA = 0.8f
 private const val SUB_LABEL_ALPHA = 0.8f
+private val BadgeTextColor = Color(0xFF2B1D00)
 
-/** One tab of [GreenTabBar]; [subLabel] is a small second line (e.g. the service time). */
+/**
+ * One tab of [GreenTabBar]; [subLabel] is a small second line (e.g. the service time) and [badge] a count drawn
+ * in an orange pill beside the label (e.g. pending requests).
+ */
 @Immutable
-data class GreenTab(val label: String, val subLabel: String? = null)
+data class GreenTab(val label: String, val subLabel: String? = null, val badge: Int? = null)
 
 /**
  * Tabs drawn inside the green top-bar block (pass it as `BaseScreen.topBarExtension`): white text, active tab on a
@@ -87,12 +93,18 @@ fun GreenTabBar(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    AutoSizeTabText(
-                        text = tab.label,
-                        color = textColor,
-                        maxLines = if (tab.label.contains(" ")) 2 else 1,
-                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        AutoSizeTabText(
+                            text = tab.label,
+                            color = textColor,
+                            maxLines = if (tab.label.contains(" ")) 2 else 1,
+                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                        )
+                        tab.badge?.takeIf { it > 0 }?.let { TabBadge(it) }
+                    }
                     tab.subLabel?.takeIf { it.isNotBlank() }?.let { sub ->
                         Text(
                             text = sub,
@@ -105,6 +117,20 @@ fun GreenTabBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TabBadge(count: Int) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(BrandColors.Orange)
+            .padding(horizontal = 6.dp),
+    ) {
+        Text(text = count.toString(), color = BadgeTextColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -148,6 +174,16 @@ private fun GreenTabBarPreview() {
         tabs = listOf(GreenTab("Terça", "19h30"), GreenTab("Quinta", "19h30"), GreenTab("Domingo", "18h")),
         selectedIndex = selected,
         onSelect = { selected = it },
+    )
+}
+
+@Preview(name = "GreenTabBar — badge")
+@Composable
+private fun GreenTabBarBadgePreview() {
+    GreenTabBar(
+        tabs = listOf(GreenTab("Pendentes", badge = 2), GreenTab("Todos · 5")),
+        selectedIndex = 0,
+        onSelect = {},
     )
 }
 

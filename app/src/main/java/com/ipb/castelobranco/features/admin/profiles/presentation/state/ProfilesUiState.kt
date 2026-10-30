@@ -9,6 +9,10 @@ data class ProfilesListUiState(
     val isRefreshing: Boolean = false,
     val error: String? = null,
     val rows: List<ProfileRowUi> = emptyList(),
+    /** Badge on "Pendentes"; `null` until that list loads. */
+    val pendingCount: Int? = null,
+    /** "Todos · {n}"; `null` until that list loads. */
+    val allCount: Int? = null,
 )
 
 data class ProfileRowUi(
@@ -19,6 +23,12 @@ data class ProfileRowUi(
     /** "Pedido de acesso" / "Pedido de correção" for the oldest pending request. */
     val pendingLabel: String?,
     val isBlocked: Boolean,
+    val username: String? = null,
+    val hasAccess: Boolean = false,
+    val isCorrection: Boolean = false,
+    /** The oldest pending request's message and "dd/MM/yyyy às HH:mm"; shown on the "Pendentes" tab. */
+    val pendingMessage: String? = null,
+    val pendingAt: String? = null,
 )
 
 data class ProfileDetailUiState(

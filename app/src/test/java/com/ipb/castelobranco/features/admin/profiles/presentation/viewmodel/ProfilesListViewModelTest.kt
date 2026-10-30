@@ -60,6 +60,21 @@ class ProfilesListViewModelTest {
     }
 
     @Test
+    fun `the tabs count each loaded list and a pending row carries the message`() = runTest {
+        repository.lists.getValue(ProfilesTab.PENDING).value = listOf(account(id = "u-1"), account(id = "u-2"))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.pendingCount)
+        assertEquals(null, vm.uiState.value.allCount)
+        assertEquals("Sou membro.", vm.uiState.value.rows.first().pendingMessage)
+
+        repository.lists.getValue(ProfilesTab.ALL).value = List(5) { account(id = "a-$it", pending = emptyList()) }
+        advanceUntilIdle()
+        assertEquals(5, vm.uiState.value.allCount)
+    }
+
+    @Test
     fun `switching to Todos loads that list`() = runTest {
         repository.lists.getValue(ProfilesTab.ALL).value = listOf(account(id = "u-1"), account(id = "u-2"))
         val vm = viewModel()

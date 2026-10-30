@@ -398,18 +398,28 @@ e-mail.
 
 ### 8.1 Telas
 
-- **Lista** (`ProfilesListScreen`): abas "Pendentes" (contas com pedido pendente, o mais antigo primeiro) e "Todos"
-  (todas as contas ativas, por nome). Linha: foto, nome, selo "Pedido de acesso" / "Pedido de correção" quando há
-  pendente e "Bloqueado" quando bloqueado. Puxar para atualizar. Vazio: "Nenhum pedido pendente." / "Nenhuma conta.".
-- **Detalhe** (`ProfileDetailScreen`): foto, nome, "@login", "No app desde {mês} de {ano}"; acesso "Liberado" /
-  "Não liberado" (a marcação gravada), "Liberado por {nome} em {data}" quando o servidor sabe quem liberou e
-  "Acesso pelo papel" quando um papel libera; membro do rol vinculado ou
-  "Sem vínculo"; pedidos pendentes (tipo, mensagem, data) e histórico (tipo, situação, quem decidiu, quando,
-  motivo). Correção aprovada aparece como "Resolvida".
+- **Lista** (`ProfilesListScreen`): abas verdes (`GreenTabBar`, na barra) "Pendentes" (contas com pedido pendente, o
+  mais antigo primeiro) e "Todos" (todas as contas ativas, por nome), sobre uma folha de cantos arredondados.
+  "Pendentes" leva um selo laranja com a quantidade de pendentes quando há; "Todos" mostra "Todos · {n}" depois de
+  carregada. Cada conta é um card: foto, nome e etiquetas — "Pedido de acesso" / "Pedido de correção" quando há
+  pendente, "Acesso liberado" quando a marcação está ligada e "Pedidos bloqueados" quando bloqueado; sem etiqueta,
+  "@login". Na aba Pendentes o card mostra também a mensagem do pedido mais antigo, entre aspas, e a data e hora.
+  Decidir continua no detalhe. Puxar para atualizar. Vazio: "Nenhum pedido pendente." / "Nenhuma conta.".
+- **Detalhe** (`ProfileDetailScreen`, título "Perfil"): faixa verde na barra com foto, nome e
+  "@login · no app desde {mês} de {ano}". Abaixo, em cards:
+  - **Pedidos pendentes primeiro**, cada um num card com borda laranja: "{tipo} aguardando", a mensagem entre
+    aspas, a data e os botões "Negar" e "Liberar acesso" (pedido de acesso) / "Marcar resolvida" (correção).
+  - **Acesso**: "Acesso de membro" com "Liberado por {nome} em {data}" quando o servidor sabe quem liberou (senão
+    "Liberado" / "Não liberado", a marcação gravada) e "Acesso pelo papel" quando um papel libera; "Bloquear
+    pedidos" com "A pessoa não consegue pedir de novo" / "A pessoa pode fazer novos pedidos".
+  - **Rol**: membro vinculado ("Membro do rol vinculado a esta conta") ou "Sem vínculo" ("Ligue a conta a um membro
+    do rol").
+  - **Histórico** como linha do tempo (ponto verde aprovado/resolvido, vermelho negado): tipo, situação, mensagem,
+    quem decidiu, quando, motivo. Correção aprovada aparece como "Resolvida".
 
 ### 8.2 Ações (só com `profiles` ≥ `manage`)
 
-- **Aprovar** / **Negar** cada pedido pendente; negar abre um diálogo com "Motivo (opcional)", até 500 caracteres.
+- **Liberar acesso** / **Marcar resolvida** (aprovar) ou **Negar** cada pedido pendente; negar abre um diálogo com "Motivo (opcional)", até 500 caracteres.
 - **Acesso de membro** — chave sobre a marcação gravada, como atribuir um papel.
   - Ligar libera o acesso sem pedido. A confirmação diz "Liberar o acesso de {nome}? A pessoa recebe uma
     notificação.". Um pedido de acesso pendente sai de Pendentes como aprovado.
