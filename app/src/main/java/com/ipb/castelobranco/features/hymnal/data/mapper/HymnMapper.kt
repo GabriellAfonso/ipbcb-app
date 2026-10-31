@@ -18,13 +18,20 @@ fun HymnDto.toDomain(): Hymn =
         }
     )
 
+/**
+ * Orders by the leading digits of the number, then by the suffix after them, so "110-A" sits right after "110"
+ * instead of at the end. Numbers without leading digits go last, alphabetically.
+ */
 fun List<HymnDto>.toDomain(): List<Hymn> =
     map { it.toDomain() }.sortedWith(
         compareBy(
-            { it.number.toIntOrNull() ?: Int.MAX_VALUE },
+            { leadingDigits(it.number).toIntOrNull() ?: Int.MAX_VALUE },
+            { it.number.trim().removePrefix(leadingDigits(it.number)) },
             { it.number }
         )
     )
+
+private fun leadingDigits(number: String): String = number.trim().takeWhile { it.isDigit() }
 
 private fun lyricTypeOf(raw: String): HymnLyricType =
     when (raw.trim().lowercase()) {

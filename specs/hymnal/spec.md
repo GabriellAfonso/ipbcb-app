@@ -22,8 +22,10 @@ Ambas vivem em `hymnalGraph` (`HymnalNavGraph.kt`), com `HymnalViewModel` escopa
 
 ### 1.1 Lista
 
-Lista completa ordenada por número crescente (numérico quando possível, alfabético como
-desempate). Busca por número, título ou trecho de letra, *accent-insensitive* via `normalize()`.
+Lista completa ordenada por número crescente: primeiro pelos dígitos iniciais (numérico), depois pelo
+sufixo que vem depois deles, depois alfabético. Assim "110-A" fica logo após "110" (e no grupo "101 – 200"),
+não no fim da lista. Número sem dígitos iniciais vai para o fim. Busca por número, título ou trecho de letra,
+*accent-insensitive* via `normalize()`.
 Pull-to-refresh chama `refreshHymnal()`.
 
 O `debounce` de 200 ms vale **somente para query não vazia**: a busca varre a letra inteira de

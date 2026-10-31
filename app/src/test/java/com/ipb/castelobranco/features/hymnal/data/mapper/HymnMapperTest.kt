@@ -134,5 +134,20 @@ class HymnMapperTest {
         assertTrue(numbers.indexOf("20") < numbers.indexOf(""))
     }
 
+    @Test
+    fun `list toDomain places suffixed number right after its base number`() {
+        val dtos = listOf(
+            HymnDto("200", "Duzentos", emptyList()),
+            HymnDto("110-A", "Cento e dez A", emptyList()),
+            HymnDto("111", "Cento e onze", emptyList()),
+            HymnDto("110", "Cento e dez", emptyList()),
+            HymnDto("110-B", "Cento e dez B", emptyList()),
+        )
+
+        val result = dtos.toDomain()
+
+        assertEquals(listOf("110", "110-A", "110-B", "111", "200"), result.map { it.number })
+    }
+
     // endregion
 }
