@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +37,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,8 +59,11 @@ private val SheetRadius = 18.dp
 private val CardRadius = 12.dp
 private val CardSideMargin = 10.dp
 
-// In sp so the column grows with the system font scale and three-digit numbers are never clipped.
+// In sp so the column grows with the system font scale and three-digit numbers are never clipped. Minimum only:
+// a suffixed number ("110-A") widens its own row instead of being cut.
 private val NumberColumnWidth = 48.sp
+private val NumberFontSize = 22.sp
+private val NumberSuffixFontSize = 14.sp
 private const val SEARCH_FIELD_ALPHA = 0.14f
 private const val PLACEHOLDER_ALPHA = 0.7f
 private const val COUNT_ALPHA = 0.75f
@@ -254,6 +260,18 @@ private fun GroupRule(label: String) {
     }
 }
 
+/** Leading digits at full size, any suffix ("-A") smaller so it fits next to them. */
+private fun numberLabel(number: String) = buildAnnotatedString {
+    val digits = number.takeWhile { it.isDigit() }
+    append(digits)
+    val suffix = number.removePrefix(digits)
+    if (suffix.isNotEmpty()) {
+        val start = length
+        append(suffix)
+        addStyle(SpanStyle(fontSize = NumberSuffixFontSize), start, length)
+    }
+}
+
 @Composable
 private fun HymnRow(
     item: Hymn,
@@ -276,10 +294,10 @@ private fun HymnRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = item.number,
-            modifier = Modifier.width(with(LocalDensity.current) { NumberColumnWidth.toDp() }),
+            text = numberLabel(item.number),
+            modifier = Modifier.widthIn(min = with(LocalDensity.current) { NumberColumnWidth.toDp() }),
             color = BrandColors.Green,
-            fontSize = 22.sp,
+            fontSize = NumberFontSize,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 1,

@@ -44,8 +44,9 @@ mostra "N hinos" e um botao de limpar. Abaixo, a folha de conteudo com cantos su
 no ViewModel): titulo do grupo "1 – 100", "101 – 200"… centralizado entre duas linhas finas, e um cartao
 (`surfaceContainer`) com os hinos do grupo. Numero sem parte numerica vai para o grupo "Outros", no fim.
 
-**Linha:** numero grande em verde (`BrandColors.Green`, 22 sp, negrito) a esquerda; titulo em cima e o
-comeco da primeira estrofe numa linha embaixo. Linha inteira clicavel. Busca sem resultado: "Nenhum hino
+**Linha:** numero grande em verde (`BrandColors.Green`, 22 sp, negrito) a esquerda, coluna de largura
+minima 48 sp que cresce se preciso; sufixo do numero ("-A" em "110-A") em 14 sp para nao ser cortado; titulo
+em cima e o comeco da primeira estrofe numa linha embaixo. Linha inteira clicavel. Busca sem resultado: "Nenhum hino
 encontrado para “{busca}”."
 
 ### 1.2 Detalhe
