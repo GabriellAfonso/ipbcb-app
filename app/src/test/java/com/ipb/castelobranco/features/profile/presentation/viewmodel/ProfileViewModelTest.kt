@@ -865,6 +865,17 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun `the notice is settled only once its answer can be known`() {
+        assertTrue(stateFor(false, RecoveryEmailStatus.Unknown).isRecoveryNoticeSettled)
+        assertTrue(stateFor(true, RecoveryEmailStatus.None).isRecoveryNoticeSettled)
+        assertFalse(stateFor(null, RecoveryEmailStatus.None).isRecoveryNoticeSettled)
+        assertFalse(stateFor(true, RecoveryEmailStatus.Unknown).isRecoveryNoticeSettled)
+        assertFalse(
+            stateFor(true, RecoveryEmailStatus.None).copy(recoveryNoticeAnswered = null).isRecoveryNoticeSettled,
+        )
+    }
+
+    @Test
     fun `answering the notice ends it`() = runTest {
         givenProfile(hasPassword = true, status = RecoveryEmailStatus.None)
         advanceUntilIdle()

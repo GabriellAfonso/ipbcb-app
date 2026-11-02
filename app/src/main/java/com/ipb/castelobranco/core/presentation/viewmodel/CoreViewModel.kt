@@ -63,7 +63,7 @@ class CoreViewModel @Inject constructor(
     private val unregisterDevice: UnregisterDeviceUseCase,
     private val appForeground: AppForegroundState,
     private val sessionRecovery: SessionRecovery,
-    themePreferences: ThemePreferences,
+    private val themePreferences: ThemePreferences,
 ) : ViewModel() {
 
     sealed interface CoreEvent {
@@ -85,6 +85,10 @@ class CoreViewModel @Inject constructor(
 
     val keepScreenOn: StateFlow<Boolean> = themePreferences.keepScreenOnFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /** `null` until read from disk: the notice must not flash for someone who already answered it. */
+    val notificationNoticeAnswered: StateFlow<Boolean?> = themePreferences.notificationNoticeAnsweredFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** The month's birthdays; null while there is nothing to show (not loaded yet, or the load failed). */
     private val _birthdays = MutableStateFlow<List<Birthday>?>(null)
@@ -121,6 +125,10 @@ class CoreViewModel @Inject constructor(
      * Idempotente: chamada tanto pelo AppNavHost (garante o boot mesmo quando o processo e
      * recriado direto numa rota interna) quanto pela CoreView.
      */
+    fun answerNotificationNotice() {
+        viewModelScope.launch { themePreferences.setNotificationNoticeAnswered() }
+    }
+
     fun initialize() {
         if (initialized) return
         initialized = true

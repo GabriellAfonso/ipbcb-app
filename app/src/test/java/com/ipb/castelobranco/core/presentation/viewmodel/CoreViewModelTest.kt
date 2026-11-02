@@ -71,6 +71,12 @@ import org.junit.Test
 class CoreViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+    private val noticeAnswered = MutableStateFlow(false)
+    private val themePreferences = mockk<ThemePreferences> {
+        every { keepScreenOnFlow } returns flowOf(true)
+        every { notificationNoticeAnsweredFlow } returns noticeAnswered
+        coEvery { setNotificationNoticeAnswered() } answers { noticeAnswered.value = true }
+    }
 
     private lateinit var preloadDataUseCase: PreloadDataUseCase
     private lateinit var authSession: AuthSession
@@ -164,8 +170,19 @@ class CoreViewModelTest {
             UnregisterDeviceUseCase(pushScheduler, devices, tokenStore),
             AppForegroundState(),
             sessionRecovery,
-            mockk<ThemePreferences> { every { keepScreenOnFlow } returns flowOf(true) },
+            themePreferences,
         )
+    }
+
+    @Test
+    fun `answering the notification notice ends it`() = runTest {
+        advanceUntilIdle()
+        assertEquals(false, viewModel.notificationNoticeAnswered.value)
+
+        viewModel.answerNotificationNotice()
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.notificationNoticeAnswered.value)
     }
 
     @After

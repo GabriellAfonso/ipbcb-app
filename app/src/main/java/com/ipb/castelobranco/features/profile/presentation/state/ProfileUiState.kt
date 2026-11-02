@@ -42,6 +42,11 @@ data class ProfileUiState(
     val showRecoveryNotice: Boolean
         get() = hasPassword == true && recoveryEmail == RecoveryEmailStatus.None && recoveryNoticeAnswered == false
 
+    /** Whether [showRecoveryNotice] is already decided for this account: a later notice waits for this. */
+    val isRecoveryNoticeSettled: Boolean
+        get() = hasPassword == false ||
+            (hasPassword == true && recoveryEmail != RecoveryEmailStatus.Unknown && recoveryNoticeAnswered != null)
+
     val isPhotoBusy: Boolean get() = isUploading || isRemovingPhoto
     val canDeleteAccount: Boolean get() = hasPassword != null
 }

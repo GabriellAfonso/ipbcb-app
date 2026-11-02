@@ -1,11 +1,8 @@
 package com.ipb.castelobranco.core.presentation
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
@@ -13,9 +10,7 @@ import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.ipb.castelobranco.core.presentation.navigation.AppNavHost
 import com.ipb.castelobranco.core.presentation.navigation.NotificationTarget
@@ -42,11 +37,6 @@ class CoreActivity : ComponentActivity() {
 
     /** A tapped notification's destination, until `AppNavHost` has navigated to it. */
     private val notificationTarget = MutableStateFlow<NotificationTarget?>(null)
-
-    @Suppress("unused")
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* granted or denied — no action needed */ }
 
     companion object {
         private const val EXTRA_APP_MESSAGE = "extra_app_message"
@@ -86,7 +76,6 @@ class CoreActivity : ComponentActivity() {
 
         holdFirstFrameUntilBootReady()
         checkForImmediateUpdate()
-        requestNotificationPermissionIfNeeded()
     }
 
     /**
@@ -121,16 +110,6 @@ class CoreActivity : ComponentActivity() {
             date = intent?.getStringExtra(NotificationTarget.EXTRA_DATE),
         ) ?: return
         notificationTarget.value = target
-    }
-
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
     }
 
     override fun onResume() {

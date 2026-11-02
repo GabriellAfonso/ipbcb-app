@@ -1,4 +1,4 @@
-package com.ipb.castelobranco.features.settings.presentation.components
+package com.ipb.castelobranco.core.presentation.components
 
 import android.Manifest
 import android.content.Context
@@ -16,10 +16,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ipb.castelobranco.core.presentation.base.findActivity
+
+/** Whether the system lets the app post notifications, read again whenever the screen comes back. */
+@Composable
+fun rememberNotificationsAllowed(): Boolean {
+    val context = LocalContext.current
+    var allowed by remember(context) {
+        mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled())
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        allowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    return allowed
+}
 
 /**
  * Returns a callback that makes sure the app can post notifications: asks for `POST_NOTIFICATIONS` (Android 13+)

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +45,8 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.Highlight
 import com.ipb.castelobranco.core.presentation.components.HighlightBirthdays
 import com.ipb.castelobranco.core.presentation.components.HighlightBirthdaysLoading
+import com.ipb.castelobranco.core.presentation.components.rememberNotificationAccessRequest
+import com.ipb.castelobranco.core.presentation.components.rememberNotificationsAllowed
 import com.ipb.castelobranco.core.presentation.components.HighlightEvent
 import com.ipb.castelobranco.core.presentation.components.HighlightEventUi
 import com.ipb.castelobranco.core.presentation.components.HighlightScheduleLoading
@@ -148,6 +151,14 @@ fun CoreView(
     val birthdays       by viewModel.birthdays.collectAsStateWithLifecycle()
     val eventPages      by eventsViewModel.pages.collectAsStateWithLifecycle()
     val isSyncing       by viewModel.isSyncing.collectAsStateWithLifecycle()
+    val notificationNoticeAnswered by viewModel.notificationNoticeAnswered.collectAsStateWithLifecycle()
+    val notificationsAllowed = rememberNotificationsAllowed()
+    val requestNotificationAccess = rememberNotificationAccessRequest()
+
+    val showRecoveryNotice = isLoggedIn && profile.showRecoveryNotice
+    // Saveable: it must survive a trip to the profile, or the next notice would follow this one at once.
+    var recoveryNoticeShown by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(showRecoveryNotice) { if (showRecoveryNotice) recoveryNoticeShown = true }
 
     // Greeting and date follow the clock: read again whenever the home comes back.
     var now by remember { mutableStateOf(LocalDateTime.now()) }
@@ -213,12 +224,24 @@ fun CoreView(
         ),
         eventImageLoader       = eventsViewModel.imageLoader,
         onLogout               = viewModel::logout,
-        showRecoveryNotice     = isLoggedIn && profile.showRecoveryNotice,
+        showRecoveryNotice     = showRecoveryNotice,
         onAddRecoveryEmail     = {
             profileViewModel.answerRecoveryNotice()
             onNavigateToRecoveryEmailForm()
         },
         onDismissRecoveryNotice = profileViewModel::answerRecoveryNotice,
+        showNotificationNotice = shouldShowNotificationNotice(
+            isLoggedIn            = isLoggedIn,
+            recoveryNoticeSettled = profile.isRecoveryNoticeSettled,
+            recoveryNoticeShown   = recoveryNoticeShown,
+            notificationsAllowed  = notificationsAllowed,
+            answered              = notificationNoticeAnswered,
+        ),
+        onEnableNotifications  = {
+            viewModel.answerNotificationNotice()
+            requestNotificationAccess()
+        },
+        onDismissNotificationNotice = viewModel::answerNotificationNotice,
     )
 }
 
@@ -243,6 +266,9 @@ fun CoreScreen(
     showRecoveryNotice: Boolean,
     onAddRecoveryEmail: () -> Unit,
     onDismissRecoveryNotice: () -> Unit,
+    showNotificationNotice: Boolean,
+    onEnableNotifications: () -> Unit,
+    onDismissNotificationNotice: () -> Unit,
 ) {
     NavigationDrawer(
         onNavigateToAuth     = onNavigateToAuth,
@@ -267,6 +293,8 @@ fun CoreScreen(
             val highlight: @Composable () -> Unit = {
                 if (showRecoveryNotice) {
                     RecoveryEmailNoticeCard(onAdd = onAddRecoveryEmail, onDismiss = onDismissRecoveryNotice)
+                } else if (showNotificationNotice) {
+                    NotificationNoticeCard(onEnable = onEnableNotifications, onDismiss = onDismissNotificationNotice)
                 } else {
                     Highlight(
                         pages = buildHighlightPages(

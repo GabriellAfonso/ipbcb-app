@@ -246,7 +246,7 @@ Sincroniza: no boot (depois do refresh do perfil, sem segurar o fim do boot), em
   `access_request_created` / `_approved` / `_denied` (spec 016, `request_type` `access` | `data_correction`,
   `reason` opcional): notifica sempre; aprovado e negado tambem releem o `/me` (`RefreshAccessUseCase`).
 - **Notificacoes:** `SetlistNotifications`, canal `sunday_setlist` ("Repertorio"), id fixo por tipo (a nova
-  substitui a anterior), so com permissao (Android 13+ ja pedida no launch). O toque abre o `CoreActivity` com
+  substitui a anterior), so com permissao (Android 13+, pedida pelo aviso da home na secao 6.3 ou por Configuracoes). O toque abre o `CoreActivity` com
   `NotificationTarget` nos extras (secao 6.1). Pedidos de acesso: `AccessRequestNotifications`, canal
   `access_requests` ("Pedidos de acesso"), um id por tipo; o toque do lider abre Gestao > Perfis (Pendentes)
   quando ele pode ver `profiles` (senao um aviso), e o de quem pediu abre o Perfil. Textos em
@@ -659,6 +659,18 @@ senha, com "Adicionar e-mail" e "Agora não". O lugar do carousel é o que sobra
 nem cobre os atalhos; com fonte grande ele rola por dentro. Responder devolve o carousel e encerra o aviso para sempre
 neste aparelho (`@SettingsPrefs`, sobrevive ao logout). Só ver o card e fechar o app não conta como resposta.
 "Adicionar e-mail" abre o Perfil com o formulário aberto, que pede a senha atual. A opção continua no Perfil.
+
+#### Aviso de notificações
+
+O app não pede a permissão de notificações ao abrir. Conta logada, com notificações não permitidas no sistema e aviso ainda
+não respondido neste aparelho: um card **ocupa o lugar do carousel**, como o aviso de e-mail, dizendo o que a pessoa recebe,
+com "Ativar" e "Agora não". Só quem está logado vê, porque os aniversários e os lembretes da escala dependem da conta.
+"Ativar" pede a permissão pelo diálogo do sistema ou, se ele não aparece mais, abre as configurações de notificação
+(`specs/settings/spec.md` §2.1). Responder encerra o aviso para sempre neste aparelho (`@SettingsPrefs`, sobrevive ao
+logout); a opção continua em Configurações. Quem já permitiu não vê nada.
+
+Os dois avisos nunca aparecem juntos nem em sequência: o de e-mail tem prioridade, e o de notificações espera saber se o de
+e-mail vai aparecer (senha, e-mail e resposta conhecidos, ou conta sem senha) e fica para a abertura seguinte se ele apareceu.
 
 #### Carousel de Destaques (auto-scroll 5s)
 

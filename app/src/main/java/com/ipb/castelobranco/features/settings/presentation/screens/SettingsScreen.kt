@@ -48,7 +48,7 @@ import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
-import com.ipb.castelobranco.features.settings.presentation.components.rememberNotificationAccessRequest
+import com.ipb.castelobranco.core.presentation.components.rememberNotificationAccessRequest
 import com.ipb.castelobranco.core.presentation.components.formatDiskUsage
 import com.ipb.castelobranco.core.presentation.components.withDiskUsage
 import com.ipb.castelobranco.core.domain.gallery.GalleryUsage

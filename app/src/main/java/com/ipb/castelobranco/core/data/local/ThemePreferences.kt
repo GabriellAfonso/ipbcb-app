@@ -35,6 +35,7 @@ class ThemePreferences @Inject constructor(
     private val scheduleNotificationsKey = booleanPreferencesKey("schedule_notifications_enabled")
     private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on")
     private val birthdayLastNotifiedKey = longPreferencesKey("birthday_last_notified_epoch_day")
+    private val notificationNoticeAnsweredKey = booleanPreferencesKey("notification_notice_answered")
 
     val themeModeFlow: Flow<ThemeMode> =
         dataStore.data.map { prefs ->
@@ -120,6 +121,18 @@ class ThemePreferences @Inject constructor(
     suspend fun setKeepScreenOn(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[keepScreenOnKey] = enabled
+        }
+    }
+
+    /** The home notice about notifications (`specs/core/spec.md` §6.3) was answered on this device. */
+    val notificationNoticeAnsweredFlow: Flow<Boolean> =
+        dataStore.data.map { prefs ->
+            prefs[notificationNoticeAnsweredKey] ?: false
+        }
+
+    suspend fun setNotificationNoticeAnswered() {
+        dataStore.edit { prefs ->
+            prefs[notificationNoticeAnsweredKey] = true
         }
     }
 
