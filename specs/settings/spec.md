@@ -26,8 +26,8 @@ Lista em seções, separadas por divisor:
 |--------------|-------------------|-----------------------------------------------------------------------------|
 | Aparência    | Tema              | Três opções: Sistema / Claro / Escuro (2.2).                                |
 | Leitura      | Manter tela acesa | Switch; ligado por padrão. A tela não apaga nas telas de leitura (2.3).     |
-| Notificações | Aniversários      | Switch; "Ativado"/"Desativado". Ao ligar, garante o acesso a notificações (2.1). |
-| Notificações | Escala            | Switch abaixo de Aniversários; ligado por padrão; "Ativado"/"Desativado". Desligado, o app descarta os lembretes da escala (`specs/schedule/spec.md` §4); só no aparelho, nada vai ao servidor. Ao ligar, mesmo pedido de acesso (2.1). |
+| Notificações | Aniversários      | Switch; "Ativado"/"Desativado"/"Bloqueado no sistema" (2.1). Ao ligar, garante o acesso a notificações (2.1). |
+| Notificações | Escala            | Switch abaixo de Aniversários; ligado por padrão; mesmos textos de Aniversários. Desligado, o app descarta os lembretes da escala (`specs/schedule/spec.md` §4); só no aparelho, nada vai ao servidor. Ao ligar, mesmo pedido de acesso (2.1). |
 | Galeria      | Galeria ›         | "Fotos {x} · Vídeos {y}"; um tipo sem nada no aparelho some do texto ("Fotos {x}"); os dois vazios, "nada no aparelho". Abre Configurações › Galeria (seção 4). |
 | Dados        | Apagar Bíblia     | Mostra o espaço ocupado (2.4). Pede confirmação; apaga a Bíblia do aparelho e mostra "Bíblia apagada" (2.5). |
 | Diagnóstico  | Logs do app       | Abre a tela de logs. Seção escondida até destravar (2.6).                   |
@@ -35,7 +35,7 @@ Lista em seções, separadas por divisor:
 
 ### 2.1 Acesso a notificações ao ligar Aniversários ou Escala
 
-A permissão pedida na primeira abertura costuma ser negada sem querer. Ligar o switch de Aniversários ou de Escala
+O app não pede a permissão ao abrir: o pedido parte do aviso da home (`specs/core/spec.md` §6.3) ou destes switches. Ligar o switch de Aniversários ou de Escala
 (de desligado para ligado) é a forma de pedir de novo. A preferência é salva de qualquer jeito; o acesso só decide se
 a notificação aparece.
 
@@ -49,6 +49,9 @@ a notificação aparece.
 "Não mostra mais o diálogo" = a permissão é negada sem diálogo: o `shouldShowRequestPermissionRationale` é falso
 antes e depois do pedido. Se o usuário acabou de negar no diálogo, nada mais acontece — sem abrir configurações
 logo em seguida. Desligar o switch nunca pede nada.
+
+**Switch ligado com as notificações bloqueadas no sistema:** mostra "Bloqueado no sistema" (situação relida ao voltar para
+a tela). O toque não muda a preferência: só busca o acesso, pela mesma tabela. Assim que o sistema libera, volta a "Ativado".
 
 ### 2.2 Tema
 

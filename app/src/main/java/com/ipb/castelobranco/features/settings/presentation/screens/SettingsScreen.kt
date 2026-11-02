@@ -49,6 +49,7 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.base.findActivity
 import com.ipb.castelobranco.features.settings.domain.model.ThemeMode
 import com.ipb.castelobranco.core.presentation.components.rememberNotificationAccessRequest
+import com.ipb.castelobranco.core.presentation.components.rememberNotificationsAllowed
 import com.ipb.castelobranco.core.presentation.components.formatDiskUsage
 import com.ipb.castelobranco.core.presentation.components.withDiskUsage
 import com.ipb.castelobranco.core.domain.gallery.GalleryUsage
@@ -69,6 +70,13 @@ fun SettingsScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshDiskUsage() }
 
     val requestNotificationAccess = rememberNotificationAccessRequest()
+    val notificationsAllowed = rememberNotificationsAllowed()
+    // Turning a switch on is the user's way to get a second chance at a permission denied by accident. A switch that
+    // is on but blocked by the system keeps its preference: the tap only goes after the access.
+    val onNotificationSwitch = { enabled: Boolean, toggle: () -> Unit ->
+        if (!enabled || !notificationsAllowed) requestNotificationAccess()
+        if (!enabled || notificationsAllowed) toggle()
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect {
@@ -84,15 +92,13 @@ fun SettingsScreen(
         onToggleKeepScreenOn         = { viewModel.toggleKeepScreenOn() },
         birthdayNotifications        = uiState.birthdayNotifications,
         onToggleBirthdayNotifications = {
-            // Turning it on is the user's way to get a second chance at a permission denied by accident.
-            if (!uiState.birthdayNotifications) requestNotificationAccess()
-            viewModel.toggleBirthdayNotifications()
+            onNotificationSwitch(uiState.birthdayNotifications, viewModel::toggleBirthdayNotifications)
         },
         scheduleNotifications        = uiState.scheduleNotifications,
         onToggleScheduleNotifications = {
-            if (!uiState.scheduleNotifications) requestNotificationAccess()
-            viewModel.toggleScheduleNotifications()
+            onNotificationSwitch(uiState.scheduleNotifications, viewModel::toggleScheduleNotifications)
         },
+        notificationsAllowed         = notificationsAllowed,
         onOpenGallery                = onNavigateToGallery,
         onRequestResetBible          = { viewModel.requestReset(ResetAction.BIBLE) },
         pendingConfirmation          = uiState.pendingConfirmation,
@@ -118,6 +124,7 @@ fun SettingsContent(
     onToggleBirthdayNotifications: () -> Unit = {},
     scheduleNotifications: Boolean = true,
     onToggleScheduleNotifications: () -> Unit = {},
+    notificationsAllowed: Boolean = true,
     onOpenGallery: () -> Unit,
     onRequestResetBible: () -> Unit,
     pendingConfirmation: ResetAction?,
@@ -181,14 +188,14 @@ fun SettingsContent(
             SettingsSwitchRow(
                 icon            = Icons.Filled.Cake,
                 title           = "Aniversários",
-                description     = if (birthdayNotifications) "Ativado" else "Desativado",
+                description     = notificationStatus(birthdayNotifications, notificationsAllowed),
                 checked         = birthdayNotifications,
                 onCheckedChange = { onToggleBirthdayNotifications() },
             )
             SettingsSwitchRow(
                 icon            = Icons.Filled.Event,
                 title           = "Escala",
-                description     = if (scheduleNotifications) "Ativado" else "Desativado",
+                description     = notificationStatus(scheduleNotifications, notificationsAllowed),
                 checked         = scheduleNotifications,
                 onCheckedChange = { onToggleScheduleNotifications() },
             )
@@ -325,6 +332,12 @@ private fun ThemeModeRow(
             )
         },
     )
+}
+
+internal fun notificationStatus(enabled: Boolean, allowedBySystem: Boolean): String = when {
+    !enabled -> "Desativado"
+    !allowedBySystem -> "Bloqueado no sistema"
+    else -> "Ativado"
 }
 
 @Composable
