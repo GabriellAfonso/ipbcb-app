@@ -13,8 +13,8 @@ mapping, standard sections, repository snapshot behaviour (404 clears), list/les
 ## Manual (device, backend with the 2026 lessons)
 
 1. Estudos → EBD: tab 2026, header "2026 — O Drama das Escrituras", 18 lessons in order.
-2. Open "Panorama de Daniel": parchment header, section icons in gold, key verses on parchment, cards, comparison,
-   table, timeline, book card; tap a chip → Bible on the verses. "Aa" changes the size. Dark mode: dark brown.
+2. Open "Panorama de Daniel": header, section icons in green, key verses on the Escala green, cards, comparison,
+   table, timeline, book card; tap a chip → Bible on the verses. "Aa" changes the size. Dark mode: the app's neutral surfaces.
 3. Airplane mode: reopen list and lesson — no error. A never-opened lesson shows "Tentar novamente".
 4. As Liderança: Painel → EBD. New lesson in 2026 (six sections), write a paragraph with a chip, a list and a key
    verse, preview, save as Rascunho — absent for members; publish — last in the member list.

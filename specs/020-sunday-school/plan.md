@@ -12,8 +12,7 @@ reuses:
 - **Reading**: `SundaySchoolRepositoryImpl` keeps one snapshot for the default index, one per other year and one
   per lesson (`SnapshotCacheFactory`, ETag, preload → refresh), and clears a snapshot on its 404. The content JSON
   is decoded by `LessonContentCodec` into a sealed `LessonBlock` (ten types + `Unknown`). `LessonContentView`
-  renders it on a cream/dark-brown page with Cormorant Garamond + Literata, parchment brush on the header and key
-  verses, Phosphor duotone drawables, `ProofTextChips`, and the shared "Aa" doctrine size.
+  renders it with the app's color scheme and fonts (Poppins + Inter), Phosphor duotone drawables, `ProofTextChips`, and the shared "Aa" doctrine size.
 - **Panel**: `SundaySchoolAdminRepositoryImpl` over an authed API, results in memory only. Three screens: lesson
   list per year (drafts marked, drag reorder, delete), lesson form (metadata + editor of sections/paragraph/list/
   key verse/chips, non-editable blocks movable and deletable, preview tab with the same `LessonContentView`) and
@@ -101,7 +100,7 @@ app/src/main/
         ├── domain/repository/SundaySchoolRepository.kt, SundaySchoolAdminRepository.kt
         ├── domain/usecase/ValidateLessonDraftUseCase.kt
         └── presentation/
-            ├── components/sundayschool/SundaySchoolTheme.kt (colors, fonts, parchment brush),
+            ├── components/sundayschool/SundaySchoolTheme.kt (colors from the Material scheme),
             │   SundaySchoolIcons.kt, LessonContentView.kt (renderer), LessonBlocks.kt,
             │   LessonEditor.kt, ProofTextEditorDialog.kt
             ├── screens/SundaySchoolScreen.kt, SundaySchoolLessonScreen.kt,

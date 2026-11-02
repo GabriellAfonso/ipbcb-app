@@ -32,7 +32,7 @@ Paths are relative to `app/src/main/java/com/ipb/castelobranco/` (main) and `app
 **Independent test**: 2026 lessons; open "Panorama de Daniel"; airplane mode reopen.
 
 - [X] T012 [US1] `SundaySchoolSnapshotSources` + `SundaySchoolRepositoryImpl` (default index, per-year, per-lesson, 404 clears) in `features/studies/data/repository/` + `SundaySchoolRepositoryImplTest`
-- [X] T013 [P] [US1] `SundaySchoolTheme.kt` (palette light/dark, fonts, parchment brush) and `SundaySchoolIcons.kt` in `features/studies/presentation/components/sundayschool/`
+- [X] T013 [P] [US1] `SundaySchoolTheme.kt` (colors from the Material scheme) and `SundaySchoolIcons.kt` in `features/studies/presentation/components/sundayschool/`
 - [X] T014 [US1] Renderer `LessonContentView` + block composables in `features/studies/presentation/components/sundayschool/LessonContentView.kt` and `LessonBlocks.kt`
 - [X] T015 [US1] `SundaySchoolViewModel` + `SundaySchoolScreen` (tabs, header, list, empty, error) + `SundaySchoolViewModelTest`
 - [X] T016 [US1] `SundaySchoolLessonViewModel` + `SundaySchoolLessonScreen` (header, renderer, "Aa", error/gone)

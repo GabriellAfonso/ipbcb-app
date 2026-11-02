@@ -25,7 +25,7 @@ data class SundaySchoolUiState(
     val selectedYear: Int? = null,
     /** "2026 — O Drama das Escrituras" for the header above the list. */
     val yearLabel: String = "",
-    /** The shown year's theme for the parchment header; blank when the year has none. */
+    /** The shown year's theme for the year header; blank when the year has none. */
     val yearTheme: String = "",
     val lessons: List<LessonSummary> = emptyList(),
     val isLoading: Boolean = true,

@@ -52,7 +52,7 @@ pleasant, structured read on the phone — not "só um blocão de texto" — and
 ### User Story 1 - Read a lesson (Priority: P1)
 
 A member opens Estudos → Escola Bíblica Dominical, sees the current year's lessons and opens one. The lesson reads
-like a well-printed booklet: a parchment-style header, sections with an icon, highlighted key verses, cards,
+like a well-printed booklet: a header, sections with an icon, highlighted key verses, cards,
 comparisons, tables and timelines — and every Bible reference opens the Bible on the cited verses.
 
 **Why this priority**: it is the whole point for the congregation; the panel only matters once reading exists
@@ -162,7 +162,7 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
 - Only one year: no tabs, only the year header.
 - A year without theme: shows only the year.
 - Very long lesson (8 thousand characters): scrolling stays smooth and the font size bar works throughout.
-- Dark mode: dark brown background, readable contrast; the parchment texture only on header and key verses.
+- Dark mode: the app's own dark surfaces, readable contrast.
 - A `book_facts` block whose book is missing from `books`: the card shows only the facts it has.
 - Panel: leaving the form with unsaved changes asks "Descartar alterações?".
 - Panel: a year with no row yet (no lessons) does not appear in the year selector; a new lesson can be created for
@@ -178,12 +178,11 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
   cards stay as they are.
 - **FR-002**: The EBD screen MUST show one tab per year returned by the server, newest first, and open the
   server's default year; no year is hard-coded.
-- **FR-003**: The year's theme MUST be shown with the year in a parchment header above the list ("ANO 2026", "O
+- **FR-003**: The year's theme MUST be shown with the year in a header above the list ("ANO 2026", "O
   Drama das Escrituras", "18 aulas"); with no theme only the year and the count are shown.
 - **FR-004**: The lesson list MUST follow the server's order and show each lesson as a card with its number in the
-  year (1, 2, 3… in list order, in a gold-ringed circle), title, date (when known) and teacher (when not blank).
+  year (1, 2, 3… in list order, in a ringed circle), title, date (when known) and teacher (when not blank).
   Year tabs, when there is more than one year, sit inside the green top bar like the Tabelas tabs.
-- **FR-004a**: Digits in the EBD title font MUST use lining figures, so "2 Samuel" shows a full-height "2".
 - **FR-005**: The lesson reader MUST render every block type listed in the backend contract, with section titles
   and icons, and `**bold**` / `*italic*` inline formatting; no other markup is interpreted.
 - **FR-006**: An unknown block type MUST be skipped and an unknown icon not drawn, never failing the screen.
@@ -191,9 +190,9 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
   highlighted, or be inert when unresolved.
 - **FR-008**: The `book_facts` card MUST show the book name, author, date, style and reading time when present,
   plus chapter count, verse count and book number from the server's `books`.
-- **FR-009**: The reader MUST look like aged parchment without hurting reading: plain cream background behind
-  text, parchment texture only on the lesson header and key-verse cards, serif headings and text, and very dark
-  brown instead of black in dark mode.
+- **FR-009**: The EBD list and reader MUST use the app's own look, in light and dark: the Material color scheme
+  (no palette of its own), Poppins titles and Inter text, as Tabelas and Escala. The key verse stands out with the
+  upcoming-date green of Escala.
 - **FR-010**: Section and card icons MUST be the Phosphor duotone icons for the closed list, bundled only as those
   drawings (no icon library added).
 - **FR-011**: The reader MUST offer the "Aa" text size control (14–32, steps of 2, default 18).
@@ -251,8 +250,6 @@ deletes a lesson, and sets the theme of each year in "Anos da EBD".
 - The backend feature `026-sunday-school` is deployed with the contract above; the 2026 lessons are loaded by it.
 - The reader text size shares the doctrine preference (one "reading size" for Estudos) unless the plan finds a
   reason to split it.
-- Serif fonts are the prototype's (Cormorant Garamond for titles, Literata for text), loaded the way the plan
-  decides (downloadable or bundled), with a system serif fallback.
 - The reorder handle uses long-press drag; there is no move-up/down fallback in this version.
 - The reference editor picks book, chapter and verse ranges from the Bible's book list, so most server reference
   errors are avoided before saving.

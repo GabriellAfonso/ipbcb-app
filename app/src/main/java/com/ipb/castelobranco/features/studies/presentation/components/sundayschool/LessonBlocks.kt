@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.studies.presentation.components.sundayschool
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +38,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.core.presentation.theme.bodyFontFamily
+import com.ipb.castelobranco.core.presentation.theme.displayFontFamily
 import com.ipb.castelobranco.features.studies.domain.model.BibleReference
 import com.ipb.castelobranco.features.studies.domain.model.BookFacts
 import com.ipb.castelobranco.features.studies.domain.model.InlineMarkup
@@ -56,11 +57,10 @@ data class LessonStyle(
 ) {
     val body: TextStyle
         get() = TextStyle(
-            fontFamily = SundaySchoolTextFont,
+            fontFamily = bodyFontFamily,
             fontSize = fontSize.sp,
             lineHeight = (fontSize * BODY_LINE_HEIGHT).sp,
             color = colors.text,
-            fontFeatureSettings = LINING_FIGURES,
         )
 
     val small: TextStyle
@@ -68,12 +68,11 @@ data class LessonStyle(
 
     val title: TextStyle
         get() = TextStyle(
-            fontFamily = SundaySchoolTitleFont,
+            fontFamily = displayFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = (fontSize * TITLE).sp,
             lineHeight = (fontSize * TITLE * 1.2f).sp,
             color = colors.text,
-            fontFeatureSettings = LINING_FIGURES,
         )
 
     val cardTitle: TextStyle
@@ -81,22 +80,19 @@ data class LessonStyle(
 
     val label: TextStyle
         get() = TextStyle(
-            fontFamily = SundaySchoolTextFont,
+            fontFamily = bodyFontFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = (fontSize * LABEL).sp,
             letterSpacing = 0.08.em,
-            color = colors.gold,
-            fontFeatureSettings = LINING_FIGURES,
+            color = colors.label,
         )
 
     private companion object {
-        /** Cormorant Garamond defaults to old-style figures: the "2" of "2 Samuel" would be x-height tall (R-13a). */
-        const val LINING_FIGURES = "lnum"
         const val BODY_LINE_HEIGHT = 1.6f
         const val SMALL = 0.85f
         const val SMALL_LINE_HEIGHT = 1.4f
-        const val TITLE = 1.45f
-        const val CARD_TITLE = 1.15f
+        const val TITLE = 1.22f
+        const val CARD_TITLE = 0.97f
         const val LABEL = 0.72f
     }
 }
@@ -167,7 +163,7 @@ private fun ListBlock(
             Row {
                 Text(
                     text = marker(block.style, index),
-                    style = style.body.copy(color = style.colors.gold, fontWeight = FontWeight.SemiBold),
+                    style = style.body.copy(color = style.colors.label, fontWeight = FontWeight.SemiBold),
                     modifier = Modifier.widthIn(min = 28.dp),
                 )
                 Column(Modifier.weight(1f)) {
@@ -214,17 +210,21 @@ private fun KeyVerseBlock(
         modifier = modifier
             .fillMaxWidth()
             .clip(BLOCK_SHAPE)
-            .parchment(colors)
-            .border(1.dp, colors.parchmentEdge, BLOCK_SHAPE)
+            .background(colors.highlight)
             .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
-        block.label?.let { Text(it.uppercase(), style = style.label, modifier = Modifier.padding(bottom = 6.dp)) }
+        block.label?.let {
+            Text(
+                text = it.uppercase(),
+                style = style.label.copy(color = colors.highlightLabel),
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+        }
         InlineText(
             text = "“${block.text}”",
             style = style.body.copy(
-                fontFamily = SundaySchoolTitleFont,
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.SemiBold,
+                fontFamily = displayFontFamily,
+                fontWeight = FontWeight.Medium,
                 fontSize = (style.fontSize * KEY_VERSE).sp,
                 lineHeight = (style.fontSize * KEY_VERSE * 1.35f).sp,
             ),
@@ -242,7 +242,7 @@ private fun CardsBlock(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         block.items.forEach { card ->
-            OutlinedBox(style) {
+            BlockCard(style) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     card.icon?.let { IconBadge(it, style) }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -270,12 +270,8 @@ private fun ComparisonBlock(block: LessonBlock.Comparison, style: LessonStyle, m
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(BLOCK_SHAPE)
-                    .background(if (item.highlight) colors.highlight else colors.page)
-                    .border(
-                        width = if (item.highlight) 2.dp else 1.dp,
-                        color = if (item.highlight) colors.gold else colors.rule,
-                        shape = BLOCK_SHAPE,
-                    )
+                    .background(if (item.highlight) colors.highlight else colors.card)
+                    .then(if (item.highlight) Modifier.border(2.dp, colors.accent, BLOCK_SHAPE) else Modifier)
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -295,11 +291,11 @@ private fun StepsBlock(block: LessonBlock.Steps, style: LessonStyle, modifier: M
                 Icon(
                     imageVector = Icons.Filled.ArrowDownward,
                     contentDescription = null,
-                    tint = style.colors.gold,
+                    tint = style.colors.accent,
                     modifier = Modifier.padding(vertical = 4.dp).size(20.dp),
                 )
             }
-            OutlinedBox(style) {
+            BlockCard(style) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     step.label?.let { Text(it.uppercase(), style = style.label) }
                     InlineText(step.title, style.cardTitle)
@@ -318,12 +314,12 @@ private fun StatsBlock(block: LessonBlock.Stats, style: LessonStyle, modifier: M
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         block.items.forEach { stat ->
-            OutlinedBox(style, modifier = Modifier.widthIn(min = 120.dp, max = 200.dp), fill = false) {
+            BlockCard(style, modifier = Modifier.widthIn(min = 120.dp, max = 200.dp), fill = false) {
                 Column {
                     Text(
                         text = stat.value,
                         style = style.title.copy(
-                            color = style.colors.gold,
+                            color = style.colors.label,
                             fontSize = (style.fontSize * STAT_VALUE).sp,
                             lineHeight = (style.fontSize * STAT_VALUE).sp,
                         ),
@@ -349,7 +345,7 @@ private fun TimelineBlock(block: LessonBlock.Timeline, style: LessonStyle, modif
                         Modifier
                             .padding(top = 6.dp)
                             .size(10.dp)
-                            .background(colors.gold, CircleShape),
+                            .background(colors.accent, CircleShape),
                     )
                     if (index < block.events.lastIndex) {
                         Box(Modifier.width(2.dp).weight(1f).background(colors.rule))
@@ -371,7 +367,7 @@ private fun BookFactsCard(
     style: LessonStyle,
     modifier: Modifier,
 ) {
-    OutlinedBox(style, modifier) {
+    BlockCard(style, modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(facts?.name ?: block.book, style = style.title)
             facts?.let {
@@ -392,7 +388,7 @@ private fun BookFactsCard(
 @Composable
 private fun Fact(value: String, label: String, style: LessonStyle) {
     Column {
-        Text(value, style = style.title.copy(color = style.colors.gold))
+        Text(value, style = style.title.copy(color = style.colors.label))
         Text(label, style = style.small.copy(color = style.colors.muted))
     }
 }
@@ -406,7 +402,7 @@ private fun FactLine(label: String, value: String, style: LessonStyle) {
 }
 
 @Composable
-private fun OutlinedBox(
+private fun BlockCard(
     style: LessonStyle,
     modifier: Modifier = Modifier,
     fill: Boolean = true,
@@ -415,27 +411,25 @@ private fun OutlinedBox(
     Surface(
         modifier = if (fill) modifier.fillMaxWidth() else modifier,
         shape = BLOCK_SHAPE,
-        color = style.colors.page,
-        border = BorderStroke(1.dp, style.colors.rule),
+        color = style.colors.card,
     ) {
         Box(Modifier.padding(14.dp)) { content() }
     }
 }
 
-/** The section/card icon on a round cream badge, gold duotone. */
+/** The section/card icon on a round tonal badge, green duotone. */
 @Composable
 fun IconBadge(icon: LessonIcon, style: LessonStyle) {
     Box(
         modifier = Modifier
             .size(40.dp)
-            .background(style.colors.highlight, CircleShape)
-            .border(1.dp, style.colors.rule, CircleShape),
+            .background(style.colors.iconBadge, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        LessonIconImage(icon = icon, tint = style.colors.gold, size = 24.dp)
+        LessonIconImage(icon = icon, tint = style.colors.label, size = 24.dp)
     }
 }
 
 internal val BLOCK_SHAPE = RoundedCornerShape(12.dp)
-private const val KEY_VERSE = 1.2f
-private const val STAT_VALUE = 1.9f
+private const val KEY_VERSE = 1f
+private const val STAT_VALUE = 1.6f

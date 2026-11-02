@@ -47,7 +47,8 @@ internal fun TableBlock(block: LessonBlock.Table, style: LessonStyle, modifier: 
             Modifier
         }
         Column(scroll) {
-            TableRow(block.header, widths, style.small.copy(fontWeight = FontWeight.SemiBold), colors.highlight, colors)
+            val headerStyle = style.small.copy(fontWeight = FontWeight.SemiBold)
+            TableRow(block.header, widths, headerStyle, colors.tableHeader, colors)
             block.rows.forEach { row -> TableRow(row, widths, style.small, colors.page, colors) }
         }
     }
@@ -119,7 +120,7 @@ private fun visibleText(cell: String): String = InlineMarkup.parse(cell).joinToS
 private val CELL_PADDING = 8.dp
 
 /** Average glyph width of the text font, as a fraction of its size. */
-private const val CHAR_WIDTH = 0.5f
+private const val CHAR_WIDTH = 0.58f
 
 // A column never takes less than a short label's share, nor more than a long sentence's, so one huge cell does not
 // squeeze the others to their minimum.

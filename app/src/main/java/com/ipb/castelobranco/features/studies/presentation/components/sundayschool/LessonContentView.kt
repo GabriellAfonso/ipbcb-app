@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.studies.presentation.components.sundayschool
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,7 +30,7 @@ import com.ipb.castelobranco.features.studies.domain.model.LessonIcon
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** What the parchment header of a lesson shows. */
+/** What the header of a lesson shows. */
 data class LessonHeaderInfo(
     val title: String,
     val yearLabel: String,
@@ -93,7 +94,7 @@ fun LessonHeader(header: LessonHeaderInfo, style: LessonStyle) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .parchment(colors)
+            .background(colors.card)
             .padding(horizontal = PAGE_PADDING, vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -149,5 +150,5 @@ fun lessonMeta(date: LocalDate?, teacher: String): String? =
 
 private val PAGE_PADDING = 20.dp
 private const val HEADER_KEY = "header"
-private const val HEADER_TITLE = 1.7f
+private const val HEADER_TITLE = 1.43f
 private const val HEADER_LINE_HEIGHT = 1.15f

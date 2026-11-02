@@ -1,6 +1,6 @@
 # Research: Sunday School Lessons
 
-Decisions taken while planning, each with its reason. The product decisions (parchment look, Phosphor duotone,
+Decisions taken while planning, each with its reason. The product decisions (the app's own look, Phosphor duotone,
 basic editor, no PDF, chips like the catechism) were taken in session `2041feef-c82e-463c-b6c8-917c81b7498b` and
 are not repeated here.
 
@@ -57,16 +57,14 @@ subclass by remembering the fetch failure and calling `clearCache()` + `emitErro
 **Rationale**: one "reading size" for the Estudos tab; a member who enlarged the catechism wants the lessons the
 same. The Bible keeps its own size (it already does).
 
-## R-05 — Fonts: downloadable Google Fonts with serif fallback
+## R-05 — Fonts: the app's Poppins and Inter
 
-**Decision**: `Cormorant Garamond` (titles, SemiBold/Bold) and `Literata` (text, Normal/Italic/SemiBold) through the
-existing `GoogleFont.Provider` (`core/presentation/theme/Type.kt`), declared in a `SundaySchoolTheme.kt` of the
-feature, each `FontFamily` ending with `Font(DeviceFontFamilyName("serif"))` fallback.
+**Decision**: titles in `displayFontFamily` (Poppins) and text in `bodyFontFamily` (Inter), both from
+`core/presentation/theme/Type.kt`. The feature bundles no font of its own. Inter has no italic file, so `*italic*`
+uses Compose's synthesized slant.
 
-**Rationale**: no bytes added to the APK, already used for Inter/Poppins; offline after the first download (GMS
-caches it) and a system serif before that.
-
-**Alternatives**: bundling the TTFs (~1 MB) — rejected for APK size.
+**Rationale**: chosen in the design round of 02/11/2026 together with R-07. The EBD reads as part of the app, and
+the APK does not carry two more font families.
 
 ## R-06 — Icons: 16 Phosphor duotone vector drawables
 
@@ -81,22 +79,32 @@ Phosphor names: `heart`, `scales`, `shield`, `plant`, `hands-praying`, `crown`, 
 
 **Rationale**: no library dependency (user decision), tint follows light/dark.
 
-## R-07 — Parchment look
+## R-07 — The app's colors
 
-**Decision**: a `SundaySchoolColors` palette in the feature, light and dark:
+**Decision**: `SundaySchoolColors` reads the Material color scheme and holds no color of its own, so the EBD
+follows the same tokens as Tabelas and Escala in light and dark:
 
-| Token | Light | Dark |
-|---|---|---|
-| page background | `#FBF6EA` (cream) | `#1C1611` (very dark brown) |
-| text | `#2B2118` | `#EDE3D0` |
-| muted text | `#6B5A45` | `#B8A88E` |
-| gold (icons, accents) | `#A8781E` | `#D9AE55` |
-| parchment (header, key verse) | `#F1E4C6` | `#2E241A` |
-| rule/border | `#E2D3B3` | `#3D3124` |
+| Role | Source |
+|---|---|
+| list sheet | `surfaceDim` |
+| reader page | `surface` |
+| text / muted text | `onSurface` / `onSurfaceVariant` |
+| cards, year header, lesson header | `surfaceContainer`, no border |
+| labels, icons, numbers, stat values | `primary` |
+| "ANO 2026" overline | `outline`, like the "Próximo" card of Escala |
+| number ring, timeline dots, step arrows, highlighted comparison border | `nextRowColors().stripe` |
+| key verse and highlighted comparison background | `nextRowColors().background` |
+| key verse label | `nextRowColors().text` |
+| rules and table borders | `outlineVariant` |
+| table header | `surfaceContainerHigh` |
+| icon badge | `secondaryContainer` |
 
-Parchment texture = a `Brush` (radial + linear gradients of the parchment tone, subtle vignette) drawn only behind
-the lesson header and `key_verse` cards. Body text on plain background: contrast ≥ 7:1 in both modes (SC-006).
-Chosen from the approved prototype.
+`nextRowColors()` is the upcoming-date green of Escala, shared from `core/presentation/components`. No texture is
+drawn. Body text keeps a contrast of at least 7:1 in both modes (SC-006).
+
+Chosen in the design round of 02/11/2026 (option A, "Igual a Tabelas e Escala") over strong green bands and green
+with the brand's gold: the feature had drifted from the rest of the app and its reference chips, already green,
+clashed with the parchment palette it used before.
 
 ## R-08 — Inline formatting
 
@@ -142,18 +150,16 @@ saving the full order on drop. A stale order (`SUNDAY_SCHOOL_ORDER_MISMATCH`) re
 ## R-13 — Year tabs and theme
 
 **Decision**: `GreenTabBar` (`core/presentation/components`) in `BaseScreen.topBarExtension`, with the year only
-(themes are long), and the list on a cream sheet with rounded top corners over the green, like Tabelas and
-Escala. Above the list, a parchment year header: "ANO 2026", the theme, "18 aulas". Tabs newest first, as the
+(themes are long), and the list on a `surfaceDim` sheet with rounded top corners over the green, like Tabelas and
+Escala. Above the list, a year header on `surfaceContainer`: "ANO 2026", the theme, "18 aulas". Tabs newest first, as the
 server sends; none when there is a single year. Chosen in the design round of 28/10/2026 (option 1, "cartões
 numerados") over a timeline and a highlight-plus-compact-list layout.
 
-## R-13a — Lesson cards and lining figures
+## R-13a — Lesson cards
 
-**Decision**: each lesson is a card (cream-white, ruled border, 14 dp corners) with its position + 1 in a 42 dp
-circle ringed in gold, the title in the title font, the date "dd/MM/yyyy · Prof. X" below and a chevron. The
-number tells the order, which matters in a year that walks through the Bible. The title font (Cormorant Garamond)
-defaults to old-style figures, where the "2" of "2 Samuel" is x-height tall; every `LessonStyle` text style sets
-`fontFeatureSettings = "lnum"`.
+**Decision**: each lesson is a card (`surfaceContainer`, no border, 14 dp corners) with its position + 1 in a 42 dp
+ringed circle, the title in the title font, the date "dd/MM/yyyy · Prof. X" below and a chevron. The number tells
+the order, which matters in a year that walks through the Bible.
 
 ## R-13b — Table column widths
 

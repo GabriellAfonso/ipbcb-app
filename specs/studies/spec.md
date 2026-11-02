@@ -80,21 +80,21 @@ motivos: `specs/020-sunday-school/research.md`.
 
 | Tela | Rota | Conteúdo |
 |------|------|----------|
-| EBD | `SundaySchool` | Abas por ano dentro da barra verde (as do servidor, mais recente primeiro; abre o ano padrão do servidor; nenhuma aba com um ano só), cabeçalho em pergaminho "ANO 2026 / Tema / N aulas", aulas na ordem do servidor em cartões com o número da aula, título, data e professor quando conhecidos. Sem aula publicada: "Nenhuma aula publicada ainda" |
-| Aula | `SundaySchoolLesson/{lessonId}` | Cabeçalho em pergaminho (título, ano e tema, data · professor), seções com ícone e blocos; "Aa" |
+| EBD | `SundaySchool` | Abas por ano dentro da barra verde (as do servidor, mais recente primeiro; abre o ano padrão do servidor; nenhuma aba com um ano só), cabeçalho "ANO 2026 / Tema / N aulas", aulas na ordem do servidor em cartões com o número da aula, título, data e professor quando conhecidos. Sem aula publicada: "Nenhuma aula publicada ainda" |
+| Aula | `SundaySchoolLesson/{lessonId}` | Cabeçalho (título, ano e tema, data · professor), seções com ícone e blocos; "Aa" |
 | Gestão | `SundaySchoolManage` (`AppRoutes.SUNDAY_SCHOOL_MANAGE`, aberta pelo card "EBD" do painel) | Faixa verde na barra: "Escola Bíblica Dominical", o tema do ano (ou "Sem tema"), "{ano} · N aulas · M rascunhos" (rascunhos só quando há) e os anos em etiquetas (o escolhido em branco). Abaixo, numa folha de cantos arredondados, as aulas do ano em cards: alça para arrastar (pressão longa) e reordenar, número da aula, título, etiqueta laranja "Rascunho" nas não publicadas, data · professor (ou "Sem data"). Tocar abre a edição; os três pontos abrem um painel com "Editar aula" e, para quem pode apagar, "Apagar aula" separado em "Cuidado". Botão "Nova aula"; menu "Anos e temas" |
 | Formulário | `SundaySchoolLessonForm?lessonId={id}&year={ano}` (`-1` = nova) | Abas verdes "Editar" e "Pré-visualizar" na barra. Seção "Aula" num card com campos tonais: título, ano, data, professor e o seletor Rascunho / Publicada. Seção "Conteúdo": cada seção num card com o número em caixa, ícone e título, seguida dos seus blocos (editados no lugar), e "Adicionar seção". Rodapé fixo com "Salvar rascunho" ou "Salvar e publicar", conforme o status |
 | Anos | `SundaySchoolYears` | Cada ano num card: o ano grande, o tema (ou "Sem tema" em itálico) e "N aulas · M publicadas"; tocar abre o diálogo do tema ("Remover tema" limpa). Nota no fim: "Um ano aparece aqui quando a primeira aula dele é criada." |
 
-- **Blocos**: `paragraph`, `list` (marcadores, números ou romanos), `key_verse` (cartão de pergaminho), `cards`,
-  `comparison` (o lado destacado tem borda dourada), `steps` (setas entre as etapas), `table` (rolagem horizontal),
+- **Blocos**: `paragraph`, `list` (marcadores, números ou romanos), `key_verse` (cartão no verde da próxima data da Escala), `cards`,
+  `comparison` (o lado destacado tem borda verde), `steps` (setas entre as etapas), `table` (rolagem horizontal),
   `stats` (número grande + rótulo), `timeline`, `book_facts` (nome, nº do livro na Bíblia, capítulos e versículos
   vindos de `books`, mais autor, data, estilo e tempo de leitura quando houver). Texto aceita só `**negrito**` e
   `*itálico*`; o resto aparece literal. Tipo de bloco desconhecido é pulado e ícone desconhecido não é desenhado.
 - **Referências**: os mesmos chips da Doutrina (§1).
-- **Visual**: fundo creme liso atrás do texto, textura de pergaminho só no cabeçalho e nos versículos-chave, títulos
-  em Cormorant Garamond e texto em Literata (embutidas em `res/font`, como as fontes do app), marrom muito escuro
-  no modo escuro. Ícones Phosphor duotone (MIT) como vetores do app (`res/drawable/ic_ph_*.xml`), dourados.
+- **Visual**: o mesmo das Tabelas e da Escala, no claro e no escuro: lista em `surfaceDim`, leitura em `surface`,
+  cartões e cabeçalhos em `surfaceContainer`, destaques em `primary`, títulos em Poppins e texto em Inter. Ícones
+  Phosphor duotone (MIT) como vetores do app (`res/drawable/ic_ph_*.xml`), verdes.
 - **Tamanho do texto**: o mesmo "Aa" e a mesma preferência dos leitores de Doutrina.
 - **Editor** (só o básico nesta versão): cria, edita, move e apaga seções (título e ícone da lista fechada ou
   nenhum), parágrafos, listas e versículos-chave, e os chips de referência (texto do chip + livro, capítulo e

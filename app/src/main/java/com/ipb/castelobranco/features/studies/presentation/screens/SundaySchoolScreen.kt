@@ -1,6 +1,5 @@
 package com.ipb.castelobranco.features.studies.presentation.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,9 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -103,7 +99,7 @@ fun SundaySchoolContent(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(topStart = SHEET_RADIUS, topEnd = SHEET_RADIUS)),
-        color = colors.page,
+        color = colors.sheet,
         contentColor = colors.text,
     ) {
         when {
@@ -130,7 +126,7 @@ private fun LessonList(state: SundaySchoolUiState, onOpenLesson: (LessonSummary)
     }
 }
 
-/** "ANO 2026", the theme and the lesson count, on parchment (R-13). */
+/** "ANO 2026", the theme and the lesson count (R-13). */
 @Composable
 private fun YearHeader(state: SundaySchoolUiState, style: LessonStyle) {
     Column(
@@ -138,34 +134,36 @@ private fun YearHeader(state: SundaySchoolUiState, style: LessonStyle) {
             .fillMaxWidth()
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(style.colors.parchment)
-            .border(1.dp, style.colors.parchmentEdge, RoundedCornerShape(14.dp))
+            .background(style.colors.card)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             text = "ANO ${state.selectedYear ?: ""}",
-            style = style.label.copy(fontSize = 11.sp, letterSpacing = 0.12.em, fontWeight = FontWeight.Bold),
+            style = style.label.copy(
+                fontSize = 11.sp,
+                letterSpacing = 0.12.em,
+                fontWeight = FontWeight.Bold,
+                color = style.colors.overline,
+            ),
         )
         if (state.yearTheme.isNotBlank()) {
-            Text(text = state.yearTheme, style = style.title.copy(fontSize = 29.sp, lineHeight = 32.sp))
+            Text(text = state.yearTheme, style = style.title.copy(fontSize = 24.sp, lineHeight = 28.sp))
         }
         Text(
             text = state.lessonCountLabel,
-            style = style.small.copy(fontSize = 13.sp, fontStyle = FontStyle.Italic, color = style.colors.muted),
+            style = style.small.copy(fontSize = 13.sp, color = style.colors.muted),
         )
     }
 }
 
-/** One lesson: its number in the year in a gold ring, title, date · teacher and a chevron (R-13a). */
+/** One lesson: its number in the year in a ring, title, date · teacher and a chevron (R-13a). */
 @Composable
 private fun LessonCard(number: Int, lesson: LessonSummary, style: LessonStyle, onClick: () -> Unit) {
-    val isDark = style.colors.page.luminance() < DARK_LUMINANCE
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = if (isDark) CARD_DARK else CARD_LIGHT,
-        border = BorderStroke(1.dp, style.colors.rule),
+        color = style.colors.card,
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
@@ -175,20 +173,20 @@ private fun LessonCard(number: Int, lesson: LessonSummary, style: LessonStyle, o
             Box(
                 modifier = Modifier
                     .size(42.dp)
-                    .border(1.5.dp, style.colors.gold, CircleShape),
+                    .border(1.5.dp, style.colors.accent, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = number.toString(),
                     style = style.title.copy(
-                        fontSize = 20.sp,
-                        lineHeight = 22.sp,
-                        color = if (isDark) style.colors.gold else GOLD_INK_LIGHT,
+                        fontSize = 17.sp,
+                        lineHeight = 20.sp,
+                        color = style.colors.label,
                     ),
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(text = lesson.title, style = style.title.copy(fontSize = 19.sp, lineHeight = 23.sp))
+                Text(text = lesson.title, style = style.title.copy(fontSize = 16.sp, lineHeight = 20.sp))
                 lessonMeta(lesson.date, lesson.teacher)?.let {
                     Text(text = it, style = style.small.copy(fontSize = 13.sp, color = style.colors.muted))
                 }
@@ -218,13 +216,6 @@ private fun EmptyLessons() {
 private const val LIST_FONT_SIZE = DEFAULT_FONT_SIZE
 private const val HEADER_KEY = "year-header"
 private val SHEET_RADIUS = 18.dp
-private const val DARK_LUMINANCE = 0.5f
-
-// Card a shade lighter than the page in both themes, and a darker gold for the number on cream: the reader's gold
-// (#A8781E) is below 4.5:1 on the light card.
-private val CARD_LIGHT = Color(0xFFFFFDF7)
-private val CARD_DARK = Color(0xFF251D16)
-private val GOLD_INK_LIGHT = Color(0xFF6E4F12)
 
 @Preview(showBackground = true)
 @Composable
