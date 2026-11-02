@@ -15,3 +15,10 @@ object RegisterRules {
 
     fun isValidUsername(username: String): Boolean = USERNAME_PATTERN.matches(username)
 }
+
+/** Catches obvious typing mistakes before sending; the backend decides. */
+object EmailRules {
+    private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@.]+(\\.[^\\s@.]+)+$")
+
+    fun isValid(email: String): Boolean = EMAIL_PATTERN.matches(email)
+}

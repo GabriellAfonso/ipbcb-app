@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.auth.presentation.state
 
+import com.ipb.castelobranco.features.auth.domain.model.EmailRules
 import com.ipb.castelobranco.features.auth.domain.model.RegisterErrors
 import com.ipb.castelobranco.features.auth.domain.model.RegisterRules
 
@@ -7,6 +8,8 @@ const val REQUIRED_MESSAGE = "Preencha este campo."
 const val USERNAME_HINT = "Letras minúsculas, números, ponto, hífen ou _."
 const val USERNAME_RULE_MESSAGE =
     "Use só letras minúsculas, números, ponto, hífen ou _, começando e terminando com letra ou número."
+const val EMAIL_HINT = "Usado só para recuperar sua senha."
+const val EMAIL_RULE_MESSAGE = "Informe um e-mail válido."
 const val PASSWORD_HINT = "Mínimo de 6 caracteres."
 const val PASSWORD_OK = "✓ Mínimo de 6 caracteres."
 const val PASSWORD_SHORT_MESSAGE = "A senha precisa de pelo menos 6 caracteres."
@@ -29,6 +32,7 @@ data class RegisterFormState(
     val firstName: String = "",
     val lastName: String = "",
     val username: String = "",
+    val email: String = "",
     val password: String = "",
     val passwordConfirm: String = "",
     val submitted: Boolean = false,
@@ -45,6 +49,16 @@ data class RegisterFormState(
             username.isEmpty() -> if (submitted) error(REQUIRED_MESSAGE) else FieldHelp(USERNAME_HINT, HelpTone.Neutral)
             !RegisterRules.isValidUsername(username) -> error(USERNAME_RULE_MESSAGE)
             else -> FieldHelp(USERNAME_HINT, HelpTone.Neutral)
+        }
+
+    /** Typing an address is incomplete until it ends, so the format only counts after a submit. */
+    val emailHelp: FieldHelp
+        get() = when {
+            serverErrors.email != null -> error(serverErrors.email)
+            !submitted -> FieldHelp(EMAIL_HINT, HelpTone.Neutral)
+            email.isBlank() -> error(REQUIRED_MESSAGE)
+            !EmailRules.isValid(email.trim()) -> error(EMAIL_RULE_MESSAGE)
+            else -> FieldHelp(EMAIL_HINT, HelpTone.Neutral)
         }
 
     val passwordHelp: FieldHelp
@@ -72,7 +86,7 @@ data class RegisterFormState(
     /** What the screen checks before calling the backend. */
     val isValid: Boolean
         get() = firstName.isNotBlank() && lastName.isNotBlank() && RegisterRules.isValidUsername(username) &&
-            passwordLongEnough && passwordConfirm == password
+            EmailRules.isValid(email.trim()) && passwordLongEnough && passwordConfirm == password
 
     private val passwordLongEnough: Boolean get() = password.length >= RegisterRules.PASSWORD_MIN_LENGTH
 

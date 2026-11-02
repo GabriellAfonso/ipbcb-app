@@ -6,6 +6,8 @@ import com.ipb.castelobranco.features.auth.data.api.AuthApi
 import com.ipb.castelobranco.features.auth.data.api.GoogleLoginRequest
 import com.ipb.castelobranco.features.auth.domain.model.AuthTokens
 import com.ipb.castelobranco.features.auth.data.dto.LoginRequest
+import com.ipb.castelobranco.features.auth.data.dto.PasswordRecoveryConfirmRequest
+import com.ipb.castelobranco.features.auth.data.dto.PasswordRecoveryRequest
 import com.ipb.castelobranco.features.auth.data.dto.RegisterRequest
 import com.ipb.castelobranco.features.auth.data.local.TokenStorage
 import com.ipb.castelobranco.features.auth.domain.repository.AuthRepository
@@ -41,6 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
         username: String,
         firstName: String,
         lastName: String,
+        email: String,
         password: String,
         passwordConfirm: String
     ): Result<AuthTokens> =
@@ -50,11 +53,36 @@ class AuthRepositoryImpl @Inject constructor(
                     username = username,
                     firstName = firstName,
                     lastName = lastName,
+                    recoveryEmail = email,
                     password = password,
                     passwordConfirm = passwordConfirm
                 )
             )
         }
+
+    override suspend fun requestPasswordRecovery(email: String): Result<Unit> =
+        runCatching {
+            val response = api.requestPasswordRecovery(PasswordRecoveryRequest(email = email))
+            if (!response.isSuccessful) throw response.toAppError()
+        }.mapError()
+
+    override suspend fun confirmPasswordRecovery(
+        email: String,
+        code: String,
+        newPassword: String,
+        newPasswordConfirm: String,
+    ): Result<Unit> =
+        runCatching {
+            val response = api.confirmPasswordRecovery(
+                PasswordRecoveryConfirmRequest(
+                    email = email,
+                    code = code,
+                    newPassword = newPassword,
+                    newPasswordConfirm = newPasswordConfirm,
+                )
+            )
+            if (!response.isSuccessful) throw response.toAppError()
+        }.mapError()
 
     override suspend fun getAuthToken(): String? =
         tokenStorage.loadOrNull()?.access

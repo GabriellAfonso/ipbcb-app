@@ -7,4 +7,6 @@ object AuthEndpoints {
     const val GOOGLE_AUTH_LOGIN = "${ApiConstants.BASE_PATH}auth/google/"
     const val AUTH_REGISTER_PATH = "${ApiConstants.BASE_PATH}auth/register/"
     const val AUTH_REFRESH_PATH = "${ApiConstants.BASE_PATH}auth/refresh/"
+    const val PASSWORD_RECOVERY_REQUEST_PATH = "${ApiConstants.BASE_PATH}auth/password-recovery/request/"
+    const val PASSWORD_RECOVERY_CONFIRM_PATH = "${ApiConstants.BASE_PATH}auth/password-recovery/confirm/"
 }

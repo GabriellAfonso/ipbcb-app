@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.auth.data.api
 
 import com.ipb.castelobranco.features.auth.data.dto.LoginRequest
+import com.ipb.castelobranco.features.auth.data.dto.PasswordRecoveryConfirmRequest
+import com.ipb.castelobranco.features.auth.data.dto.PasswordRecoveryRequest
 import com.ipb.castelobranco.features.auth.data.dto.RefreshRequest
 import com.ipb.castelobranco.features.auth.data.dto.RegisterRequest
 import com.ipb.castelobranco.features.auth.domain.model.AuthTokens
@@ -29,4 +31,10 @@ interface AuthApi {
 
     @POST(AuthEndpoints.GOOGLE_AUTH_LOGIN)
     suspend fun loginWithGoogle(@Body body: GoogleLoginRequest): Response<AuthTokens>
+
+    @POST(AuthEndpoints.PASSWORD_RECOVERY_REQUEST_PATH)
+    suspend fun requestPasswordRecovery(@Body body: PasswordRecoveryRequest): Response<Unit>
+
+    @POST(AuthEndpoints.PASSWORD_RECOVERY_CONFIRM_PATH)
+    suspend fun confirmPasswordRecovery(@Body body: PasswordRecoveryConfirmRequest): Response<Unit>
 }

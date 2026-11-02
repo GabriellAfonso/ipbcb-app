@@ -4,7 +4,7 @@ import timber.log.Timber
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.features.auth.data.mapper.parseLoginError
-import com.ipb.castelobranco.features.auth.data.mapper.parseRegisterError
+import com.ipb.castelobranco.features.auth.data.mapper.registerErrorsOf
 import com.ipb.castelobranco.features.auth.domain.model.RegisterErrors
 import com.ipb.castelobranco.features.auth.domain.model.RegisterRules
 import com.ipb.castelobranco.features.auth.domain.usecase.LoginUseCase
@@ -38,6 +38,10 @@ class AuthViewModel @Inject constructor(
     private val _loginError = MutableStateFlow<String?>(null)
     val loginError: StateFlow<String?> = _loginError.asStateFlow()
 
+    /** A good-news line on the login, shown after the password was reset. */
+    private val _loginNotice = MutableStateFlow<String?>(null)
+    val loginNotice: StateFlow<String?> = _loginNotice.asStateFlow()
+
     private val _isLoginLoading = MutableStateFlow(false)
     val isLoginLoading: StateFlow<Boolean> = _isLoginLoading.asStateFlow()
 
@@ -49,6 +53,12 @@ class AuthViewModel @Inject constructor(
 
     fun clearLoginError() {
         _loginError.value = null
+        _loginNotice.value = null
+    }
+
+    fun onPasswordReset() {
+        _loginError.value = null
+        _loginNotice.value = PASSWORD_RESET_MESSAGE
     }
 
     fun onFirstNameChange(value: String) = editRegisterForm({ copy(firstName = null) }) { copy(firstName = value) }
@@ -57,6 +67,8 @@ class AuthViewModel @Inject constructor(
 
     fun onUsernameChange(value: String) =
         editRegisterForm({ copy(username = null) }) { copy(username = RegisterRules.normalizeUsername(value)) }
+
+    fun onEmailChange(value: String) = editRegisterForm({ copy(email = null) }) { copy(email = value) }
 
     fun onPasswordChange(value: String) = editRegisterForm({ copy(password = null) }) { copy(password = value) }
 
@@ -80,12 +92,14 @@ class AuthViewModel @Inject constructor(
     fun singIn(username: String, password: String) {
         if (_isLoginLoading.value || _isGoogleLoading.value) return
         if (username.isBlank() || password.isBlank()) {
+            _loginNotice.value = null
             _loginError.value = EMPTY_CREDENTIALS_MESSAGE
             return
         }
         viewModelScope.launch {
             _isLoginLoading.value = true
             _loginError.value = null
+            _loginNotice.value = null
             try {
                 when (val result = loginUseCase.withCredentials(username, password)) {
                     LoginUseCase.Result.Success -> {
@@ -136,7 +150,12 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val result = registerUseCase(
-                    form.username, form.firstName.trim(), form.lastName.trim(), form.password, form.passwordConfirm,
+                    form.username,
+                    form.firstName.trim(),
+                    form.lastName.trim(),
+                    form.email.trim(),
+                    form.password,
+                    form.passwordConfirm,
                 )
                 when (result) {
                     RegisterUseCase.Result.Success -> {
@@ -144,7 +163,8 @@ class AuthViewModel @Inject constructor(
                         _events.tryEmit(AuthEvent.RegisterSuccess)
                     }
                     is RegisterUseCase.Result.Failure -> {
-                        _registerForm.update { it.copy(serverErrors = parseRegisterError(result.rawMessage)) }
+                        val errors = registerErrorsOf(result.rawMessage, result.fieldErrors)
+                        _registerForm.update { it.copy(serverErrors = errors) }
                         Timber.e("Registration failed")
                     }
                 }
@@ -160,5 +180,6 @@ class AuthViewModel @Inject constructor(
 
     companion object {
         const val EMPTY_CREDENTIALS_MESSAGE = "Preencha usuário e senha."
+        const val PASSWORD_RESET_MESSAGE = "Senha alterada"
     }
 }

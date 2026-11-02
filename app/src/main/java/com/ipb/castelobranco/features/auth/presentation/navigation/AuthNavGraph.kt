@@ -9,12 +9,14 @@ import androidx.navigation.navigation
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.auth.presentation.screens.AuthScreen
+import com.ipb.castelobranco.features.auth.presentation.screens.PasswordRecoveryScreen
 import com.ipb.castelobranco.features.auth.presentation.screens.RegisterScreen
 import com.ipb.castelobranco.features.auth.presentation.viewmodel.AuthViewModel
 
 object AuthRoutes {
     const val AUTH = "AuthView"
     const val REGISTER = "RegisterView"
+    const val PASSWORD_RECOVERY = "PasswordRecoveryView"
 }
 
 fun NavGraphBuilder.authGraph(
@@ -32,6 +34,7 @@ fun NavGraphBuilder.authGraph(
                 viewModel            = viewModel,
                 onBackClick          = { navController.safePopBackStack() },
                 onNavigateToRegister = { navController.navigate(AuthRoutes.REGISTER) },
+                onNavigateToPasswordRecovery = { navController.navigate(AuthRoutes.PASSWORD_RECOVERY) },
                 onAuthSuccess        = onAuthSuccess,
             )
         }
@@ -43,6 +46,19 @@ fun NavGraphBuilder.authGraph(
                 viewModel     = viewModel,
                 onBackClick   = { navController.safePopBackStack() },
                 onAuthSuccess = onAuthSuccess,
+            )
+        }
+
+        // Scoped to its own entry, not the graph: leaving and coming back must not keep an old code or step.
+        composable(AuthRoutes.PASSWORD_RECOVERY) { entry ->
+            val graphEntry = remember(entry) { navController.getBackStackEntry(AppRoutes.AUTH_GRAPH) }
+            val authViewModel: AuthViewModel = hiltViewModel(graphEntry)
+            PasswordRecoveryScreen(
+                onBackClick = { navController.safePopBackStack() },
+                onPasswordReset = {
+                    authViewModel.onPasswordReset()
+                    navController.safePopBackStack()
+                },
             )
         }
     }

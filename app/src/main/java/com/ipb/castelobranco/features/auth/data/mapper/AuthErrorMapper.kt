@@ -36,6 +36,28 @@ fun parseLoginError(message: String): String {
     }
 }
 
+/**
+ * What a failed registration shows. `AppError` already parsed the body, so its [fieldErrors] are what reach each field;
+ * without them, [message] goes through [parseRegisterError].
+ */
+fun registerErrorsOf(message: String, fieldErrors: Map<String, List<String>>?): RegisterErrors {
+    if (fieldErrors.isNullOrEmpty()) return parseRegisterError(message)
+    var errors = RegisterErrors()
+    for ((key, messages) in fieldErrors) {
+        val text = messages.firstOrNull() ?: continue
+        errors = when (key) {
+            "username" -> errors.copy(username = text)
+            "recovery_email" -> errors.copy(email = text)
+            "first_name" -> errors.copy(firstName = text)
+            "last_name" -> errors.copy(lastName = text)
+            "password" -> errors.copy(password = text)
+            "password_confirm" -> errors.copy(passwordConfirm = text)
+            else -> errors.copy(general = errors.general?.let { "$it\n$text" } ?: text)
+        }
+    }
+    return if (errors == RegisterErrors()) parseRegisterError(message) else errors
+}
+
 fun parseRegisterError(message: String): RegisterErrors {
     return try {
         val trimmed = message.trim()
@@ -54,6 +76,7 @@ fun parseRegisterError(message: String): RegisterErrors {
                 val msg = msgs.firstOrNull() ?: continue
                 errors = when (key) {
                     "username" -> errors.copy(username = msg)
+                    "recovery_email" -> errors.copy(email = msg)
                     "first_name", "firstName" -> errors.copy(firstName = msg)
                     "last_name", "lastName" -> errors.copy(lastName = msg)
                     "password" -> errors.copy(password = msg)
@@ -83,6 +106,7 @@ fun parseRegisterError(message: String): RegisterErrors {
 
             errors = when (key) {
                 "username" -> errors.copy(username = msg)
+                "recovery_email" -> errors.copy(email = msg)
                 "first_name", "firstName" -> errors.copy(firstName = msg)
                 "last_name", "lastName" -> errors.copy(lastName = msg)
                 "password" -> errors.copy(password = msg)

@@ -75,6 +75,31 @@ class AuthErrorMapperTest {
     // region parseRegisterError
 
     @Test
+    fun `registerErrorsOf puts field errors on their fields`() {
+        val result = registerErrorsOf(
+            "Dados inválidos.",
+            mapOf(
+                "recovery_email" to listOf("Informe um e-mail válido."),
+                "username" to listOf("Este nome já está em uso."),
+            ),
+        )
+        assertEquals("Informe um e-mail válido.", result.email)
+        assertEquals("Este nome já está em uso.", result.username)
+        assertNull(result.general)
+    }
+
+    @Test
+    fun `registerErrorsOf without field errors uses the message`() {
+        assertEquals("Conta desativada.", registerErrorsOf("Conta desativada.", null).general)
+    }
+
+    @Test
+    fun `parseRegisterError maps recovery_email field correctly`() {
+        val result = parseRegisterError("""{"recovery_email":"Informe um e-mail válido."}""")
+        assertEquals("Informe um e-mail válido.", result.email)
+    }
+
+    @Test
     fun `parseRegisterError maps username field correctly`() {
         val result = parseRegisterError("""{"username":"Este nome já está em uso."}""")
         assertEquals("Este nome já está em uso.", result.username)

@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -240,25 +241,45 @@ internal fun OrDivider(label: String) {
 
 @Composable
 internal fun AuthErrorBanner(message: String) {
+    AuthBanner(
+        message = message,
+        icon = Icons.Filled.Error,
+        container = MaterialTheme.colorScheme.errorContainer,
+        content = MaterialTheme.colorScheme.onErrorContainer,
+    )
+}
+
+@Composable
+internal fun AuthSuccessBanner(message: String) {
+    AuthBanner(
+        message = message,
+        icon = Icons.Filled.CheckCircle,
+        container = MaterialTheme.colorScheme.primaryContainer,
+        content = MaterialTheme.colorScheme.onPrimaryContainer,
+    )
+}
+
+@Composable
+private fun AuthBanner(message: String, icon: ImageVector, container: Color, content: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(BannerCorner))
-            .background(MaterialTheme.colorScheme.errorContainer)
+            .background(container)
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.Error,
+            imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onErrorContainer,
+            tint = content,
             modifier = Modifier.size(20.dp),
         )
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
+            color = content,
         )
     }
 }

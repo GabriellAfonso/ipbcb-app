@@ -160,7 +160,7 @@ class AuthRepositoryImplTest {
     fun `signUp success returns tokens`() = runTest {
         coEvery { api.register(any()) } returns Response.success(fakeTokens)
 
-        val result = repository.signUp("user", "First", "Last", "pass", "pass")
+        val result = repository.signUp("user", "First", "Last", "a@b.com", "pass", "pass")
 
         assertTrue(result.isSuccess)
         assertEquals(fakeTokens, result.getOrNull())
@@ -170,7 +170,7 @@ class AuthRepositoryImplTest {
     fun `signUp success saves tokens to storage`() = runTest {
         coEvery { api.register(any()) } returns Response.success(fakeTokens)
 
-        repository.signUp("user", "First", "Last", "pass", "pass")
+        repository.signUp("user", "First", "Last", "a@b.com", "pass", "pass")
 
         coVerify(exactly = 1) { tokenStorage.save(fakeTokens) }
     }
@@ -179,7 +179,7 @@ class AuthRepositoryImplTest {
     fun `signUp 400 returns AppError Server`() = runTest {
         coEvery { api.register(any()) } returns Response.error(400, "".toResponseBody())
 
-        val result = repository.signUp("user", "First", "Last", "pass", "pass")
+        val result = repository.signUp("user", "First", "Last", "a@b.com", "pass", "pass")
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is AppError.Server)
@@ -189,9 +189,42 @@ class AuthRepositoryImplTest {
     fun `signUp null body returns failure`() = runTest {
         coEvery { api.register(any()) } returns Response.success(null)
 
-        val result = repository.signUp("user", "First", "Last", "pass", "pass")
+        val result = repository.signUp("user", "First", "Last", "a@b.com", "pass", "pass")
 
         assertTrue(result.isFailure)
+    }
+
+    // endregion
+
+    // region password recovery
+
+    @Test
+    fun `requestPasswordRecovery succeeds without touching the session`() = runTest {
+        coEvery { api.requestPasswordRecovery(any()) } returns Response.success(Unit)
+
+        val result = repository.requestPasswordRecovery("a@b.com")
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 0) { tokenStorage.save(any()) }
+    }
+
+    @Test
+    fun `confirmPasswordRecovery failure returns AppError Server`() = runTest {
+        coEvery { api.confirmPasswordRecovery(any()) } returns Response.error(400, "".toResponseBody())
+
+        val result = repository.confirmPasswordRecovery("a@b.com", "123456", "nova123", "nova123")
+
+        assertTrue(result.exceptionOrNull() is AppError.Server)
+    }
+
+    @Test
+    fun `confirmPasswordRecovery success stores no session`() = runTest {
+        coEvery { api.confirmPasswordRecovery(any()) } returns Response.success(Unit)
+
+        val result = repository.confirmPasswordRecovery("a@b.com", "123456", "nova123", "nova123")
+
+        assertTrue(result.isSuccess)
+        coVerify(exactly = 0) { tokenStorage.save(any()) }
     }
 
     // endregion

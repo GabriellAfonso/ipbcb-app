@@ -14,9 +14,38 @@ class RegisterFormStateTest {
         firstName = "Maria",
         lastName = "Oliveira",
         username = "maria.oliveira",
+        email = "maria@example.com",
         password = "abc123",
         passwordConfirm = "abc123",
     )
+
+    @Test
+    fun `e-mail is a quiet hint until submit`() {
+        assertEquals(FieldHelp(EMAIL_HINT, HelpTone.Neutral), valid.copy(email = "maria@").emailHelp)
+    }
+
+    @Test
+    fun `after submit an empty or malformed e-mail is an error and the form is invalid`() {
+        val empty = valid.copy(email = " ", submitted = true)
+        val malformed = valid.copy(email = "maria@example", submitted = true)
+
+        assertEquals(FieldHelp(REQUIRED_MESSAGE, HelpTone.Error), empty.emailHelp)
+        assertEquals(FieldHelp(EMAIL_RULE_MESSAGE, HelpTone.Error), malformed.emailHelp)
+        assertFalse(empty.isValid)
+        assertFalse(malformed.isValid)
+    }
+
+    @Test
+    fun `surrounding spaces do not make an e-mail invalid`() {
+        assertTrue(valid.copy(email = " maria@example.com ").isValid)
+    }
+
+    @Test
+    fun `a server error shows under the e-mail field`() {
+        val form = valid.copy(serverErrors = RegisterErrors(email = "Inválido."))
+
+        assertEquals(FieldHelp("Inválido.", HelpTone.Error), form.emailHelp)
+    }
 
     @Test
     fun `username rule matches the backend`() {

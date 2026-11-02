@@ -10,6 +10,8 @@ data class RegisterRequest(
     val firstName: String,
     @SerialName("last_name")
     val lastName: String,
+    @SerialName("recovery_email")
+    val recoveryEmail: String,
     val password: String,
     @SerialName("password_confirm")
     val passwordConfirm: String

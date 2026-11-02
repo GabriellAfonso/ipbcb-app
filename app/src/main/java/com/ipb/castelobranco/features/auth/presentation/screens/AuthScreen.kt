@@ -44,6 +44,7 @@ import com.ipb.castelobranco.features.auth.presentation.components.AuthBandSize
 import com.ipb.castelobranco.features.auth.presentation.components.AuthButtonHeight
 import com.ipb.castelobranco.features.auth.presentation.components.AuthErrorBanner
 import com.ipb.castelobranco.features.auth.presentation.components.AuthLayout
+import com.ipb.castelobranco.features.auth.presentation.components.AuthSuccessBanner
 import com.ipb.castelobranco.features.auth.presentation.components.ButtonSpinner
 import com.ipb.castelobranco.features.auth.presentation.components.GoogleButton
 import com.ipb.castelobranco.features.auth.presentation.components.OrDivider
@@ -59,6 +60,7 @@ private const val GOOGLE_LABEL = "Continuar com Google"
 private const val OR_LABEL = "ou com usuário e senha"
 private const val USERNAME_LABEL = "Usuário"
 private const val PASSWORD_LABEL = "Senha"
+private const val FORGOT_PASSWORD_LABEL = "Esqueci minha senha"
 private const val SIGN_IN_LABEL = "Entrar"
 private const val SIGN_IN_LOADING_LABEL = "Entrando…"
 private const val NO_ACCOUNT_LABEL = "Ainda não tem conta?"
@@ -69,9 +71,11 @@ fun AuthScreen(
     viewModel: AuthViewModel,
     onBackClick: () -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
+    onNavigateToPasswordRecovery: () -> Unit = {},
     onAuthSuccess: () -> Unit = {},
 ) {
     val loginError by viewModel.loginError.collectAsStateWithLifecycle()
+    val loginNotice by viewModel.loginNotice.collectAsStateWithLifecycle()
     val isLoginLoading by viewModel.isLoginLoading.collectAsStateWithLifecycle()
     val isGoogleLoading by viewModel.isGoogleLoading.collectAsStateWithLifecycle()
     var isCredentialPending by remember { mutableStateOf(false) }
@@ -86,6 +90,7 @@ fun AuthScreen(
 
     AuthContent(
         loginError = loginError,
+        loginNotice = loginNotice,
         isLoginLoading = isLoginLoading,
         isGoogleLoading = isCredentialPending || isGoogleLoading,
         onSignIn = viewModel::singIn,
@@ -100,12 +105,14 @@ fun AuthScreen(
         onCredentialsChange = viewModel::clearLoginError,
         onBackClick = onBackClick,
         onNavigateToRegister = onNavigateToRegister,
+        onNavigateToPasswordRecovery = onNavigateToPasswordRecovery,
     )
 }
 
 @Composable
 private fun AuthContent(
     loginError: String?,
+    loginNotice: String?,
     isLoginLoading: Boolean,
     isGoogleLoading: Boolean,
     onSignIn: (username: String, password: String) -> Unit,
@@ -113,6 +120,7 @@ private fun AuthContent(
     onCredentialsChange: () -> Unit,
     onBackClick: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToPasswordRecovery: () -> Unit,
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -128,13 +136,14 @@ private fun AuthContent(
         GoogleButton(label = GOOGLE_LABEL, isLoading = isGoogleLoading, enabled = !isBusy, onClick = onGoogleClick)
         OrDivider(label = OR_LABEL)
 
+        loginNotice?.let { AuthSuccessBanner(message = it) }
         loginError?.let { AuthErrorBanner(message = it) }
 
         TonalField(
             value = username,
             onValueChange = {
                 username = it
-                if (loginError != null) onCredentialsChange()
+                if (loginError != null || loginNotice != null) onCredentialsChange()
             },
             label = USERNAME_LABEL,
             leadingIcon = Icons.Filled.Person,
@@ -146,7 +155,7 @@ private fun AuthContent(
             value = password,
             onValueChange = {
                 password = it
-                if (loginError != null) onCredentialsChange()
+                if (loginError != null || loginNotice != null) onCredentialsChange()
             },
             label = PASSWORD_LABEL,
             leadingIcon = Icons.Filled.Lock,
@@ -165,6 +174,14 @@ private fun AuthContent(
                 }
             },
         )
+
+        TextButton(
+            onClick = onNavigateToPasswordRecovery,
+            enabled = !isBusy,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(FORGOT_PASSWORD_LABEL)
+        }
 
         Button(
             onClick = submit,
@@ -206,6 +223,7 @@ private fun AuthContentErrorPreview() {
     IPBCasteloBrancoTheme {
         AuthContent(
             loginError = "Usuário ou senha inválidos.",
+            loginNotice = null,
             isLoginLoading = false,
             isGoogleLoading = false,
             onSignIn = { _, _ -> },
@@ -213,6 +231,7 @@ private fun AuthContentErrorPreview() {
             onCredentialsChange = {},
             onBackClick = {},
             onNavigateToRegister = {},
+            onNavigateToPasswordRecovery = {},
         )
     }
 }

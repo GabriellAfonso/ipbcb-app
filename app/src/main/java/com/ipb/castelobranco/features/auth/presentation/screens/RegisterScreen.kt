@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
@@ -63,6 +64,7 @@ private const val OR_LABEL = "ou preencha seus dados"
 private const val FIRST_NAME_LABEL = "Nome"
 private const val LAST_NAME_LABEL = "Sobrenome"
 private const val USERNAME_LABEL = "Usuário"
+private const val EMAIL_LABEL = "E-mail"
 private const val PASSWORD_LABEL = "Senha"
 private const val CONFIRM_LABEL = "Confirmar senha"
 private const val SUBMIT_LABEL = "Criar conta"
@@ -102,6 +104,7 @@ fun RegisterScreen(
         onFirstNameChange = viewModel::onFirstNameChange,
         onLastNameChange = viewModel::onLastNameChange,
         onUsernameChange = viewModel::onUsernameChange,
+        onEmailChange = viewModel::onEmailChange,
         onPasswordChange = viewModel::onPasswordChange,
         onPasswordConfirmChange = viewModel::onPasswordConfirmChange,
         onSubmit = viewModel::singUp,
@@ -125,6 +128,7 @@ private fun RegisterContent(
     onFirstNameChange: (String) -> Unit,
     onLastNameChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onPasswordConfirmChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -181,6 +185,16 @@ private fun RegisterContent(
             enabled = !isBusy,
             keyboardOptions = next.copy(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
             help = form.usernameHelp,
+        )
+        TonalField(
+            value = form.email,
+            onValueChange = onEmailChange,
+            label = EMAIL_LABEL,
+            leadingIcon = Icons.Filled.Email,
+            isError = false,
+            enabled = !isBusy,
+            keyboardOptions = next.copy(autoCorrectEnabled = false, keyboardType = KeyboardType.Email),
+            help = form.emailHelp,
         )
         TonalField(
             value = form.password,
@@ -257,6 +271,7 @@ private fun RegisterContentPreview() {
                 firstName = "Maria",
                 lastName = "Oliveira",
                 username = "maria oliveira",
+                email = "maria@example.com",
                 password = "abc123",
                 passwordConfirm = "abc12",
             ),
@@ -265,6 +280,7 @@ private fun RegisterContentPreview() {
             onFirstNameChange = {},
             onLastNameChange = {},
             onUsernameChange = {},
+            onEmailChange = {},
             onPasswordChange = {},
             onPasswordConfirmChange = {},
             onSubmit = {},

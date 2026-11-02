@@ -49,6 +49,7 @@ class AuthViewModelTest {
 
         var signUpCalls = 0
         var signUpUsername: String? = null
+        var signUpEmail: String? = null
         var signUpGate: CompletableDeferred<Result<AuthTokens>>? = null
         var signUpResult: Result<AuthTokens> = Result.success(AuthTokens(access = "a", refresh = "r"))
 
@@ -57,13 +58,24 @@ class AuthViewModelTest {
             username: String,
             firstName: String,
             lastName: String,
+            email: String,
             password: String,
             passwordConfirm: String,
         ): Result<AuthTokens> {
             signUpCalls++
             signUpUsername = username
+            signUpEmail = email
             return signUpGate?.await() ?: signUpResult
         }
+
+        override suspend fun requestPasswordRecovery(email: String): Result<Unit> = Result.success(Unit)
+
+        override suspend fun confirmPasswordRecovery(
+            email: String,
+            code: String,
+            newPassword: String,
+            newPasswordConfirm: String,
+        ): Result<Unit> = Result.success(Unit)
 
         override suspend fun getAuthToken(): String? = null
         override suspend fun signOut() = Unit
@@ -119,8 +131,43 @@ class AuthViewModelTest {
         onFirstNameChange("Maria")
         onLastNameChange("Oliveira")
         onUsernameChange("Maria.Oliveira")
+        onEmailChange(" maria@example.com ")
         onPasswordChange("abc123")
         onPasswordConfirmChange("abc123")
+    }
+
+    @Test
+    fun `register sends the trimmed e-mail`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository()
+        val viewModel = buildViewModel(repository)
+
+        viewModel.fillValidForm()
+        viewModel.singUp()
+
+        assertEquals("maria@example.com", repository.signUpEmail)
+    }
+
+    @Test
+    fun `a malformed e-mail is refused without calling the backend`() = runTest(testDispatcher) {
+        val repository = FakeAuthRepository()
+        val viewModel = buildViewModel(repository)
+
+        viewModel.fillValidForm()
+        viewModel.onEmailChange("maria")
+        viewModel.singUp()
+
+        assertEquals(0, repository.signUpCalls)
+    }
+
+    @Test
+    fun `the password reset notice shows and goes away on the first edit`() = runTest(testDispatcher) {
+        val viewModel = buildViewModel(FakeAuthRepository())
+
+        viewModel.onPasswordReset()
+        assertEquals(AuthViewModel.PASSWORD_RESET_MESSAGE, viewModel.loginNotice.value)
+
+        viewModel.clearLoginError()
+        assertNull(viewModel.loginNotice.value)
     }
 
     @Test
