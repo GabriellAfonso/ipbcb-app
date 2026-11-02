@@ -2,7 +2,10 @@ package com.ipb.castelobranco.features.profile.presentation.state
 
 import com.ipb.castelobranco.core.domain.access.MemberAccess
 import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDialogState
+import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
 import com.ipb.castelobranco.features.profile.domain.model.isDeletionConfirmationTyped
+
+const val RECOVERY_CODE_LENGTH = 6
 
 data class ProfileUiState(
     val isUploading: Boolean = false,
@@ -29,7 +32,16 @@ data class ProfileUiState(
     /** "Meus dados na igreja": memory only, never saved. */
     val ownMember: OwnMemberSection = OwnMemberSection.Hidden,
     val requestDialog: AccessRequestDialogState? = null,
+    val recoveryEmail: RecoveryEmailStatus = RecoveryEmailStatus.Unknown,
+    /** `null` until read from disk: the notice must not flash for someone who already answered it. */
+    val recoveryNoticeAnswered: Boolean? = null,
+    val recoveryEmailForm: RecoveryEmailFormState? = null,
+    val recoveryCodeDialog: RecoveryCodeDialogState? = null,
 ) {
+    /** The one-time home card: a known password account with a known absence of an e-mail. */
+    val showRecoveryNotice: Boolean
+        get() = hasPassword == true && recoveryEmail == RecoveryEmailStatus.None && recoveryNoticeAnswered == false
+
     val isPhotoBusy: Boolean get() = isUploading || isRemovingPhoto
     val canDeleteAccount: Boolean get() = hasPassword != null
 }
@@ -58,6 +70,23 @@ data class PasswordDialogState(
     val error: String? = null,
 )
 
+data class RecoveryEmailFormState(
+    val isSaving: Boolean = false,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val error: String? = null,
+)
+
+data class RecoveryCodeDialogState(
+    val isSending: Boolean = false,
+    val isConfirming: Boolean = false,
+    val codeError: String? = null,
+    val error: String? = null,
+    val resendSecondsLeft: Int = 0,
+) {
+    val canResend: Boolean get() = resendSecondsLeft == 0 && !isSending && !isConfirming
+}
+
 data class DeleteDialogState(
     /** The account has a password: it confirms with it; otherwise with a fresh Google sign-in. */
     val requiresPassword: Boolean,
@@ -74,6 +103,9 @@ fun canSaveName(input: String, current: String?): Boolean {
 
 fun canChangePassword(current: String, new: String, confirm: String): Boolean =
     current.isNotBlank() && new.isNotBlank() && confirm.isNotBlank()
+
+fun canSaveRecoveryEmail(email: String, currentPassword: String): Boolean =
+    email.isNotBlank() && currentPassword.isNotBlank()
 
 fun canDeleteAccount(requiresPassword: Boolean, password: String, confirmation: String): Boolean =
     isDeletionConfirmationTyped(confirmation) && (!requiresPassword || password.isNotBlank())

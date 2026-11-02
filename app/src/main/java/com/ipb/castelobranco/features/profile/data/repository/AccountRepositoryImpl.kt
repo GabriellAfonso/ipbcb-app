@@ -6,6 +6,8 @@ import com.ipb.castelobranco.core.domain.error.mapError
 import com.ipb.castelobranco.core.network.error.toAppError
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.ChangeRecoveryEmailRequest
+import com.ipb.castelobranco.features.profile.data.dto.ConfirmRecoveryEmailRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
 import com.ipb.castelobranco.features.profile.data.dto.UpdateProfileRequest
@@ -46,6 +48,26 @@ class AccountRepositoryImpl @Inject constructor(
 
             // Antes de qualquer outra chamada: o access usado aqui já morreu no servidor.
             tokensWriter.replace(access = tokens.access, refresh = tokens.refresh)
+        }.mapError()
+
+    override suspend fun changeRecoveryEmail(email: String, currentPassword: String): Result<Unit> =
+        runCatching {
+            val response = api.changeRecoveryEmail(
+                ChangeRecoveryEmailRequest(recoveryEmail = email, currentPassword = currentPassword)
+            )
+            if (!response.isSuccessful) throw response.toAppError()
+        }.mapError()
+
+    override suspend fun sendRecoveryEmailCode(): Result<Unit> =
+        runCatching {
+            val response = api.sendRecoveryEmailCode()
+            if (!response.isSuccessful) throw response.toAppError()
+        }.mapError()
+
+    override suspend fun confirmRecoveryEmail(code: String): Result<Unit> =
+        runCatching {
+            val response = api.confirmRecoveryEmail(ConfirmRecoveryEmailRequest(code = code))
+            if (!response.isSuccessful) throw response.toAppError()
         }.mapError()
 
     override suspend fun deleteAccount(proof: AccountDeletionProof): Result<Unit> =

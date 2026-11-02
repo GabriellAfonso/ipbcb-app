@@ -12,11 +12,16 @@ import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDi
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.profile.domain.model.AccountDeletionProof
 import com.ipb.castelobranco.features.profile.domain.model.OwnMember
+import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
+import com.ipb.castelobranco.features.profile.domain.repository.RecoveryNoticeRepository
 import com.ipb.castelobranco.features.profile.domain.usecase.ChangePasswordUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.ChangeRecoveryEmailUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.ConfirmRecoveryEmailUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.DeleteAccountUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.FetchProfileUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.GetOwnMemberUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.RemoveProfilePhotoUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.SendRecoveryEmailCodeUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.UpdateProfileNameUseCase
 import com.ipb.castelobranco.features.profile.domain.usecase.UploadProfilePhotoUseCase
 import com.ipb.castelobranco.features.profile.presentation.format.formatBaptism
@@ -29,7 +34,11 @@ import com.ipb.castelobranco.features.profile.presentation.state.OwnMemberSectio
 import com.ipb.castelobranco.features.profile.presentation.state.PasswordDialogState
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiEvent
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiState
+import com.ipb.castelobranco.features.profile.presentation.state.RecoveryCodeDialogState
+import com.ipb.castelobranco.features.profile.presentation.state.RecoveryEmailFormState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -51,6 +60,10 @@ class ProfileViewModel @Inject constructor(
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val getOwnMemberUseCase: GetOwnMemberUseCase,
     private val requestAccessUseCase: RequestAccessUseCase,
+    private val changeRecoveryEmailUseCase: ChangeRecoveryEmailUseCase,
+    private val sendRecoveryEmailCodeUseCase: SendRecoveryEmailCodeUseCase,
+    private val confirmRecoveryEmailUseCase: ConfirmRecoveryEmailUseCase,
+    private val recoveryNoticeRepository: RecoveryNoticeRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -62,9 +75,12 @@ class ProfileViewModel @Inject constructor(
     /** The roll link last seen, so the roll data is read again only when it changes. */
     private var loadedMemberId: Long? = null
     private var ownMemberLoaded = false
+    private var noticeObserved = false
+    private var codeCountdown: Job? = null
 
     fun initialize() {
         observeProfile()
+        observeRecoveryNotice()
         refreshLocalPhotoPathAndBump()
         refreshFromServer()
     }
@@ -88,6 +104,7 @@ class ProfileViewModel @Inject constructor(
                                 joinedSince = profile.dateJoined?.let(::formatJoinedSince),
                                 hasPassword = profile.hasPassword,
                                 access = profile.memberAccessInfo,
+                                recoveryEmail = profile.recoveryEmail,
                             )
                         }
                         if (!ownMemberLoaded || profile.memberId != loadedMemberId) {
@@ -101,9 +118,8 @@ class ProfileViewModel @Inject constructor(
                         refreshLocalPhotoPathAndBump()
                     }
 
-                    SnapshotState.Loading -> {
-                        // opcional: nada ou loading
-                    }
+                    // Sem perfil (logout incluído): o endereço da conta anterior não fica em memória.
+                    SnapshotState.Loading -> _uiState.update { it.copy(recoveryEmail = RecoveryEmailStatus.Unknown) }
 
                     is SnapshotState.Error -> {
                         _uiState.update {
@@ -334,6 +350,149 @@ class ProfileViewModel @Inject constructor(
 
     // endregion
 
+    // region recovery e-mail
+
+    private fun observeRecoveryNotice() {
+        if (noticeObserved) return
+        noticeObserved = true
+        viewModelScope.launch {
+            recoveryNoticeRepository.answered.collect { answered ->
+                _uiState.update { it.copy(recoveryNoticeAnswered = answered) }
+            }
+        }
+    }
+
+    /** "Agora não" or "Adicionar e-mail" on the home card: it does not come back on this device. */
+    fun answerRecoveryNotice() {
+        viewModelScope.launch { recoveryNoticeRepository.markAnswered() }
+    }
+
+    fun openRecoveryEmailForm() {
+        if (_uiState.value.hasPassword != true) return
+        _uiState.update { it.copy(recoveryEmailForm = RecoveryEmailFormState()) }
+    }
+
+    fun dismissRecoveryEmailForm() {
+        if (_uiState.value.recoveryEmailForm?.isSaving == true) return
+        _uiState.update { it.copy(recoveryEmailForm = null) }
+    }
+
+    fun saveRecoveryEmail(email: String, currentPassword: String) {
+        val form = _uiState.value.recoveryEmailForm ?: return
+        if (form.isSaving) return
+        _uiState.update { it.copy(recoveryEmailForm = RecoveryEmailFormState(isSaving = true)) }
+        viewModelScope.launch {
+            changeRecoveryEmailUseCase(email, currentPassword)
+                .onSuccess {
+                    _uiState.update { it.copy(recoveryEmailForm = null) }
+                    _events.emit(ProfileUiEvent.ShowMessage(RECOVERY_EMAIL_SAVED_MESSAGE))
+                }
+                .onFailure { throwable ->
+                    val error = throwable.toAppError()
+                    val emailError = error.fieldError(FIELD_RECOVERY_EMAIL)
+                    val passwordError = error.fieldError(FIELD_CURRENT_PASSWORD) ?: error.invalidPasswordMessage()
+                    val onAField = emailError != null || passwordError != null
+                    _uiState.update {
+                        it.copy(
+                            recoveryEmailForm = RecoveryEmailFormState(
+                                emailError = emailError,
+                                passwordError = passwordError,
+                                error = if (onAField) null else error.toUserMessage(),
+                            )
+                        )
+                    }
+                    if (error.hasCode(ERROR_PASSWORD_NOT_SET)) fetchProfileUseCase.refresh()
+                }
+        }
+    }
+
+    fun openRecoveryCodeDialog() {
+        val status = _uiState.value.recoveryEmail
+        if (status !is RecoveryEmailStatus.Set || status.confirmed) return
+        _uiState.update { it.copy(recoveryCodeDialog = RecoveryCodeDialogState()) }
+        sendRecoveryCode()
+    }
+
+    fun resendRecoveryCode() {
+        if (_uiState.value.recoveryCodeDialog?.canResend == true) sendRecoveryCode()
+    }
+
+    fun dismissRecoveryCodeDialog() {
+        if (_uiState.value.recoveryCodeDialog?.isConfirming == true) return
+        codeCountdown?.cancel()
+        _uiState.update { it.copy(recoveryCodeDialog = null) }
+    }
+
+    private fun sendRecoveryCode() {
+        updateCodeDialog { copy(isSending = true, error = null, codeError = null) }
+        viewModelScope.launch {
+            sendRecoveryEmailCodeUseCase()
+                .onSuccess {
+                    updateCodeDialog { copy(isSending = false) }
+                    startCodeCountdown(RESEND_COUNTDOWN_SECONDS)
+                }
+                .onFailure { throwable -> onSendCodeFailed(throwable.toAppError()) }
+        }
+    }
+
+    private suspend fun onSendCodeFailed(error: AppError) {
+        // O servidor já sabe mais que o perfil guardado: nada a digitar, só atualizar a tela.
+        if (error.hasCode(ERROR_ALREADY_CONFIRMED) || error.hasCode(ERROR_EMAIL_NOT_SET)) {
+            _uiState.update { it.copy(recoveryCodeDialog = null) }
+            fetchProfileUseCase.refresh()
+            return
+        }
+        updateCodeDialog { copy(isSending = false, error = error.toUserMessage()) }
+        if (error.hasCode(ERROR_CODE_RATE_LIMITED)) {
+            val wait = (error as AppError.Server).extras?.get(EXTRA_RETRY_AFTER)?.toIntOrNull()
+            startCodeCountdown(wait ?: RESEND_COUNTDOWN_SECONDS)
+        }
+    }
+
+    private fun startCodeCountdown(seconds: Int) {
+        codeCountdown?.cancel()
+        updateCodeDialog { copy(resendSecondsLeft = seconds) }
+        codeCountdown = viewModelScope.launch {
+            while ((_uiState.value.recoveryCodeDialog?.resendSecondsLeft ?: 0) > 0) {
+                delay(ONE_SECOND_MS)
+                updateCodeDialog { copy(resendSecondsLeft = resendSecondsLeft - 1) }
+            }
+        }
+    }
+
+    fun confirmRecoveryCode(code: String) {
+        val dialog = _uiState.value.recoveryCodeDialog ?: return
+        if (dialog.isConfirming) return
+        updateCodeDialog { copy(isConfirming = true, codeError = null, error = null) }
+        viewModelScope.launch {
+            confirmRecoveryEmailUseCase(code)
+                .onSuccess {
+                    codeCountdown?.cancel()
+                    _uiState.update { it.copy(recoveryCodeDialog = null) }
+                    _events.emit(ProfileUiEvent.ShowMessage(RECOVERY_EMAIL_CONFIRMED_MESSAGE))
+                }
+                .onFailure { throwable ->
+                    val error = throwable.toAppError()
+                    val wrongCode = error.hasCode(ERROR_INVALID_EMAIL_CODE)
+                    updateCodeDialog {
+                        copy(
+                            isConfirming = false,
+                            codeError = if (wrongCode) error.toUserMessage() else null,
+                            error = if (wrongCode) null else error.toUserMessage(),
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun updateCodeDialog(change: RecoveryCodeDialogState.() -> RecoveryCodeDialogState) {
+        _uiState.update { it.copy(recoveryCodeDialog = it.recoveryCodeDialog?.change()) }
+    }
+
+    private fun AppError.hasCode(code: String): Boolean = this is AppError.Server && errorCode == code
+
+    // endregion
+
     // region account deletion
 
     fun openDeleteDialog() {
@@ -408,6 +567,17 @@ class ProfileViewModel @Inject constructor(
         const val OWN_MEMBER_ERROR = "Não foi possível carregar seus dados."
 
         const val ERROR_INVALID_PASSWORD = "INVALID_PASSWORD"
+        const val ERROR_INVALID_EMAIL_CODE = "INVALID_EMAIL_CODE"
+        const val ERROR_PASSWORD_NOT_SET = "PASSWORD_NOT_SET"
+        const val ERROR_ALREADY_CONFIRMED = "RECOVERY_EMAIL_ALREADY_CONFIRMED"
+        const val ERROR_EMAIL_NOT_SET = "RECOVERY_EMAIL_NOT_SET"
+        const val ERROR_CODE_RATE_LIMITED = "EMAIL_CODE_RATE_LIMITED"
+        const val EXTRA_RETRY_AFTER = "retry_after_seconds"
+        const val FIELD_RECOVERY_EMAIL = "recovery_email"
+        const val RESEND_COUNTDOWN_SECONDS = 60
+        const val ONE_SECOND_MS = 1_000L
+        const val RECOVERY_EMAIL_SAVED_MESSAGE = "E-mail salvo"
+        const val RECOVERY_EMAIL_CONFIRMED_MESSAGE = "E-mail confirmado"
         const val FIELD_NAME = "name"
         const val FIELD_CURRENT_PASSWORD = "current_password"
         const val FIELD_NEW_PASSWORD = "new_password"

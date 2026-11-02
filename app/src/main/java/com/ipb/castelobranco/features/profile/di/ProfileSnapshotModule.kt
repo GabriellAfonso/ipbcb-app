@@ -5,6 +5,8 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotFetcher
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
+import com.ipb.castelobranco.features.profile.data.local.RecoveryEmailVault
+import com.ipb.castelobranco.features.profile.data.snapshot.SealedProfileSnapshotCache
 import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotFetcher
 import dagger.Module
 import dagger.Provides
@@ -18,11 +20,15 @@ object ProfileSnapshotModule {
 
     @Provides
     fun provideProfileSnapshotCache(
-        factory: SnapshotCacheFactory
+        factory: SnapshotCacheFactory,
+        vault: RecoveryEmailVault,
     ): SnapshotCache<MeProfileDto> =
-        factory.create(
-            key = "me_profile",
-            serializer = MeProfileDto.serializer()
+        SealedProfileSnapshotCache(
+            inner = factory.create(
+                key = "me_profile",
+                serializer = MeProfileDto.serializer()
+            ),
+            vault = vault,
         )
 
     @Provides

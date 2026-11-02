@@ -27,6 +27,7 @@ são redefinidos aqui.
 | Login | `username` | só leitura; não aparece na tela |
 | Tem senha | `has_password` | só leitura; `null` = desconhecido |
 | No app desde | `date_joined` (`AAAA-MM-DD`) | só leitura; data inválida ou ausente = desconhecida |
+| E-mail de recuperação | `recovery_email`, `recovery_email_confirmed` | só leitura; `RecoveryEmailStatus`; confirmado `null` = desconhecido |
 
 Todo campo acrescentado ao DTO tem default. Um perfil guardado em disco por uma versão anterior precisa continuar
 abrindo: uma falha de decodificação apaga o arquivo e perde o perfil inteiro. Os três campos da conta são anuláveis
@@ -39,6 +40,11 @@ de propósito. Um `false` padrão em `has_password` mandaria uma conta com senha
   feita nesta tela. Usa ETag.
 - Foto: arquivo `profile_photo.*` em `filesDir/profile`, com ETag e a última URL. 404/403 limpam a cópia local.
 - O logout e a exclusão da conta apagam os dois.
+- **O endereço de e-mail nunca vai para o snapshot em texto puro.** `SealedProfileSnapshotCache` envolve o cache: ao
+  salvar, grava o endereço em `RecoveryEmailVault` (chave no `@AuthPrefs` cifrado; texto vazio = conta sem e-mail) e passa
+  ao snapshot uma cópia sem ele; ao carregar, devolve. Sem entrada no cofre ou com perfil antigo, a situação é
+  desconhecida e o ETag não é enviado, para o próximo refresh baixar o perfil inteiro em vez de receber um 304 sem o
+  endereço. O cofre também é um `SessionScopedCache`: some junto quando a sessão cai sem logout. O endereço nunca vai para log.
 
 ## 3. Tela
 
@@ -59,7 +65,7 @@ nome e a troca de senha ficam no menu de três pontos da barra do topo.
 - **"Editar nome"**, no menu de três pontos da barra do topo (sempre presente), abre um diálogo com um campo de até
   100 caracteres. O nome é aparado (trim); vazio não salva; o erro do servidor aparece no campo. Aviso: "Nome
   atualizado".
-- O login (`username`) e o e-mail não aparecem; o e-mail não é editável.
+- O login (`username`) não aparece.
 
 ### 3.2.1 Acesso
 
@@ -78,6 +84,26 @@ nome e a troca de senha ficam no menu de três pontos da barra do topo.
 - "Solicitar correção": diálogo com mensagem obrigatória de até 1000 caracteres (pedido `data_correction`). Com
   correção pendente o botão vira "Correção solicitada", desligado. Bloqueado: sem botão.
 - Falha de rede: "Não foi possível carregar seus dados." e "Tentar novamente".
+
+### 3.2.3 E-mail de recuperação
+
+Card só para conta com senha (`has_password == true`) e situação conhecida. Conta só com Google, ou com senha ou
+situação desconhecida, não vê nada. Explica: "Usado só para recuperar sua senha."; nunca é login nem é único.
+
+| Situação | Card |
+|----------|------|
+| Sem e-mail | Botão "Adicionar e-mail" |
+| Não confirmado | Endereço, "Não confirmado", botões "Confirmar" e "Alterar" |
+| Confirmado | Endereço, "Confirmado", botão "Alterar" |
+
+- **"Adicionar e-mail" / "Alterar"**: diálogo com E-mail e Senha atual, também no primeiro e-mail, para uma sessão roubada
+  não poder cadastrar o próprio endereço. Senha errada é "Senha incorreta." sob o campo e nunca desloga. Aviso:
+  "E-mail salvo". O novo endereço fica "Não confirmado"; salvar o mesmo mantém o estado.
+- **"Confirmar"**: envia um código de 6 dígitos e abre o diálogo para digitá-lo, com "Reenviar código" desligado por 60 s,
+  ou pelo tempo que o servidor informar (`retry_after_seconds`). Código errado fica sob o campo e o diálogo continua aberto.
+  Aviso: "E-mail confirmado".
+- Se o servidor disser que já está confirmado, ou que não há e-mail, o diálogo fecha e o perfil é atualizado, sem erro.
+- Depois de cada alteração o perfil é atualizado.
 
 ### 3.3 Ações
 

@@ -12,6 +12,11 @@ import com.ipb.castelobranco.core.domain.access.RequestAccessUseCase
 import com.ipb.castelobranco.core.testing.FakeMemberAccessRepository
 import com.ipb.castelobranco.features.profile.domain.model.AccountDeletionProof
 import com.ipb.castelobranco.features.profile.domain.model.OwnMember
+import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
+import com.ipb.castelobranco.features.profile.domain.repository.RecoveryNoticeRepository
+import com.ipb.castelobranco.features.profile.domain.usecase.ChangeRecoveryEmailUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.ConfirmRecoveryEmailUseCase
+import com.ipb.castelobranco.features.profile.domain.usecase.SendRecoveryEmailCodeUseCase
 import com.ipb.castelobranco.features.profile.domain.repository.OwnMemberRepository
 import com.ipb.castelobranco.features.profile.domain.usecase.GetOwnMemberUseCase
 import com.ipb.castelobranco.features.profile.presentation.state.OwnMemberSection
@@ -34,10 +39,12 @@ import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -75,6 +82,12 @@ class ProfileViewModelTest {
         }
     }
     private val memberAccessRepository = FakeMemberAccessRepository()
+    private val noticeRepository = object : RecoveryNoticeRepository {
+        override val answered = MutableStateFlow(false)
+        override suspend fun markAnswered() {
+            answered.value = true
+        }
+    }
 
     private val fakeProfile = MeProfile(
         name = "João Silva",
@@ -101,6 +114,10 @@ class ProfileViewModelTest {
             DeleteAccountUseCase(accountRepository, authEventBus),
             GetOwnMemberUseCase(ownMemberRepository),
             RequestAccessUseCase(memberAccessRepository),
+            ChangeRecoveryEmailUseCase(accountRepository, profileRepository),
+            SendRecoveryEmailCodeUseCase(accountRepository),
+            ConfirmRecoveryEmailUseCase(accountRepository, profileRepository),
+            noticeRepository,
         )
     }
 
@@ -793,6 +810,205 @@ class ProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Tente novamente amanhã.", viewModel.uiState.value.requestDialog?.error)
+    }
+
+    // endregion
+
+    // region recovery e-mail
+
+    private val unconfirmed = RecoveryEmailStatus.Set(address = "ana@example.com", confirmed = false)
+
+    private fun givenProfile(hasPassword: Boolean?, status: RecoveryEmailStatus) {
+        every { fetchProfileUseCase.observe() } returns flowOf(
+            SnapshotState.Data(fakeProfile.copy(hasPassword = hasPassword, recoveryEmail = status))
+        )
+        viewModel.initialize()
+    }
+
+    private fun serverError(code: String, detail: String, extras: Map<String, String>? = null) = Result.failure<Unit>(
+        AppError.Server(code = 400, errorCode = code, userMessage = detail, extras = extras)
+    )
+
+    @Test
+    fun `the notice shows for a password account known to have no e-mail`() = runTest {
+        givenProfile(hasPassword = true, status = RecoveryEmailStatus.None)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showRecoveryNotice)
+    }
+
+    @Test
+    fun `the notice stays away for every other account`() = runTest {
+        listOf(
+            false to RecoveryEmailStatus.None,
+            null to RecoveryEmailStatus.None,
+            true to RecoveryEmailStatus.Unknown,
+            true to unconfirmed,
+        ).forEach { (hasPassword, status) ->
+            val state = stateFor(hasPassword, status)
+            assertFalse("$hasPassword $status", state.showRecoveryNotice)
+        }
+    }
+
+    private fun stateFor(hasPassword: Boolean?, status: RecoveryEmailStatus) =
+        com.ipb.castelobranco.features.profile.presentation.state.ProfileUiState(
+            hasPassword = hasPassword,
+            recoveryEmail = status,
+            recoveryNoticeAnswered = false,
+        )
+
+    @Test
+    fun `the notice waits for the stored answer before showing`() {
+        val state = stateFor(true, RecoveryEmailStatus.None).copy(recoveryNoticeAnswered = null)
+
+        assertFalse(state.showRecoveryNotice)
+    }
+
+    @Test
+    fun `answering the notice ends it`() = runTest {
+        givenProfile(hasPassword = true, status = RecoveryEmailStatus.None)
+        advanceUntilIdle()
+
+        viewModel.answerRecoveryNotice()
+        advanceUntilIdle()
+
+        assertTrue(noticeRepository.answered.value)
+        assertFalse(viewModel.uiState.value.showRecoveryNotice)
+    }
+
+    @Test
+    fun `the form does not open for an account without a password`() = runTest {
+        givenProfile(hasPassword = false, status = RecoveryEmailStatus.None)
+        advanceUntilIdle()
+
+        viewModel.openRecoveryEmailForm()
+
+        assertNull(viewModel.uiState.value.recoveryEmailForm)
+    }
+
+    @Test
+    fun `saving the e-mail closes the form and refreshes the profile`() = runTest {
+        givenProfile(hasPassword = true, status = RecoveryEmailStatus.None)
+        advanceUntilIdle()
+        viewModel.openRecoveryEmailForm()
+
+        viewModel.saveRecoveryEmail(" novo@example.com ", "secret1")
+        advanceUntilIdle()
+
+        assertEquals("novo@example.com" to "secret1", accountRepository.recoveryEmailChanges.single())
+        assertNull(viewModel.uiState.value.recoveryEmailForm)
+        coVerify { profileRepository.refreshMeProfile() }
+    }
+
+    @Test
+    fun `a wrong password is an error under the field and never ends the session`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        advanceUntilIdle()
+        viewModel.openRecoveryEmailForm()
+        accountRepository.changeRecoveryEmailResult = serverError("INVALID_PASSWORD", "Senha incorreta.")
+
+        viewModel.saveRecoveryEmail("novo@example.com", "errada")
+        advanceUntilIdle()
+
+        val form = viewModel.uiState.value.recoveryEmailForm
+        assertEquals("Senha incorreta.", form?.passwordError)
+        assertNull(form?.error)
+        assertFalse(form?.isSaving == true)
+        assertTrue(authEventBus.emitted.isEmpty())
+    }
+
+    @Test
+    fun `a refused address shows under its field`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        advanceUntilIdle()
+        viewModel.openRecoveryEmailForm()
+        accountRepository.changeRecoveryEmailResult = Result.failure(
+            AppError.Server(code = 400, fieldErrors = mapOf("recovery_email" to listOf("Informe um e-mail válido.")))
+        )
+
+        viewModel.saveRecoveryEmail("x", "secret1")
+        advanceUntilIdle()
+
+        assertEquals("Informe um e-mail válido.", viewModel.uiState.value.recoveryEmailForm?.emailError)
+    }
+
+    @Test
+    fun `confirmar sends a code and counts down before a resend`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        testScheduler.advanceTimeBy(1)
+        runCurrent()
+
+        viewModel.openRecoveryCodeDialog()
+        runCurrent()
+
+        assertEquals(1, accountRepository.sendCodeCalls)
+        assertEquals(60, viewModel.uiState.value.recoveryCodeDialog?.resendSecondsLeft)
+        viewModel.resendRecoveryCode()
+        runCurrent()
+        assertEquals(1, accountRepository.sendCodeCalls)
+
+        testScheduler.advanceTimeBy(60_001)
+        runCurrent()
+        assertTrue(viewModel.uiState.value.recoveryCodeDialog?.canResend == true)
+        viewModel.dismissRecoveryCodeDialog()
+    }
+
+    @Test
+    fun `the server's wait replaces the countdown`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        runCurrent()
+        accountRepository.sendCodeResult = serverError(
+            "EMAIL_CODE_RATE_LIMITED", "Aguarde.", mapOf("retry_after_seconds" to "42"),
+        )
+
+        viewModel.openRecoveryCodeDialog()
+        runCurrent()
+
+        assertEquals(42, viewModel.uiState.value.recoveryCodeDialog?.resendSecondsLeft)
+        viewModel.dismissRecoveryCodeDialog()
+    }
+
+    @Test
+    fun `an e-mail already confirmed closes the dialog and refreshes without an error`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        runCurrent()
+        accountRepository.sendCodeResult = serverError("RECOVERY_EMAIL_ALREADY_CONFIRMED", "Já confirmado.")
+
+        viewModel.openRecoveryCodeDialog()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.recoveryCodeDialog)
+        coVerify(atLeast = 1) { fetchProfileUseCase.refresh() }
+    }
+
+    @Test
+    fun `a wrong code stays in the dialog under the field`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        runCurrent()
+        viewModel.openRecoveryCodeDialog()
+        runCurrent()
+        accountRepository.confirmEmailResult = serverError("INVALID_EMAIL_CODE", "Código inválido ou expirado.")
+
+        viewModel.confirmRecoveryCode("000000")
+        runCurrent()
+
+        assertEquals("Código inválido ou expirado.", viewModel.uiState.value.recoveryCodeDialog?.codeError)
+        viewModel.dismissRecoveryCodeDialog()
+    }
+
+    @Test
+    fun `a right code closes the dialog and refreshes the profile`() = runTest {
+        givenProfile(hasPassword = true, status = unconfirmed)
+        runCurrent()
+        viewModel.openRecoveryCodeDialog()
+        runCurrent()
+
+        viewModel.confirmRecoveryCode("123456")
+        advanceUntilIdle()
+
+        assertEquals("123456", accountRepository.confirmedCodes.single())
+        assertNull(viewModel.uiState.value.recoveryCodeDialog)
+        coVerify { profileRepository.refreshMeProfile() }
     }
 
     // endregion

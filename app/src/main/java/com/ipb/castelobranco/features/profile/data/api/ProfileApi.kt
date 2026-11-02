@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.profile.data.api
 
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.ChangeRecoveryEmailRequest
+import com.ipb.castelobranco.features.profile.data.dto.ConfirmRecoveryEmailRequest
 import com.ipb.castelobranco.features.profile.data.dto.CreateAccessRequestBody
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
@@ -44,6 +46,15 @@ interface ProfileApi {
 
     @POST(ProfileEndpoints.ME_PASSWORD_PATH)
     suspend fun changePassword(@Body body: ChangePasswordRequest): Response<SessionTokensDto>
+
+    @POST(ProfileEndpoints.ME_RECOVERY_EMAIL_PATH)
+    suspend fun changeRecoveryEmail(@Body body: ChangeRecoveryEmailRequest): Response<Unit>
+
+    @POST(ProfileEndpoints.ME_RECOVERY_EMAIL_SEND_CODE_PATH)
+    suspend fun sendRecoveryEmailCode(): Response<Unit>
+
+    @POST(ProfileEndpoints.ME_RECOVERY_EMAIL_CONFIRM_PATH)
+    suspend fun confirmRecoveryEmail(@Body body: ConfirmRecoveryEmailRequest): Response<Unit>
 
     @POST(ProfileEndpoints.ME_DELETE_PATH)
     suspend fun deleteAccountWithPassword(@Body body: DeleteAccountWithPasswordRequest): Response<Unit>

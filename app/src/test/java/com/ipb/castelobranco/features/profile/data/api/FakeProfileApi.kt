@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.profile.data.api
 
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.ChangeRecoveryEmailRequest
+import com.ipb.castelobranco.features.profile.data.dto.ConfirmRecoveryEmailRequest
 import com.ipb.castelobranco.features.profile.data.dto.CreateAccessRequestBody
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
@@ -65,6 +67,23 @@ class FakeProfileApi : ProfileApi {
     var deleteAccountScript: (() -> Response<Unit>)? = null
     var accessRequestScript: (() -> Response<Unit>)? = null
     var ownMemberScript: (() -> Response<OwnMemberDto>)? = null
+    var recoveryEmailScript: (() -> Response<Unit>)? = null
+
+    val recoveryEmailBodies = mutableListOf<ChangeRecoveryEmailRequest>()
+    val recoveryCodeBodies = mutableListOf<ConfirmRecoveryEmailRequest>()
+
+    override suspend fun changeRecoveryEmail(body: ChangeRecoveryEmailRequest): Response<Unit> {
+        recoveryEmailBodies += body
+        return recoveryEmailScript?.invoke() ?: error("recoveryEmailScript not set")
+    }
+
+    override suspend fun sendRecoveryEmailCode(): Response<Unit> =
+        recoveryEmailScript?.invoke() ?: error("recoveryEmailScript not set")
+
+    override suspend fun confirmRecoveryEmail(body: ConfirmRecoveryEmailRequest): Response<Unit> {
+        recoveryCodeBodies += body
+        return recoveryEmailScript?.invoke() ?: error("recoveryEmailScript not set")
+    }
 
     val updateProfileBodies = mutableListOf<UpdateProfileRequest>()
     val changePasswordBodies = mutableListOf<ChangePasswordRequest>()

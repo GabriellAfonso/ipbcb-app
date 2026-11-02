@@ -15,6 +15,17 @@ data class ChangePasswordRequest(
     @SerialName("new_password_confirm") val newPasswordConfirm: String,
 )
 
+@Serializable
+data class ChangeRecoveryEmailRequest(
+    @SerialName("recovery_email") val recoveryEmail: String,
+    @SerialName("current_password") val currentPassword: String,
+)
+
+@Serializable
+data class ConfirmRecoveryEmailRequest(
+    @SerialName("code") val code: String,
+)
+
 /** The pair that replaces the session after a password change; the old one is already dead on the server. */
 @Serializable
 data class SessionTokensDto(

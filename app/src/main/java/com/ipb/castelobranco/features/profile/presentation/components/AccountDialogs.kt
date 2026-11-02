@@ -172,7 +172,7 @@ fun DeleteAccountDialog(
 }
 
 @Composable
-private fun PasswordField(
+internal fun PasswordField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -203,7 +203,7 @@ private fun PasswordField(
 }
 
 @Composable
-private fun BusyButton(
+internal fun BusyButton(
     text: String,
     isBusy: Boolean,
     enabled: Boolean,
@@ -220,12 +220,12 @@ private fun BusyButton(
 }
 
 @Composable
-private fun FieldMessage(text: String) {
+internal fun FieldMessage(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
-private fun DialogError(error: String?) {
+internal fun DialogError(error: String?) {
     if (error != null) {
         Text(
             text = error,
@@ -237,5 +237,5 @@ private fun DialogError(error: String?) {
 }
 
 /** While a request runs the dialog cannot be dismissed by tapping outside or going back. */
-private fun busyProperties(isBusy: Boolean) =
+internal fun busyProperties(isBusy: Boolean) =
     DialogProperties(dismissOnBackPress = !isBusy, dismissOnClickOutside = !isBusy)

@@ -5,6 +5,8 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.testing.errorResponse
 import com.ipb.castelobranco.features.profile.data.api.FakeProfileApi
 import com.ipb.castelobranco.features.profile.data.dto.ChangePasswordRequest
+import com.ipb.castelobranco.features.profile.data.dto.ChangeRecoveryEmailRequest
+import com.ipb.castelobranco.features.profile.data.dto.ConfirmRecoveryEmailRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithGoogleRequest
 import com.ipb.castelobranco.features.profile.data.dto.DeleteAccountWithPasswordRequest
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
@@ -25,6 +27,50 @@ class AccountRepositoryImplTest {
     private val written = mutableListOf<Pair<String, String>>()
     private val writer = SessionTokensWriter { access, refresh -> written += access to refresh }
     private val repository = AccountRepositoryImpl(api, writer)
+
+    @Test
+    fun `changeRecoveryEmail sends the address and the password`() = runTest {
+        api.recoveryEmailScript = { Response.success(Unit) }
+
+        assertTrue(repository.changeRecoveryEmail("a@b.com", "secret1").isSuccess)
+
+        assertEquals(listOf(ChangeRecoveryEmailRequest("a@b.com", "secret1")), api.recoveryEmailBodies)
+    }
+
+    @Test
+    fun `changeRecoveryEmail carries a wrong password as a server error`() = runTest {
+        api.recoveryEmailScript = {
+            errorResponse(400, """{"error_code":"INVALID_PASSWORD","detail":"Senha incorreta."}""")
+        }
+
+        val error = repository.changeRecoveryEmail("a@b.com", "x").exceptionOrNull() as AppError.Server
+
+        assertEquals("INVALID_PASSWORD", error.errorCode)
+        assertEquals("Senha incorreta.", error.userMessage)
+    }
+
+    @Test
+    fun `sendRecoveryEmailCode carries the wait of a rate limit`() = runTest {
+        api.recoveryEmailScript = {
+            errorResponse(
+                429,
+                """{"error_code":"EMAIL_CODE_RATE_LIMITED","detail":"Aguarde.","retry_after_seconds":42}""",
+            )
+        }
+
+        val error = repository.sendRecoveryEmailCode().exceptionOrNull() as AppError.Server
+
+        assertEquals("42", error.extras?.get("retry_after_seconds"))
+    }
+
+    @Test
+    fun `confirmRecoveryEmail sends the code`() = runTest {
+        api.recoveryEmailScript = { Response.success(Unit) }
+
+        assertTrue(repository.confirmRecoveryEmail("123456").isSuccess)
+
+        assertEquals(listOf(ConfirmRecoveryEmailRequest("123456")), api.recoveryCodeBodies)
+    }
 
     @Test
     fun `updateName sends the name and succeeds`() = runTest {

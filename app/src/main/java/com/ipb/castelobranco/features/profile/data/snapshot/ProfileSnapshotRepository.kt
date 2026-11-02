@@ -10,6 +10,7 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotFetcher
 import com.ipb.castelobranco.features.profile.data.access.toAccess
 import com.ipb.castelobranco.features.profile.data.dto.MeProfileDto
 import com.ipb.castelobranco.features.profile.domain.model.MeProfile
+import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import javax.inject.Inject
@@ -36,6 +37,7 @@ class ProfileSnapshotRepository @Inject constructor(
             hasPassword = dto.hasPassword,
             dateJoined = dto.dateJoined.toLocalDateOrNull(),
             memberAccessInfo = dto.toMemberAccess(),
+            recoveryEmail = dto.toRecoveryEmailStatus(),
         )
     },
     logger = logger,
@@ -48,6 +50,12 @@ internal fun MeProfileDto.toMemberAccess(): MemberAccess = MemberAccess(
     requestsBlocked = accessRequestsBlocked == true,
     correctionPending = dataCorrectionPending == true,
 )
+
+internal fun MeProfileDto.toRecoveryEmailStatus(): RecoveryEmailStatus {
+    val confirmed = recoveryEmailConfirmed ?: return RecoveryEmailStatus.Unknown
+    val address = recoveryEmail?.takeIf { it.isNotBlank() } ?: return RecoveryEmailStatus.None
+    return RecoveryEmailStatus.Set(address = address, confirmed = confirmed)
+}
 
 /** An unparseable date is "unknown", never a failure: a throw here would lose the whole cached profile. */
 internal fun String?.toLocalDateOrNull(): LocalDate? =

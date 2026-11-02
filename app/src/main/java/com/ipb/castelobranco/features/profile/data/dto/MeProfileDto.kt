@@ -38,6 +38,10 @@ data class MeProfileDto(
     @SerialName("has_password") val hasPassword: Boolean? = null,
     /** Account creation date, `YYYY-MM-DD` in Brasília time; `null` when cached before backend 021. */
     @SerialName("date_joined") val dateJoined: String? = null,
+    /** Never written to the plain snapshot: `SealedProfileSnapshotCache` moves it to the sealed store. */
+    @SerialName("recovery_email") val recoveryEmail: String? = null,
+    /** `null` (cached before backend 028, or the sealed address is gone) means unknown, never "no e-mail". */
+    @SerialName("recovery_email_confirmed") val recoveryEmailConfirmed: Boolean? = null,
 )
 
 @Serializable

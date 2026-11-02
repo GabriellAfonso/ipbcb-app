@@ -15,9 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +33,7 @@ import com.ipb.castelobranco.core.presentation.auth.requestGoogleIdToken
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.access.AccessRequestDialog
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
+import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
 import com.ipb.castelobranco.features.profile.presentation.components.AccessCard
 import com.ipb.castelobranco.features.profile.presentation.components.AccountFooter
 import com.ipb.castelobranco.features.profile.presentation.components.OwnMemberCard
@@ -38,6 +42,9 @@ import com.ipb.castelobranco.features.profile.presentation.components.DeleteAcco
 import com.ipb.castelobranco.features.profile.presentation.components.EditNameDialog
 import com.ipb.castelobranco.features.profile.presentation.components.ProfileOverflowMenu
 import com.ipb.castelobranco.features.profile.presentation.components.ProfilePhotoSection
+import com.ipb.castelobranco.features.profile.presentation.components.RecoveryCodeDialog
+import com.ipb.castelobranco.features.profile.presentation.components.RecoveryEmailCard
+import com.ipb.castelobranco.features.profile.presentation.components.RecoveryEmailFormDialog
 import com.ipb.castelobranco.features.profile.presentation.components.RemovePhotoDialog
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiEvent
 import com.ipb.castelobranco.features.profile.presentation.state.ProfileUiState
@@ -51,6 +58,8 @@ private const val DEFAULT_USER_NAME = "Usuário"
 fun ProfileScreen(
     onBackClick: () -> Unit,
     onAccountDeleted: () -> Unit,
+    /** Arrived from the home notice: the e-mail form opens as soon as the account's state is known. */
+    openRecoveryEmailForm: Boolean = false,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
 
@@ -69,6 +78,14 @@ fun ProfileScreen(
                     scope.launch { viewModel.onGoogleIdToken(requestGoogleIdToken(context)) }
                 ProfileUiEvent.AccountDeleted -> currentOnAccountDeleted()
             }
+        }
+    }
+
+    var formOpened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(uiState.recoveryEmail) {
+        if (openRecoveryEmailForm && !formOpened && uiState.recoveryEmail != RecoveryEmailStatus.Unknown) {
+            formOpened = true
+            viewModel.openRecoveryEmailForm()
         }
     }
 
@@ -109,6 +126,13 @@ fun ProfileScreen(
             onSendRequest = viewModel::sendRequest,
             onDismissRequest = viewModel::dismissRequestDialog,
             onRetryOwnMember = viewModel::retryOwnMember,
+            onChangeRecoveryEmail = viewModel::openRecoveryEmailForm,
+            onSaveRecoveryEmail = viewModel::saveRecoveryEmail,
+            onDismissRecoveryEmailForm = viewModel::dismissRecoveryEmailForm,
+            onConfirmRecoveryEmail = viewModel::openRecoveryCodeDialog,
+            onSubmitRecoveryCode = viewModel::confirmRecoveryCode,
+            onResendRecoveryCode = viewModel::resendRecoveryCode,
+            onDismissRecoveryCode = viewModel::dismissRecoveryCodeDialog,
         )
     }
 }
@@ -133,6 +157,13 @@ fun ProfileContent(
     onSendRequest: (String) -> Unit = {},
     onDismissRequest: () -> Unit = {},
     onRetryOwnMember: () -> Unit = {},
+    onChangeRecoveryEmail: () -> Unit = {},
+    onSaveRecoveryEmail: (String, String) -> Unit = { _, _ -> },
+    onDismissRecoveryEmailForm: () -> Unit = {},
+    onConfirmRecoveryEmail: () -> Unit = {},
+    onSubmitRecoveryCode: (String) -> Unit = {},
+    onResendRecoveryCode: () -> Unit = {},
+    onDismissRecoveryCode: () -> Unit = {},
 ) {
     val userName = state.userName?.takeIf { it.isNotBlank() } ?: DEFAULT_USER_NAME
     val photoFile: File? = state.localPhotoPath
@@ -168,6 +199,15 @@ fun ProfileContent(
             Text(text = userName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
 
             AccessCard(access = state.access, onRequestAccess = onRequestAccess)
+
+            if (state.hasPassword == true) {
+                RecoveryEmailCard(
+                    status = state.recoveryEmail,
+                    onAdd = onChangeRecoveryEmail,
+                    onConfirm = onConfirmRecoveryEmail,
+                    onChange = onChangeRecoveryEmail,
+                )
+            }
 
             OwnMemberCard(
                 section = state.ownMember,
@@ -209,6 +249,23 @@ fun ProfileContent(
     }
     state.deleteDialog?.let { dialog ->
         DeleteAccountDialog(state = dialog, onConfirm = onConfirmDelete, onDismiss = onDismissDelete)
+    }
+    state.recoveryEmailForm?.let { dialog ->
+        RecoveryEmailFormDialog(
+            state = dialog,
+            hasAddress = state.recoveryEmail is RecoveryEmailStatus.Set,
+            onSave = onSaveRecoveryEmail,
+            onDismiss = onDismissRecoveryEmailForm,
+        )
+    }
+    state.recoveryCodeDialog?.let { dialog ->
+        RecoveryCodeDialog(
+            state = dialog,
+            address = (state.recoveryEmail as? RecoveryEmailStatus.Set)?.address.orEmpty(),
+            onConfirm = onSubmitRecoveryCode,
+            onResend = onResendRecoveryCode,
+            onDismiss = onDismissRecoveryCode,
+        )
     }
     state.requestDialog?.let { dialog ->
         AccessRequestDialog(state = dialog, onSend = onSendRequest, onDismiss = onDismissRequest)

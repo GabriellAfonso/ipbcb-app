@@ -24,4 +24,5 @@ data class MeProfile(
     /** When the account was created, `null` when unknown. */
     val dateJoined: LocalDate? = null,
     val memberAccessInfo: MemberAccess = MemberAccess.NONE,
+    val recoveryEmail: RecoveryEmailStatus = RecoveryEmailStatus.Unknown,
 )

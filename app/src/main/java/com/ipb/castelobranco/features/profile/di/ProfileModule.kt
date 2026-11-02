@@ -4,6 +4,7 @@ import com.ipb.castelobranco.core.di.AuthedRetrofit
 import com.ipb.castelobranco.core.domain.access.AccessRepository
 import com.ipb.castelobranco.core.domain.access.MemberAccessRepository
 import com.ipb.castelobranco.core.domain.member.CurrentMemberRepository
+import com.ipb.castelobranco.core.domain.session.SessionScopedCache
 import com.ipb.castelobranco.core.domain.startup.Preloadable
 import com.ipb.castelobranco.core.domain.worship.WorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileAccessRepository
@@ -11,6 +12,9 @@ import com.ipb.castelobranco.features.profile.data.access.ProfileCurrentMemberRe
 import com.ipb.castelobranco.features.profile.data.access.ProfileMemberAccessRepository
 import com.ipb.castelobranco.features.profile.data.access.ProfileWorshipAccessRepository
 import com.ipb.castelobranco.features.profile.data.api.ProfileApi
+import com.ipb.castelobranco.features.profile.data.local.RecoveryEmailVault
+import com.ipb.castelobranco.features.profile.data.local.RecoveryNoticePreferences
+import com.ipb.castelobranco.features.profile.data.local.SealedRecoveryEmailVault
 import com.ipb.castelobranco.features.profile.data.repository.AccountRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.repository.OwnMemberRepositoryImpl
 import com.ipb.castelobranco.features.profile.data.repository.ProfileRepositoryImpl
@@ -18,6 +22,7 @@ import com.ipb.castelobranco.features.profile.data.snapshot.ProfileSnapshotRepos
 import com.ipb.castelobranco.features.profile.domain.repository.AccountRepository
 import com.ipb.castelobranco.features.profile.domain.repository.OwnMemberRepository
 import com.ipb.castelobranco.features.profile.domain.repository.ProfileRepository
+import com.ipb.castelobranco.features.profile.domain.repository.RecoveryNoticeRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -41,6 +46,12 @@ abstract class ProfileModule {
 
     @Binds
     abstract fun bindOwnMemberRepository(impl: OwnMemberRepositoryImpl): OwnMemberRepository
+
+    @Binds
+    abstract fun bindRecoveryEmailVault(impl: SealedRecoveryEmailVault): RecoveryEmailVault
+
+    @Binds
+    abstract fun bindRecoveryNoticeRepository(impl: RecoveryNoticePreferences): RecoveryNoticeRepository
 
     @Binds
     @Singleton
@@ -69,5 +80,10 @@ abstract class ProfileModule {
         @Provides @IntoSet
         fun bindProfilePreloadable(snapshot: ProfileSnapshotRepository): Preloadable =
             Preloadable { snapshot.preload() }
+
+        // A session that dies when the token refresh fails clears only this set: the address must not outlive it.
+        @Provides @IntoSet
+        fun bindRecoveryEmailSessionCache(vault: RecoveryEmailVault): SessionScopedCache =
+            SessionScopedCache { vault.clear() }
     }
 }
