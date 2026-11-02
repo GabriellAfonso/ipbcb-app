@@ -132,6 +132,9 @@ fun AppNavHost(
                     onNavigateToAdmin      = { navController.navigate(AppRoutes.ADMIN_GRAPH) },
                     onNavigateToBirthdays  = { navController.navigate(AppRoutes.BIRTHDAYS) },
                     onNavigateToEvent      = { id -> navController.navigate(AppRoutes.eventDetail(id)) },
+                    onNavigateToRecoveryEmailForm = {
+                        navController.navigate(AppRoutes.PROFILE_RECOVERY_EMAIL_FORM)
+                    },
                     onLogoutSuccess        = {},
                     viewModel              = coreViewModel,
                 )
@@ -198,8 +201,18 @@ fun AppNavHost(
 
             settingsGraph(navController)
 
-            composable(AppRoutes.PROFILE) {
+            composable(
+                route = AppRoutes.PROFILE_ROUTE,
+                arguments = listOf(
+                    navArgument(AppRoutes.ARG_OPEN_RECOVERY_EMAIL) {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    },
+                ),
+            ) { entry ->
                 ProfileScreen(
+                    openRecoveryEmailForm =
+                        entry.arguments?.getBoolean(AppRoutes.ARG_OPEN_RECOVERY_EMAIL) == true,
                     onBackClick = { navController.safePopBackStack() },
                     // A limpeza da sessão já roda no CoreViewModel (AuthEventBus.AccountDeleted); aqui só a volta.
                     onAccountDeleted = {

@@ -129,6 +129,7 @@ fun CoreView(
     onNavigateToAdmin: () -> Unit,
     onNavigateToBirthdays: () -> Unit,
     onNavigateToEvent: (Int) -> Unit,
+    onNavigateToRecoveryEmailForm: () -> Unit,
     onLogoutSuccess: () -> Unit,
     viewModel: CoreViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel(),
@@ -212,6 +213,12 @@ fun CoreView(
         ),
         eventImageLoader       = eventsViewModel.imageLoader,
         onLogout               = viewModel::logout,
+        showRecoveryNotice     = isLoggedIn && profile.showRecoveryNotice,
+        onAddRecoveryEmail     = {
+            profileViewModel.answerRecoveryNotice()
+            onNavigateToRecoveryEmailForm()
+        },
+        onDismissRecoveryNotice = profileViewModel::answerRecoveryNotice,
     )
 }
 
@@ -233,6 +240,9 @@ fun CoreScreen(
     highlights: HighlightsUi,
     eventImageLoader: ImageLoader,
     onLogout: () -> Unit,
+    showRecoveryNotice: Boolean,
+    onAddRecoveryEmail: () -> Unit,
+    onDismissRecoveryNotice: () -> Unit,
 ) {
     NavigationDrawer(
         onNavigateToAuth     = onNavigateToAuth,
@@ -255,15 +265,19 @@ fun CoreScreen(
                 Shortcut(R.drawable.ic_bible,      "Bíblia",  onNavigateToBible),
             )
             val highlight: @Composable () -> Unit = {
-                Highlight(
-                    pages = buildHighlightPages(
-                        highlights       = highlights,
-                        eventImageLoader = eventImageLoader,
-                        onBirthdaysClick = onNavigateToBirthdays,
-                        onScheduleClick  = onNavigateToSchedule,
-                        onEventClick     = onNavigateToEvent,
+                if (showRecoveryNotice) {
+                    RecoveryEmailNoticeCard(onAdd = onAddRecoveryEmail, onDismiss = onDismissRecoveryNotice)
+                } else {
+                    Highlight(
+                        pages = buildHighlightPages(
+                            highlights       = highlights,
+                            eventImageLoader = eventImageLoader,
+                            onBirthdaysClick = onNavigateToBirthdays,
+                            onScheduleClick  = onNavigateToSchedule,
+                            onEventClick     = onNavigateToEvent,
+                        )
                     )
-                )
+                }
             }
             if (LocalConfiguration.current.screenHeightDp < COMPACT_HEIGHT_DP) {
                 HomeLandscapeLayout(

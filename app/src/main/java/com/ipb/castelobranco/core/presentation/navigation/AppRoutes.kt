@@ -11,6 +11,11 @@ object AppRoutes {
     const val LOG_VIEWER = "log_viewer"
     const val BIRTHDAYS = "birthdays"
 
+    // Perfil (`specs/profile/spec.md`). `PROFILE` opens it as usual; the home notice asks for the e-mail form open.
+    const val ARG_OPEN_RECOVERY_EMAIL = "openRecoveryEmail"
+    const val PROFILE_ROUTE = "$PROFILE?$ARG_OPEN_RECOVERY_EMAIL={$ARG_OPEN_RECOVERY_EMAIL}"
+    const val PROFILE_RECOVERY_EMAIL_FORM = "$PROFILE?$ARG_OPEN_RECOVERY_EMAIL=true"
+
     // An event opened from the home carousel (`specs/events/spec.md` §3).
     const val ARG_EVENT_ID = "eventId"
     const val EVENT_DETAIL = "events/{$ARG_EVENT_ID}"

@@ -651,6 +651,15 @@ no escuro), cantos de 18dp. Dentro: icone branco num circulo `primaryContainer` 
 | 5 | Estudos | `ic_studies` (capelo, Material Symbols `school`) | StudiesGraph |
 | 6 | Bíblia | `ic_bible` | BibleGraph |
 
+#### Aviso de e-mail de recuperação
+
+Conta logada, com senha (`has_password == true`), sem e-mail (situação conhecida) e aviso ainda não respondido neste
+aparelho: um card **ocupa o lugar do carousel**, nos dois layouts, explicando que o e-mail é o que permite recuperar a
+senha, com "Adicionar e-mail" e "Agora não". O lugar do carousel é o que sobra sob os atalhos, então o card nunca desloca
+nem cobre os atalhos; com fonte grande ele rola por dentro. Responder devolve o carousel e encerra o aviso para sempre
+neste aparelho (`@SettingsPrefs`, sobrevive ao logout). Só ver o card e fechar o app não conta como resposta.
+"Adicionar e-mail" abre o Perfil com o formulário aberto, que pede a senha atual. A opção continua no Perfil.
+
 #### Carousel de Destaques (auto-scroll 5s)
 
 | Pagina | Conteudo |
