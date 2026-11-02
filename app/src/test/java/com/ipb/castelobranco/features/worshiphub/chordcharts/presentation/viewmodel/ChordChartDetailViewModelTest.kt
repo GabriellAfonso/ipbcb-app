@@ -151,6 +151,88 @@ class ChordChartDetailViewModelTest {
 
     // endregion
 
+    // region edit
+
+    private fun editableViewModel(): ChordChartDetailViewModel {
+        every { getChordChartsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeCharts))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        return createViewModel()
+    }
+
+    @Test
+    fun `edit form starts with the chart's current values`() = runTest(testDispatcher) {
+        val vm = editableViewModel()
+        advanceUntilIdle()
+
+        vm.enterEditMode()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.isEditing)
+        assertEquals("[G]Amazing [D]grace", state.editContent)
+        assertEquals("G", state.editTone)
+        assertEquals("Violão", state.editInstrument)
+        assertEquals(emptyList<String>(), state.editMissing)
+    }
+
+    @Test
+    fun `saveEdit sends the changed fields and goes back to reading`() = runTest(testDispatcher) {
+        coEvery { chordChartRepository.updateChordChart(1, "[C]Novo", "A", "Baixo") } returns Result.success(Unit)
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditContentChange("[C]Novo")
+        vm.onEditToneChange("A")
+        vm.onEditInstrumentChange("Baixo")
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { chordChartRepository.updateChordChart(1, "[C]Novo", "A", "Baixo") }
+        assertEquals(false, vm.uiState.value.isEditing)
+    }
+
+    @Test
+    fun `conflict keeps the form, shows the server text and clears on a new tone`() = runTest(testDispatcher) {
+        val conflict = AppError.Server(409, userMessage = "Já existe uma cifra dessa música no tom A para Violão.")
+        coEvery { chordChartRepository.updateChordChart(1, any(), "A", "Violão") } returns Result.failure(conflict)
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditToneChange("A")
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.isEditing)
+        assertEquals("A", vm.uiState.value.editTone)
+        assertEquals("Já existe uma cifra dessa música no tom A para Violão.", vm.uiState.value.saveError)
+
+        vm.onEditToneChange("B")
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.saveError)
+    }
+
+    @Test
+    fun `a blank field is reported as missing and nothing is sent`() = runTest(testDispatcher) {
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditToneChange("")
+        vm.onEditInstrumentChange(" ")
+        vm.onEditContentChange("   ")
+        advanceUntilIdle()
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        assertEquals(listOf("tom", "instrumento", "cifra"), vm.uiState.value.editMissing)
+        coVerify(exactly = 0) { chordChartRepository.updateChordChart(any(), any(), any(), any()) }
+    }
+
+    // endregion
+
     // region scrollMode
 
     @Test

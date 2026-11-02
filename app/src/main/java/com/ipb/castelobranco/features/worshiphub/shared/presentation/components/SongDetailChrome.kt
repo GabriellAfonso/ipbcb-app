@@ -219,10 +219,16 @@ fun PageProgress(currentPage: Int, pageCount: Int, modifier: Modifier = Modifier
     }
 }
 
+/** While editing in a form with its own save bar, the top bar only shows "Cancelar". */
+@Composable
+fun CancelBarAction(isSaving: Boolean, onCancel: () -> Unit) {
+    TextButton(onClick = onCancel, enabled = !isSaving) { Text(CANCEL_LABEL, color = Color.White) }
+}
+
 /** While editing, the top bar shows "Cancelar" and "Salvar" instead of the three dots. */
 @Composable
 fun EditBarActions(isSaving: Boolean, onCancel: () -> Unit, onSave: () -> Unit) {
-    TextButton(onClick = onCancel, enabled = !isSaving) { Text(CANCEL_LABEL, color = Color.White) }
+    CancelBarAction(isSaving, onCancel)
     TextButton(onClick = onSave, enabled = !isSaving) {
         Text(SAVE_LABEL, color = Color.White, fontWeight = FontWeight.SemiBold)
     }

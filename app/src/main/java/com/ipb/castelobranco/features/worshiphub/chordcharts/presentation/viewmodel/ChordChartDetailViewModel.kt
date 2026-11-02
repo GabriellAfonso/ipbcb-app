@@ -29,6 +29,8 @@ import javax.inject.Inject
 private data class EditState(
     val isEditing: Boolean = false,
     val editContent: String = "",
+    val editTone: String = "",
+    val editInstrument: String = "",
     val isSaving: Boolean = false,
     val saveError: String? = null,
 )
@@ -72,11 +74,14 @@ class ChordChartDetailViewModel @Inject constructor(
                     songName    = songMap[chart.songId]?.title ?: "Song #${chart.songId}",
                     artist      = songMap[chart.songId]?.artist.orEmpty(),
                     tone        = chart.tone,
+                    instrument  = chart.instrument,
                     blocks      = ChordProParser.parse(chart.content),
                     rawContent  = chart.content,
                     canEdit     = canEdit,
                     isEditing   = editState.isEditing,
                     editContent = editState.editContent,
+                    editTone    = editState.editTone,
+                    editInstrument = editState.editInstrument,
                     isSaving    = editState.isSaving,
                     saveError   = editState.saveError,
                 )
@@ -110,11 +115,29 @@ class ChordChartDetailViewModel @Inject constructor(
     }
 
     fun enterEditMode() {
-        _editState.update { it.copy(isEditing = true, editContent = uiState.value.rawContent, saveError = null) }
+        val chart = uiState.value
+        _editState.update {
+            it.copy(
+                isEditing      = true,
+                editContent    = chart.rawContent,
+                editTone       = chart.tone,
+                editInstrument = chart.instrument,
+                saveError      = null,
+            )
+        }
     }
 
     fun onEditContentChange(text: String) {
         _editState.update { it.copy(editContent = text) }
+    }
+
+    /** A new tone or instrument may be what clears a conflict, so the old error goes. */
+    fun onEditToneChange(tone: String) {
+        _editState.update { it.copy(editTone = tone, saveError = null) }
+    }
+
+    fun onEditInstrumentChange(instrument: String) {
+        _editState.update { it.copy(editInstrument = instrument, saveError = null) }
     }
 
     fun cancelEdit() {
@@ -122,9 +145,11 @@ class ChordChartDetailViewModel @Inject constructor(
     }
 
     fun saveEdit() {
+        val edit = _editState.value
+        if (edit.editContent.isBlank() || edit.editTone.isBlank() || edit.editInstrument.isBlank()) return
         viewModelScope.launch {
             _editState.update { it.copy(isSaving = true, saveError = null) }
-            chordChartRepository.updateContent(chordChartId, _editState.value.editContent)
+            chordChartRepository.updateChordChart(chordChartId, edit.editContent, edit.editTone, edit.editInstrument)
                 .onSuccess { _editState.update { EditState() } }
                 .onFailure { e ->
                     _editState.update { it.copy(isSaving = false, saveError = e.toAppError().toUserMessage()) }

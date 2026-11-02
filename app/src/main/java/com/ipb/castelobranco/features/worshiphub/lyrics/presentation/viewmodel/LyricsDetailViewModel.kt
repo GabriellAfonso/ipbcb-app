@@ -121,6 +121,7 @@ class LyricsDetailViewModel @Inject constructor(
     }
 
     fun saveEdit() {
+        if (_editState.value.editContent.isBlank()) return
         viewModelScope.launch {
             _editState.update { it.copy(isSaving = true, saveError = null) }
             lyricsRepository.updateContent(lyricsId, _editState.value.editContent)

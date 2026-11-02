@@ -287,6 +287,53 @@ fun FormHelp(text: String) {
     )
 }
 
+/** The song of a chart being edited, which cannot change: the picker's card without "Trocar". */
+@Composable
+fun SongSummary(title: String, detail: String) {
+    SongCard(title, detail) {}
+}
+
+@Composable
+private fun SongCard(title: String, detail: String, trailing: @Composable () -> Unit) {
+    FormLabel(SONG_LABEL)
+    Row(
+        modifier = Modifier.fillMaxWidth().formCard().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_songs),
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        trailing()
+    }
+}
+
 /**
  * The song: a search with the matching songs under it, or, once picked, a card with the title, the artist and
  * "Trocar".
@@ -302,41 +349,7 @@ fun SongPicker(
     onClear: () -> Unit,
 ) {
     if (selected != null) {
-        FormLabel(SONG_LABEL)
-        Row(
-            modifier = Modifier.fillMaxWidth().formCard().padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_songs),
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = selected.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = selected.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        SongCard(selected.title, selected.artist) {
             TextButton(onClick = onClear, enabled = enabled) { Text(CHANGE_SONG, fontWeight = FontWeight.SemiBold) }
         }
         return

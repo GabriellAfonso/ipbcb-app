@@ -49,7 +49,12 @@ object ChordProParser {
         return blocks
     }
 
-    /** Lines between `{ }` that are not a known section: shown as a warning in the new chord chart's preview. */
+    /** The blocks a form's preview draws: the ones with something to show. */
+    fun previewBlocks(content: String): List<ChordBlock> = parse(content).filter { block ->
+        block.title != null || block.isIntro || block.lines.any { it.tokens.isNotEmpty() }
+    }
+
+    /** Lines between `{ }` that are not a known section: shown as a warning in the forms' preview. */
     fun unknownDirectives(content: String): Int = content.lines().map { it.trim() }.count { line ->
         DIRECTIVE.matches(line) && !SECTION_DIRECTIVE.matches(line)
     }

@@ -151,6 +151,78 @@ class LyricsDetailViewModelTest {
 
     // endregion
 
+    // region edit
+
+    private fun editableViewModel(): LyricsDetailViewModel {
+        every { getLyricsUseCase.observe() } returns flowOf(SnapshotState.Data(fakeLyrics))
+        every { songsRepository.observeAllSongs() } returns flowOf(SnapshotState.Data(fakeSongs))
+        return createViewModel()
+    }
+
+    @Test
+    fun `edit form starts with the current text`() = runTest(testDispatcher) {
+        val vm = editableViewModel()
+        advanceUntilIdle()
+
+        vm.enterEditMode()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.isEditing)
+        assertEquals("Verso 1\n\nRefrão", state.editContent)
+        assertEquals(2, state.editPreviewStanzas.size)
+        assertEquals(emptyList<String>(), state.editMissing)
+    }
+
+    @Test
+    fun `saveEdit sends the text and goes back to reading`() = runTest(testDispatcher) {
+        coEvery { lyricsRepository.updateContent(1, "Novo") } returns Result.success(Unit)
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditContentChange("Novo")
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { lyricsRepository.updateContent(1, "Novo") }
+        assertEquals(false, vm.uiState.value.isEditing)
+    }
+
+    @Test
+    fun `saveEdit failure keeps the form with the text and shows the error`() = runTest(testDispatcher) {
+        coEvery { lyricsRepository.updateContent(1, "Novo") } returns Result.failure(RuntimeException("boom"))
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditContentChange("Novo")
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.isEditing)
+        assertEquals("Novo", state.editContent)
+        assertTrue(state.saveError != null)
+    }
+
+    @Test
+    fun `blank text is reported as missing and is never sent`() = runTest(testDispatcher) {
+        val vm = editableViewModel()
+        advanceUntilIdle()
+        vm.enterEditMode()
+        vm.onEditContentChange("   ")
+        advanceUntilIdle()
+
+        vm.saveEdit()
+        advanceUntilIdle()
+
+        assertEquals(listOf("letra"), vm.uiState.value.editMissing)
+        coVerify(exactly = 0) { lyricsRepository.updateContent(any(), any()) }
+    }
+
+    // endregion
+
     // region scrollMode
 
     @Test

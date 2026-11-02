@@ -498,8 +498,21 @@ long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua
 
 **Edicao (`songs` ≥ `manage`):** quem pode editar ve os tres pontos na barra; eles abrem o painel de acoes que desce
 da barra (o mesmo da galeria, `core/presentation/components/TopActionPanel`), com o nome da musica e "artista · Tom
-{tom}" no topo e, no grupo "Gerenciar", "Editar cifra" ("Muda o texto e os acordes"). Sem permissao, os tres pontos
-somem. Em modo edicao a barra mostra "Cancelar" e "Salvar". Conteudo vira `TextField` editavel com fonte monospace. Apenas `content` e editavel (nao tom/instrumento). Salvar envia `PATCH api/chord-charts/{id}/` com `{"content": "..."}` via API autenticada. Com o teclado aberto, o campo encolhe para caber acima dele — o trecho sendo editado nunca fica atras do teclado, mesmo no fim do texto.
+{tom}" no topo e, no grupo "Gerenciar", "Editar cifra" ("Muda o tom, o instrumento e o texto"). Sem permissao, os tres pontos
+somem.
+
+Em modo edicao a tela usa o formulario "com previa" de 3.3 e 4.2, com o titulo "Editar cifra":
+- **Musica** nao muda: aparece num card so de leitura, com o nome e o artista.
+- **Tom e instrumento:** os mesmos seletores da criacao (4.2), ja com os valores atuais. Um tom fora da grade (cifra
+  antiga, ex.: "Am") nao marca nenhum botao, continua valendo se nao for trocado e aparece no cabecalho da previa.
+- **Texto:** as mesmas abas "Escrever | Prévia", botoes, dica, campo e avisos da criacao (4.2), ja com o texto atual.
+- **Barra:** so "Cancelar", que volta para a leitura sem salvar. Salvar fica no rodape: "Salvar cifra" (3.3), que
+  fica cinza com "Falta: tom, instrumento, cifra" enquanto faltar algo. A edicao nunca envia campo vazio.
+- **Envio:** `PATCH api/chord-charts/{id}/` com `{"content": "...", "tone": "...", "instrument": "..."}` via API
+  autenticada. Sucesso volta para a leitura ja com a cifra nova; falha mostra o erro acima do rodape e mantem o que
+  foi digitado.
+- **`409`** (a musica ja tem outra cifra nesse tom e instrumento): mostra o texto do backend, ex.: "Já existe uma
+  cifra dessa música no tom A para Baixo.". O erro some ao trocar o tom ou o instrumento.
 
 ---
 
@@ -555,8 +568,14 @@ tamanho vale enquanto a letra esta aberta; as paginas sao recalculadas com ele.
 
 **Modo de leitura:** o mesmo da cifra (4.3) — compartilhado, salvo no aparelho e ja aplicado ao abrir.
 
-**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras: painel com "Editar letra" ("Muda o texto");
-"Cancelar" e "Salvar" na barra durante a edicao. Apenas `content` editavel, e o campo fica acima do teclado como na cifra. Salvar envia `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada.
+**Edicao (`songs` ≥ `manage`):** mesmo mecanismo de edicao das cifras (4.3): painel com "Editar letra" ("Muda o
+texto") e o formulario "com previa", com o titulo "Editar letra":
+- **Musica** nao muda (o backend so aceita `content`): aparece num card so de leitura, com o nome e o artista.
+- **Texto:** as mesmas abas "Escrever | Prévia", dica e campo da criacao (5.2), ja com o texto atual.
+- **Barra:** so "Cancelar", que volta para a leitura sem salvar. Salvar fica no rodape: "Salvar letra" (3.3), que
+  fica cinza com "Falta: letra" enquanto o texto esta vazio. A edicao nunca envia texto vazio.
+- **Envio:** `PATCH api/lyrics/{id}/` com `{"content": "..."}` via API autenticada. Sucesso volta para a leitura ja
+  com o texto novo; falha mostra o erro acima do rodape e mantem o que foi digitado.
 
 ---
 
@@ -679,7 +698,7 @@ feature nao importa `features/profile`:
 | Metodo | Path | Descricao |
 |--------|------|-----------|
 | POST | `chord-charts/` | Cria nova cifra |
-| PATCH | `chord-charts/{id}/` | Atualiza `content` de uma cifra |
+| PATCH | `chord-charts/{id}/` | Atualiza `content`, `tone` e `instrument` de uma cifra |
 | POST | `lyrics/` | Cria nova letra |
 | PATCH | `lyrics/{id}/` | Atualiza `content` de uma letra existente |
 | POST | `api/songs/` | Cadastra musica (`title`, `artist`) |
@@ -691,7 +710,8 @@ feature nao importa `features/profile`:
 
 O contrato do repertorio e do backend: `backend/specs/017-sunday-setlist-push/contracts/setlist-api.md`.
 
-`PATCH` body: `{"content": "..."}`. `POST chord-charts/` body: `{"song_id": int, "content": string, "tone": string, "instrument": string}`. `POST lyrics/` body: `{"song_id": int, "content": string}`. Retorna o objeto criado/atualizado. 401 se nao autenticado, 403 `PERMISSION_DENIED` sem `manage` em `songs` (a tela mostra a mensagem e fica), 404 se nao encontrado.
+`PATCH lyrics/{id}/` body: `{"content": "..."}`. `PATCH chord-charts/{id}/` body: `{"content": "...", "tone": "...",
+"instrument": "..."}`. `POST chord-charts/` body: `{"song_id": int, "content": string, "tone": string, "instrument": string}`. `POST lyrics/` body: `{"song_id": int, "content": string}`. Retorna o objeto criado/atualizado. 401 se nao autenticado, 403 `PERMISSION_DENIED` sem `manage` em `songs` (a tela mostra a mensagem e fica), 404 se nao encontrado.
 
 ---
 

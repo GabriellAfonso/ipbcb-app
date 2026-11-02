@@ -8,5 +8,4 @@ interface SongContentRepository<T> {
     fun observe(): Flow<SnapshotState<List<T>>>
     suspend fun preload()
     suspend fun refresh(): RefreshResult
-    suspend fun updateContent(id: Int, content: String): Result<Unit>
 }

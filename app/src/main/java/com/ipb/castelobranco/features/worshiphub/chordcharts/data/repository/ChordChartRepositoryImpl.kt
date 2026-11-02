@@ -5,7 +5,7 @@ import com.ipb.castelobranco.core.domain.snapshot.Logger
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotCache
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotFetcher
 import com.ipb.castelobranco.core.network.CreateChordChartRequest
-import com.ipb.castelobranco.core.network.UpdateContentRequest
+import com.ipb.castelobranco.core.network.UpdateChordChartRequest
 import com.ipb.castelobranco.features.worshiphub.chordcharts.data.api.ChordChartsEditApi
 import com.ipb.castelobranco.features.worshiphub.chordcharts.data.dto.ChordChartDto
 import com.ipb.castelobranco.features.worshiphub.chordcharts.data.mapper.toDomain
@@ -39,8 +39,13 @@ class ChordChartRepositoryImpl @Inject constructor(
         refresh()
     }
 
-    override suspend fun updateContent(id: Int, content: String): Result<Unit> = runCatching {
-        val response = editApi.updateContent(id, UpdateContentRequest(content))
+    override suspend fun updateChordChart(
+        id: Int,
+        content: String,
+        tone: String,
+        instrument: String,
+    ): Result<Unit> = runCatching {
+        val response = editApi.updateChordChart(id, UpdateChordChartRequest(content, tone, instrument))
         if (!response.isSuccessful) throw response.toAppError()
         refresh()
     }

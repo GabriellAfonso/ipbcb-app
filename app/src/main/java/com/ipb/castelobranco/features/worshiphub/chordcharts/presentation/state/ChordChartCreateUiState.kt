@@ -25,9 +25,7 @@ data class ChordChartCreateUiState(
     )
 
     /** The preview: the chart as the chord chart screen draws it. */
-    val previewBlocks: List<ChordBlock> get() = ChordProParser.parse(content).filter { block ->
-        block.title != null || block.isIntro || block.lines.any { it.tokens.isNotEmpty() }
-    }
+    val previewBlocks: List<ChordBlock> get() = ChordProParser.previewBlocks(content)
 
     /** Lines between `{ }` the parser does not take as a section. */
     val unknownDirectives: Int get() = ChordProParser.unknownDirectives(content)

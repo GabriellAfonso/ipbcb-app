@@ -6,13 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -24,13 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ViewColumn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,7 +63,13 @@ import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
-import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.EditBarActions
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.CancelBarAction
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongSummary
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.InstrumentPicker
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TonePicker
+import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.components.ChordChartEditor
+import androidx.compose.foundation.layout.PaddingValues
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.PageProgress
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SectionTag
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongBand
@@ -76,7 +77,8 @@ import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.chordColor
 
 private const val EDIT_LABEL = "Editar cifra"
-private const val EDIT_HINT = "Muda o texto e os acordes"
+private const val EDIT_HINT = "Muda o tom, o instrumento e o texto"
+private const val SAVE_LABEL = "Salvar cifra"
 
 /** A tap on the right half turns the page, on the left half goes back. */
 private const val HALF_SCREEN = 0.5f
@@ -96,6 +98,8 @@ fun ChordChartDetailScreen(
         onBackClick        = onBackClick,
         onEnterEdit        = viewModel::enterEditMode,
         onEditContentChange = viewModel::onEditContentChange,
+        onEditToneChange   = viewModel::onEditToneChange,
+        onEditInstrumentChange = viewModel::onEditInstrumentChange,
         onCancelEdit       = viewModel::cancelEdit,
         onSaveEdit         = viewModel::saveEdit,
     )
@@ -109,18 +113,20 @@ private fun ChordChartDetailContent(
     onBackClick: () -> Unit,
     onEnterEdit: () -> Unit,
     onEditContentChange: (String) -> Unit,
+    onEditToneChange: (String) -> Unit,
+    onEditInstrumentChange: (String) -> Unit,
     onCancelEdit: () -> Unit,
     onSaveEdit: () -> Unit,
 ) {
     var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     BaseScreen(
-        tabName       = state.songName.ifEmpty { "Cifra" },
+        tabName       = if (state.isEditing) EDIT_LABEL else state.songName.ifEmpty { "Cifra" },
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
         extraActions  = {
             when {
-                state.isEditing -> EditBarActions(state.isSaving, onCancel = onCancelEdit, onSave = onSaveEdit)
+                state.isEditing -> CancelBarAction(state.isSaving, onCancelEdit)
                 state.canEdit -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
             }
         },
@@ -130,14 +136,12 @@ private fun ChordChartDetailContent(
                 state.isLoading -> LoadingState(Modifier.padding(innerPadding))
                 state.error != null -> ErrorState(state.error, Modifier.padding(innerPadding))
                 state.isEditing -> EditContent(
-                    editContent     = state.editContent,
-                    isSaving        = state.isSaving,
-                    saveError       = state.saveError,
-                    onContentChange = onEditContentChange,
-                    modifier        = Modifier
-                        .padding(innerPadding)
-                        .consumeWindowInsets(innerPadding)
-                        .imePadding(),
+                    state              = state,
+                    innerPadding       = innerPadding,
+                    onContentChange    = onEditContentChange,
+                    onToneChange       = onEditToneChange,
+                    onInstrumentChange = onEditInstrumentChange,
+                    onSave             = onSaveEdit,
                 )
                 state.blocks.isEmpty() -> ErrorState("Sem conteúdo disponível", Modifier.padding(innerPadding))
                 // Opens straight in the saved mode: nothing is drawn until it is known.
@@ -332,45 +336,36 @@ private fun ChordPageContent(blocks: List<ChordBlock>) {
     }
 }
 
+/** The edit form: the new chart's fields, with the song read-only (`specs/worshiphub/spec.md` §4.3). */
 @Composable
 private fun EditContent(
-    editContent: String,
-    isSaving: Boolean,
-    saveError: String?,
+    state: ChordChartDetailUiState,
+    innerPadding: PaddingValues,
     onContentChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    onToneChange: (String) -> Unit,
+    onInstrumentChange: (String) -> Unit,
+    onSave: () -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
+    SongFormScaffold(
+        innerPadding = innerPadding,
+        saveLabel    = SAVE_LABEL,
+        missing      = state.editMissing,
+        isSaving     = state.isSaving,
+        error        = state.saveError,
+        onSave       = onSave,
     ) {
-        if (isSaving) {
-            Box(
-                modifier         = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            }
-        }
-        if (saveError != null) {
-            Text(
-                text     = saveError,
-                color    = MaterialTheme.colorScheme.error,
-                style    = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
-        OutlinedTextField(
-            value         = editContent,
-            onValueChange = onContentChange,
-            modifier      = Modifier
-                .fillMaxSize()
-                .weight(1f),
-            enabled       = !isSaving,
-            textStyle     = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            ),
+        val enabled = !state.isSaving
+        SongSummary(title = state.songName, detail = state.artist)
+        TonePicker(selected = state.editTone, enabled = enabled, onSelect = onToneChange)
+        InstrumentPicker(value = state.editInstrument, enabled = enabled, onChange = onInstrumentChange)
+        ChordChartEditor(
+            content           = state.editContent,
+            tone              = state.editTone,
+            instrument        = state.editInstrument,
+            previewBlocks     = state.editPreviewBlocks,
+            unknownDirectives = state.editUnknownDirectives,
+            enabled           = enabled,
+            onContentChange   = onContentChange,
         )
     }
 }

@@ -5,4 +5,5 @@ import com.ipb.castelobranco.features.worshiphub.shared.domain.repository.SongCo
 
 interface LyricsRepository : SongContentRepository<Lyrics> {
     suspend fun createLyrics(songId: Int, content: String): Result<Unit>
+    suspend fun updateContent(id: Int, content: String): Result<Unit>
 }
