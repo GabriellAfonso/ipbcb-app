@@ -24,14 +24,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ipb.castelobranco.core.presentation.theme.BrandColors
+import com.ipb.castelobranco.core.presentation.components.nextRowColors
 import java.util.Locale
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
@@ -40,23 +38,12 @@ private val CardRadius = 12.dp
 private const val PAST_ALPHA = 0.45f
 private const val RULE_ALPHA = 0.35f
 private const val DIVIDER_ALPHA = 0.45f
-private const val DARK_SURFACE_LUMINANCE = 0.5f
 private const val ALL_DATES_TITLE = "Todas as datas"
 private const val NEXT_LABEL = "Próximo"
 private val FOOTNOTES = listOf(
     "*Cafezinho pós culto de Adoração (Ceia) todo 4° Domingo.",
     "*Aberto à participação de qualquer irmão.",
 )
-
-/** Colors of the upcoming-date row; they must stand out on `surfaceContainer` in both themes. */
-private data class NextRowColors(val background: Color, val stripe: Color, val text: Color)
-
-private val NextRowLight = NextRowColors(Color(0xFFC4DFD3), BrandColors.Green, Color(0xFF0B5A4C))
-private val NextRowDark = NextRowColors(Color(0xFF1D3A32), Color(0xFF5FB59C), Color(0xFF8ED1BA))
-
-@Composable
-private fun nextRowColors(): NextRowColors =
-    if (MaterialTheme.colorScheme.surface.luminance() < DARK_SURFACE_LUMINANCE) NextRowDark else NextRowLight
 
 /**
  * One service of the month: "next" card on top, then every date. [nextDay] is the upcoming day (null when all
