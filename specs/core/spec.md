@@ -600,6 +600,7 @@ centralizar, a grade se move o minimo: fica pelo menos 16dp abaixo da faixa e de
 | Item | Condicao | Acao |
 |------|----------|------|
 | Login | nao logado | navega para auth |
+| A Igreja | sempre | navega para as informacoes da igreja (`specs/church/spec.md`) |
 | Eventos | sempre | navega para a lista de eventos (`specs/events/spec.md` §3.1) |
 | Painel de Gestão | logado + algum papel no perfil (`canOpenPanel`) | navega para admin |
 | Configuracoes | sempre | navega para settings |

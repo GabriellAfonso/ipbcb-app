@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.ipb.castelobranco.features.church.presentation.screens.ChurchInfoScreen
 import com.ipb.castelobranco.features.events.presentation.screens.EventDetailScreen
 import com.ipb.castelobranco.features.events.presentation.screens.EventsListScreen
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -130,6 +131,7 @@ fun AppNavHost(
                     onNavigateToBible      = { navController.navigate(AppRoutes.BIBLE_GRAPH) },
                     onNavigateToStudies    = { navController.navigate(AppRoutes.STUDIES_GRAPH) },
                     onNavigateToSettings   = { navController.navigate(AppRoutes.SETTINGS) },
+                    onNavigateToChurch     = { navController.navigate(AppRoutes.CHURCH) },
                     onNavigateToEvents     = { navController.navigate(AppRoutes.EVENTS) },
                     onNavigateToAdmin      = { navController.navigate(AppRoutes.ADMIN_GRAPH) },
                     onNavigateToBirthdays  = { navController.navigate(AppRoutes.BIRTHDAYS) },
@@ -192,6 +194,10 @@ fun AppNavHost(
                     onBackClick      = { navController.safePopBackStack() },
                     onNavigateToAuth = { navController.navigate(AppRoutes.AUTH_GRAPH) },
                 )
+            }
+
+            composable(AppRoutes.CHURCH) {
+                ChurchInfoScreen(onBackClick = { navController.safePopBackStack() })
             }
 
             composable(AppRoutes.EVENTS) {

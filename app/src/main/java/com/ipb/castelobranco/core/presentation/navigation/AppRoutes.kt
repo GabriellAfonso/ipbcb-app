@@ -10,6 +10,7 @@ object AppRoutes {
     const val PROFILE = "profile"
     const val LOG_VIEWER = "log_viewer"
     const val BIRTHDAYS = "birthdays"
+    const val CHURCH = "church"
 
     // Perfil (`specs/profile/spec.md`). `PROFILE` opens it as usual; the home notice asks for the e-mail form open.
     const val ARG_OPEN_RECOVERY_EMAIL = "openRecoveryEmail"

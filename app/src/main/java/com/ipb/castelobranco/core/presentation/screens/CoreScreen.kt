@@ -121,6 +121,7 @@ private const val SHORTCUT_SHADOW_SPOT_ALPHA = 0.12f
 
 @Composable
 fun CoreView(
+    onNavigateToChurch: () -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToWorshipHub: () -> Unit,
@@ -194,6 +195,7 @@ fun CoreView(
     }
 
     CoreScreen(
+        onNavigateToChurch     = onNavigateToChurch,
         onNavigateToEvents     = onNavigateToEvents,
         onNavigateToAuth       = onNavigateToAuth,
         onNavigateToWorshipHub = onNavigateToWorshipHub,
@@ -249,6 +251,7 @@ fun CoreView(
 
 @Composable
 fun CoreScreen(
+    onNavigateToChurch: () -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToWorshipHub: () -> Unit,
@@ -274,6 +277,7 @@ fun CoreScreen(
     onDismissNotificationNotice: () -> Unit,
 ) {
     NavigationDrawer(
+        onNavigateToChurch   = onNavigateToChurch,
         onNavigateToEvents   = onNavigateToEvents,
         onNavigateToAuth     = onNavigateToAuth,
         onNavigateToSettings = onNavigateToSettings,
@@ -657,6 +661,7 @@ private fun buildHighlightPages(
 
 @Composable
 fun NavigationDrawer(
+    onNavigateToChurch: () -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -680,6 +685,7 @@ fun NavigationDrawer(
             key(authState.isLoggedIn) {
                 ModalDrawerSheet(modifier = Modifier.fillMaxWidth(drawerWidthFraction).widthIn(max = DrawerMaxWidth)) {
                     DrawerContent(
+                        onNavigateToChurch   = onNavigateToChurch,
                         onNavigateToEvents   = onNavigateToEvents,
                         onNavigateToAuth     = onNavigateToAuth,
                         onNavigateToSettings = onNavigateToSettings,
@@ -701,6 +707,7 @@ fun NavigationDrawer(
 
 @Composable
 fun DrawerContent(
+    onNavigateToChurch: () -> Unit,
     onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -720,6 +727,14 @@ fun DrawerContent(
             ) {
                 onItemClick { onNavigateToAuth() }
             }
+        }
+
+        DrawerMenuItem(
+            iconRes   = R.drawable.ic_ph_church,
+            label     = "A Igreja",
+            textColor = textColor,
+        ) {
+            onItemClick { onNavigateToChurch() }
         }
 
         DrawerMenuItem(
