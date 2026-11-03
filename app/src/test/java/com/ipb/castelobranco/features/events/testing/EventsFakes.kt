@@ -16,6 +16,7 @@ class FakeEventsRepository(
         private set
     var clearCalls = 0
         private set
+    var refreshResult: RefreshResult = RefreshResult.NotModified
 
     override fun observeEvents() = state
 
@@ -23,7 +24,7 @@ class FakeEventsRepository(
 
     override suspend fun refreshEvents(): RefreshResult {
         refreshCalls++
-        return RefreshResult.NotModified
+        return refreshResult
     }
 
     override suspend fun clear() {

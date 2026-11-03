@@ -43,6 +43,7 @@ aparece apenas na gestão.
   - um dia: "14 nov" ou "14 nov · 19:30";
   - vários dias: "14 a 16 nov"; entre meses, "30 nov a 2 dez"; entre anos, "30 dez 2026 a 2 jan 2027".
 - Tocar na página abre o detalhe.
+- O limite de 3 é só do carrossel: todos os eventos ativos estão na tela "Eventos" (seção 3.1).
 
 ### 2.1 Quando a lista é buscada
 
@@ -72,7 +73,8 @@ aparece apenas na gestão.
 
 ## 3. Detalhe
 
-- Rota `AppRoutes.EVENT_DETAIL` (`events/{eventId}`): uma única tela, `composable` inline no `AppNavHost`.
+- Rota `AppRoutes.EVENT_DETAIL` (`events/{eventId}`): uma única tela, `composable` inline no `AppNavHost`. Abre pelo
+  carrossel ou pela tela "Eventos" (seção 3.1).
 - Layout "cartaz em tela cheia": barra verde "Evento" com o botão de compartilhar à direita; o cartaz inteiro (3:2,
   sem nada por cima) logo abaixo; depois o título, as etiquetas da data curta ("14 a 16 nov"), do horário e "Só
   membros" (as duas últimas só quando existem/valem); um card com a data por extenso ("Sábado, 14 de novembro" /
@@ -91,6 +93,20 @@ aparece apenas na gestão.
   - com horário, vários dias: começa no horário do primeiro dia e termina às 23:59 do último.
 - Lê o evento da lista ativa em memória, por isso funciona offline. Se o evento não está mais na lista (venceu ou
   foi apagado), mostra "Este evento não está mais disponível.".
+
+---
+
+### 3.1 Tela "Eventos"
+
+- Rota `AppRoutes.EVENTS` (`events`), `composable` inline no `AppNavHost`. Abre pelo item "Eventos" do menu lateral,
+  visível para todos, logado ou não (`specs/core/spec.md` §6.3).
+- Mostra **todos os eventos ativos**, sem o limite do carrossel, na ordem do servidor (por data e horário de início).
+  Só os que a pessoa pode ver: é a mesma lista do carrossel, então "Só membros" não aparece para quem não está logado.
+- Cada item: miniatura 3:2, título (até 2 linhas), data no formato do carrossel ("14 nov · 19:30") e, numa linha, o
+  local e "Só membros", quando existem ou valem. O toque abre o detalhe.
+- Busca a lista ao abrir e ao puxar para atualizar.
+- Estados: carregando; lista vazia, "Nenhum evento programado."; falha sem nada guardado, "Não foi possível carregar os
+  eventos." com "Tentar novamente". Falha com lista guardada mantém a lista, sem mensagem de erro.
 
 ---
 
@@ -175,5 +191,4 @@ nunca o nome do papel.
 
 - Push quando um evento é publicado.
 - Link de inscrição.
-- Tela "Todos os eventos".
 - Tela de "Eventos passados" para membros.

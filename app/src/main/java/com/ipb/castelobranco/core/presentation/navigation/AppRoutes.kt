@@ -16,7 +16,8 @@ object AppRoutes {
     const val PROFILE_ROUTE = "$PROFILE?$ARG_OPEN_RECOVERY_EMAIL={$ARG_OPEN_RECOVERY_EMAIL}"
     const val PROFILE_RECOVERY_EMAIL_FORM = "$PROFILE?$ARG_OPEN_RECOVERY_EMAIL=true"
 
-    // An event opened from the home carousel (`specs/events/spec.md` §3).
+    // The list of active events (`specs/events/spec.md` §3.1) and one event, opened from it or from the carousel (§3).
+    const val EVENTS = "events"
     const val ARG_EVENT_ID = "eventId"
     const val EVENT_DETAIL = "events/{$ARG_EVENT_ID}"
 

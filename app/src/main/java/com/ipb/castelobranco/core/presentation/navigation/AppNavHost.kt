@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.ipb.castelobranco.features.events.presentation.screens.EventDetailScreen
+import com.ipb.castelobranco.features.events.presentation.screens.EventsListScreen
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.logEvent
@@ -129,6 +130,7 @@ fun AppNavHost(
                     onNavigateToBible      = { navController.navigate(AppRoutes.BIBLE_GRAPH) },
                     onNavigateToStudies    = { navController.navigate(AppRoutes.STUDIES_GRAPH) },
                     onNavigateToSettings   = { navController.navigate(AppRoutes.SETTINGS) },
+                    onNavigateToEvents     = { navController.navigate(AppRoutes.EVENTS) },
                     onNavigateToAdmin      = { navController.navigate(AppRoutes.ADMIN_GRAPH) },
                     onNavigateToBirthdays  = { navController.navigate(AppRoutes.BIRTHDAYS) },
                     onNavigateToEvent      = { id -> navController.navigate(AppRoutes.eventDetail(id)) },
@@ -189,6 +191,13 @@ fun AppNavHost(
                 BirthdaysScreen(
                     onBackClick      = { navController.safePopBackStack() },
                     onNavigateToAuth = { navController.navigate(AppRoutes.AUTH_GRAPH) },
+                )
+            }
+
+            composable(AppRoutes.EVENTS) {
+                EventsListScreen(
+                    onBackClick  = { navController.safePopBackStack() },
+                    onEventClick = { id -> navController.navigate(AppRoutes.eventDetail(id)) },
                 )
             }
 

@@ -121,6 +121,7 @@ private const val SHORTCUT_SHADOW_SPOT_ALPHA = 0.12f
 
 @Composable
 fun CoreView(
+    onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToWorshipHub: () -> Unit,
     onNavigateToSchedule: () -> Unit,
@@ -193,6 +194,7 @@ fun CoreView(
     }
 
     CoreScreen(
+        onNavigateToEvents     = onNavigateToEvents,
         onNavigateToAuth       = onNavigateToAuth,
         onNavigateToWorshipHub = onNavigateToWorshipHub,
         onNavigateToSchedule   = onNavigateToSchedule,
@@ -247,6 +249,7 @@ fun CoreView(
 
 @Composable
 fun CoreScreen(
+    onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToWorshipHub: () -> Unit,
     onNavigateToSchedule: () -> Unit,
@@ -271,6 +274,7 @@ fun CoreScreen(
     onDismissNotificationNotice: () -> Unit,
 ) {
     NavigationDrawer(
+        onNavigateToEvents   = onNavigateToEvents,
         onNavigateToAuth     = onNavigateToAuth,
         onNavigateToSettings = onNavigateToSettings,
         onNavigateToAdmin    = onNavigateToAdmin,
@@ -653,6 +657,7 @@ private fun buildHighlightPages(
 
 @Composable
 fun NavigationDrawer(
+    onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
@@ -675,6 +680,7 @@ fun NavigationDrawer(
             key(authState.isLoggedIn) {
                 ModalDrawerSheet(modifier = Modifier.fillMaxWidth(drawerWidthFraction).widthIn(max = DrawerMaxWidth)) {
                     DrawerContent(
+                        onNavigateToEvents   = onNavigateToEvents,
                         onNavigateToAuth     = onNavigateToAuth,
                         onNavigateToSettings = onNavigateToSettings,
                         onNavigateToAdmin    = onNavigateToAdmin,
@@ -695,6 +701,7 @@ fun NavigationDrawer(
 
 @Composable
 fun DrawerContent(
+    onNavigateToEvents: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
@@ -713,6 +720,14 @@ fun DrawerContent(
             ) {
                 onItemClick { onNavigateToAuth() }
             }
+        }
+
+        DrawerMenuItem(
+            iconRes   = R.drawable.ic_event,
+            label     = "Eventos",
+            textColor = textColor,
+        ) {
+            onItemClick { onNavigateToEvents() }
         }
 
         if (authState.isLoggedIn && authState.canOpenPanel) {
