@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.CalendarContract
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +64,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.features.events.presentation.state.EventCalendarEntry
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUi
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUiState
 import com.ipb.castelobranco.features.events.presentation.viewmodel.EventDetailViewModel
@@ -75,6 +78,8 @@ private const val MEMBERS_ONLY_LABEL = "Só membros"
 private const val IMAGE_ASPECT_RATIO = 3f / 2f
 private const val SHARE_LABEL = "Compartilhar"
 private const val MAP_LABEL = "Mapa"
+private const val CALENDAR_LABEL = "Agendar"
+private const val NO_CALENDAR_MESSAGE = "Nenhum app de calendário encontrado."
 private const val ABOUT_TITLE = "Sobre"
 private const val CHURCH_NAME = "IPB Castelo Branco"
 private const val TEXT_MIME = "text/plain"
@@ -113,6 +118,7 @@ fun EventDetailScreen(
             imageLoader = viewModel.imageLoader,
             modifier    = Modifier.padding(innerPadding),
             onOpenMap   = { place -> context.openMap(place) },
+            onAddToCalendar = { entry -> context.addToCalendar(entry) },
         )
     }
 }
@@ -123,6 +129,7 @@ fun EventDetailContent(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     onOpenMap: (String) -> Unit = {},
+    onAddToCalendar: (EventCalendarEntry) -> Unit = {},
 ) {
     val event = state.event
     when {
@@ -137,7 +144,13 @@ fun EventDetailContent(
                 textAlign = TextAlign.Center,
             )
         }
-        else -> EventDetailBody(event = event, imageLoader = imageLoader, onOpenMap = onOpenMap, modifier = modifier)
+        else -> EventDetailBody(
+            event           = event,
+            imageLoader     = imageLoader,
+            onOpenMap       = onOpenMap,
+            onAddToCalendar = onAddToCalendar,
+            modifier        = modifier,
+        )
     }
 }
 
@@ -148,6 +161,7 @@ private fun EventDetailBody(
     event: EventDetailUi,
     imageLoader: ImageLoader,
     onOpenMap: (String) -> Unit,
+    onAddToCalendar: (EventCalendarEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -183,7 +197,13 @@ private fun EventDetailBody(
         }
 
         InfoCard {
-            InfoRow(icon = Icons.Filled.CalendarMonth, title = event.dateLabel, subtitle = event.durationLabel)
+            InfoRow(icon = Icons.Filled.CalendarMonth, title = event.dateLabel, subtitle = event.durationLabel) {
+                event.calendarEntry?.let { entry ->
+                    TextButton(onClick = { onAddToCalendar(entry) }) {
+                        Text(CALENDAR_LABEL, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
             event.location?.let { place ->
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = DIVIDER_ALPHA))
                 InfoRow(icon = Icons.Filled.Place, title = place, subtitle = CHURCH_NAME) {
@@ -322,6 +342,23 @@ private suspend fun Context.savePosterForSharing(url: String, imageLoader: Image
             file.outputStream().use { drawable.toBitmap().compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
             FileProvider.getUriForFile(this@savePosterForSharing, "$packageName.provider", file)
         }.getOrNull()
+    }
+}
+
+/** The calendar app's new event form, filled in: the person still confirms there, so no permission is needed. */
+private fun Context.addToCalendar(entry: EventCalendarEntry) {
+    val intent = Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI).apply {
+        putExtra(CalendarContract.Events.TITLE, entry.title)
+        entry.location?.let { putExtra(CalendarContract.Events.EVENT_LOCATION, it) }
+        entry.description?.let { putExtra(CalendarContract.Events.DESCRIPTION, it) }
+        putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, entry.beginMillis)
+        entry.endMillis?.let { putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it) }
+        putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, entry.isAllDay)
+    }
+    try {
+        startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(this, NO_CALENDAR_MESSAGE, Toast.LENGTH_SHORT).show()
     }
 }
 

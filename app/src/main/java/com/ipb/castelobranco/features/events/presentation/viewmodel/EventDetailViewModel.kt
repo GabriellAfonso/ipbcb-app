@@ -11,6 +11,7 @@ import com.ipb.castelobranco.features.events.domain.model.Event
 import com.ipb.castelobranco.features.events.domain.usecase.GetEventUseCase
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUi
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUiState
+import com.ipb.castelobranco.features.events.presentation.state.toCalendarEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -62,6 +63,7 @@ internal fun Event.toDetailUi(): EventDetailUi {
             location?.let { "$SHARE_PLACE_EMOJI $it" },
             description?.let { "\n$it" },
         ).joinToString("\n"),
+        calendarEntry = toCalendarEntry(),
     )
 }
 

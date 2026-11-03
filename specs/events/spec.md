@@ -76,13 +76,19 @@ aparece apenas na gestão.
 - Layout "cartaz em tela cheia": barra verde "Evento" com o botão de compartilhar à direita; o cartaz inteiro (3:2,
   sem nada por cima) logo abaixo; depois o título, as etiquetas da data curta ("14 a 16 nov"), do horário e "Só
   membros" (as duas últimas só quando existem/valem); um card com a data por extenso ("Sábado, 14 de novembro" /
-  "14 a 16 de novembro", com "{n} dias" embaixo quando dura mais de um dia) e, quando existe, o local com "IPB Castelo
+  "14 a 16 de novembro", com "{n} dias" embaixo quando dura mais de um dia) e o botão "Agendar"; quando existe, o local com "IPB Castelo
   Branco" embaixo e o botão "Mapa"; e "Sobre" (título com o traço verde) com a descrição, quando existe.
 - **Compartilhar** abre o compartilhar do Android com o cartaz (JPEG) e, como legenda, um texto: o título em negrito
   (`*título*`, formato do WhatsApp), uma linha em branco, "📅 {data por extenso}", "⏰ {hora}", "📍 {local}" e, após
   outra linha em branco, a descrição — cada linha só quando existe. O cartaz sai do cache de imagens dos eventos; se
   não carregar (offline sem cache), vai só o texto.
 - **Mapa** abre o app de mapas buscando o local (`geo:0,0?q={local}`); sem app que abra, nada acontece.
+- **Agendar** abre o formulário de novo evento do app de calendário, preenchido com título, local e descrição. A pessoa
+  confirma lá, então o app não pede permissão de calendário. Sem app que abra: "Nenhum app de calendário encontrado.".
+  As horas são as de Brasília, qualquer que seja o fuso do aparelho:
+  - sem horário: evento de dia inteiro, do primeiro ao último dia;
+  - com horário, um dia só: começa no horário e o fim fica com o padrão do app, porque o evento não tem hora de fim;
+  - com horário, vários dias: começa no horário do primeiro dia e termina às 23:59 do último.
 - Lê o evento da lista ativa em memória, por isso funciona offline. Se o evento não está mais na lista (venceu ou
   foi apagado), mostra "Este evento não está mais disponível.".
 
@@ -168,7 +174,6 @@ nunca o nome do papel.
 ## 5. Fora de escopo (futuro)
 
 - Push quando um evento é publicado.
-- "Adicionar à agenda".
 - Link de inscrição.
 - Tela "Todos os eventos".
 - Tela de "Eventos passados" para membros.

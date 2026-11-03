@@ -15,6 +15,8 @@ data class EventDetailUi(
     val durationLabel: String? = null,
     /** What "Compartilhar" sends. */
     val shareText: String = title,
+    /** What "Agendar" sends; `null` hides the button. */
+    val calendarEntry: EventCalendarEntry? = null,
 )
 
 /**
