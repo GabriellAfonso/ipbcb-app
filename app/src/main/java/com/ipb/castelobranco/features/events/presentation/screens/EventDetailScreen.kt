@@ -64,6 +64,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.openMap
 import com.ipb.castelobranco.features.events.presentation.state.EventCalendarEntry
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUi
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUiState
@@ -359,16 +360,6 @@ private fun Context.addToCalendar(entry: EventCalendarEntry) {
         startActivity(intent)
     } catch (_: ActivityNotFoundException) {
         Toast.makeText(this, NO_CALENDAR_MESSAGE, Toast.LENGTH_SHORT).show()
-    }
-}
-
-/** The maps app, searching for [place]; nothing happens without one. */
-private fun Context.openMap(place: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(place)))
-    try {
-        startActivity(intent)
-    } catch (_: ActivityNotFoundException) {
-        // No maps app on the phone.
     }
 }
 
