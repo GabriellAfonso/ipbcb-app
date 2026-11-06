@@ -1,6 +1,6 @@
 package com.ipb.castelobranco.features.bible.presentation.screens
 
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,12 +67,11 @@ fun BibleVideoPlacesScreen(
     onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 BibleVideoPlacesEvent.Saved -> onBack()
-                is BibleVideoPlacesEvent.ShowMessage -> Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                is BibleVideoPlacesEvent.ShowMessage -> AppMessages.show(event.text)
             }
         }
     }

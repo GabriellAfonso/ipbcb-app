@@ -1,6 +1,6 @@
 package com.ipb.castelobranco.features.admin.profiles.presentation.navigation
 
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -29,7 +29,7 @@ object ProfilesRoutes {
 fun NavGraphBuilder.profilesGraph(navController: NavHostController) {
 
     fun leaveArea(message: String) {
-        Toast.makeText(navController.context, message, Toast.LENGTH_LONG).show()
+        AppMessages.show(message, long = true)
         navController.popBackStack(ProfilesRoutes.GRAPH, inclusive = true)
     }
 

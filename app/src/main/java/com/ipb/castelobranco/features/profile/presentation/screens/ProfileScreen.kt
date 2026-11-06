@@ -1,7 +1,7 @@
 package com.ipb.castelobranco.features.profile.presentation.screens
 
 import android.graphics.BitmapFactory
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,7 +73,7 @@ fun ProfileScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is ProfileUiEvent.ShowMessage -> Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                is ProfileUiEvent.ShowMessage -> AppMessages.show(event.text)
                 ProfileUiEvent.RequestGoogleIdToken ->
                     scope.launch { viewModel.onGoogleIdToken(requestGoogleIdToken(context)) }
                 ProfileUiEvent.AccountDeleted -> currentOnAccountDeleted()

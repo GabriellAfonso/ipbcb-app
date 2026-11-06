@@ -1,6 +1,6 @@
 package com.ipb.castelobranco.features.admin.reports.presentation.navigation
 
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
@@ -41,7 +41,7 @@ fun NavGraphBuilder.reportsGraph(navController: NavHostController) {
 
     /** A refused load (403): say why and leave the whole reports area, back to the panel. */
     fun leaveArea(message: String) {
-        Toast.makeText(navController.context, message, Toast.LENGTH_LONG).show()
+        AppMessages.show(message, long = true)
         navController.popBackStack(ReportsRoutes.GRAPH, inclusive = true)
     }
 

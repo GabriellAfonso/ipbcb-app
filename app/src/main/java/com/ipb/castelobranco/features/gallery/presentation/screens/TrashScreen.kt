@@ -1,6 +1,6 @@
 package com.ipb.castelobranco.features.gallery.presentation.screens
 
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,13 +73,12 @@ private val SoonDot = Color(0xFFF2A300)
 fun TrashScreen(viewModel: TrashViewModel, nav: GalleryNav) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is TrashEvent.Close -> {
-                    Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                    AppMessages.show(event.text)
                     nav.back()
                 }
                 is TrashEvent.Message -> {

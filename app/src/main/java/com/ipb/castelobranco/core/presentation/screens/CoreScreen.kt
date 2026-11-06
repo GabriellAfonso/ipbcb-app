@@ -1,7 +1,7 @@
 package com.ipb.castelobranco.core.presentation.screens
 
 import android.view.SoundEffectConstants
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -181,14 +180,13 @@ fun CoreView(
         canOpenPanel = canOpenPanel,
     )
 
-    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
             when (event) {
                 is CoreViewModel.CoreEvent.LogoutSuccess -> {
                     onLogoutSuccess()
-                    Toast.makeText(context, "Sessão encerrada", Toast.LENGTH_SHORT).show()
+                    AppMessages.show("Sessão encerrada")
                 }
             }
         }

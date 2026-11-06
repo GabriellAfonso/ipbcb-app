@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -104,7 +104,7 @@ fun BibleReaderScreen(
                     showVideos = false
                     onOpenVideoPlaces(event.videoId, event.preset)
                 }
-                is BibleVideosEvent.ShowMessage -> Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                is BibleVideosEvent.ShowMessage -> AppMessages.show(event.text)
             }
         }
     }
@@ -140,7 +140,7 @@ fun BibleReaderScreen(
             when (event) {
                 is BibleUiEvent.CopiedToClipboard -> {
                     copyToClipboard(context, event.text)
-                    Toast.makeText(context, "Versículos copiados", Toast.LENGTH_SHORT).show()
+                    AppMessages.show("Versículos copiados")
                     viewModel.clearSelection()
                 }
                 is BibleUiEvent.ShareText -> {
@@ -148,7 +148,7 @@ fun BibleReaderScreen(
                     viewModel.clearSelection()
                 }
                 is BibleUiEvent.ShowMessage -> {
-                    Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                    AppMessages.show(event.text)
                 }
             }
         }
@@ -420,7 +420,7 @@ private fun openLink(context: Context, url: String) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, "Nenhum app para abrir o vídeo", Toast.LENGTH_SHORT).show()
+        AppMessages.show("Nenhum app para abrir o vídeo")
     }
 }
 

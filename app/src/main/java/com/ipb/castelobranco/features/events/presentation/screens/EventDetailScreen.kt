@@ -6,7 +6,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.CalendarContract
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -359,7 +359,7 @@ private fun Context.addToCalendar(entry: EventCalendarEntry) {
     try {
         startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(this, NO_CALENDAR_MESSAGE, Toast.LENGTH_SHORT).show()
+        AppMessages.show(NO_CALENDAR_MESSAGE)
     }
 }
 

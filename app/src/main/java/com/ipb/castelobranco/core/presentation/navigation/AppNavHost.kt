@@ -1,7 +1,7 @@
 package com.ipb.castelobranco.core.presentation.navigation
 
 import android.content.Intent
-import android.widget.Toast
+import com.ipb.castelobranco.core.presentation.components.AppMessages
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -75,13 +75,13 @@ fun AppNavHost(
                 if (coreViewModel.canOpenSundayConfirmation()) {
                     navController.navigateToSundayConfirmation(pending.date)
                 } else {
-                    Toast.makeText(context, NO_REGISTER_ACCESS_MESSAGE, Toast.LENGTH_LONG).show()
+                    AppMessages.show(NO_REGISTER_ACCESS_MESSAGE, long = true)
                 }
             NotificationTarget.ProfilesPending ->
                 if (coreViewModel.canOpenProfiles()) {
                     navController.navigateToProfilesPending()
                 } else {
-                    Toast.makeText(context, NO_PROFILES_ACCESS_MESSAGE, Toast.LENGTH_LONG).show()
+                    AppMessages.show(NO_PROFILES_ACCESS_MESSAGE, long = true)
                 }
             NotificationTarget.Profile ->
                 if (coreViewModel.isLoggedIn.value) navController.navigate(AppRoutes.PROFILE)
@@ -150,7 +150,7 @@ fun AppNavHost(
                     navController.navigate(AppRoutes.CORE) {
                         popUpTo(AppRoutes.AUTH_GRAPH) { inclusive = true }
                     }
-                    Toast.makeText(context, "Sessão iniciada", Toast.LENGTH_SHORT).show()
+                    AppMessages.show("Sessão iniciada")
                 },
             )
 
@@ -234,7 +234,7 @@ fun AppNavHost(
                         navController.navigate(AppRoutes.CORE) {
                             popUpTo(AppRoutes.CORE) { inclusive = true }
                         }
-                        Toast.makeText(context, ACCOUNT_DELETED_MESSAGE, Toast.LENGTH_SHORT).show()
+                        AppMessages.show(ACCOUNT_DELETED_MESSAGE)
                     },
                 )
             }
