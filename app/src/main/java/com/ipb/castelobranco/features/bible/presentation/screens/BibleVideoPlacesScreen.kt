@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -100,6 +101,8 @@ private fun BibleVideoPlacesContent(
         PlacePicker(
             books = state.books,
             existing = state.places.toSet(),
+            currentAbbrev = state.position?.bookAbbrev,
+            currentChapter = state.position?.chapter,
             onBack = { picking = false },
             onConfirm = { places ->
                 picking = false
@@ -208,11 +211,16 @@ private fun BibleVideoPlacesContent(
     }
 }
 
-/** Book (with search), then several chapters and/or the whole book at once; any book, not only the one being read. */
+/**
+ * Book (with search), then several chapters and/or the whole book at once; any book, not only the one being read.
+ * Like the index, it opens on the book being read ([currentAbbrev]) and, in that book, on [currentChapter], both bold.
+ */
 @Composable
 private fun PlacePicker(
     books: List<BibleBook>,
     existing: Set<BiblePlace>,
+    currentAbbrev: String?,
+    currentChapter: Int?,
     onBack: () -> Unit,
     onConfirm: (List<BiblePlace>) -> Unit,
 ) {
@@ -260,16 +268,24 @@ private fun PlacePicker(
                     isLoading = books.isEmpty(),
                     searchQuery = if (isSearching) query else "",
                     onBookClick = { bookAbbrev = it.abbrev },
+                    currentAbbrev = currentAbbrev,
                 )
             }
             return@BaseScreen
         }
         val wholeBook = BiblePlace.of(book.abbrev, null)
         val toggle = { place: BiblePlace -> selected = if (place in selected) selected - place else selected + place }
+        val current = currentChapter.takeIf { book.abbrev.equals(currentAbbrev, ignoreCase = true) }
+        // Item 0 is "Livro inteiro"; it starts on the row above the current chapter's, as the index does.
+        val startRow = current?.let { (it - 1) / CHAPTER_COLUMNS - 1 }?.takeIf { it >= 0 }
+        val gridState = rememberLazyGridState(
+            initialFirstVisibleItemIndex = startRow?.let { 1 + it * CHAPTER_COLUMNS } ?: 0,
+        )
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(CHAPTER_COLUMNS),
                 modifier = Modifier.weight(1f),
+                state = gridState,
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -289,6 +305,7 @@ private fun PlacePicker(
                         onClick = { if (place !in existing) toggle(place) },
                         isRead = place in existing,
                         isSelected = place in selected,
+                        isCurrent = chapter == current,
                         checkDescription = "Já é um local",
                     )
                 }

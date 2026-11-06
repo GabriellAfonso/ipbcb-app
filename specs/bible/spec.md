@@ -190,7 +190,9 @@ lista guardada. Vídeo: `id`, `kind` (`video` | `playlist`), `url`, `title`, `th
 - **"Locais do vídeo"** (`BibleVideoPlaces/{videoId}?presetBook=&presetChapter=`, VM própria da entrada): miniatura e
   título; lista de locais ("Gênesis 1", "Êxodo (livro inteiro)") em ordem canônica, cada um com ✕; "+ Local" abre o
   seletor: livro (mesma lista e busca do índice), depois grade de capítulos com seleção múltipla e "Livro inteiro";
-  locais já na lista ficam marcados e travados. "Salvar" envia a lista inteira (`PUT .../places/`); lista vazia pede
+  locais já na lista ficam marcados e travados. Como no índice, a lista abre no livro aberto no leitor, em negrito,
+  e a grade desse livro abre na linha do capítulo atual, também em negrito. "Salvar" envia a lista inteira
+  (`PUT .../places/`); lista vazia pede
   confirmação e exclui o vídeo. Sair sem salvar descarta.
 - Menu ⋮ do card: "Editar locais", "Remover deste capítulo" / "Remover deste livro" (conforme a seção), "Excluir
   vídeo" (com confirmação, de todos os lugares).

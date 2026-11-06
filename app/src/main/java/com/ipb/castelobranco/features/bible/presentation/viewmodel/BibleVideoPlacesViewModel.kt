@@ -7,6 +7,7 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BiblePlace
+import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleVideo
 import com.ipb.castelobranco.features.bible.domain.repository.BibleRepository
 import com.ipb.castelobranco.features.bible.domain.repository.BibleVideoRepository
@@ -31,6 +32,8 @@ data class BibleVideoPlacesUiState(
     val places: List<BiblePlace> = emptyList(),
     val hasChanges: Boolean = false,
     val isSaving: Boolean = false,
+    /** Where the reader is: the picker opens on this book and, inside it, on this chapter. */
+    val position: BibleReadingPosition? = null,
 )
 
 sealed interface BibleVideoPlacesEvent {
@@ -60,7 +63,8 @@ class BibleVideoPlacesViewModel @Inject constructor(
         bibleRepository.booksFlow,
         draft,
         isSaving,
-    ) { videos, books, draft, saving ->
+        bibleRepository.positionFlow,
+    ) { videos, books, draft, saving, position ->
         val video = videos.firstOrNull { it.id == videoId }
         val saved = video?.places.orEmpty().map { it.place }
         val places = draft ?: saved
@@ -70,6 +74,7 @@ class BibleVideoPlacesViewModel @Inject constructor(
             places = places.sortedWith(placeOrder(books.orEmpty())),
             hasChanges = video != null && places.toSet() != saved.toSet(),
             isSaving = saving,
+            position = position,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, BibleVideoPlacesUiState())
 
