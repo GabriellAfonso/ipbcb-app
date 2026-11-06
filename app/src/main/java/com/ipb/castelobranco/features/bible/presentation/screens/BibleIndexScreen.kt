@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -150,10 +152,13 @@ fun BibleIndexScreen(
                         selectedTab = IndexTab.CHAPTER
                     },
                     progress = state.progress,
+                    currentAbbrev = state.position.bookAbbrev,
                     onBookLongClick = { book -> if (state.progress != null) bookToToggle = book },
                 )
                 IndexTab.CHAPTER -> ChapterGrid(
                     book = pendingBook,
+                    currentChapter = state.position.chapter
+                        .takeIf { pendingBook?.abbrev == state.position.bookAbbrev },
                     progress = state.progress,
                     onChapterClick = { ch ->
                         pendingChapter = ch
@@ -189,7 +194,8 @@ fun BibleIndexScreen(
 
 /**
  * The Bible's books by testament, filtered by [searchQuery]. Also the book step of the place picker of "Locais do
- * vídeo". With [progress] (signed in) each row shows how many chapters were read.
+ * vídeo". With [progress] (signed in) each row shows how many chapters were read. [currentAbbrev] is the book open in
+ * the reader: highlighted, and the list opens scrolled to it.
  */
 @Composable
 internal fun BookList(
@@ -198,6 +204,7 @@ internal fun BookList(
     searchQuery: String,
     onBookClick: (BibleBook) -> Unit,
     progress: BibleProgress? = null,
+    currentAbbrev: String? = null,
     onBookLongClick: ((BibleBook) -> Unit)? = null,
 ) {
     if (books.isEmpty()) {
@@ -223,14 +230,21 @@ internal fun BookList(
         }
         return
     }
+    // Only the first composition picks the position: later the list keeps wherever the person scrolled it.
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = rows.indexOfFirst { (book, _) -> book.abbrev == currentAbbrev }
+            .let { (it - BOOKS_ABOVE_CURRENT).coerceAtLeast(0) },
+    )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
         items(rows, key = { (book, _) -> book.abbrev }) { (book, testament) ->
             BookRow(
                 book = book,
                 testament = testament,
+                isCurrent = book.abbrev == currentAbbrev,
                 readCount = progress?.readCount(book.abbrev),
                 onClick = { onBookClick(book) },
                 onLongClick = onBookLongClick?.let { { it(book) } },
@@ -289,11 +303,15 @@ internal fun BookSearchField(
 
 private const val SEARCH_HINT_ALPHA = 0.6f
 
+/** Books shown above the current one when the list opens, so it does not sit stuck to the top. */
+private const val BOOKS_ABOVE_CURRENT = 2
+
 /** [readCount] is null when signed out: the row shows the chapter count instead of the progress. */
 @Composable
 private fun BookRow(
     book: BibleBook,
     testament: Testament,
+    isCurrent: Boolean,
     readCount: Int?,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
@@ -326,6 +344,7 @@ private fun BookRow(
                 .padding(start = 16.dp),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (isCurrent) FontWeight.Bold else null,
         )
         val complete = readCount != null && readCount >= book.chapterCount
         Text(
@@ -363,8 +382,10 @@ private fun BookReadDialog(book: BibleBook, markAsRead: Boolean, onConfirm: () -
 }
 
 @Composable
+/** [currentChapter] is the chapter open in the reader when [book] is its book: bold, and the grid opens on its row. */
 private fun ChapterGrid(
     book: BibleBook?,
+    currentChapter: Int?,
     progress: BibleProgress?,
     onChapterClick: (Int) -> Unit,
 ) {
@@ -374,9 +395,15 @@ private fun ChapterGrid(
         }
         return
     }
+    // Starts on the row above the current chapter's, so it does not sit stuck to the top.
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = currentChapter
+            ?.let { ((it - 1) / GRID_COLUMNS - 1).coerceAtLeast(0) * GRID_COLUMNS } ?: 0,
+    )
     LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
+        columns = GridCells.Fixed(GRID_COLUMNS),
         modifier = Modifier.fillMaxSize(),
+        state = gridState,
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -386,6 +413,7 @@ private fun ChapterGrid(
                 text = ch.toString(),
                 onClick = { onChapterClick(ch) },
                 isRead = progress?.isRead(book.abbrev, ch) == true,
+                isCurrent = ch == currentChapter,
             )
         }
     }
@@ -405,7 +433,7 @@ private fun VerseGrid(
         return
     }
     LazyVerticalGrid(
-        columns = GridCells.Fixed(4),
+        columns = GridCells.Fixed(GRID_COLUMNS),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -418,13 +446,19 @@ private fun VerseGrid(
 }
 
 
-/** [isRead]: a read chapter, with its own background and a small check. [isSelected]: picked in the place picker. */
+private const val GRID_COLUMNS = 4
+
+/**
+ * [isRead]: a read chapter, with its own background and a small check. [isSelected]: picked in the place picker.
+ * [isCurrent]: the chapter open in the reader, in bold.
+ */
 @Composable
 internal fun GridCell(
     text: String,
     onClick: () -> Unit,
     isRead: Boolean = false,
     isSelected: Boolean = false,
+    isCurrent: Boolean = false,
     checkDescription: String = "Lido",
 ) {
     val background = when {
@@ -449,6 +483,7 @@ internal fun GridCell(
             text = text,
             style = MaterialTheme.typography.titleLarge,
             color = textColor,
+            fontWeight = if (isCurrent) FontWeight.Bold else null,
         )
         if (isRead && !isSelected) {
             Icon(

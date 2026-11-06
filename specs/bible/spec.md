@@ -20,7 +20,10 @@ Todas vivem em `bibleGraph`, com `BibleViewModel` escopado ao grafo.
 Antigo (os 39 primeiros livros do índice), `tertiaryContainer` no Novo (os 27 seguintes). Não há faixa nem título
 separando os dois — só a cor. A busca por nome abre pelo ícone de lupa na top bar (só na aba Livro): um campo de
 fundo preto e texto branco logo abaixo da barra, já com o teclado aberto. Fechar (X ou voltar) ou escolher um livro
-apaga o termo.
+apaga o termo. O livro aberto no leitor aparece com o nome em negrito (mesma cor dos outros), e a lista abre rolada
+até ele (com dois livros acima, para não colar no topo). Na aba Capítulo, quando o livro escolhido é o do leitor, o
+capítulo aberto fica em negrito e a grade abre na linha acima da dele. Daí em diante a rolagem é da pessoa. O seletor
+de locais do vídeo usa a mesma lista e grade sem esse destaque.
 
 **Passagem** (`bible_passage?book={book}&chapter={chapter}&verse={verse}&verses={verses}`, montada por
 `AppRoutes.biblePassage`): é como outras features (as referências da Doutrina, `specs/studies/spec.md`) abrem a Bíblia
