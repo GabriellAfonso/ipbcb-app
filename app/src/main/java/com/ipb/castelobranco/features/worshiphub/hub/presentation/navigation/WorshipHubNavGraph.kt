@@ -9,7 +9,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
-import com.ipb.castelobranco.core.presentation.components.InDevelopmentScreen
 import com.ipb.castelobranco.core.presentation.navigation.AppRoutes
 import com.ipb.castelobranco.core.presentation.navigation.safePopBackStack
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.navigation.ChordChartsRoutes
@@ -31,12 +30,8 @@ data class WorshipHubNav(
     val chordChart: (chordChartId: Int) -> Unit,
     val songDetail: (songId: Int) -> Unit,
     val songs: () -> Unit,
-    val button3: () -> Unit,
-    val button4: () -> Unit,
-    val button5: () -> Unit,
-    val button6: () -> Unit,
-    val button7: () -> Unit,
-    val button8: () -> Unit,
+    val chordCharts: () -> Unit,
+    val lyrics: () -> Unit,
     val back: () -> Unit,
 )
 
@@ -47,12 +42,9 @@ object WorshipHubRoutes {
 
     fun tables(tab: Int = 0) = "WorshipTables?$ARG_TAB=$tab"
     const val Songs   = "songs"
-    const val Button3 = "button_3"
-    const val Button4 = "button_4"
-    const val Button5 = "button_5"
-    const val Button6 = "button_6"
-    const val Button7 = "button_7"
-    const val Button8 = "button_8"
+    /** Nested graphs: `chordChartsGraph` and `lyricsGraph`. */
+    const val ChordChartsGraph = "chord_charts_graph"
+    const val LyricsGraph      = "lyrics_graph"
 }
 
 fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
@@ -68,12 +60,8 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
                     chordChart = { id -> navController.navigate(ChordChartsRoutes.detail(id)) },
                     songDetail = { id -> navController.navigate(SongsRoutes.detail(id)) },
                     songs   = { navController.navigate(WorshipHubRoutes.Songs) },
-                    button3 = { navController.navigate(WorshipHubRoutes.Button3) },
-                    button4 = { navController.navigate(WorshipHubRoutes.Button4) },
-                    button5 = { navController.navigate(WorshipHubRoutes.Button5) },
-                    button6 = { navController.navigate(WorshipHubRoutes.Button6) },
-                    button7 = { navController.navigate(WorshipHubRoutes.Button7) },
-                    button8 = { navController.navigate(WorshipHubRoutes.Button8) },
+                    chordCharts = { navController.navigate(WorshipHubRoutes.ChordChartsGraph) },
+                    lyrics  = { navController.navigate(WorshipHubRoutes.LyricsGraph) },
                     back    = { navController.safePopBackStack() },
                 )
             }
@@ -111,10 +99,5 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
         songsGraph(navController)
         chordChartsGraph(navController)
         lyricsGraph(navController)
-
-        composable(WorshipHubRoutes.Button5) { InDevelopmentScreen(onBack = { navController.safePopBackStack() }) }
-        composable(WorshipHubRoutes.Button6) { InDevelopmentScreen(onBack = { navController.safePopBackStack() }) }
-        composable(WorshipHubRoutes.Button7) { InDevelopmentScreen(onBack = { navController.safePopBackStack() }) }
-        composable(WorshipHubRoutes.Button8) { InDevelopmentScreen(onBack = { navController.safePopBackStack() }) }
     }
 }

@@ -29,12 +29,12 @@ private object LyricsRoutes {
 /** Opens the lyrics list from outside the worship hub (a notification tap); back goes to the hub. */
 fun NavController.navigateToLyrics() {
     navigate(AppRoutes.WORSHIP_HUB_GRAPH)
-    navigate(WorshipHubRoutes.Button4)
+    navigate(WorshipHubRoutes.LyricsGraph)
 }
 
 fun NavGraphBuilder.lyricsGraph(navController: NavHostController) {
     navigation(
-        route            = WorshipHubRoutes.Button4,
+        route            = WorshipHubRoutes.LyricsGraph,
         startDestination = LyricsRoutes.List,
     ) {
         composable(LyricsRoutes.List) {

@@ -26,7 +26,7 @@ object ChordChartsRoutes {
 
 fun NavGraphBuilder.chordChartsGraph(navController: NavHostController) {
     navigation(
-        route            = WorshipHubRoutes.Button3,
+        route            = WorshipHubRoutes.ChordChartsGraph,
         startDestination = ChordChartsRoutes.List,
     ) {
         composable(ChordChartsRoutes.List) {

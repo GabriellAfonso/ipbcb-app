@@ -840,7 +840,6 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |
 | `ElasticPullToRefresh` | Wrapper para Material 3 PullToRefreshBox |
-| `InDevelopmentScreen` | Placeholder "Pagina em construcao" |
 | `PermissionErrorPlaceholder` | Erro de permissao com botao opcional "Conectar a sua conta" |
 | `SquarePhotoPicker` | `rememberSquarePhotoPicker(onPicked, onCancelled)`: escolhe imagem da galeria, recorta com UCrop (1:1, max 512x512, titulo "Recortar Foto") e entrega os bytes JPEG. Apaga o arquivo recortado logo depois de ler e varre `cacheDir/cropped_*` a cada abertura — nenhuma copia fica no aparelho. Usado pela foto de perfil e pela foto de membro |
 

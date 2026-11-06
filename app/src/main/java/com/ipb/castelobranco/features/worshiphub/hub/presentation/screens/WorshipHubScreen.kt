@@ -276,9 +276,9 @@ private fun SundayBand(band: HubBandUi, isDeleting: Boolean, onRemoveClick: () -
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            WhitePill(label = CHORD_CHARTS, onClick = nav.button3)
+            WhitePill(label = CHORD_CHARTS, onClick = nav.chordCharts)
             OutlinedButton(
-                onClick = nav.button4,
+                onClick = nav.lyrics,
                 shape = PillShape,
                 contentPadding = PillPadding,
                 border = BorderStroke(1.dp, Color.White.copy(alpha = OUTLINE_ALPHA)),
@@ -359,8 +359,8 @@ private fun HubTiles(nav: WorshipHubNav, modifier: Modifier = Modifier) {
     val tiles = listOf(
         HubTile(R.drawable.ic_table, "Tabelas", nav.tables),
         HubTile(R.drawable.ic_songs, "Músicas", nav.songs),
-        HubTile(R.drawable.ic_chord_chart, CHORD_CHARTS, nav.button3),
-        HubTile(R.drawable.ic_lyrics, LYRICS, nav.button4),
+        HubTile(R.drawable.ic_chord_chart, CHORD_CHARTS, nav.chordCharts),
+        HubTile(R.drawable.ic_lyrics, LYRICS, nav.lyrics),
     )
     Column(
         modifier = modifier
@@ -417,8 +417,8 @@ private fun HubTileCard(tile: HubTile, modifier: Modifier = Modifier) {
 }
 
 private val PreviewNav = WorshipHubNav(
-    tables = {}, repertoire = {}, chordChart = {}, songDetail = {}, songs = {}, button3 = {}, button4 = {},
-    button5 = {}, button6 = {}, button7 = {}, button8 = {}, back = {},
+    tables = {}, repertoire = {}, chordChart = {}, songDetail = {}, songs = {}, chordCharts = {}, lyrics = {},
+    back = {},
 )
 
 @Preview(showBackground = true)
