@@ -474,7 +474,15 @@ Exibe cifra em formato ChordPro parseado. Conteudo dividido em blocos (Intro, Ve
 
 **Parser:** `ChordProParser` converte string ChordPro em `List<ChordBlock>`, cada bloco com titulo e linhas de `ChordLine` contendo `LineToken.Chord` e `LineToken.Lyrics`.
 
-**Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes.
+**Paginacao:** `BlockPaginator` divide blocos em paginas que cabem na tela, com navegacao por swipe/botoes. Uma
+secao mais alta que a pagina comeca numa pagina nova e continua nas seguintes, linha por linha, com a etiqueta so no
+primeiro pedaco: nada fica cortado. O bloco seguinte pode dividir a ultima pagina dela. A intro nunca se divide.
+Quando as paginas mudam (tamanho da letra, girar a tela), a tela fica na pagina que mostra o trecho que estava no topo.
+
+**Tamanho da letra:** nos tres pontos, a linha "Tamanho da letra" com "A−", o valor ("100%") e "A+", de 80% a 160%
+em passos de 10%; o lado no limite fica desabilitado e o painel nao fecha ao tocar. Muda acordes e letra juntos, e
+as paginas sao refeitas com a medida nova. Fica salvo no aparelho (`chord_text_scale`, `@SettingsPrefs`), um so para
+todas as cifras. No modo rolagem, a posicao em pixels se mantem, entao o trecho do topo pode mudar.
 
 **Layout "ajuste fino com faixa"** (o mesmo na letra, 5.3):
 
@@ -496,10 +504,12 @@ lida, mostra o carregando — nunca um modo provisorio que depois troca.
 long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua virando a pagina. O cabecalho
 (tom, paginas) nao entra.
 
-**Edicao (`songs` ≥ `manage`):** quem pode editar ve os tres pontos na barra; eles abrem o painel de acoes que desce
-da barra (o mesmo da galeria, `core/presentation/components/TopActionPanel`), com o nome da musica e "artista · Tom
-{tom}" no topo e, no grupo "Gerenciar", "Editar cifra" ("Muda o tom, o instrumento e o texto"). Sem permissao, os tres pontos
-somem.
+**Tres pontos:** todos veem os tres pontos na barra; eles abrem o painel de acoes que desce da barra (o mesmo da
+galeria, `core/presentation/components/TopActionPanel`), com o nome da musica e "artista · Tom {tom}" no topo e a
+linha "Tamanho da letra".
+
+**Edicao (`songs` ≥ `manage`):** no mesmo painel, o grupo "Gerenciar" com "Editar cifra" ("Muda o tom, o instrumento
+e o texto"). Sem permissao, o grupo nao aparece.
 
 Em modo edicao a tela usa o formulario "com previa" de 3.3 e 4.2, com o titulo "Editar cifra":
 - **Musica** nao muda: aparece num card so de leitura, com o nome e o artista.

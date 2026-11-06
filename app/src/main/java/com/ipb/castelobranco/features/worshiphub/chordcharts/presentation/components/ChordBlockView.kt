@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -31,14 +33,22 @@ import kotlin.math.roundToInt
 
 private const val INTRO_LABEL = "Intro"
 
-/** One block: the intro's chords in a row, or a section's tag and its chord-over-lyric lines. */
+/**
+ * One block: the intro's chords in a row, or a section's tag and its chord-over-lyric lines. [textScale] grows
+ * chords and lyrics together; the tag keeps its size.
+ */
 @Composable
-internal fun ChordBlockView(block: ChordBlock) {
-    if (block.isIntro) IntroBlock(block) else SectionBlock(block)
+internal fun ChordBlockView(block: ChordBlock, textScale: Float = 1f) {
+    if (block.isIntro) IntroBlock(block, textScale) else SectionBlock(block, textScale)
 }
 
+private fun TextStyle.scaled(scale: Float): TextStyle = if (scale == 1f) this else copy(
+    fontSize   = if (fontSize.isSpecified) fontSize * scale else fontSize,
+    lineHeight = if (lineHeight.isSpecified) lineHeight * scale else lineHeight,
+)
+
 @Composable
-private fun IntroBlock(block: ChordBlock) {
+private fun IntroBlock(block: ChordBlock, textScale: Float) {
     val chordColor = chordColor()
     Row(verticalAlignment = Alignment.CenterVertically) {
         SectionTag(INTRO_LABEL)
@@ -49,7 +59,7 @@ private fun IntroBlock(block: ChordBlock) {
                     text       = chord.value,
                     color      = chordColor,
                     fontWeight = FontWeight.Bold,
-                    style      = MaterialTheme.typography.labelMedium,
+                    style      = MaterialTheme.typography.labelMedium.scaled(textScale),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -58,11 +68,11 @@ private fun IntroBlock(block: ChordBlock) {
 }
 
 @Composable
-private fun SectionBlock(block: ChordBlock) {
+private fun SectionBlock(block: ChordBlock, textScale: Float) {
     if (block.title != null) SectionTag(block.title)
     Spacer(modifier = Modifier.height(8.dp))
     block.lines.forEach { line ->
-        ChordLineRow(line = line)
+        ChordLineRow(line = line, textScale = textScale)
         Spacer(modifier = Modifier.height(2.dp))
     }
 }
@@ -91,19 +101,19 @@ private fun groupTokens(tokens: List<LineToken>): List<ChordLyricGroup> {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ChordLineRow(line: ChordLine) {
+private fun ChordLineRow(line: ChordLine, textScale: Float) {
     val lyricColor = MaterialTheme.colorScheme.onSurface
     val chordColor = chordColor()
     val groups = groupTokens(line.tokens)
     FlowRow {
         groups.forEach { group ->
-            ChordLyricGroupItem(group = group, lyricColor = lyricColor, chordColor = chordColor)
+            ChordLyricGroupItem(group = group, lyricColor = lyricColor, chordColor = chordColor, textScale = textScale)
         }
     }
 }
 
 @Composable
-private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color, chordColor: Color) {
+private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color, chordColor: Color, textScale: Float) {
     var chordOffsetXPx by remember(group.chord, group.charOffset, group.lyrics) {
         mutableFloatStateOf(0f)
     }
@@ -113,7 +123,7 @@ private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color, chord
             text       = group.chord ?: "",
             color      = chordColor,
             fontWeight = FontWeight.Bold,
-            style      = MaterialTheme.typography.labelMedium,
+            style      = MaterialTheme.typography.labelMedium.scaled(textScale),
             softWrap   = false,
             maxLines   = 1,
         )
@@ -123,7 +133,7 @@ private fun ChordLyricGroupItem(group: ChordLyricGroup, lyricColor: Color, chord
         Text(
             text         = group.lyrics,
             color        = lyricColor,
-            style        = MaterialTheme.typography.bodyLarge,
+            style        = MaterialTheme.typography.bodyLarge.scaled(textScale),
             softWrap     = false,
             maxLines     = 1,
             onTextLayout = { result ->

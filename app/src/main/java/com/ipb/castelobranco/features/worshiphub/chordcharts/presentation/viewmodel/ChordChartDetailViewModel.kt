@@ -11,10 +11,12 @@ import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.core.domain.access.AccessLevel
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.domain.access.Scope
+import com.ipb.castelobranco.features.worshiphub.chordcharts.data.local.ChordChartPreferences
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.repository.ChordChartRepository
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetChordChartsUseCase
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.ChordProParser
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartDetailUiState
+import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordTextScale
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +44,7 @@ class ChordChartDetailViewModel @Inject constructor(
     private val chordChartRepository: ChordChartRepository,
     private val songsRepository: SongsRepository,
     private val themePreferences: ThemePreferences,
+    private val chartPreferences: ChordChartPreferences,
     observeAccess: ObserveAccessUseCase,
 ) : ViewModel() {
 
@@ -54,7 +57,8 @@ class ChordChartDetailViewModel @Inject constructor(
         songsRepository.observeAllSongs(),
         observeAccess(),
         _editState,
-    ) { chartsState, songsState, access, editState ->
+        chartPreferences.textScaleFlow,
+    ) { chartsState, songsState, access, editState, textScale ->
         val songMap = (songsState as? SnapshotState.Data)?.value
             .orEmpty()
             .associateBy { it.id }
@@ -74,6 +78,7 @@ class ChordChartDetailViewModel @Inject constructor(
                     songName    = songMap[chart.songId]?.title ?: "Song #${chart.songId}",
                     artist      = songMap[chart.songId]?.artist.orEmpty(),
                     tone        = chart.tone,
+                    textScalePercent = textScale,
                     instrument  = chart.instrument,
                     blocks      = ChordProParser.parse(chart.content),
                     rawContent  = chart.content,
@@ -112,6 +117,15 @@ class ChordChartDetailViewModel @Inject constructor(
             }
             themePreferences.setSongScrollMode(next)
         }
+    }
+
+    fun shrinkText() = changeTextScale(-ChordTextScale.STEP)
+
+    fun growText() = changeTextScale(ChordTextScale.STEP)
+
+    private fun changeTextScale(step: Int) {
+        val next = (uiState.value.textScalePercent + step).coerceIn(ChordTextScale.MIN, ChordTextScale.MAX)
+        viewModelScope.launch { chartPreferences.setTextScale(next) }
     }
 
     fun enterEditMode() {

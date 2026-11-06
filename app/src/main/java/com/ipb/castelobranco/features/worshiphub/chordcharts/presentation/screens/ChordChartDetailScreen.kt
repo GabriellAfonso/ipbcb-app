@@ -58,6 +58,10 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmodel.ChordChartDetailViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
@@ -79,6 +83,9 @@ import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.
 private const val EDIT_LABEL = "Editar cifra"
 private const val EDIT_HINT = "Muda o tom, o instrumento e o texto"
 private const val SAVE_LABEL = "Salvar cifra"
+private const val TEXT_SIZE_LABEL = "Tamanho da letra"
+private const val SMALLER_TEXT_LABEL = "A−"
+private const val BIGGER_TEXT_LABEL = "A+"
 
 /** A tap on the right half turns the page, on the left half goes back. */
 private const val HALF_SCREEN = 0.5f
@@ -95,6 +102,8 @@ fun ChordChartDetailScreen(
         state              = state,
         scrollMode         = scrollMode,
         onToggleScroll     = viewModel::toggleScrollMode,
+        onShrinkText       = viewModel::shrinkText,
+        onGrowText         = viewModel::growText,
         onBackClick        = onBackClick,
         onEnterEdit        = viewModel::enterEditMode,
         onEditContentChange = viewModel::onEditContentChange,
@@ -110,6 +119,8 @@ private fun ChordChartDetailContent(
     state: ChordChartDetailUiState,
     scrollMode: SongScrollMode?,
     onToggleScroll: () -> Unit,
+    onShrinkText: () -> Unit,
+    onGrowText: () -> Unit,
     onBackClick: () -> Unit,
     onEnterEdit: () -> Unit,
     onEditContentChange: (String) -> Unit,
@@ -127,7 +138,7 @@ private fun ChordChartDetailContent(
         extraActions  = {
             when {
                 state.isEditing -> CancelBarAction(state.isSaving, onCancelEdit)
-                state.canEdit -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
+                else -> PanelMoreButton(hasActions = state.blocks.isNotEmpty(), onClick = { isPanelOpen = true })
             }
         },
     ) { innerPadding ->
@@ -147,26 +158,26 @@ private fun ChordChartDetailContent(
                 // Opens straight in the saved mode: nothing is drawn until it is known.
                 scrollMode == null -> LoadingState(Modifier.padding(innerPadding))
                 scrollMode == SongScrollMode.VERTICAL -> ChordVerticalContent(
-                    blocks         = state.blocks,
-                    tone           = state.tone,
-                    artist         = state.artist,
-                    scrollMode     = scrollMode,
-                    onToggleScroll = onToggleScroll,
-                    modifier       = Modifier.padding(innerPadding),
+                    blocks   = state.blocks,
+                    textScale = state.textScale,
+                    band     = { ChordBand(state, scrollMode, onToggleScroll) },
+                    modifier = Modifier.padding(innerPadding),
                 )
                 else -> ChordPager(
-                    blocks         = state.blocks,
-                    tone           = state.tone,
-                    artist         = state.artist,
-                    scrollMode     = scrollMode,
-                    onToggleScroll = onToggleScroll,
-                    modifier       = Modifier.padding(innerPadding),
+                    blocks   = state.blocks,
+                    textScale = state.textScale,
+                    band     = { ChordBand(state, scrollMode, onToggleScroll) },
+                    modifier = Modifier.padding(innerPadding),
                 )
             }
             Box(Modifier.padding(innerPadding)) {
                 TopActionPanel(
-                    visible = isPanelOpen && state.canEdit && !state.isEditing,
-                    actions = listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT)),
+                    visible = isPanelOpen && !state.isEditing,
+                    actions = if (state.canEdit) {
+                        listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT))
+                    } else {
+                        emptyList()
+                    },
                     onDismiss = { isPanelOpen = false },
                     header = PanelHeader(
                         name = state.songName,
@@ -175,6 +186,15 @@ private fun ChordChartDetailContent(
                             state.tone.takeIf { it.isNotBlank() }?.let { "Tom $it" },
                         ).joinToString(" · "),
                     ),
+                    controls = {
+                        TextSizeRow(
+                            percent   = state.textScalePercent,
+                            canShrink = state.canShrinkText,
+                            canGrow   = state.canGrowText,
+                            onShrink  = onShrinkText,
+                            onGrow    = onGrowText,
+                        )
+                    },
                 )
             }
         }
@@ -189,12 +209,12 @@ private fun ChordChartDetailContent(
 @Composable
 private fun ChordPager(
     blocks: List<ChordBlock>,
-    tone: String,
-    artist: String,
-    scrollMode: SongScrollMode,
-    onToggleScroll: () -> Unit,
+    textScale: Float,
+    band: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // The piece at the top of the page being read: kept on screen when the pages change.
+    var anchor by remember { mutableStateOf(PiecePosition(0, 0)) }
     SubcomposeLayout(modifier = modifier.fillMaxSize()) { constraints ->
         val blockSpacingPx = 16.dp.roundToPx()
         // Matches ChordPageContent padding(horizontal = 20.dp, vertical = 12.dp)
@@ -202,41 +222,54 @@ private fun ChordPager(
         val vPaddingPx = 24.dp.roundToPx()
         val measureWidth = (constraints.maxWidth - hPaddingPx).coerceAtLeast(0)
 
-        // Phase 1: measure each block at the correct render width.
-        // Column wrapper is required — ChordBlockView emits multiple root nodes (Text, Spacers, Rows)
-        // with no container, so .firstOrNull() without it would only measure the first child.
-        val blockHeights = blocks.mapIndexed { i, block ->
-            subcompose("m_$i") {
-                Column {
-                    ChordBlockView(block)
-                }
-            }.firstOrNull()
-                ?.measure(Constraints(maxWidth = measureWidth))
-                ?.height ?: 0
-        }
-
-        // Phase 2: measure chrome (header + dots) to determine pager area height
+        // Phase 1: measure chrome (header + dots) to determine pager area height
         val headerHeight = subcompose("chrome_header") {
-            ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = {})
+            band()
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         val dotsHeight = subcompose("chrome_dots") {
             PageProgress(currentPage = 0, pageCount = 1)
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
-        // Phase 3: compute pages with the actual available height for block content
         val availableForBlocks = (constraints.maxHeight - headerHeight - dotsHeight - vPaddingPx)
             .coerceAtLeast(1)
+
+        // Phase 2: measure each block at the correct render width. Column wrapper is required —
+        // ChordBlockView emits multiple root nodes (Text, Spacers, Rows) with no container, so
+        // .firstOrNull() without it would only measure the first child.
+        fun measure(slot: String, block: ChordBlock): Int = subcompose(slot) {
+            Column { ChordBlockView(block, textScale) }
+        }.firstOrNull()?.measure(Constraints(maxWidth = measureWidth))?.height ?: 0
+
+        // A block taller than the page also gets its tag and each line measured, to go on in the next pages.
+        val blockHeights = blocks.mapIndexed { i, block ->
+            val total = measure("m_$i", block)
+            if (total <= availableForBlocks || block.isIntro || block.lines.size < 2) {
+                BlockHeights(total)
+            } else {
+                val continuationHead = measure("c_$i", block.copy(title = null, lines = emptyList()))
+                BlockHeights(
+                    total            = total,
+                    head             = measure("h_$i", block.copy(lines = emptyList())),
+                    continuationHead = continuationHead,
+                    lines            = block.lines.mapIndexed { k, line ->
+                        measure("l_${i}_$k", block.copy(title = null, lines = listOf(line))) - continuationHead
+                    },
+                )
+            }
+        }
+
+        // Phase 3: compute pages with the actual available height for block content
         val pages = BlockPaginator.paginate(blocks, blockHeights, availableForBlocks, blockSpacingPx)
 
         // Phase 4: render the full pager — pagerState lives inside this subcomposition
         val contentPlaceable = subcompose("pager") {
             PagerContent(
-                pages          = pages,
-                tone           = tone,
-                artist         = artist,
-                scrollMode     = scrollMode,
-                onToggleScroll = onToggleScroll,
+                pages     = pages,
+                textScale = textScale,
+                anchor    = anchor,
+                onAnchor  = { anchor = it },
+                band      = band,
             )
         }.first().measure(constraints)
 
@@ -248,17 +281,26 @@ private fun ChordPager(
 
 @Composable
 private fun PagerContent(
-    pages: List<List<ChordBlock>>,
-    tone: String,
-    artist: String,
-    scrollMode: SongScrollMode,
-    onToggleScroll: () -> Unit,
+    pages: List<List<PagePiece>>,
+    textScale: Float,
+    anchor: PiecePosition,
+    onAnchor: (PiecePosition) -> Unit,
+    band: @Composable () -> Unit,
 ) {
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val pagerState = rememberPagerState(initialPage = BlockPaginator.pageOf(pages, anchor)) { pages.size }
     val scope = rememberCoroutineScope()
 
+    // New pages (text size, rotation): back to the page with the anchor, then follow the reader again.
+    LaunchedEffect(pages) {
+        val target = BlockPaginator.pageOf(pages, anchor)
+        if (pagerState.currentPage != target) pagerState.scrollToPage(target)
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            pages.getOrNull(page)?.firstOrNull()?.let { onAnchor(it.position) }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        band()
 
         Box(
             modifier = Modifier
@@ -270,7 +312,7 @@ private fun PagerContent(
                 state    = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                ChordPageContent(blocks = pages[index])
+                ChordPageContent(pieces = pages[index], textScale = textScale)
             }
         }
 
@@ -281,14 +323,12 @@ private fun PagerContent(
 @Composable
 private fun ChordVerticalContent(
     blocks: List<ChordBlock>,
-    tone: String,
-    artist: String,
-    scrollMode: SongScrollMode,
-    onToggleScroll: () -> Unit,
+    textScale: Float,
+    band: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        ChordBand(artist = artist, tone = tone, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        band()
 
         Column(
             modifier = Modifier
@@ -301,7 +341,7 @@ private fun ChordVerticalContent(
                 Column {
                     blocks.forEachIndexed { index, block ->
                         if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                        ChordBlockView(block)
+                        ChordBlockView(block, textScale)
                     }
                 }
             }
@@ -311,14 +351,14 @@ private fun ChordVerticalContent(
 
 /** The thin band: artist, "Tom D" and the pages/scroll switch. */
 @Composable
-private fun ChordBand(artist: String, tone: String, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
-    SongBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {
-        if (tone.isNotBlank()) ToneTag(tone)
+private fun ChordBand(state: ChordChartDetailUiState, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
+    SongBand(artist = state.artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {
+        if (state.tone.isNotBlank()) ToneTag(state.tone)
     }
 }
 
 @Composable
-private fun ChordPageContent(blocks: List<ChordBlock>) {
+private fun ChordPageContent(pieces: List<PagePiece>, textScale: Float) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -327,11 +367,33 @@ private fun ChordPageContent(blocks: List<ChordBlock>) {
         // Long press selects the text to copy; taps still turn the page.
         SelectionContainer {
             Column {
-                blocks.forEachIndexed { index, block ->
+                pieces.forEachIndexed { index, piece ->
                     if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                    ChordBlockView(block)
+                    ChordBlockView(piece.block, textScale)
                 }
             }
+        }
+    }
+}
+
+/** "Tamanho da letra  A−  100%  A+" in the three dots' panel; it stays open while the size changes. */
+@Composable
+private fun TextSizeRow(percent: Int, canShrink: Boolean, canGrow: Boolean, onShrink: () -> Unit, onGrow: () -> Unit) {
+    Row(
+        modifier              = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment     = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Filled.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = onShrink, enabled = canShrink, contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Text(SMALLER_TEXT_LABEL, fontWeight = FontWeight.SemiBold)
+        }
+        Text("$percent%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        OutlinedButton(onClick = onGrow, enabled = canGrow, contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Text(BIGGER_TEXT_LABEL, fontWeight = FontWeight.SemiBold)
         }
     }
 }

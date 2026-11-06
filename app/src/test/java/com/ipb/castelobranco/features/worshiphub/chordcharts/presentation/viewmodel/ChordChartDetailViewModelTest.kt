@@ -7,6 +7,7 @@ import com.ipb.castelobranco.core.domain.error.AppError
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.domain.access.ObserveAccessUseCase
 import com.ipb.castelobranco.core.testing.FakeAccessRepository
+import com.ipb.castelobranco.features.worshiphub.chordcharts.data.local.ChordChartPreferences
 import com.ipb.castelobranco.features.profile.domain.model.MeProfile
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.model.ChordChart
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.repository.ChordChartRepository
@@ -31,6 +32,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -46,6 +48,8 @@ class ChordChartDetailViewModelTest {
     private lateinit var chordChartRepository: ChordChartRepository
     private lateinit var songsRepository: SongsRepository
     private lateinit var themePreferences: ThemePreferences
+    private lateinit var chartPreferences: ChordChartPreferences
+    private val textScale = MutableStateFlow(100)
     private val accessRepository = FakeAccessRepository()
 
     private val fakeSongs = listOf(
@@ -65,6 +69,9 @@ class ChordChartDetailViewModelTest {
         themePreferences = mockk()
 
         every { themePreferences.songScrollModeFlow } returns flowOf(SongScrollMode.HORIZONTAL)
+        chartPreferences = mockk()
+        every { chartPreferences.textScaleFlow } returns textScale
+        coEvery { chartPreferences.setTextScale(any()) } answers { textScale.value = firstArg() }
     }
 
     @After
@@ -74,7 +81,15 @@ class ChordChartDetailViewModelTest {
 
     private fun createViewModel(chordChartId: Int = 1): ChordChartDetailViewModel {
         val savedStateHandle = SavedStateHandle(mapOf("chordChartId" to chordChartId))
-        return ChordChartDetailViewModel(savedStateHandle, getChordChartsUseCase, chordChartRepository, songsRepository, themePreferences, ObserveAccessUseCase(accessRepository))
+        return ChordChartDetailViewModel(
+            savedStateHandle,
+            getChordChartsUseCase,
+            chordChartRepository,
+            songsRepository,
+            themePreferences,
+            chartPreferences,
+            ObserveAccessUseCase(accessRepository),
+        )
     }
 
     // region uiState
@@ -145,6 +160,34 @@ class ChordChartDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Não foi possível completar a operação. Tente novamente mais tarde.", vm.uiState.value.error)
+
+        collector.cancel()
+    }
+
+    // endregion
+
+    // region text size
+
+    @Test
+    fun `the text size is saved and stops at its limits`() = runTest(testDispatcher) {
+        textScale.value = 150
+        val vm = editableViewModel()
+        val collector = testScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+
+        vm.growText()
+        advanceUntilIdle()
+        assertEquals(160, vm.uiState.value.textScalePercent)
+        assertFalse(vm.uiState.value.canGrowText)
+
+        vm.growText()
+        advanceUntilIdle()
+        assertEquals(160, vm.uiState.value.textScalePercent)
+
+        vm.shrinkText()
+        advanceUntilIdle()
+        assertEquals(150, vm.uiState.value.textScalePercent)
+        coVerify { chartPreferences.setTextScale(150) }
 
         collector.cancel()
     }
