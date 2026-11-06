@@ -87,7 +87,8 @@ fun PanelMoreButton(hasActions: Boolean, onClick: () -> Unit) {
 
 /**
  * The actions panel: comes down right under the top bar, over a scrim that darkens the rest of the screen; a tap
- * outside or back closes it. With a [header] the options split into "Gerenciar" and "Cuidado".
+ * outside or back closes it. With a [header] the options split into "Gerenciar" and "Cuidado". [controls] go under
+ * the header and keep the panel open when used (the chord chart's text size).
  * Place it at the top of the screen's content, under the top bar.
  */
 @Composable
@@ -96,6 +97,7 @@ fun TopActionPanel(
     actions: List<PanelAction>,
     onDismiss: () -> Unit,
     header: PanelHeader? = null,
+    controls: (@Composable () -> Unit)? = null,
 ) {
     BackHandler(enabled = visible, onBack = onDismiss)
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
@@ -126,6 +128,7 @@ fun TopActionPanel(
                 .padding(top = 6.dp, bottom = 10.dp),
         ) {
             header?.let { PanelHeaderRow(it) }
+            controls?.invoke()
             val (danger, normal) = actions.partition { it.isDanger }
             if (header != null && normal.isNotEmpty()) PanelGroup(MANAGE_GROUP)
             normal.forEach { PanelRow(it, onDismiss) }
