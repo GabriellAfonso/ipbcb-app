@@ -238,6 +238,7 @@ removidas e os órfãos da migração.
 | Abertura da galeria | `GalleryViewModel` (init) |
 | A cada 6 h, qualquer rede, com sessão | `GallerySyncWorker` (periódico único `gallery_sync_periodic`, `KEEP`) |
 | "Tentar novamente" (sem índice) | tela da galeria |
+| Puxar para atualizar a grade de álbuns da raiz (desligado em "Organizar") | tela da galeria |
 
 O periódico é agendado no login e em cada `onAppForeground` (idempotente). Voltar à tela da galeria dentro do app não
 dispara sync — a volta do background já cobre. Com a galeria apagada (3.3), todo gatilho desta tabela é ignorado.

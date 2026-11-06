@@ -235,13 +235,16 @@ class GalleryViewModel @Inject constructor(
         ManageView(GalleryPermissions.NONE, null, null, emptyList(), emptySet(), 0 to 0),
     )
 
+    /** A sync asked by pulling the album grid, until it answers. */
+    private val isPullRefreshing = MutableStateFlow(false)
+
     val rootState: StateFlow<GalleryRootUiState> = combine(
         view,
         repository.syncStatus,
         downloadState,
-        isOnWifi,
+        combine(isOnWifi, isPullRefreshing, ::Pair),
         combine(manageView, videoView, ::Pair),
-    ) { view, status, download, wifi, (manageView, videoView) ->
+    ) { view, status, download, (wifi, pullRefreshing), (manageView, videoView) ->
         val index = view?.local?.index
         val isPaused = status.isPaused && index == null
         val isLoading = !isPaused && (view == null || (index == null && (!status.hasAnswered || status.isRunning)))
@@ -270,6 +273,7 @@ class GalleryViewModel @Inject constructor(
             isSavingOrder = session?.isSaving == true,
             videoCard = videoCard(view?.local, videoView).takeIf { session == null },
             showLowSpace = videoView.lowSpace,
+            isRefreshing = pullRefreshing,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), GalleryRootUiState())
 
@@ -346,6 +350,19 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun retrySync() = sync()
+
+    /** Pull to refresh on the album grid: one sync, the indicator spinning until it answers. */
+    fun refresh() {
+        if (isPullRefreshing.value) return
+        isPullRefreshing.value = true
+        viewModelScope.launch {
+            try {
+                syncGallery()
+            } finally {
+                isPullRefreshing.value = false
+            }
+        }
+    }
 
     /** "Baixar galeria" after the gallery was deleted: the same Fotos / Vídeos dialog as in settings. */
     fun downloadGallery() {

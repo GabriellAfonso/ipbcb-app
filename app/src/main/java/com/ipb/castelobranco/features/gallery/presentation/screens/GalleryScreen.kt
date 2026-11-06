@@ -76,6 +76,7 @@ import com.ipb.castelobranco.features.gallery.presentation.components.BandText
 import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
+import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
@@ -134,6 +135,7 @@ fun GalleryScreen(
             onPeople = nav.toPeople,
             onNavigateToAuth = onNavigateToAuth,
             onRetrySync = viewModel::retrySync,
+            onRefresh = viewModel::refresh,
             onRetryDownload = viewModel::retryDownload,
             onDownloadWithMobileData = viewModel::downloadWithMobileData,
             onDownloadGallery = viewModel::downloadGallery,
@@ -248,6 +250,7 @@ fun GalleryContent(
     onDownloadGallery: () -> Unit,
     manage: RootManageActions,
     videoCard: VideoCardActions = VideoCardActions(),
+    onRefresh: () -> Unit = {},
 ) {
     val canManage = isLoggedIn && state.permissions.canManage
     var isPanelOpen by rememberSaveable { mutableStateOf(false) }
@@ -275,11 +278,19 @@ fun GalleryContent(
         Box(Modifier.fillMaxSize().padding(padding)) {
             val showGrid = isLoggedIn && !state.isPaused && state.albums.isNotEmpty()
             if (showGrid) {
-                RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove, videoCard) {
-                    GalleryBand(bottomPadding = BandOverlap + BandBottomExtra) {
-                        BandLabel(BAND_LABEL)
-                        BandTitle(albumsLabel(state.albums.size))
-                        RootBandStatus(state, onDownloadWithMobileData, showCount = true)
+                // No pull while organizing: the drag that reorders albums must not start a sync.
+                ElasticPullToRefresh(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = onRefresh,
+                    enabled = !state.isOrganizing,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove, videoCard) {
+                        GalleryBand(bottomPadding = BandOverlap + BandBottomExtra) {
+                            BandLabel(BAND_LABEL)
+                            BandTitle(albumsLabel(state.albums.size))
+                            RootBandStatus(state, onDownloadWithMobileData, showCount = true)
+                        }
                     }
                 }
             } else {

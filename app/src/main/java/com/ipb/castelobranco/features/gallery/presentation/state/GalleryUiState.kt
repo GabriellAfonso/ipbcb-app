@@ -92,6 +92,8 @@ data class GalleryRootUiState(
     /** Every photo and video of the visible tree, for the band. */
     val photoCount: Int = 0,
     val videoCount: Int = 0,
+    /** A sync asked by pulling the grid is running. */
+    val isRefreshing: Boolean = false,
 ) {
     /** The trash icon: owners only, not while organizing. */
     val showTrash: Boolean get() = permissions.canDelete && !isOrganizing
