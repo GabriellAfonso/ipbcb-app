@@ -29,6 +29,8 @@ data class SundaySchoolUiState(
     val yearTheme: String = "",
     val lessons: List<LessonSummary> = emptyList(),
     val isLoading: Boolean = true,
+    /** Pull to refresh or "Tentar novamente" is reading the index again. */
+    val isRefreshing: Boolean = false,
     val error: String? = null,
 ) {
     /** No published lesson at all. */
@@ -58,12 +60,15 @@ class SundaySchoolViewModel @Inject constructor(
         year.takeUnless { it == null || it == default.dataOrNull()?.defaultYear }
     }.flatMapLatest { year -> if (year == null) flowOf(null) else observeIndex(year) }
 
+    private val isRefreshing = MutableStateFlow(false)
+
     val uiState: StateFlow<SundaySchoolUiState> = combine(
         defaultIndex,
         yearIndex,
         selectedYear,
-    ) { default, other, year ->
-        val base = SundaySchoolUiState(selectedYear = year)
+        isRefreshing,
+    ) { default, other, year, refreshing ->
+        val base = SundaySchoolUiState(selectedYear = year, isRefreshing = refreshing)
         val defaultData = default.dataOrNull()
         val years = defaultData?.years.orEmpty()
         val shown = other ?: default
@@ -98,11 +103,18 @@ class SundaySchoolViewModel @Inject constructor(
         if (year != default) viewModelScope.launch { observeIndex.load(year) }
     }
 
-    fun retry() {
+    /** Pull to refresh and "Tentar novamente": the default index and, when another tab is open, that year's. */
+    fun refresh() {
+        if (isRefreshing.value) return
         val year = selectedYear.value
+        isRefreshing.value = true
         viewModelScope.launch {
-            observeIndex.refresh(null)
-            if (year != null) observeIndex.refresh(year)
+            try {
+                observeIndex.refresh(null)
+                if (year != null) observeIndex.refresh(year)
+            } finally {
+                isRefreshing.value = false
+            }
         }
     }
 

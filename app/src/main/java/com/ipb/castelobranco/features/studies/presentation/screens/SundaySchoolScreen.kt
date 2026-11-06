@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.GreenTab
 import com.ipb.castelobranco.core.presentation.components.GreenTabBar
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -71,7 +72,7 @@ fun SundaySchoolScreen(
         SundaySchoolContent(
             state = state,
             onOpenLesson = onOpenLesson,
-            onRetry = viewModel::retry,
+            onRetry = viewModel::refresh,
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -91,6 +92,7 @@ private fun YearTabs(state: SundaySchoolUiState, onSelectYear: (Int) -> Unit) {
 fun SundaySchoolContent(
     state: SundaySchoolUiState,
     onOpenLesson: (LessonSummary) -> Unit,
+    /** "Tentar novamente" and pull to refresh on the lesson list. */
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -103,7 +105,13 @@ fun SundaySchoolContent(
         contentColor = colors.text,
     ) {
         when {
-            state.lessons.isNotEmpty() -> LessonList(state, onOpenLesson)
+            state.lessons.isNotEmpty() -> ElasticPullToRefresh(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRetry,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                LessonList(state, onOpenLesson)
+            }
             state.isEmpty -> EmptyLessons()
             state.isLoading -> DoctrineLoadingView()
             state.error != null -> DoctrineErrorView(message = state.error, onRetry = onRetry)
