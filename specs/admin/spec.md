@@ -76,12 +76,10 @@ remover o `enabled = false` que a cor certa volta a valer sem consulta a histór
 
 ### 2.1 Ações
 
-A coluna "Destaque" é a cor definitiva da ação; enquanto o estado for "Sem implementação" ela
-fica guardada no código mas o card aparece cinza.
+A coluna "Destaque" é a cor de cada ação. Uma ação sem implementação não tem card: card cinza parece defeito.
 
 | Ação               | Destaque | Ícone           | Estado                         | Requisito para aparecer              |
 |--------------------|----------|-----------------|--------------------------------|--------------------------------------|
-| Marcar Presença    | Teal     | `Person`        | Sem implementação              | papel Admin                          |
 | Gerar Escala       | Verde    | `DateRange`     | Navega para `AdminSchedule`    | `schedule` ≥ `manage`                |
 | Membros            | Azul     | `People`        | Navega para a lista de membros | `members` ≥ `view`                   |
 | Relatórios         | Índigo   | `BarChart`      | Navega para `ReportsHub`       | `reports.hymnal_history` ≥ `view`    |
@@ -89,9 +87,9 @@ fica guardada no código mas o card aparece cinza.
 | Perfis             | Âmbar    | `ManageAccounts`| Navega para Perfis (§8)        | `profiles` ≥ `view`                  |
 | EBD                | Marrom   | `School`        | Navega para `SundaySchoolManage` | `sunday_school` ≥ `view`           |
 
-O requisito só decide se o card aparece; a cor e o estado ligado/cinza continuam os da tabela. Marcar Presença
-não tem escopo no backend, por isso depende do papel Admin. Na prática: Admin vê os sete; Liderança todos menos
-Presença; Mídia Relatórios e Eventos. Avisos e Notificações (push manual) não vão existir no app: não há card para
+O requisito só decide se o card aparece. Na prática: Admin e Liderança veem todos; Mídia Relatórios e Eventos.
+Marcar Presença ainda não existe e não tem card; quando for feita, entra com destaque Teal e ícone `Person`, e,
+sem escopo no backend, depende do papel Admin. Avisos e Notificações (push manual) não vão existir no app: não há card para
 eles, e o escopo `notices` que o backend ainda manda é ignorado pelo painel. A área de eventos (lista e
 formulário, `eventsAdminGraph`) está em `specs/events/spec.md` §4. A área da EBD (aulas, formulário com
 pré-visualização, anos) vive em `studiesGraph`, porque a pré-visualização usa o leitor de Estudos: o card só navega

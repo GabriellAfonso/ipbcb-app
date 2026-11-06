@@ -1,17 +1,14 @@
 package com.ipb.castelobranco.features.admin.panel.domain
 
 import com.ipb.castelobranco.core.domain.access.AccessLevel
-import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
 import com.ipb.castelobranco.features.admin.panel.domain.CardRequirement.AtLeast
-import com.ipb.castelobranco.features.admin.panel.domain.CardRequirement.HasRole
 
 /**
  * The panel's cards in display order, each with what the user needs to see it
  * (`specs/admin/spec.md` §2.1). Whether a card is enabled or grey is presentation, not here.
  */
 enum class PanelCard(val requirement: CardRequirement) {
-    ATTENDANCE(HasRole(Role.ADMIN)),
     SCHEDULE(AtLeast(Scope.SCHEDULE, AccessLevel.MANAGE)),
     MEMBERS(AtLeast(Scope.MEMBERS, AccessLevel.VIEW)),
     REPORTS(AtLeast(Scope.HYMNAL_HISTORY_REPORT, AccessLevel.VIEW)),

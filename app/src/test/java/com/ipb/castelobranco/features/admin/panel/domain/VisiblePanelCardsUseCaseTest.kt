@@ -6,7 +6,6 @@ import com.ipb.castelobranco.core.domain.access.AccessLevel.OWNER
 import com.ipb.castelobranco.core.domain.access.AccessLevel.VIEW
 import com.ipb.castelobranco.core.domain.access.Role
 import com.ipb.castelobranco.core.domain.access.Scope
-import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.ATTENDANCE
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.EVENTS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.MEMBERS
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard.PROFILES
@@ -52,7 +51,7 @@ class VisiblePanelCardsUseCaseTest {
     }
 
     @Test
-    fun `leader sees everything but the admin-only attendance placeholder`() {
+    fun `leader sees the cards its levels allow`() {
         assertEquals(
             listOf(SCHEDULE, MEMBERS, REPORTS, EVENTS, PROFILES),
             visibleCards(leader),
@@ -88,7 +87,6 @@ class VisiblePanelCardsUseCaseTest {
         val viewer = Access(roles = emptySet(), hasAnyRole = true, levels = mapOf(Scope.MEMBERS to VIEW))
 
         assertEquals(listOf(MEMBERS), visibleCards(viewer))
-        assertTrue(ATTENDANCE !in visibleCards(viewer))
     }
 
     @Test

@@ -211,17 +211,8 @@ fun AdminPanelContent(
     }
 }
 
-// Cards com `enabled = false` estão cinzas por falta de implementação. Ao implementar, apague o
-// `enabled = false` — o `accentColor` de cada um já é a cor definitiva do card e volta a valer sozinho.
+// A card without its feature yet is not listed in `PanelCard` at all: a grey card looks broken.
 internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {
-    PanelCard.ATTENDANCE -> AdminAction(
-        label = "Marcar Presença",
-        description = "Presença dos membros",
-        icon = Icons.Filled.Person,
-        accentColor = BrandColors.Teal,
-        enabled = false,
-        onClick = { /* TODO */ }
-    )
     PanelCard.SCHEDULE -> AdminAction(
         label = "Gerar Escala",
         description = "Criar escala mensal",
