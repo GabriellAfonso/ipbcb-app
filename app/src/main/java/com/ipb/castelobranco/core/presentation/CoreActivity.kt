@@ -1,7 +1,5 @@
 package com.ipb.castelobranco.core.presentation
 
-import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
@@ -44,18 +42,10 @@ class CoreActivity : ComponentActivity() {
     private val notificationTarget = MutableStateFlow<NotificationTarget?>(null)
 
     companion object {
-        private const val EXTRA_APP_MESSAGE = "extra_app_message"
         private const val UPDATE_REQUEST_CODE = 500
 
         /** Upper bound for holding the first frame: a slow disk never leaves the app stuck on the splash. */
         private const val BOOT_HOLD_MAX_MS = 1_000L
-
-        fun newRootIntent(context: Context, message: String? = null): Intent {
-            return Intent(context, CoreActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                if (!message.isNullOrBlank()) putExtra(EXTRA_APP_MESSAGE, message)
-            }
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,9 +163,4 @@ class CoreActivity : ComponentActivity() {
             finish()
         }
     }
-}
-
-fun Activity.restartApp(message: String? = null) {
-    startActivity(CoreActivity.newRootIntent(this, message))
-    finish()
 }

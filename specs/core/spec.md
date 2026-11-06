@@ -532,7 +532,6 @@ Compose so recompoe com a nova configuracao, entao o estado em `remember` sobrev
 - Aplica `IPBCasteloBrancoTheme`
 - Cria `NavController` + `AppNavHost`
 - In-app updates: enforces Play Store immediate update no launch. Cancelamento = `finish()`.
-- Extension: `Activity.restartApp(message?)` — reinicia app via Intent para CoreActivity.
 - Primeiro frame: um `OnPreDrawListener` segura o desenho ate `CoreViewModel.isBootReady` (caches do disco em
   memoria), no maximo 1 s. Desenhada antes, a home mostraria "Nenhum aniversariante" / "Escala indisponivel" e
   trocaria logo depois. No Android 12+ a splash do sistema fica na tela enquanto isso; antes, o fundo da janela. A
