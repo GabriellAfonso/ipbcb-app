@@ -839,7 +839,8 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `BirthdayEntry` | Linha de aniversario: badge com o dia (`primaryContainer`, ou `primary` quando destacado) + nome com ellipsis. Usada pelo highlight |
 | `ThemeToggle` | Switch "Modo Escuro" / "Modo Claro" |
 | `DateFieldWithPicker` | Input estilizado 56dp, botao verde "Calendario" |
-| `ElasticPullToRefresh` | Wrapper para Material 3 PullToRefreshBox |
+| `ElasticPullToRefresh` | Puxar para atualizar (Material 3) sobre uma lista; `enabled = false` desliga o gesto (ex.: enquanto se reordena arrastando) |
+| `AppMessages` / `AppMessageHost` | Avisos do app inteiro: qualquer tela ou nav graph chama `AppMessages.show(texto, long)`, e o único `AppMessageHost`, no `CoreActivity` acima da navegação, mostra um Snackbar (curto, ou longo com `long = true`). Como fica acima da navegação, o aviso continua depois que a tela que o mandou fecha ("salvo" e volta). Fica acima da barra de navegação, do teclado e dos botões flutuantes (80dp); um aviso novo substitui o que está na tela. O app não usa Toast; telas com Snackbar próprio (ação de desfazer) continuam com o seu |
 | `PermissionErrorPlaceholder` | Erro de permissao com botao opcional "Conectar a sua conta" |
 | `SquarePhotoPicker` | `rememberSquarePhotoPicker(onPicked, onCancelled)`: escolhe imagem da galeria, recorta com UCrop (1:1, max 512x512, titulo "Recortar Foto") e entrega os bytes JPEG. Apaga o arquivo recortado logo depois de ler e varre `cacheDir/cropped_*` a cada abertura — nenhuma copia fica no aparelho. Usado pela foto de perfil e pela foto de membro |
 

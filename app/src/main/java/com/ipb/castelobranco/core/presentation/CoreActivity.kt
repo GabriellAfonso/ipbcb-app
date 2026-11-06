@@ -11,7 +11,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.ipb.castelobranco.core.presentation.components.AppMessageHost
 import com.ipb.castelobranco.core.presentation.navigation.AppNavHost
 import com.ipb.castelobranco.core.presentation.navigation.NotificationTarget
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
@@ -66,11 +71,15 @@ class CoreActivity : ComponentActivity() {
         setContent {
             IPBCasteloBrancoTheme(dynamicColor = false) {
                 val navController = rememberNavController()
-                AppNavHost(
-                    navController = navController,
-                    notificationTarget = notificationTarget,
-                    onNotificationTargetHandled = { notificationTarget.value = null },
-                )
+                Box(Modifier.fillMaxSize()) {
+                    AppNavHost(
+                        navController = navController,
+                        notificationTarget = notificationTarget,
+                        onNotificationTargetHandled = { notificationTarget.value = null },
+                    )
+                    // Above the navigation: a notice outlives the screen that sent it.
+                    AppMessageHost(Modifier.align(Alignment.BottomCenter))
+                }
             }
         }
 
