@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 
@@ -64,14 +65,21 @@ fun BibleReaderToolbar(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
             }
-            ToolbarPill(text = bookName, onClick = onBookClick)
-            ToolbarPill(text = chapter.toString(), onClick = onChapterClick)
-            TranslationPill(
-                active = activeTranslation,
-                cached = cachedTranslations,
-                onSelected = onTranslationSelected,
-            )
-            Box(modifier = Modifier.weight(1f))
+            // Takes what the icons leave; a long book name ("Lamentações de Jeremias") shrinks with an ellipsis
+            // instead of pushing the chapter, translation and icons off the bar.
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                ToolbarPill(text = bookName, onClick = onBookClick, modifier = Modifier.weight(1f, fill = false))
+                ToolbarPill(text = chapter.toString(), onClick = onChapterClick)
+                TranslationPill(
+                    active = activeTranslation,
+                    cached = cachedTranslations,
+                    onSelected = onTranslationSelected,
+                )
+            }
             if (showVideosButton) {
                 IconButton(onClick = onVideosClick) {
                     Icon(Icons.Filled.SmartDisplay, contentDescription = "Vídeos")
@@ -88,11 +96,13 @@ fun BibleReaderToolbar(
 private fun ToolbarPill(
     text: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = BibleToolbarPillBackground,
         shape = RoundedCornerShape(14.dp),
         onClick = onClick,
+        modifier = modifier,
     ) {
         Text(
             text = text,
@@ -100,9 +110,12 @@ private fun ToolbarPill(
             color = Color.White,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
 @Composable
 private fun TranslationPill(
     active: BibleTranslation,
