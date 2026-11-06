@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +54,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 private const val DEFAULT_USER_NAME = "Usuário"
+private const val LOAD_FAILED_MESSAGE = "Não foi possível carregar seu perfil."
+private const val RETRY_LABEL = "Tentar novamente"
 
 @Composable
 fun ProfileScreen(
@@ -91,7 +94,6 @@ fun ProfileScreen(
 
     val pickPhoto = rememberSquarePhotoPicker(
         onPicked = { bytes -> viewModel.uploadProfilePhoto(bytes, "profile.jpg") },
-        onCancelled = viewModel::clearError,
     )
 
     BaseScreen(
@@ -126,6 +128,7 @@ fun ProfileScreen(
             onSendRequest = viewModel::sendRequest,
             onDismissRequest = viewModel::dismissRequestDialog,
             onRetryOwnMember = viewModel::retryOwnMember,
+            onRetryProfile = viewModel::refreshFromServer,
             onChangeRecoveryEmail = viewModel::openRecoveryEmailForm,
             onSaveRecoveryEmail = viewModel::saveRecoveryEmail,
             onDismissRecoveryEmailForm = viewModel::dismissRecoveryEmailForm,
@@ -157,6 +160,7 @@ fun ProfileContent(
     onSendRequest: (String) -> Unit = {},
     onDismissRequest: () -> Unit = {},
     onRetryOwnMember: () -> Unit = {},
+    onRetryProfile: () -> Unit = {},
     onChangeRecoveryEmail: () -> Unit = {},
     onSaveRecoveryEmail: (String, String) -> Unit = { _, _ -> },
     onDismissRecoveryEmailForm: () -> Unit = {},
@@ -216,13 +220,15 @@ fun ProfileContent(
                 onRetry = onRetryOwnMember,
             )
 
-            if (!state.error.isNullOrBlank()) {
+            if (state.loadFailed) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Erro: ${state.error}",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = LOAD_FAILED_MESSAGE,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
+                TextButton(onClick = onRetryProfile) { Text(RETRY_LABEL) }
             }
         }
 

@@ -58,6 +58,8 @@ nome e a troca de senha ficam no menu de três pontos da barra do topo.
 - "Remover foto" pede confirmação. Depois apaga no servidor, apaga a cópia local, mostra o placeholder e atualiza o
   perfil. Aviso: "Foto removida".
 - Enquanto envia ou remove, há um progresso sobre o círculo e o toque fica desligado.
+- Falha ao enviar ou remover: aviso no Snackbar do app (`AppMessages`, `specs/core/spec.md`) com o texto da
+  categoria do erro; a foto anterior continua.
 
 ### 3.2 Nome
 
@@ -124,6 +126,9 @@ situação desconhecida, não vê nada. Explica: "Usado só para recuperar sua s
 
 ### 3.4 Erros
 
+- Perfil que não carregou (nada salvo no aparelho e a leitura falhou): no lugar dos cartões, "Não foi possível
+  carregar seu perfil." e **"Tentar novamente"**, que lê o `/me` de novo. Com o perfil já na tela, uma releitura que
+  falha não mostra nada: a cópia salva continua valendo.
 - Erro de campo do servidor aparece no campo correspondente. "Senha incorreta." aparece no campo de senha do
   diálogo aberto.
 - Os demais erros aparecem no rodapé do diálogo, com o `detail` do servidor ou o texto genérico da categoria:

@@ -85,10 +85,6 @@ class ProfileViewModel @Inject constructor(
         refreshFromServer()
     }
 
-    fun clearError() {
-        _uiState.update { it.copy(error = null) }
-    }
-
     private fun observeProfile() {
         viewModelScope.launch {
             fetchProfileUseCase.observe().collect { state ->
@@ -105,6 +101,7 @@ class ProfileViewModel @Inject constructor(
                                 hasPassword = profile.hasPassword,
                                 access = profile.memberAccessInfo,
                                 recoveryEmail = profile.recoveryEmail,
+                                loadFailed = false,
                             )
                         }
                         if (!ownMemberLoaded || profile.memberId != loadedMemberId) {
@@ -121,11 +118,8 @@ class ProfileViewModel @Inject constructor(
                     // Sem perfil (logout incluído): o endereço da conta anterior não fica em memória.
                     SnapshotState.Loading -> _uiState.update { it.copy(recoveryEmail = RecoveryEmailStatus.Unknown) }
 
-                    is SnapshotState.Error -> {
-                        _uiState.update {
-                            it.copy(error = state.error.toUserMessage())
-                        }
-                    }
+                    // A profile already on screen stays; the card only replaces nothing.
+                    is SnapshotState.Error -> _uiState.update { it.copy(loadFailed = it.userName == null) }
                 }
             }
         }
@@ -206,18 +200,16 @@ class ProfileViewModel @Inject constructor(
 
     fun refreshFromServer() {
         viewModelScope.launch {
-            _uiState.update { it.copy(error = null) }
-            try {
-                when (fetchProfileUseCase.refresh()) {
-                    is RefreshResult.Error -> {
-                        _uiState.update { it.copy(error = "Falha ao atualizar perfil") }
-                        refreshLocalPhotoPathAndBump()
-                    }
-                    else -> Unit
-                }
+            _uiState.update { it.copy(loadFailed = false) }
+            // A failed refresh with the profile on screen is silent: the saved copy is still right to show.
+            val failed = try {
+                fetchProfileUseCase.refresh() is RefreshResult.Error
             } catch (t: Throwable) {
                 Timber.w(t, "Failed to refresh profile from server")
-                _uiState.update { it.copy(error = t.toAppError().toUserMessage()) }
+                true
+            }
+            if (failed) {
+                _uiState.update { it.copy(loadFailed = it.userName == null) }
                 refreshLocalPhotoPathAndBump()
             }
         }
@@ -226,12 +218,11 @@ class ProfileViewModel @Inject constructor(
     fun uploadProfilePhoto(bytes: ByteArray, fileName: String = "profile.jpg") {
         viewModelScope.launch {
             if (_uiState.value.isPhotoBusy) return@launch
-            _uiState.update { it.copy(isUploading = true, error = null) }
+            _uiState.update { it.copy(isUploading = true) }
 
             when (val result = uploadProfilePhotoUseCase(bytes, fileName)) {
                 UploadProfilePhotoUseCase.Result.Success -> refreshLocalPhotoPathAndBump()
-                is UploadProfilePhotoUseCase.Result.Failure ->
-                    _uiState.update { it.copy(error = result.message) }
+                is UploadProfilePhotoUseCase.Result.Failure -> _events.emit(ProfileUiEvent.ShowMessage(result.message))
             }
 
             _uiState.update { it.copy(isUploading = false) }
@@ -251,7 +242,7 @@ class ProfileViewModel @Inject constructor(
 
     fun confirmRemovePhoto() {
         if (_uiState.value.isPhotoBusy) return
-        _uiState.update { it.copy(showRemovePhotoConfirm = false, isRemovingPhoto = true, error = null) }
+        _uiState.update { it.copy(showRemovePhotoConfirm = false, isRemovingPhoto = true) }
         viewModelScope.launch {
             removeProfilePhotoUseCase()
                 .onSuccess {
@@ -260,7 +251,7 @@ class ProfileViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     Timber.w(error, "Failed to remove profile photo")
-                    _uiState.update { it.copy(error = error.toAppError().toUserMessage()) }
+                    _events.emit(ProfileUiEvent.ShowMessage(error.toAppError().toUserMessage()))
                 }
             _uiState.update { it.copy(isRemovingPhoto = false) }
         }

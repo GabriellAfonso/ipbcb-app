@@ -11,7 +11,8 @@ data class ProfileUiState(
     val isUploading: Boolean = false,
     val isRemovingPhoto: Boolean = false,
     val photoUrl: String? = null,
-    val error: String? = null,
+    /** No profile on the device and reading it failed: the card with "Tentar novamente". */
+    val loadFailed: Boolean = false,
     val localPhotoPath: String? = null,
     val localPhotoVersion: Int = 0,
     val userName: String? = null,

@@ -172,24 +172,24 @@ class ProfileViewModelTest {
     // region refreshFromServer
 
     @Test
-    fun `refreshFromServer success clears error`() = runTest {
+    fun `refreshFromServer success leaves no load failure`() = runTest {
         coEvery { fetchProfileUseCase.refresh() } returns RefreshResult.Updated
 
         viewModel.refreshFromServer()
         advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.loadFailed)
     }
 
     @Test
-    fun `refreshFromServer RefreshResult Error sets error message`() = runTest {
+    fun `refreshFromServer RefreshResult Error without a profile shows the load failure`() = runTest {
         coEvery { fetchProfileUseCase.refresh() } returns
             RefreshResult.Error(Exception("network failure"))
 
         viewModel.refreshFromServer()
         advanceUntilIdle()
 
-        assertEquals("Falha ao atualizar perfil", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.loadFailed)
     }
 
     @Test
@@ -204,24 +204,24 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `refreshFromServer exception sets generic error message`() = runTest {
+    fun `refreshFromServer exception without a profile shows the load failure`() = runTest {
         coEvery { fetchProfileUseCase.refresh() } throws Exception("timeout")
 
         viewModel.refreshFromServer()
         advanceUntilIdle()
 
-        assertEquals("Algo deu errado. Tente novamente.", viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.loadFailed)
     }
 
     @Test
-    fun `refreshFromServer AppError with userMessage sets that message`() = runTest {
-        coEvery { fetchProfileUseCase.refresh() } throws
-            AppError.Server(code = 500, message = "raw body", userMessage = "Falha ao atualizar perfil")
+    fun `a failed refresh with the profile on screen stays silent`() = runTest {
+        every { fetchProfileUseCase.observe() } returns flowOf(SnapshotState.Data(fakeProfile))
+        coEvery { fetchProfileUseCase.refresh() } returns RefreshResult.Error(Exception("network failure"))
 
-        viewModel.refreshFromServer()
+        viewModel.initialize()
         advanceUntilIdle()
 
-        assertEquals("Falha ao atualizar perfil", viewModel.uiState.value.error)
+        assertFalse(viewModel.uiState.value.loadFailed)
     }
 
     // endregion
@@ -262,14 +262,15 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `uploadProfilePhoto failure sets error message`() = runTest {
+    fun `uploadProfilePhoto failure shows a notice`() = runTest {
         coEvery { uploadProfilePhotoUseCase(any(), any()) } returns
             UploadProfilePhotoUseCase.Result.Failure("Arquivo muito grande")
 
-        viewModel.uploadProfilePhoto(ByteArray(0))
-        advanceUntilIdle()
-
-        assertEquals("Arquivo muito grande", viewModel.uiState.value.error)
+        viewModel.events.test {
+            viewModel.uploadProfilePhoto(ByteArray(0))
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.ShowMessage("Arquivo muito grande"), awaitItem())
+        }
         assertFalse(viewModel.uiState.value.isUploading)
     }
 
@@ -381,54 +382,16 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `observeProfile SnapshotState Error sets generic error message`() = runTest {
+    fun `observeProfile SnapshotState Error without a profile shows the load failure`() = runTest {
         every { fetchProfileUseCase.observe() } returns flowOf(
             SnapshotState.Error(AppError.Server(code = 500, message = "snapshot error"))
         )
+        coEvery { fetchProfileUseCase.refresh() } returns RefreshResult.Error(Exception("network failure"))
 
-        // refreshFromServer always clears error before refreshing, so the Error state from
-        // observeProfile is transient. Use Turbine to capture the intermediate emission.
-        viewModel.uiState.test {
-            awaitItem() // initial ProfileUiState
-            viewModel.initialize()
-            awaitItem() // after synchronous refreshLocalPhotoPathAndBump (localPhotoVersion bumped)
-            val errorState = awaitItem() // after observeProfile processes SnapshotState.Error
-            assertEquals("Não foi possível completar a operação. Tente novamente mais tarde.", errorState.error)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `observeProfile SnapshotState Error uses the authored userMessage when present`() = runTest {
-        every { fetchProfileUseCase.observe() } returns flowOf(
-            SnapshotState.Error(
-                AppError.Server(code = 500, message = "raw body", userMessage = "Erro ao carregar perfil")
-            )
-        )
-
-        viewModel.uiState.test {
-            awaitItem() // initial ProfileUiState
-            viewModel.initialize()
-            awaitItem() // after synchronous refreshLocalPhotoPathAndBump
-            val errorState = awaitItem() // after observeProfile processes SnapshotState.Error
-            assertEquals("Erro ao carregar perfil", errorState.error)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    // endregion
-
-    // region clearError
-
-    @Test
-    fun `clearError clears error in UI state`() = runTest {
-        coEvery { fetchProfileUseCase.refresh() } throws Exception("some error")
-        viewModel.refreshFromServer()
+        viewModel.initialize()
         advanceUntilIdle()
 
-        viewModel.clearError()
-
-        assertNull(viewModel.uiState.value.error)
+        assertTrue(viewModel.uiState.value.loadFailed)
     }
 
     // endregion
@@ -700,18 +663,19 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `a failed photo removal shows the error`() = runTest {
+    fun `a failed photo removal shows a notice`() = runTest {
         coEvery { profileRepository.deleteProfilePhoto() } returns Result.failure(AppError.Network())
         viewModel.initialize()
         advanceUntilIdle()
 
-        viewModel.confirmRemovePhoto()
-        advanceUntilIdle()
-
-        assertEquals(
-            "Sem conexão com a internet. Verifique sua rede e tente novamente.",
-            viewModel.uiState.value.error,
-        )
+        viewModel.events.test {
+            viewModel.confirmRemovePhoto()
+            advanceUntilIdle()
+            assertEquals(
+                ProfileUiEvent.ShowMessage("Sem conexão com a internet. Verifique sua rede e tente novamente."),
+                awaitItem(),
+            )
+        }
         assertFalse(viewModel.uiState.value.isRemovingPhoto)
     }
 
