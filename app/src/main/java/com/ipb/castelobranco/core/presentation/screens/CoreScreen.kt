@@ -225,7 +225,6 @@ fun CoreView(
             isSyncing = isSyncing,
         ),
         eventImageLoader       = eventsViewModel.imageLoader,
-        onLogout               = viewModel::logout,
         showRecoveryNotice     = showRecoveryNotice,
         onAddRecoveryEmail     = {
             profileViewModel.answerRecoveryNotice()
@@ -266,7 +265,6 @@ fun CoreScreen(
     header: HomeHeaderUi,
     highlights: HighlightsUi,
     eventImageLoader: ImageLoader,
-    onLogout: () -> Unit,
     showRecoveryNotice: Boolean,
     onAddRecoveryEmail: () -> Unit,
     onDismissRecoveryNotice: () -> Unit,
@@ -281,7 +279,6 @@ fun CoreScreen(
         onNavigateToSettings = onNavigateToSettings,
         onNavigateToAdmin    = onNavigateToAdmin,
         authState            = authState,
-        onLogout             = onLogout,
     ) { openDrawer ->
         BaseScreen(
             tabName           = stringResource(R.string.app_name),
@@ -665,7 +662,6 @@ fun NavigationDrawer(
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
     authState: UserAuthState,
-    onLogout: () -> Unit,
     content: @Composable (openDrawer: () -> Unit) -> Unit,
 ) {
     // Turning the phone changes the sheet's width, and the drawer would keep the old offset and show up open: a
@@ -689,7 +685,6 @@ fun NavigationDrawer(
                         onNavigateToSettings = onNavigateToSettings,
                         onNavigateToAdmin    = onNavigateToAdmin,
                         authState            = authState,
-                        onLogout             = onLogout,
                     ) { action ->
                         scope.launch {
                             drawerState.close()
@@ -711,7 +706,6 @@ fun DrawerContent(
     onNavigateToSettings: () -> Unit,
     onNavigateToAdmin: () -> Unit,
     authState: UserAuthState,
-    onLogout: () -> Unit,
     onItemClick: (action: () -> Unit) -> Unit,
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
@@ -759,16 +753,6 @@ fun DrawerContent(
             textColor = textColor,
         ) {
             onItemClick { onNavigateToSettings() }
-        }
-
-        if (authState.isLoggedIn) {
-            DrawerMenuItem(
-                iconRes   = R.drawable.ic_logout,
-                label     = "Logout",
-                textColor = textColor,
-            ) {
-                onItemClick { onLogout() }
-            }
         }
     }
 }

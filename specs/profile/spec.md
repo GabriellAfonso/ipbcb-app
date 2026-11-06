@@ -48,7 +48,7 @@ de propósito. Um `false` padrão em `has_password` mandaria uma conta com senha
 
 ## 3. Tela
 
-De cima para baixo: foto, nome, e um rodapé fixo no fim da tela com "Excluir conta" e "No app desde". A edição do
+De cima para baixo: foto, nome, e um rodapé fixo no fim da tela com "Sair", "Excluir conta" e "No app desde". A edição do
 nome e a troca de senha ficam no menu de três pontos da barra do topo.
 
 ### 3.1 Foto
@@ -112,6 +112,9 @@ situação desconhecida, não vê nada. Explica: "Usado só para recuperar sua s
 - **"Trocar senha"** — item do menu de três pontos da barra do topo, só quando a conta tem senha.
   Pede a senha atual, a nova e a confirmação. Se der certo, o app grava o novo par de tokens da resposta antes de
   qualquer outra chamada e continua logado; os outros aparelhos caem para deslogado. Aviso: "Senha alterada".
+- **"Sair"** — botão contornado no rodapé, acima de "Excluir conta". É o único lugar do app para sair (o menu
+  lateral não tem). Confirmação: "Sair da sua conta neste aparelho?" (Sair / Cancelar). Confirmado, roda o logout
+  do core (`specs/core/spec.md`) e volta para a home deslogada.
 - **"Excluir conta"** — botão em cor de erro no rodapé, acima de "No app desde". Confirmação forte:
   - texto explicando que é permanente e o que some;
   - conta com senha: senha atual + digitar **EXCLUIR**;

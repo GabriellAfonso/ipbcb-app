@@ -43,6 +43,17 @@ private const val DELETE_EXPLANATION =
         "O que você publicou na igreja continua, sem autor."
 
 @Composable
+fun LogoutDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sair") },
+        text = { Text("Sair da sua conta neste aparelho?") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Sair") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
 fun RemovePhotoDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,

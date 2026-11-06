@@ -37,6 +37,7 @@ import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPic
 import com.ipb.castelobranco.features.profile.domain.model.RecoveryEmailStatus
 import com.ipb.castelobranco.features.profile.presentation.components.AccessCard
 import com.ipb.castelobranco.features.profile.presentation.components.AccountFooter
+import com.ipb.castelobranco.features.profile.presentation.components.LogoutDialog
 import com.ipb.castelobranco.features.profile.presentation.components.OwnMemberCard
 import com.ipb.castelobranco.features.profile.presentation.components.ChangePasswordDialog
 import com.ipb.castelobranco.features.profile.presentation.components.DeleteAccountDialog
@@ -61,6 +62,7 @@ private const val RETRY_LABEL = "Tentar novamente"
 fun ProfileScreen(
     onBackClick: () -> Unit,
     onAccountDeleted: () -> Unit,
+    onLogout: () -> Unit,
     /** Arrived from the home notice: the e-mail form opens as soon as the account's state is known. */
     openRecoveryEmailForm: Boolean = false,
     viewModel: ProfileViewModel = hiltViewModel()
@@ -72,6 +74,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentOnAccountDeleted by rememberUpdatedState(onAccountDeleted)
+    val currentOnLogout by rememberUpdatedState(onLogout)
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -80,6 +83,7 @@ fun ProfileScreen(
                 ProfileUiEvent.RequestGoogleIdToken ->
                     scope.launch { viewModel.onGoogleIdToken(requestGoogleIdToken(context)) }
                 ProfileUiEvent.AccountDeleted -> currentOnAccountDeleted()
+                ProfileUiEvent.LogoutConfirmed -> currentOnLogout()
             }
         }
     }
@@ -120,6 +124,9 @@ fun ProfileScreen(
             onDismissName = viewModel::dismissNameDialog,
             onConfirmPassword = viewModel::changePassword,
             onDismissPassword = viewModel::dismissPasswordDialog,
+            onLogout = viewModel::requestLogout,
+            onConfirmLogout = viewModel::confirmLogout,
+            onDismissLogout = viewModel::dismissLogout,
             onDeleteAccount = viewModel::openDeleteDialog,
             onConfirmDelete = viewModel::confirmDelete,
             onDismissDelete = viewModel::dismissDeleteDialog,
@@ -152,6 +159,9 @@ fun ProfileContent(
     onDismissName: () -> Unit = {},
     onConfirmPassword: (String, String, String) -> Unit = { _, _, _ -> },
     onDismissPassword: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onConfirmLogout: () -> Unit = {},
+    onDismissLogout: () -> Unit = {},
     onDeleteAccount: () -> Unit = {},
     onConfirmDelete: (String) -> Unit = {},
     onDismissDelete: () -> Unit = {},
@@ -235,8 +245,13 @@ fun ProfileContent(
         AccountFooter(
             canDeleteAccount = state.canDeleteAccount,
             joinedSince = state.joinedSince,
+            onLogout = onLogout,
             onDeleteAccount = onDeleteAccount,
         )
+    }
+
+    if (state.showLogoutConfirm) {
+        LogoutDialog(onConfirm = onConfirmLogout, onDismiss = onDismissLogout)
     }
 
     if (state.showRemovePhotoConfirm) {

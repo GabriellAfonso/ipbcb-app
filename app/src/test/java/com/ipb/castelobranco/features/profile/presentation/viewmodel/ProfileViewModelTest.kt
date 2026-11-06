@@ -681,6 +681,31 @@ class ProfileViewModelTest {
 
     // endregion
 
+    // region logout
+
+    @Test
+    fun `confirming the logout closes the dialog and asks for the logout`() = runTest {
+        viewModel.requestLogout()
+        assertTrue(viewModel.uiState.value.showLogoutConfirm)
+
+        viewModel.events.test {
+            viewModel.confirmLogout()
+            advanceUntilIdle()
+            assertEquals(ProfileUiEvent.LogoutConfirmed, awaitItem())
+        }
+        assertFalse(viewModel.uiState.value.showLogoutConfirm)
+    }
+
+    @Test
+    fun `dismissing the logout only closes the dialog`() = runTest {
+        viewModel.requestLogout()
+        viewModel.dismissLogout()
+
+        assertFalse(viewModel.uiState.value.showLogoutConfirm)
+    }
+
+    // endregion
+
     // region access requests (spec 016)
 
     @Test

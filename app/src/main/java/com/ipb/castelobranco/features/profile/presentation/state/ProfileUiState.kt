@@ -25,6 +25,7 @@ data class ProfileUiState(
     /** `null` while unknown: the top bar menu ("Trocar senha") hidden and "Excluir conta" disabled. */
     val hasPassword: Boolean? = null,
     val showRemovePhotoConfirm: Boolean = false,
+    val showLogoutConfirm: Boolean = false,
     val nameDialog: NameDialogState? = null,
     val passwordDialog: PasswordDialogState? = null,
     val deleteDialog: DeleteDialogState? = null,

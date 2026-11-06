@@ -236,6 +236,13 @@ fun AppNavHost(
                         }
                         AppMessages.show(ACCOUNT_DELETED_MESSAGE)
                     },
+                    // The home reacts to the session, so it can be shown while the logout finishes.
+                    onLogout = {
+                        coreViewModel.logout()
+                        navController.navigate(AppRoutes.CORE) {
+                            popUpTo(AppRoutes.CORE) { inclusive = true }
+                        }
+                    },
                 )
             }
         }

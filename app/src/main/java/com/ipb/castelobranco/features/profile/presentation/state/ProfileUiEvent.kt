@@ -9,4 +9,7 @@ sealed interface ProfileUiEvent {
 
     /** The account is gone; the session cleanup already runs app-wide. Leave the screen. */
     data object AccountDeleted : ProfileUiEvent
+
+    /** "Sair" confirmed: the session ends in the CoreViewModel, which the profile does not see. */
+    data object LogoutConfirmed : ProfileUiEvent
 }

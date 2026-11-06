@@ -229,6 +229,23 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // region logout
+
+    fun requestLogout() {
+        _uiState.update { it.copy(showLogoutConfirm = true) }
+    }
+
+    fun dismissLogout() {
+        _uiState.update { it.copy(showLogoutConfirm = false) }
+    }
+
+    fun confirmLogout() {
+        _uiState.update { it.copy(showLogoutConfirm = false) }
+        viewModelScope.launch { _events.emit(ProfileUiEvent.LogoutConfirmed) }
+    }
+
+    // endregion
+
     // region photo removal
 
     fun requestRemovePhoto() {

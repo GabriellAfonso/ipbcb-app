@@ -604,7 +604,6 @@ centralizar, a grade se move o minimo: fica pelo menos 16dp abaixo da faixa e de
 | Eventos | sempre | navega para a lista de eventos (`specs/events/spec.md` §3.1) |
 | Painel de Gestão | logado + algum papel no perfil (`canOpenPanel`) | navega para admin |
 | Configuracoes | sempre | navega para settings |
-| Sair | logado | executa logout |
 
 Largura: 80% da tela em pe e 40% deitado (altura menor que 480dp), no maximo 360dp. Girar o celular fecha o menu.
 
@@ -792,7 +791,7 @@ Grafos de features:
 NavHost unico com todas as rotas. Transicoes desabilitadas (Enter/Exit = None).
 
 - Auth success: navega para CORE e pop AUTH_GRAPH (inclusive)
-- Logout success: `popUpTo(CORE) { inclusive = true }`
+- Logout ("Sair" no Perfil): `CoreViewModel.logout()` e volta para CORE com `popUpTo(CORE) { inclusive = true }`
 - Share (schedule): `Intent.createChooser(...)`
 
 #### LocalAppNavigator
