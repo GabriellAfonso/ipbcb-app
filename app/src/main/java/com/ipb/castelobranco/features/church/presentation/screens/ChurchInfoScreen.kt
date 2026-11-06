@@ -1,5 +1,9 @@
 package com.ipb.castelobranco.features.church.presentation.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,13 +22,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +43,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +53,7 @@ import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.components.openLink
 import com.ipb.castelobranco.core.presentation.components.openMap
 import com.ipb.castelobranco.features.church.presentation.state.ChurchInfo
+import kotlinx.coroutines.delay
 
 private const val SCREEN_TITLE = "A Igreja"
 private const val ADDRESS_TITLE = "Endereço"
@@ -48,6 +61,15 @@ private const val SERVICES_TITLE = "Cultos"
 private const val INSTAGRAM_TITLE = "Instagram"
 private const val MAP_LABEL = "Mapa"
 private const val OPEN_LABEL = "Abrir"
+private const val OFFERINGS_TITLE = "Ofertas"
+private const val PIX_TITLE = "PIX"
+private const val QR_LABEL = "QR"
+private const val COPY_LABEL = "Copiar"
+private const val COPIED_LABEL = "Copiado"
+private const val CLOSE_LABEL = "Fechar"
+private const val PIX_CLIP_LABEL = "PIX"
+private const val COPIED_FEEDBACK_MS = 2_000L
+private val QR_SIZE = 220.dp
 private const val DIVIDER_ALPHA = 0.07f
 private const val SHADOW_ALPHA = 0.12f
 private val CARD_CORNER = 18.dp
@@ -64,6 +86,7 @@ fun ChurchInfoScreen(onBackClick: () -> Unit) {
         ChurchInfoContent(
             onOpenMap       = { context.openMap(ChurchInfo.ADDRESS) },
             onOpenInstagram = { context.openLink(ChurchInfo.INSTAGRAM_URL) },
+            onCopyPix       = { context.copyPixCode() },
             modifier        = Modifier.padding(innerPadding),
         )
     }
@@ -73,6 +96,7 @@ fun ChurchInfoScreen(onBackClick: () -> Unit) {
 fun ChurchInfoContent(
     onOpenMap: () -> Unit,
     onOpenInstagram: () -> Unit,
+    onCopyPix: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -100,8 +124,53 @@ fun ChurchInfoContent(
             }
         }
 
+        SectionTitle(OFFERINGS_TITLE)
+        InfoCard { PixRow(onCopyPix) }
+
         Spacer(Modifier.height(32.dp))
     }
+}
+
+/** "PIX", with "QR" (opens the code in a dialog) and "Copiar" (the copy-and-paste code). */
+@Composable
+private fun PixRow(onCopy: () -> Unit) {
+    var copied by rememberSaveable { mutableStateOf(false) }
+    var showQr by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_FEEDBACK_MS)
+            copied = false
+        }
+    }
+    InfoRow(Icons.Filled.QrCode2, PIX_TITLE) {
+        Row {
+            RowAction(QR_LABEL) { showQr = true }
+            RowAction(if (copied) COPIED_LABEL else COPY_LABEL) {
+                onCopy()
+                copied = true
+            }
+        }
+    }
+    if (showQr) {
+        AlertDialog(
+            onDismissRequest = { showQr = false },
+            confirmButton    = { TextButton(onClick = { showQr = false }) { Text(CLOSE_LABEL) } },
+            title            = { Text(PIX_TITLE) },
+            // Its own white background: it must scan in dark mode too.
+            text             = {
+                Image(
+                    painter            = painterResource(R.drawable.church_pix_qr),
+                    contentDescription = "QR code PIX",
+                    modifier           = Modifier.size(QR_SIZE).clip(RoundedCornerShape(12.dp)),
+                )
+            },
+        )
+    }
+}
+
+private fun Context.copyPixCode() {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(PIX_CLIP_LABEL, ChurchInfo.PIX_CODE))
 }
 
 @Composable

@@ -9,6 +9,10 @@ object ChurchInfo {
     const val INSTAGRAM_HANDLE = "@ipb.castelobranco"
     const val INSTAGRAM_URL = "https://www.instagram.com/ipb.castelobranco/"
 
+    /** Static PIX code of the offerings, as the church's printed QR carries it. `R.drawable.church_pix_qr` encodes it. */
+    const val PIX_CODE = "00020126330014br.gov.bcb.pix0111527528957045204000053039865802BR5921Jose Antonio De Souza" +
+        "6009Sao Paulo62290525REC6886990A7D37171913914063049114"
+
     val services = listOf(
         ChurchService(name = "EBD", day = "Domingo", time = "09:00"),
         ChurchService(name = "Culto", day = "Domingo", time = "19:30"),

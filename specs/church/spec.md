@@ -20,8 +20,14 @@ exige nova versão.
 | Endereço | R. Celestino de Almeida, 308 - Castelo Branco, Cariacica - ES | **Mapa**: abre o app de mapas buscando o endereço |
 | Cultos | lista abaixo | nenhuma |
 | Instagram | @ipb.castelobranco | **Abrir**: abre `https://www.instagram.com/ipb.castelobranco/` no app do Instagram ou no navegador |
+| Ofertas | "PIX" (sem o nome do recebedor) | **QR**: abre o QR code num diálogo. **Copiar**: copia o código copia e cola; o botão diz "Copiado" por 2 s |
 
 Sem app que abra o mapa ou o link, nada acontece.
+
+**PIX.** É o mesmo PIX estático do QR impresso da igreja (chave CPF do recebedor, sem valor fixo); publicá-lo com o
+CPF foi decisão do responsável. O código fica em `ChurchInfo.PIX_CODE`, e o QR é um vetor gerado dele
+(`res/drawable/church_pix_qr.xml`, fundo branco próprio para ler também no tema escuro): mudar a chave exige gerar os
+dois de novo, juntos.
 
 Cultos, na ordem da semana:
 
@@ -36,4 +42,3 @@ Cultos, na ordem da semana:
 
 - Editar os dados pelo Painel de Gestão.
 - WhatsApp e YouTube: a igreja não tem.
-- PIX: fica de fora até haver o link do QR code da igreja; não se publica CPF.
