@@ -144,7 +144,6 @@ that commit, so the tag covers both.
 7. **Share intents:** `navController.context.startActivity(Intent.createChooser(...))`.
 8. **worshiphub sub-graphs:** `worshipHubGraph` contains nested `chordChartsGraph` and `lyricsGraph` — add new screens inside the appropriate sub-graph, not directly in `worshipHubGraph`.
 9. **In-app updates:** `CoreActivity` enforces immediate Play Store updates on launch — if user cancels, app calls `finish()`. Do not remove `AppUpdateManager` logic.
-10. **`restartApp()`:** Use `activity.restartApp()` (extension in `CoreActivity.kt`) to fully restart the app — replaces manual Intent construction.
 
 ## 7. Specs Driven Development
 
