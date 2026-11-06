@@ -115,6 +115,7 @@ class MembersListViewModel @Inject constructor(
         return MembersListUiState(
             // A list already in memory stays on screen while it revalidates.
             isLoading = members == null && refreshing,
+            isRefreshing = members != null && refreshing,
             error = error.takeIf { members == null },
             query = query,
             members = visible.map { it.toCard(revisions) },

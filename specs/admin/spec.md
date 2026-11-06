@@ -319,7 +319,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   (a mais numerosa primeiro; "Sem situação" quando houver), uma só escolhida, o filtro somando-se à busca. Embaixo,
   um card com uma linha por membro: foto ou iniciais num círculo de 46dp (esmaecido com perfil inválido), nome,
   chip de situação e tag "Perfil inválido", e "›". "Novo membro" em pílula verde no canto. Estados: carregando,
-  erro com "Tentar novamente", rol vazio, nenhum membro na busca/filtro ("Nenhum membro encontrado.").
+  erro com "Tentar novamente", rol vazio, nenhum membro na busca/filtro ("Nenhum membro encontrado."). Puxar para
+  atualizar lê a lista de novo, igual ao "Tentar novamente".
 - **Perfil** — faixa verde fixa da igreja (`ipbGreen`, cantos inferiores de 24dp, igual nos dois temas), foto
   grande sem botão próprio (toque traz a foto para frente da tela em quadrado,
   segundo toque abre em tela cheia com o botão "Trocar foto" (lápis) no canto superior esquerdo, que abre o

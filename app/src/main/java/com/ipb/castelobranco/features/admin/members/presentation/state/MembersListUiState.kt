@@ -6,6 +6,8 @@ package com.ipb.castelobranco.features.admin.members.presentation.state
  */
 data class MembersListUiState(
     val isLoading: Boolean = true,
+    /** The list on screen is being read again (pull to refresh, or the revalidation on opening). */
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val query: String = "",
     val members: List<MemberCardUi> = emptyList(),

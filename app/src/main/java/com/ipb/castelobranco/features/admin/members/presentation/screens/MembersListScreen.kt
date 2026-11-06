@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -121,6 +122,7 @@ fun MembersListContent(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
     onQueryChange: (String) -> Unit,
+    /** "Tentar novamente" and pull to refresh: both read the list again. */
     onRetry: () -> Unit,
     onOpenMember: (Int) -> Unit,
     onAddMember: () -> Unit,
@@ -135,7 +137,13 @@ fun MembersListContent(
                 onAction = onRetry,
                 modifier = Modifier.align(Alignment.Center),
             )
-            else -> MembersList(state, imageLoader, onQueryChange, onStatusFilter, onOpenMember)
+            else -> ElasticPullToRefresh(
+                isRefreshing = state.isRefreshing,
+                onRefresh = onRetry,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                MembersList(state, imageLoader, onQueryChange, onStatusFilter, onOpenMember)
+            }
         }
 
         if (state.canAdd) {
