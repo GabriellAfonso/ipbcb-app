@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,10 +18,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,16 +83,38 @@ fun BibleReaderToolbar(
                     onSelected = onTranslationSelected,
                 )
             }
-            if (showVideosButton) {
-                IconButton(onClick = onVideosClick) {
-                    Icon(Icons.Filled.SmartDisplay, contentDescription = "Vídeos")
+            // Compact icons (40dp touch, 22dp glyph) leave more room for the book name.
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                if (showVideosButton) {
+                    CompactIconButton(onClick = onVideosClick) {
+                        Icon(
+                            Icons.Filled.SmartDisplay,
+                            contentDescription = "Vídeos",
+                            modifier = Modifier.size(CompactIconSize),
+                        )
+                    }
                 }
-            }
-            IconButton(onClick = onFontSizeClick) {
-                Icon(Icons.Filled.FormatSize, contentDescription = "Tamanho da fonte")
+                CompactIconButton(onClick = onFontSizeClick) {
+                    Icon(
+                        Icons.Filled.FormatSize,
+                        contentDescription = "Tamanho da fonte",
+                        modifier = Modifier.size(CompactIconSize),
+                    )
+                }
             }
         }
     }
+}
+
+private val CompactIconButtonSize = 40.dp
+private val CompactIconSize = 22.dp
+
+@Composable
+private fun CompactIconButton(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(CompactIconButtonSize), content = content)
 }
 
 @Composable
@@ -106,10 +131,10 @@ private fun ToolbarPill(
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

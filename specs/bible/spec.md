@@ -42,7 +42,8 @@ ou de livro (setas, índice) apaga o destaque.
 O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar a fonte (14–32, padrão 18) e
 copiar/compartilhar os versículos selecionados. A toolbar do leitor é quase preta (`#141414`) nos dois
 temas, com ícones brancos e os botões de livro, capítulo e tradução em cinza escuro (`#2B2B2B`, cantos arredondados)
-com texto branco em negrito. Capítulo, tradução e os ícones ficam sempre inteiros; um nome de livro que não cabe
+com texto branco em negrito e fonte média (`bodyMedium`); os ícones de vídeos e de tamanho da fonte são compactos
+(40dp) para sobrar espaço ao nome do livro. Capítulo, tradução e os ícones ficam sempre inteiros; um nome de livro que não cabe
 ("Lamentações de Jeremias" em tela estreita) encolhe e termina em reticências. No tema escuro a página do texto é cinza-escuro (`#1E1E20`), um tom acima da toolbar;
 no tema claro segue a cor do tema (`surface`).
 Sem a tradução ativa no aparelho, mostra o banner de download (tentar de novo no WiFi ou nos dados móveis).
