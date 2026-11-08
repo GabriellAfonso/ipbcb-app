@@ -20,7 +20,7 @@ exige nova versão.
 | Endereço | R. Celestino de Almeida, 308 - Castelo Branco, Cariacica - ES | **Mapa**: abre o app de mapas buscando o endereço |
 | Cultos | lista abaixo | nenhuma |
 | Instagram | @ipb.castelobranco | **Abrir**: abre `https://www.instagram.com/ipb.castelobranco/` no app do Instagram ou no navegador |
-| Ofertas | "PIX" (sem o nome do recebedor) | **QR**: abre o QR code num diálogo. **Copiar**: copia o código copia e cola; o botão diz "Copiado" por 2 s |
+| Dízimos e ofertas | "PIX" (sem o nome do recebedor) | **QR**: abre o QR code, centralizado na horizontal, num diálogo. **Copiar**: copia o código copia e cola; o botão diz "Copiado" por 2 s |
 
 Sem app que abra o mapa ou o link, nada acontece.
 

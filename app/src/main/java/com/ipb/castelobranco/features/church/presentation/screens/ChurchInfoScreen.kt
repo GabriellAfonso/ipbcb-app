@@ -61,7 +61,7 @@ private const val SERVICES_TITLE = "Cultos"
 private const val INSTAGRAM_TITLE = "Instagram"
 private const val MAP_LABEL = "Mapa"
 private const val OPEN_LABEL = "Abrir"
-private const val OFFERINGS_TITLE = "Ofertas"
+private const val OFFERINGS_TITLE = "Dízimos e ofertas"
 private const val PIX_TITLE = "PIX"
 private const val QR_LABEL = "QR"
 private const val COPY_LABEL = "Copiar"
@@ -158,11 +158,13 @@ private fun PixRow(onCopy: () -> Unit) {
             title            = { Text(PIX_TITLE) },
             // Its own white background: it must scan in dark mode too.
             text             = {
-                Image(
-                    painter            = painterResource(R.drawable.church_pix_qr),
-                    contentDescription = "QR code PIX",
-                    modifier           = Modifier.size(QR_SIZE).clip(RoundedCornerShape(12.dp)),
-                )
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Image(
+                        painter            = painterResource(R.drawable.church_pix_qr),
+                        contentDescription = "QR code PIX",
+                        modifier           = Modifier.size(QR_SIZE).clip(RoundedCornerShape(12.dp)),
+                    )
+                }
             },
         )
     }
