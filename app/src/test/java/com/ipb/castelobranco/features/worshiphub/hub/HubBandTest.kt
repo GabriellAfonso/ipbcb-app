@@ -4,6 +4,9 @@ import com.ipb.castelobranco.core.domain.setlist.SetlistItem
 import com.ipb.castelobranco.core.domain.setlist.SundaySetlist
 import com.ipb.castelobranco.core.domain.worship.WorshipAccess
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.buildHubBand
+import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.shareText
+import com.ipb.castelobranco.features.worshiphub.shared.domain.SetlistShareSong
+import com.ipb.castelobranco.features.worshiphub.shared.domain.setlistShareText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -64,6 +67,25 @@ class HubBandTest {
             buildHubBand(setlist.copy(savedByName = null), member, emptyMap(), wednesday, zone)!!.savedLabel,
         )
         assertNull(buildHubBand(setlist.copy(savedAt = "ontem"), member, emptyMap(), wednesday, zone)!!.savedLabel)
+    }
+
+    @Test
+    fun `shared text follows position order and is dated by the setlist Sunday`() {
+        val band = buildHubBand(setlist, member, emptyMap(), wednesday, zone)!!
+
+        assertEquals(
+            "*Louvor — 01/11/26*\n\n" +
+                "*Porque Ele Vive (G)*\n_- Bill Gaither_\n\n" +
+                "*Agnus Dei (A)*\n_- Michael W. Smith_",
+            band.shareText(),
+        )
+    }
+
+    @Test
+    fun `shared song without a tone shows only its title`() {
+        val text = setlistShareText(wednesday, listOf(SetlistShareSong("Agnus Dei", "Michael W. Smith", "")))
+
+        assertEquals("*Louvor — 28/10/26*\n\n*Agnus Dei*\n_- Michael W. Smith_", text)
     }
 
     @Test

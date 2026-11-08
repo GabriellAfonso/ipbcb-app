@@ -30,6 +30,9 @@ letras", com os cartões subindo sobre ela como sempre.
   o snackbar diz "Repertório de domingo dd/MM removido." e o app relê o repertório atual (pode vir o de um domingo
   seguinte). Falha mantém tudo e mostra "Não foi possível remover o repertório de dd/MM.". Enquanto apaga, o botão
   fica desabilitado com um spinner.
+- **Compartilhar:** com repertório na faixa, um ícone de compartilhar ao lado da data, para qualquer membro do
+  Louvor (não depende de `can_save_setlist`). Abre o seletor do Android com o mesmo texto da aba Repertório (seção
+  2.4), na ordem das posições, com a data do domingo do repertório no cabeçalho.
 - Abrir o hub relê o repertório em silêncio (`SyncSundaySetlistUseCase`), como o pull-to-refresh das listas.
 
 **Cartões 2x2** (104dp de altura, cantos de 18dp, fundo e sombra do card da home): ícone branco num círculo
@@ -145,7 +148,8 @@ servidor, nao e preenchido a partir do repertorio salvo e continua depois do log
 regras em `DraftExpiry` e `RestoreRepertoireDraftUseCase`, tempo via `WallClock` (core).
 
 **Botoes:** "Gerar" | "Salvar" | "Compartilhar". "Compartilhar" (texto via Intent) e sempre disponivel
-quando ha musica escolhida, com ou sem salvar. Sem "Salvar", "Gerar" ocupa o rodape inteiro. "Salvar" so aparece com `can_save_setlist` do perfil (`ObserveWorshipAccessUseCase`, core) e
+quando ha musica escolhida, com ou sem salvar. Texto: cabecalho `*Louvor — dd/MM/yy*` (data de hoje) e, separadas
+por linha em branco, `*Titulo (Tom)*` (sem tom, so `*Titulo*`) seguido de `_- Artista_`. Sem "Salvar", "Gerar" ocupa o rodape inteiro. "Salvar" so aparece com `can_save_setlist` do perfil (`ObserveWorshipAccessUseCase`, core) e
 fica desabilitado sem linha preenchida, com linha preenchida sem tom ou com tom acima de 3 caracteres
 (`RepertoireValidation`), ou durante o envio. Ao tocar, um dialogo confirma "Salvar repertorio de domingo
 dd/MM?" — a data e hoje se for domingo, senao o proximo domingo (`setlistDateFor`, core). Envia so as linhas

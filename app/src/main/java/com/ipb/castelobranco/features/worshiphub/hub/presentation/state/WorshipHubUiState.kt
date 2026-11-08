@@ -3,6 +3,8 @@ package com.ipb.castelobranco.features.worshiphub.hub.presentation.state
 import com.ipb.castelobranco.core.domain.setlist.SundaySetlist
 import com.ipb.castelobranco.core.domain.setlist.setlistDateFor
 import com.ipb.castelobranco.core.domain.worship.WorshipAccess
+import com.ipb.castelobranco.features.worshiphub.shared.domain.SetlistShareSong
+import com.ipb.castelobranco.features.worshiphub.shared.domain.setlistShareText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -43,6 +45,12 @@ data class HubBandUi(
  * removal is on its way.
  */
 data class WorshipHubUiState(val band: HubBandUi? = null, val isDeleting: Boolean = false)
+
+/** The setlist as text to share, dated by its own Sunday. */
+fun HubBandUi.shareText(): String = setlistShareText(
+    date = date,
+    songs = songs.map { SetlistShareSong(title = it.title, artist = it.artist, tone = it.tone) },
+)
 
 fun setlistRemovedMessage(date: LocalDate) = "Repertório de domingo ${date.format(DAY_MONTH)} removido."
 

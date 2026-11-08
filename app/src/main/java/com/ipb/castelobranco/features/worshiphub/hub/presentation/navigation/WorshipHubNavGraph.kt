@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation
 
+import android.content.Intent
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -22,6 +23,9 @@ import com.ipb.castelobranco.features.worshiphub.tables.presentation.screens.REP
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.screens.WorshipSongsTableScreen
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.SongsTableViewModel
 
+private const val SHARE_MIME_TYPE = "text/plain"
+private const val SHARE_CHOOSER_TITLE = "Compartilhar"
+
 @Stable
 data class WorshipHubNav(
     val tables: () -> Unit,
@@ -33,6 +37,8 @@ data class WorshipHubNav(
     val chordCharts: () -> Unit,
     val lyrics: () -> Unit,
     val back: () -> Unit,
+    /** Opens the Android share sheet with this text. */
+    val share: (text: String) -> Unit,
 )
 
 object WorshipHubRoutes {
@@ -63,6 +69,13 @@ fun NavGraphBuilder.worshipHubGraph(navController: NavHostController) {
                     chordCharts = { navController.navigate(WorshipHubRoutes.ChordChartsGraph) },
                     lyrics  = { navController.navigate(WorshipHubRoutes.LyricsGraph) },
                     back    = { navController.safePopBackStack() },
+                    share   = { text ->
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = SHARE_MIME_TYPE
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        navController.context.startActivity(Intent.createChooser(intent, SHARE_CHOOSER_TITLE))
+                    },
                 )
             }
             WorshipHubScreen(nav = nav, viewModel = hiltViewModel())

@@ -67,9 +67,9 @@ import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.TableRow
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.ToneChip
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireRowState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.ipb.castelobranco.features.worshiphub.shared.domain.SetlistShareSong
+import com.ipb.castelobranco.features.worshiphub.shared.domain.setlistShareText
+import java.time.LocalDate
 
 private val Green = BrandColors.Green
 private const val FIXED_ROW_ALPHA = 0.12f
@@ -94,24 +94,12 @@ fun RepertoireTab(
 ) {
     val context = LocalContext.current
 
-    fun buildShareText(): String {
-        val date = SimpleDateFormat("dd/MM/yy", Locale.forLanguageTag("pt-BR")).format(Date())
-        val header = "*Louvor — $date*"
-
-        val lines = rows
-            .filter { it.selectedSong != null }
-            .joinToString(separator = "\n\n") { row ->
-                val song = row.selectedSong!!
-                val titlePart = if (row.tone.isBlank()) {
-                    "*${song.title}*"
-                } else {
-                    "*${song.title} (${row.tone})*"
-                }
-                "$titlePart\n_- ${song.artist}_"
-            }
-
-        return if (lines.isBlank()) header else "$header\n\n$lines"
-    }
+    fun buildShareText(): String = setlistShareText(
+        date = LocalDate.now(),
+        songs = rows.mapNotNull { row ->
+            row.selectedSong?.let { SetlistShareSong(title = it.title, artist = it.artist, tone = row.tone) }
+        },
+    )
 
     fun share() {
         val text = buildShareText()

@@ -27,11 +27,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,6 +74,7 @@ import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.HubBandU
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.HubSongUi
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.WorshipHubUiState
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.removeSetlistTitle
+import com.ipb.castelobranco.features.worshiphub.hub.presentation.state.shareText
 import java.time.LocalDate
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.viewmodel.WorshipHubViewModel
 
@@ -83,6 +86,7 @@ private const val CHORD_CHARTS = "Cifras"
 private const val LYRICS = "Letras"
 private const val ARTIST_SEPARATOR = " · "
 private const val REMOVE = "Remover"
+private const val SHARE = "Compartilhar"
 private const val PLAIN_LABEL = "Ministério de Louvor"
 private const val PLAIN_TITLE = "Músicas, cifras e letras"
 private const val REMOVE_BODY = "As músicas planejadas para esse domingo serão apagadas."
@@ -221,6 +225,11 @@ private fun SundayBand(band: HubBandUi, isDeleting: Boolean, onRemoveClick: () -
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
                 )
+            }
+            if (band.songs.isNotEmpty()) {
+                IconButton(onClick = { nav.share(band.shareText()) }) {
+                    Icon(Icons.Filled.Share, contentDescription = SHARE, tint = Color.White)
+                }
             }
             if (band.canDelete) {
                 TextButton(
@@ -418,7 +427,7 @@ private fun HubTileCard(tile: HubTile, modifier: Modifier = Modifier) {
 
 private val PreviewNav = WorshipHubNav(
     tables = {}, repertoire = {}, chordChart = {}, songDetail = {}, songs = {}, chordCharts = {}, lyrics = {},
-    back = {},
+    back = {}, share = {},
 )
 
 @Preview(showBackground = true)
