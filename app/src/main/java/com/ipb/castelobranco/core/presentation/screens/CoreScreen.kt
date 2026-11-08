@@ -711,6 +711,16 @@ fun DrawerContent(
     val textColor = MaterialTheme.colorScheme.onSurface
 
     Column(modifier = Modifier.padding(10.dp)) {
+        if (authState.isLoggedIn && authState.canOpenPanel) {
+            DrawerMenuItem(
+                iconRes   = R.drawable.ic_admin_panel,
+                label     = MANAGEMENT_PANEL_LABEL,
+                textColor = textColor,
+            ) {
+                onItemClick { onNavigateToAdmin() }
+            }
+        }
+
         if (!authState.isLoggedIn) {
             DrawerMenuItem(
                 iconRes   = R.drawable.ic_login,
@@ -735,16 +745,6 @@ fun DrawerContent(
             textColor = textColor,
         ) {
             onItemClick { onNavigateToEvents() }
-        }
-
-        if (authState.isLoggedIn && authState.canOpenPanel) {
-            DrawerMenuItem(
-                iconRes   = R.drawable.ic_admin_panel,
-                label     = MANAGEMENT_PANEL_LABEL,
-                textColor = textColor,
-            ) {
-                onItemClick { onNavigateToAdmin() }
-            }
         }
 
         DrawerMenuItem(
