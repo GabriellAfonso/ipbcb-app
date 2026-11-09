@@ -578,8 +578,14 @@ Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsS
 **Texto copiavel:** a letra e copiavel como na cifra (4.3), nos dois modos de rolagem.
 
 **Layout:** o da cifra (4.3), com o nome da musica na barra (nao mais "Letra" na barra e o nome repetido no corpo) e,
-na faixa fina, "A−" / "A+" no lugar do tom: mudam o tamanho do texto de 2 em 2sp, entre 16 e 34sp (comeca em 22). O
-tamanho vale enquanto a letra esta aberta; as paginas sao recalculadas com ele.
+na faixa fina, so o artista e o seletor "Paginas | Rolagem" (letra nao tem tom).
+
+**Tres pontos:** todos veem os tres pontos na barra, como na cifra (4.3); eles abrem o painel com o nome da musica, o
+artista e, quando ha texto, a linha "Tamanho da letra".
+
+**Tamanho da letra:** a mesma linha da cifra (4.3), com "A−", o valor ("100%") e "A+", de 80% a 160% em passos de 10%
+(100% = 22sp); o lado no limite fica desabilitado e o painel nao fecha ao tocar. O tamanho vale enquanto a letra esta
+aberta; as paginas sao recalculadas com ele.
 
 **Modo de leitura:** o mesmo da cifra (4.3) — compartilhado, salvo no aparelho e ja aplicado ao abrir.
 

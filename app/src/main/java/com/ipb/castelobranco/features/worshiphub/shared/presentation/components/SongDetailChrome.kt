@@ -5,18 +5,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,10 +39,9 @@ import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
 private const val PAGES_LABEL = "Páginas"
 private const val SCROLL_LABEL = "Rolagem"
+private const val TEXT_SIZE_LABEL = "Tamanho da letra"
 private const val SMALLER_LABEL = "A−"
 private const val BIGGER_LABEL = "A+"
-private const val SMALLER_DESCRIPTION = "Diminuir texto"
-private const val BIGGER_DESCRIPTION = "Aumentar texto"
 private const val SAVE_LABEL = "Salvar"
 private const val CANCEL_LABEL = "Cancelar"
 private const val DARK_SURFACE_LUMINANCE = 0.5f
@@ -52,12 +54,15 @@ private val BandCorner = 20.dp
 private val ChordOnLight = Color(0xFFA85F00)
 private val ChordOnDark = Color(0xFFF7B733)
 
-/** Lyrics text size: 22sp to start, 16 to 34 in steps of 2 (`specs/worshiphub/spec.md` §5.3). */
+/** Lyrics text size, as a percentage of 22sp: 80% to 160% in steps of 10 (`specs/worshiphub/spec.md` §5.3). */
 object LyricsTextSize {
-    const val DEFAULT = 22
-    const val MIN = 16
-    const val MAX = 34
-    const val STEP = 2
+    const val DEFAULT = 100
+    const val MIN = 80
+    const val MAX = 160
+    const val STEP = 10
+    private const val BASE_SP = 22f
+
+    fun sp(percent: Int): Float = BASE_SP * percent / DEFAULT
 }
 
 /**
@@ -69,8 +74,8 @@ fun chordColor(): Color =
     if (MaterialTheme.colorScheme.surface.luminance() < DARK_SURFACE_LUMINANCE) ChordOnDark else ChordOnLight
 
 /**
- * Thin green band under the top bar: the artist, then [controls] (the tone, or the text size) and the
- * "Páginas | Rolagem" switch.
+ * Thin green band under the top bar: the artist, then [controls] (the chart's tone) and the "Páginas | Rolagem"
+ * switch.
  */
 @Composable
 fun SongBand(
@@ -123,32 +128,25 @@ fun ToneTag(tone: String) {
     )
 }
 
-/** "A−" / "A+" on the band; a side is disabled at its limit. */
+/** "Tamanho da letra  A−  100%  A+" in the three dots' panel; a side is disabled at its limit. */
 @Composable
-fun TextSizeButtons(canShrink: Boolean, canGrow: Boolean, onShrink: () -> Unit, onGrow: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        SizeButton(SMALLER_LABEL, SMALLER_DESCRIPTION, canShrink, onShrink)
-        SizeButton(BIGGER_LABEL, BIGGER_DESCRIPTION, canGrow, onGrow)
-    }
-}
-
-@Composable
-private fun SizeButton(label: String, description: String, enabled: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(
+fun TextSizeRow(percent: Int, canShrink: Boolean, canGrow: Boolean, onShrink: () -> Unit, onGrow: () -> Unit) {
+    Row(
         modifier = Modifier
-            .size(width = 34.dp, height = 30.dp)
-            .clip(shape)
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = OUTLINE_ALPHA)), shape)
-            .clickable(enabled = enabled, onClickLabel = description, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White.copy(alpha = if (enabled) 1f else OUTLINE_ALPHA),
-        )
+        Icon(Icons.Filled.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = onShrink, enabled = canShrink, contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Text(SMALLER_LABEL, fontWeight = FontWeight.SemiBold)
+        }
+        Text("$percent%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        OutlinedButton(onClick = onGrow, enabled = canGrow, contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Text(BIGGER_LABEL, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 

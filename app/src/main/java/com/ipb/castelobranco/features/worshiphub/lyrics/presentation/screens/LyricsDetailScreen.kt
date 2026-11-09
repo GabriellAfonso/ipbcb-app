@@ -50,7 +50,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.LyricsTextSize
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.PageProgress
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongBand
-import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TextSizeButtons
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TextSizeRow
 
 private const val EDIT_LABEL = "Editar letra"
 private const val EDIT_HINT = "Muda o texto"
@@ -93,12 +93,8 @@ private fun LyricsDetailContent(
 ) {
     var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     // Only while the lyrics stay open (`specs/worshiphub/spec.md` §5.3).
-    var textSize by rememberSaveable { mutableIntStateOf(LyricsTextSize.DEFAULT) }
-    val size = TextSizeControl(
-        sp = textSize,
-        onShrink = { textSize = (textSize - LyricsTextSize.STEP).coerceAtLeast(LyricsTextSize.MIN) },
-        onGrow = { textSize = (textSize + LyricsTextSize.STEP).coerceAtMost(LyricsTextSize.MAX) },
-    )
+    var textPercent by rememberSaveable { mutableIntStateOf(LyricsTextSize.DEFAULT) }
+    val textSize = LyricsTextSize.sp(textPercent)
     BaseScreen(
         tabName       = if (state.isEditing) EDIT_LABEL else state.songName.ifEmpty { "Letra" },
         logoRes       = R.drawable.ic_sarca_ipb,
@@ -107,7 +103,10 @@ private fun LyricsDetailContent(
         extraActions  = {
             when {
                 state.isEditing -> CancelBarAction(state.isSaving, onCancelEdit)
-                state.canEdit -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
+                else -> PanelMoreButton(
+                    hasActions = state.canEdit || state.stanzas.isNotEmpty(),
+                    onClick    = { isPanelOpen = true },
+                )
             }
         },
     ) { innerPadding ->
@@ -122,7 +121,7 @@ private fun LyricsDetailContent(
             scrollMode == SongScrollMode.VERTICAL -> LyricsVerticalContent(
                 stanzas        = state.stanzas,
                 artist         = state.artist,
-                size           = size,
+                textSize       = textSize,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
                 modifier       = Modifier.padding(innerPadding),
@@ -130,7 +129,7 @@ private fun LyricsDetailContent(
             else -> LyricsPager(
                 stanzas        = state.stanzas,
                 artist         = state.artist,
-                size           = size,
+                textSize       = textSize,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
                 modifier       = Modifier.padding(innerPadding),
@@ -138,20 +137,29 @@ private fun LyricsDetailContent(
         }
         Box(Modifier.padding(innerPadding)) {
             TopActionPanel(
-                visible = isPanelOpen && state.canEdit && !state.isEditing,
-                actions = listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT)),
+                visible = isPanelOpen && !state.isEditing,
+                actions = if (state.canEdit) {
+                    listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT))
+                } else {
+                    emptyList()
+                },
                 onDismiss = { isPanelOpen = false },
                 header = PanelHeader(name = state.songName, detail = state.artist.takeIf { it.isNotBlank() }),
+                controls = {
+                    if (state.stanzas.isNotEmpty()) {
+                        TextSizeRow(
+                            percent   = textPercent,
+                            canShrink = textPercent > LyricsTextSize.MIN,
+                            canGrow   = textPercent < LyricsTextSize.MAX,
+                            onShrink  = { textPercent = (textPercent - LyricsTextSize.STEP) },
+                            onGrow    = { textPercent = (textPercent + LyricsTextSize.STEP) },
+                        )
+                    }
+                },
             )
         }
         }
     }
-}
-
-/** The lyrics' text size and the band's "A−" / "A+". */
-private data class TextSizeControl(val sp: Int, val onShrink: () -> Unit, val onGrow: () -> Unit) {
-    val canShrink: Boolean get() = sp > LyricsTextSize.MIN
-    val canGrow: Boolean get() = sp < LyricsTextSize.MAX
 }
 
 /**
@@ -162,7 +170,7 @@ private data class TextSizeControl(val sp: Int, val onShrink: () -> Unit, val on
 private fun LyricsPager(
     stanzas: List<LyricsStanza>,
     artist: String,
-    size: TextSizeControl,
+    textSize: Float,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
@@ -176,7 +184,7 @@ private fun LyricsPager(
         // Phase 1: measure each stanza at the correct render width
         val stanzaHeights = stanzas.mapIndexed { i, stanza ->
             subcompose("m_$i") {
-                Column { StanzaBlock(stanza, size.sp) }
+                Column { StanzaBlock(stanza, textSize) }
             }.firstOrNull()
                 ?.measure(Constraints(maxWidth = measureWidth))
                 ?.height ?: 0
@@ -184,7 +192,7 @@ private fun LyricsPager(
 
         // Phase 2: measure chrome (header + dots) for available height calculation
         val headerHeight = subcompose("chrome_header") {
-            LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = {})
+            LyricsBand(artist = artist, scrollMode = scrollMode, onToggleScroll = {})
         }.first().measure(Constraints(maxWidth = constraints.maxWidth)).height
 
         val dotsHeight = subcompose("chrome_dots") {
@@ -201,7 +209,7 @@ private fun LyricsPager(
             PagerContent(
                 pages          = pages,
                 artist         = artist,
-                size           = size,
+                textSize       = textSize,
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
             )
@@ -245,7 +253,7 @@ private fun paginate(
 private fun PagerContent(
     pages: List<List<LyricsStanza>>,
     artist: String,
-    size: TextSizeControl,
+    textSize: Float,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
 ) {
@@ -253,7 +261,7 @@ private fun PagerContent(
     val scope      = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        LyricsBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Box(
             modifier = Modifier
@@ -265,7 +273,7 @@ private fun PagerContent(
                 state    = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                LyricsPageContent(stanzas = pages[index], textSize = size.sp)
+                LyricsPageContent(stanzas = pages[index], textSize = textSize)
             }
         }
 
@@ -277,13 +285,13 @@ private fun PagerContent(
 private fun LyricsVerticalContent(
     stanzas: List<LyricsStanza>,
     artist: String,
-    size: TextSizeControl,
+    textSize: Float,
     scrollMode: SongScrollMode,
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        LyricsBand(artist = artist, size = size, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
+        LyricsBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll)
 
         Column(
             modifier = Modifier
@@ -296,7 +304,7 @@ private fun LyricsVerticalContent(
                 Column {
                     stanzas.forEachIndexed { index, stanza ->
                         if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                        StanzaBlock(stanza, size.sp)
+                        StanzaBlock(stanza, textSize)
                     }
                 }
             }
@@ -304,16 +312,14 @@ private fun LyricsVerticalContent(
     }
 }
 
-/** The thin band: artist, "A−" / "A+" and the pages/scroll switch. */
+/** The thin band: the artist and the pages/scroll switch. */
 @Composable
-private fun LyricsBand(artist: String, size: TextSizeControl, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
-    SongBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {
-        TextSizeButtons(size.canShrink, size.canGrow, size.onShrink, size.onGrow)
-    }
+private fun LyricsBand(artist: String, scrollMode: SongScrollMode, onToggleScroll: () -> Unit) {
+    SongBand(artist = artist, scrollMode = scrollMode, onToggleScroll = onToggleScroll) {}
 }
 
 @Composable
-private fun LyricsPageContent(stanzas: List<LyricsStanza>, textSize: Int) {
+private fun LyricsPageContent(stanzas: List<LyricsStanza>, textSize: Float) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -332,7 +338,7 @@ private fun LyricsPageContent(stanzas: List<LyricsStanza>, textSize: Int) {
 }
 
 @Composable
-private fun StanzaBlock(stanza: LyricsStanza, textSize: Int) {
+private fun StanzaBlock(stanza: LyricsStanza, textSize: Float) {
     val style = MaterialTheme.typography.titleLarge
         .copy(fontSize = textSize.sp, lineHeight = (textSize * LINE_HEIGHT).sp)
     Column {

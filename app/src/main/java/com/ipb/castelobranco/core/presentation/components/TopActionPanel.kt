@@ -88,7 +88,7 @@ fun PanelMoreButton(hasActions: Boolean, onClick: () -> Unit) {
 /**
  * The actions panel: comes down right under the top bar, over a scrim that darkens the rest of the screen; a tap
  * outside or back closes it. With a [header] the options split into "Gerenciar" and "Cuidado". [controls] go under
- * the header and keep the panel open when used (the chord chart's text size).
+ * the header and keep the panel open when used (the text size of chord charts and lyrics).
  * Place it at the top of the screen's content, under the top bar.
  */
 @Composable
