@@ -380,7 +380,8 @@ acima dos campos:
 em pilula verde ("Salvar música" / "Salvar cifra" / "Salvar letra") e, enquanto faltar algo, "Falta: {campos}" em
 cima dele (ex.: "Falta: tom, instrumento"); o botao fica cinza enquanto falta algo. Salvando: spinner e "Salvando…".
 O erro do envio aparece acima do rodape. Com o teclado aberto, a tela encolhe para caber acima dele: o rodape e o
-trecho sendo digitado ficam visiveis.
+trecho sendo digitado ficam visiveis. No editor de texto (cifra e letra), tocar num trecho poe o cursor ali e a tela
+nao salta para outro ponto do texto; se o teclado cobrir o trecho tocado, a tela rola so o necessario para mostra-lo.
 
 **Tela:** campos "Título" e "Artista", os dois obrigatorios ("Falta: título, artista"), e a dica "Depois de salvar,
 a música aparece em Músicas e já pode receber cifra e letra.". Salvar faz `POST api/songs/` com `{ title, artist }` ja sem espacos nas pontas

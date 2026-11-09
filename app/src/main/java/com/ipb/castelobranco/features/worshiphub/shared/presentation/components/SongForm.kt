@@ -5,6 +5,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -14,15 +17,19 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,17 +45,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +77,8 @@ import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.core.presentation.components.ResizeForKeyboard
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 
 // The worship hub's forms (new song, chord chart and lyrics), "com prévia" (`specs/worshiphub/spec.md` §3.3).
 
@@ -205,6 +221,7 @@ fun FormTextField(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val shape = RoundedCornerShape(FieldCorner)
     val base = if (monospace) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge
     val textStyle = base.copy(
@@ -233,8 +250,67 @@ fun FormTextField(
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 interactionSource = interaction,
                 keyboardOptions = keyboardOptions,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).heightIn(min = minHeight),
+                onTextLayout = { textLayout = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .heightIn(min = minHeight)
+                    .then(
+                        if (singleLine) {
+                            Modifier
+                        } else {
+                            Modifier.keepCursorInView(value, focused, enabled, { textLayout }, onValueChange)
+                        },
+                    ),
             )
+        }
+    }
+}
+
+/**
+ * For a tall text field inside a scrolling form. On gaining focus, the text field scrolls to the selection it had
+ * before the tap (the end of the text, when just opened), so the tapped position is set on the press, before focus.
+ * A press that turns into a scroll puts the selection back. The field cannot follow the cursor when the keyboard
+ * shrinks the form (only a field that fit whole is kept in view), so that is done here.
+ */
+@Composable
+private fun Modifier.keepCursorInView(
+    value: TextFieldValue,
+    focused: Boolean,
+    enabled: Boolean,
+    textLayout: () -> TextLayoutResult?,
+    onValueChange: (TextFieldValue) -> Unit,
+): Modifier {
+    val currentValue by rememberUpdatedState(value)
+    val currentLayout by rememberUpdatedState(textLayout)
+    val currentOnChange by rememberUpdatedState(onValueChange)
+    val placesOnPress by rememberUpdatedState(enabled && !focused)
+    val requester = remember { BringIntoViewRequester() }
+    val density = LocalDensity.current
+    val ime = WindowInsets.ime
+
+    LaunchedEffect(focused) {
+        if (!focused) return@LaunchedEffect
+        snapshotFlow { ime.getBottom(density) }
+            .filter { it > 0 }
+            .collectLatest {
+                val layout = currentLayout() ?: return@collectLatest
+                val cursor = currentValue.selection.max.coerceIn(0, layout.layoutInput.text.length)
+                requester.bringIntoView(layout.getCursorRect(cursor))
+            }
+    }
+
+    return bringIntoViewRequester(requester).pointerInput(Unit) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val layout = currentLayout()
+            if (!placesOnPress || layout == null) return@awaitEachGesture
+            val previous = currentValue.selection
+            currentOnChange(currentValue.copy(selection = TextRange(layout.getOffsetForPosition(down.position))))
+            // Final: the form's scroll consumes the drag in the Main pass, after this field.
+            if (waitForUpOrCancellation(PointerEventPass.Final) == null) {
+                currentOnChange(currentValue.copy(selection = previous))
+            }
         }
     }
 }
