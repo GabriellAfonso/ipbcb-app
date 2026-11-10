@@ -31,7 +31,8 @@ interface BibleRepository {
     /** Traduções no disco, mas no formato antigo (sem títulos): legíveis, e baixadas de novo em silêncio. */
     val outdatedTranslationsFlow: StateFlow<Set<BibleTranslation>>
     val positionFlow: StateFlow<BibleReadingPosition>
-    val fontSizeFlow: StateFlow<Float>
+    /** The reader's text size, in percent (`specs/core/spec.md` §6.7.1). */
+    val textScaleFlow: StateFlow<Int>
 
     /** Converte o arquivo antigo, se houver, e detecta as traduções baixadas (só checa os arquivos). */
     suspend fun preload()
@@ -41,7 +42,7 @@ interface BibleRepository {
 
     suspend fun savePosition(bookAbbrev: String, chapter: Int, verse: Int)
 
-    suspend fun setFontSize(size: Float)
+    suspend fun setTextScale(percent: Int)
 
     /** Apaga os arquivos de TODAS as traduções e reseta a posição/preferência. */
     suspend fun clearAll()

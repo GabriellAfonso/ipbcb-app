@@ -39,8 +39,8 @@ trecho malformado é ignorado). Esses versículos do capítulo aberto ficam dest
 segura o "voltar". Tocar num versículo destacado o seleciona normalmente (a seleção pinta por cima). Mudar de capítulo
 ou de livro (setas, índice) apaga o destaque.
 
-O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar a fonte (14–32, padrão 18) e
-copiar/compartilhar os versículos selecionados. A toolbar do leitor é quase preta (`#141414`) nos dois
+O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar o tamanho do texto (o `tT` abre a barra
+padrão do app, `specs/core/spec.md` §6.7.1, com 100% = 18sp) e copiar/compartilhar os versículos selecionados. A toolbar do leitor é quase preta (`#141414`) nos dois
 temas, com ícones brancos e os botões de livro, capítulo e tradução em cinza escuro (`#2B2B2B`, cantos arredondados)
 com texto branco em negrito e fonte média (`bodyMedium`); os ícones de vídeos e de tamanho da fonte são compactos
 (40dp) para sobrar espaço ao nome do livro. Capítulo, tradução e os ícones ficam sempre inteiros; um nome de livro que não cabe
@@ -92,7 +92,7 @@ Cada tradução vive dividida por livro em `filesDir/bible/{naa,ara}/`:
   antigo (só texto): continua legível e entra na atualização (5.2).
 
 A tradução conta como presente quando `index.json` existe. `BiblePreferences` (DataStore) guarda a tradução ativa,
-a última posição (livro, capítulo, versículo) e o tamanho da fonte.
+a última posição (livro, capítulo, versículo) e o tamanho do texto (`bible_text_scale`, em %; core §6.7.1).
 
 **Arquivo antigo.** Versões anteriores gravavam a tradução inteira em `filesDir/snapshots/bible_{naa,ara}.json`
 (+ `_etag.txt`). O repositório converte esse arquivo para o formato por livro na primeira checagem do disco e o
@@ -103,7 +103,7 @@ convertida fica no formato antigo (o arquivo antigo não tem títulos).
 
 Expõe `booksFlow` (índice da tradução ativa), `currentBookFlow` (texto do livro da posição atual),
 `activeTranslationFlow`, `cachedTranslationsFlow` (traduções presentes no disco), `outdatedTranslationsFlow`
-(presentes, mas no formato antigo), `positionFlow` e `fontSizeFlow`.
+(presentes, mas no formato antigo), `positionFlow` e `textScaleFlow` (%).
 
 - **Posição em memória antes do disco.** `savePosition` muda `positionFlow` na hora (um `MutableStateFlow` na frente
   do DataStore) e grava depois; quando a gravação chega, os dois concordam. `clearAll` descarta a posição em memória

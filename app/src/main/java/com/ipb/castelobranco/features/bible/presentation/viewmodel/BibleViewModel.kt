@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.ipb.castelobranco.core.data.NetworkConnectivityObserver
+import com.ipb.castelobranco.core.domain.model.TextScale
+import com.ipb.castelobranco.features.bible.data.local.BiblePreferences
 import com.ipb.castelobranco.features.bible.data.work.BibleDownloadWorker
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
 import com.ipb.castelobranco.features.bible.domain.model.BibleBookText
@@ -52,7 +54,8 @@ data class BibleUiState(
     val activeTranslation: BibleTranslation = BibleTranslation.Default,
     val cachedTranslations: Set<BibleTranslation> = emptySet(),
     val position: BibleReadingPosition = BibleReadingPosition.default(),
-    val fontSize: Float = 18f,
+    /** Percent of [BiblePreferences.BASE_FONT_SIZE]. */
+    val textScalePercent: Int = TextScale.DEFAULT,
     val download: BibleDownloadStatus = BibleDownloadStatus(),
     val selectedVerses: Set<VerseRef> = emptySet(),
     /** Verses cited by whoever opened the passage (doctrine proof texts); not a selection. */
@@ -89,6 +92,9 @@ data class BibleUiState(
             val chapter = if (text.chapter(position.chapter) != null) position.chapter else 1
             return text.headings(chapter)
         }
+
+    /** The verse text size in sp. */
+    val fontSize: Float get() = TextScale.sp(BiblePreferences.BASE_FONT_SIZE, textScalePercent)
 
     val isBibleReady: Boolean get() = books.isNotEmpty()
 
@@ -177,12 +183,12 @@ class BibleViewModel @Inject constructor(
                 position = position,
             )
         },
-        repository.fontSizeFlow,
+        repository.textScaleFlow,
         downloadStatus,
         combine(_selectedVerses, _highlightedVerses, progress, ::ReaderMarks),
-    ) { base, font, status, marks ->
+    ) { base, textScale, status, marks ->
         base.copy(
-            fontSize = font,
+            textScalePercent = textScale,
             download = status,
             selectedVerses = marks.selected,
             highlightedVerses = marks.highlighted,
@@ -291,8 +297,8 @@ class BibleViewModel @Inject constructor(
         }
     }
 
-    fun setFontSize(size: Float) {
-        viewModelScope.launch { repository.setFontSize(size) }
+    fun setTextScale(percent: Int) {
+        viewModelScope.launch { repository.setTextScale(percent) }
     }
 
     fun toggleVerseSelection(ref: VerseRef) {

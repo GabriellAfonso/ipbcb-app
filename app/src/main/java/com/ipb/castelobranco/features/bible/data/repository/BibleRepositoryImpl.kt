@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.bible.data.repository
 
 import com.ipb.castelobranco.core.di.IoDispatcher
+import com.ipb.castelobranco.core.domain.model.TextScale
 import com.ipb.castelobranco.features.bible.data.local.BibleLocalStore
 import com.ipb.castelobranco.features.bible.data.local.BiblePreferences
 import com.ipb.castelobranco.features.bible.domain.model.BibleBook
@@ -73,11 +74,11 @@ class BibleRepositoryImpl @Inject constructor(
                 initialValue = BibleReadingPosition.default(),
             )
 
-    override val fontSizeFlow: StateFlow<Float> =
-        preferences.fontSizeFlow.stateIn(
+    override val textScaleFlow: StateFlow<Int> =
+        preferences.textScaleFlow.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
-            initialValue = BiblePreferences.DEFAULT_FONT_SIZE,
+            initialValue = TextScale.DEFAULT,
         )
 
     /**
@@ -158,8 +159,8 @@ class BibleRepositoryImpl @Inject constructor(
         preferences.setPosition(bookAbbrev, chapter, verse)
     }
 
-    override suspend fun setFontSize(size: Float) {
-        preferences.setFontSize(size)
+    override suspend fun setTextScale(percent: Int) {
+        preferences.setTextScale(percent)
     }
 
     override suspend fun clearAll() = withContext(ioDispatcher) {

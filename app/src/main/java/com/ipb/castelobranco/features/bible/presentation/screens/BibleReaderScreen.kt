@@ -57,7 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.features.bible.domain.model.BiblePlace
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 import com.ipb.castelobranco.features.bible.presentation.components.BibleDownloadBanner
-import com.ipb.castelobranco.features.bible.presentation.components.BibleFontSizeBar
+import com.ipb.castelobranco.core.presentation.components.TextSizeBar
 import com.ipb.castelobranco.features.bible.presentation.components.BiblePendingWifiBanner
 import com.ipb.castelobranco.features.bible.presentation.components.BibleReaderToolbar
 import com.ipb.castelobranco.features.bible.presentation.components.BibleVerseColumn
@@ -193,9 +193,9 @@ fun BibleReaderScreen(
                     onVideosClick = { showVideos = true },
                 )
                 if (showFontBar) {
-                    BibleFontSizeBar(
-                        fontSizeSp = state.fontSize,
-                        onFontSizeChange = viewModel::setFontSize,
+                    TextSizeBar(
+                        percent = state.textScalePercent,
+                        onPercentChange = viewModel::setTextScale,
                     )
                 }
             }

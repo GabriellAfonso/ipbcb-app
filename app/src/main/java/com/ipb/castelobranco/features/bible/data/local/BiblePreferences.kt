@@ -4,9 +4,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ipb.castelobranco.core.data.local.TextScaleStore
 import com.ipb.castelobranco.core.di.SettingsPrefs
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
@@ -19,16 +19,20 @@ class BiblePreferences @Inject constructor(
     @param:SettingsPrefs private val dataStore: DataStore<Preferences>,
 ) {
     companion object {
-        const val DEFAULT_FONT_SIZE: Float = 18f
-        const val MIN_FONT_SIZE: Float = 14f
-        const val MAX_FONT_SIZE: Float = 32f
+        /** The reader's text at 100% (`specs/core/spec.md` §6.7.1). */
+        const val BASE_FONT_SIZE: Float = 18f
     }
 
     private val translationKey  = stringPreferencesKey("bible_translation")
     private val lastBookKey     = stringPreferencesKey("bible_last_book_abbrev")
     private val lastChapterKey  = intPreferencesKey("bible_last_chapter")
     private val lastVerseKey    = intPreferencesKey("bible_last_verse")
-    private val fontSizeKey     = floatPreferencesKey("bible_font_size")
+    private val textScale = TextScaleStore(
+        dataStore = dataStore,
+        key = "bible_text_scale",
+        legacySpKey = "bible_font_size",
+        legacyBaseSp = BASE_FONT_SIZE,
+    )
 
     // Outside resetAll(): deleting the Bible must not undo its own pause.
     private val autoDownloadPausedKey = booleanPreferencesKey("bible_auto_download_paused")
@@ -47,8 +51,8 @@ class BiblePreferences @Inject constructor(
             )
         }
 
-    val fontSizeFlow: Flow<Float> =
-        dataStore.data.map { prefs -> prefs[fontSizeKey] ?: DEFAULT_FONT_SIZE }
+    /** Percent of [BASE_FONT_SIZE]. */
+    val textScaleFlow: Flow<Int> = textScale.flow
 
     suspend fun setTranslation(translation: BibleTranslation) {
         dataStore.edit { prefs -> prefs[translationKey] = translation.code }
@@ -62,9 +66,7 @@ class BiblePreferences @Inject constructor(
         }
     }
 
-    suspend fun setFontSize(size: Float) {
-        dataStore.edit { prefs -> prefs[fontSizeKey] = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE) }
-    }
+    suspend fun setTextScale(percent: Int) = textScale.set(percent)
 
     suspend fun isAutoDownloadPaused(): Boolean = dataStore.data.first()[autoDownloadPausedKey] ?: false
 
@@ -78,7 +80,7 @@ class BiblePreferences @Inject constructor(
             prefs.remove(lastBookKey)
             prefs.remove(lastChapterKey)
             prefs.remove(lastVerseKey)
-            prefs.remove(fontSizeKey)
+            textScale.clear(prefs)
         }
     }
 }

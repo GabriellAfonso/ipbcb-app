@@ -70,7 +70,7 @@ class BibleViewModelTest {
         every { repository.activeTranslationFlow } returns MutableStateFlow(BibleTranslation.NAA)
         every { repository.cachedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.NAA))
         every { repository.positionFlow } returns MutableStateFlow(BibleReadingPosition("gn", 1, 1))
-        every { repository.fontSizeFlow } returns MutableStateFlow(18f)
+        every { repository.textScaleFlow } returns MutableStateFlow(100)
         every { workManager.getWorkInfosForUniqueWorkFlow(any()) } returns flowOf(emptyList())
         every { connectivityObserver.isOnWifi } returns flowOf(false)
         every { progressRepository.progress } returns progress
@@ -336,12 +336,18 @@ class BibleViewModelTest {
     // region font size
 
     @Test
-    fun `setFontSize delegates to repository`() = runTest {
+    fun `setTextScale delegates to repository`() = runTest {
         val vm = buildViewModel()
-        vm.setFontSize(24f)
+        vm.setTextScale(120)
         advanceUntilIdle()
 
-        coVerify { repository.setFontSize(24f) }
+        coVerify { repository.setTextScale(120) }
+    }
+
+    @Test
+    fun `the verse size is the text scale of 18sp`() {
+        assertEquals(18f, BibleUiState().fontSize)
+        assertEquals(27f, BibleUiState(textScalePercent = 150).fontSize)
     }
 
     // endregion

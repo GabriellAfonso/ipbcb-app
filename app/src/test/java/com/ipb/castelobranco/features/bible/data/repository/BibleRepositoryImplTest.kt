@@ -50,7 +50,7 @@ class BibleRepositoryImplTest {
         Dispatchers.setMain(testDispatcher)
         every { preferences.translationFlow } returns translation
         every { preferences.positionFlow } returns position
-        every { preferences.fontSizeFlow } returns flowOf(BiblePreferences.DEFAULT_FONT_SIZE)
+        every { preferences.textScaleFlow } returns flowOf(100)
         coEvery { store.loadIndex(any()) } returns listOf(genesis, exodus)
         coEvery { store.loadBook(any(), 0, "gn") } returns genesisText
         coEvery { store.loadBook(any(), 1, "ex") } returns exodusText
@@ -346,11 +346,11 @@ class BibleRepositoryImplTest {
     }
 
     @Test
-    fun `setFontSize delegates to preferences`() = runTest {
+    fun `setTextScale delegates to preferences`() = runTest {
         val repo = buildRepository()
-        repo.setFontSize(24f)
+        repo.setTextScale(120)
 
-        coVerify { preferences.setFontSize(24f) }
+        coVerify { preferences.setTextScale(120) }
     }
 
     // endregion
