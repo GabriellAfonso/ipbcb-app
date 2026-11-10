@@ -144,7 +144,8 @@ fica com fundo verde leve e alfinete verde.
 (escolha a mao, tom, fixar/desafixar, "Gerar") e voltam ao reabrir a tela ou o app. Expiram 1h depois da
 ultima mudanca (TTL deslizante); a expiracao so e checada ao restaurar, nunca esvazia uma tela aberta, e
 restaurar nao conta como mudanca. Musica que saiu do catalogo volta como linha vazia; a restauracao espera o
-catalogo carregar. "Limpar repertorio" zera as linhas e o rascunho. O rascunho e so do aparelho: nao vai ao
+catalogo carregar. "Limpar repertorio" pede confirmacao ("Limpar repertório?" / "As músicas escolhidas nesta tela
+serão apagadas." com "Limpar" e "Cancelar") e so entao zera as linhas e o rascunho. O rascunho e so do aparelho: nao vai ao
 servidor, nao e preenchido a partir do repertorio salvo e continua depois do logout. Guardado no DataStore
 `@SetlistPrefs` (chaves `repertoire_draft_v1` e `repertoire_draft_updated_at`) por `RepertoireDraftStorage`;
 regras em `DraftExpiry` e `RestoreRepertoireDraftUseCase`, tempo via `WallClock` (core).

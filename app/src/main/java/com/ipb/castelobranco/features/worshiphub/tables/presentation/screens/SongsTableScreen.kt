@@ -89,6 +89,10 @@ data class WorshipSongsUiState(
     val canRegisterSunday: Boolean = false,
 )
 
+private const val CLEAR_REPERTOIRE_TITLE = "Limpar repertório?"
+private const val CLEAR_REPERTOIRE_BODY = "As músicas escolhidas nesta tela serão apagadas."
+private const val CLEAR_REPERTOIRE_CONFIRM = "Limpar"
+
 
 data class WorshipSongsActions(
     val onBackClick: () -> Unit,
@@ -178,6 +182,23 @@ fun WorshipSongsTableContent(
             text = { Text(RepertoireTexts.CONFIRM_BODY) },
             confirmButton = { TextButton(onClick = actions.onConfirmSave) { Text("Salvar") } },
             dismissButton = { TextButton(onClick = actions.onDismissSave) { Text("Cancelar") } },
+        )
+    }
+
+    // The trash can on the Repertório tab asks before wiping the rows.
+    var confirmingClear by rememberSaveable { mutableStateOf(false) }
+    if (confirmingClear) {
+        AlertDialog(
+            onDismissRequest = { confirmingClear = false },
+            title = { Text(CLEAR_REPERTOIRE_TITLE) },
+            text = { Text(CLEAR_REPERTOIRE_BODY) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingClear = false
+                    actions.onClearRepertoire()
+                }) { Text(CLEAR_REPERTOIRE_CONFIRM) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingClear = false }) { Text("Cancelar") } },
         )
     }
 
@@ -312,7 +333,7 @@ fun WorshipSongsTableContent(
                                 onToneChange = actions.onToneChange,
                                 onToggleFixed = actions.onToggleFixed,
                                 onGenerateClick = actions.onGenerateClick,
-                                onClearClick = actions.onClearRepertoire,
+                                onClearClick = { confirmingClear = true },
                                 save = state.save,
                                 onSaveClick = actions.onSaveClick,
                                 onSongInfoClick = actions.onSongClick,
