@@ -89,7 +89,9 @@ claros enquanto a tela está aberta.
 - **Etiquetas** com o primeiro nome de quem está marcado, sobre a foto, logo acima do rodapé.
 - **Rodapé**, sobre um degradê: "Baixar", "Compartilhar" e "Detalhes" (seção 10.2), ícone com o nome embaixo, em
   branco. "Baixar" salva em `Pictures/ipb_castelobranco` com o nome da foto e o MIME pela extensão, e vira "Baixada"
-  com um ✓ verde-claro por 2 s — sem aviso por cima da foto.
+  com um ✓ verde-claro, desabilitado — sem aviso por cima da foto. A marca fica só na memória enquanto a galeria
+  está aberta (o ViewModel do grafo): voltar àquela foto mostra "Baixada" e não deixa baixar de novo; sair da
+  galeria ou fechar o app esquece tudo e o botão volta a "Baixar". Nada vai ao disco nem ao servidor.
 - Tocar na foto esconde ou mostra topo, etiquetas e rodapé. Zoom por pinça, duplo toque volta ao normal.
 - Foto ainda sem original no aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.
 

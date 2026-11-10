@@ -436,6 +436,18 @@ class GalleryViewModel @Inject constructor(
         _videoMuted.value = muted
     }
 
+    private val _savedToDevice = MutableStateFlow<Set<Long>>(emptySet())
+
+    /**
+     * Photos and videos "Baixar" already saved while the gallery is open: their button stays "Baixada". Memory
+     * only, like [videoMuted]: leaving the gallery or closing the app forgets it.
+     */
+    val savedToDevice: StateFlow<Set<Long>> = _savedToDevice.asStateFlow()
+
+    fun markSavedToDevice(photoId: Long) {
+        _savedToDevice.update { it + photoId }
+    }
+
     /** "Não, obrigado" on the card: it never comes back; the switch lives in settings. */
     fun dismissVideoCard() {
         viewModelScope.launch { videoSettings.dismissCard() }

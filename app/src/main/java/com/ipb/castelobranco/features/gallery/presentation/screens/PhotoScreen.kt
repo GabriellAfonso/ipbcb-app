@@ -94,7 +94,6 @@ import com.ipb.castelobranco.features.gallery.presentation.state.ViewerPhoto
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
 import java.io.OutputStream
@@ -102,7 +101,6 @@ import java.io.OutputStream
 private const val SAVED_LABEL = "Baixada"
 private const val BACK_LABEL = "Voltar"
 private const val DETAIL_SEPARATOR = " · "
-private const val SAVED_FEEDBACK_MS = 2_000L
 private const val TOP_SHADE_ALPHA = 0.6f
 private const val BOTTOM_SHADE_ALPHA = 0.7f
 private const val MUTED_ALPHA = 0.75f
@@ -136,6 +134,7 @@ fun PhotoScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
     val muted by viewModel.videoMuted.collectAsStateWithLifecycle()
+    val savedIds by viewModel.savedToDevice.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Black screen in both themes: light system bar icons while the viewer is open.
@@ -164,7 +163,12 @@ fun PhotoScreen(
             previewLoader = viewModel.previewLoader,
             onBack = nav.back,
             onPageChanged = { currentId -> viewModel.onPageChanged(viewerId, currentId) },
-            onSave = { photo -> photo.file?.let { saveToDevice(context, it, photo.fileName, photo) } },
+            onSave = { photo ->
+                photo.file?.let { file ->
+                    saveToDevice(context, file, photo.fileName, photo)
+                    viewModel.markSavedToDevice(photo.id)
+                }
+            },
             onShare = { photo -> photo.file?.let { shareFile(context, it, photo.mimeType) } },
             // Cada ação usa o álbum da própria foto: num resultado de filtro, as fotos vêm de vários.
             manage = PhotoManageActions(
@@ -176,6 +180,7 @@ fun PhotoScreen(
             ),
             isPickerOpen = dialog is GalleryDialogState.PeoplePicker,
             video = VideoControls(muted = muted, onMutedChange = viewModel::setVideoMuted),
+            savedIds = savedIds,
         )
     }
     GalleryDialogHost(dialog, rememberDialogActions(viewModel))
@@ -205,13 +210,14 @@ fun PhotoContent(
     /** The people picker is open: the details sheet steps aside for it. */
     isPickerOpen: Boolean = false,
     video: VideoControls = VideoControls(),
+    /** Saved with "Baixar" while the gallery is open: their button stays "Baixada". */
+    savedIds: Set<Long> = emptySet(),
 ) {
     val view = LocalView.current
     val player = rememberGalleryPlayer()
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var showDetails by rememberSaveable { mutableStateOf(false) }
     var showChrome by rememberSaveable { mutableStateOf(true) }
-    var savedPhotoId by remember { mutableStateOf<Long?>(null) }
     val photos = state.photos
     // Recriado quando as fotos chegam, para abrir já na foto tocada.
     val pagerState = key(state.isLoading) { rememberPagerState(initialPage = state.currentIndex) { photos.size } }
@@ -332,12 +338,11 @@ fun PhotoContent(
                 current?.people?.takeIf { it.isNotEmpty() }?.let { PeopleTags(it) }
                 ViewerBottomBar(
                     canSaveOrShare = current?.canSaveOrShare == true,
-                    isSaved = current != null && savedPhotoId == current.id,
+                    isSaved = current != null && current.id in savedIds,
                     onSave = {
                         val photo = current ?: return@ViewerBottomBar
                         view.playSoundEffect(SoundEffectConstants.CLICK)
                         onSave(photo)
-                        savedPhotoId = photo.id
                     },
                     onShare = {
                         val photo = current ?: return@ViewerBottomBar
@@ -418,7 +423,7 @@ private fun PeopleTags(people: List<String>) {
     }
 }
 
-/** "Baixar" ("Baixada" for a moment after saving), "Compartilhar" and "Detalhes", white, over a dark gradient. */
+/** "Baixar" ("Baixada" once saved while the gallery is open), "Compartilhar" and "Detalhes", over a dark gradient. */
 @Composable
 private fun ViewerBottomBar(
     canSaveOrShare: Boolean,
