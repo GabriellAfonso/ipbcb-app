@@ -45,7 +45,8 @@ no ViewModel): titulo do grupo "1 – 100", "101 – 200"… centralizado entre 
 (`surfaceContainer`) com os hinos do grupo. Numero sem parte numerica vai para o grupo "Outros", no fim.
 
 **Linha:** numero grande em verde (`BrandColors.Green`, 22 sp, negrito) a esquerda, coluna de largura
-minima 48 sp que cresce se preciso; sufixo do numero ("-A" em "110-A") em 14 sp para nao ser cortado; titulo
+minima 48 sp que cresce se preciso; sufixo do numero ("-A" em "110-A") em 14 sp para nao ser cortado, erguido para ficar
+centralizado na altura dos digitos (nao apoiado na base deles); titulo
 em cima e o comeco da primeira estrofe numa linha embaixo. Linha inteira clicavel. Busca sem resultado: "Nenhum hino
 encontrado para “{busca}”."
 

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,12 @@ private val CardSideMargin = 10.dp
 private val NumberColumnWidth = 48.sp
 private val NumberFontSize = 22.sp
 private val NumberSuffixFontSize = 14.sp
+
+/**
+ * Cap heights are ~0.7 em: the digits' centre is ~7.7 sp above the baseline, the suffix's ~4.9 sp. The 2.8 sp
+ * difference, as a fraction of the suffix's 14 sp, is the lift.
+ */
+private val NumberSuffixLift = BaselineShift(0.2f)
 private const val SEARCH_FIELD_ALPHA = 0.14f
 private const val PLACEHOLDER_ALPHA = 0.7f
 private const val COUNT_ALPHA = 0.75f
@@ -260,7 +267,10 @@ private fun GroupRule(label: String) {
     }
 }
 
-/** Leading digits at full size, any suffix ("-A") smaller so it fits next to them. */
+/**
+ * Leading digits at full size, any suffix ("-A") smaller so it fits next to them. A smaller span sits on the
+ * digits' baseline and looks low, so it is lifted to share their vertical centre.
+ */
 private fun numberLabel(number: String) = buildAnnotatedString {
     val digits = number.takeWhile { it.isDigit() }
     append(digits)
@@ -268,7 +278,7 @@ private fun numberLabel(number: String) = buildAnnotatedString {
     if (suffix.isNotEmpty()) {
         val start = length
         append(suffix)
-        addStyle(SpanStyle(fontSize = NumberSuffixFontSize), start, length)
+        addStyle(SpanStyle(fontSize = NumberSuffixFontSize, baselineShift = NumberSuffixLift), start, length)
     }
 }
 
