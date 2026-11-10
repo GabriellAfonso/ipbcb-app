@@ -446,10 +446,10 @@ Implementacao base de `SnapshotFetcher` para Retrofit:
 | Chave | Tipo | Default | Descricao |
 |-------|------|---------|-----------|
 | `theme_mode` | Int | 0 (FollowSystem) | 0=Sistema, 1=Light, 2=Dark |
-| `hymnal_font_size` | Float | 22f | Tamanho da fonte do hinario |
+| `hymnal_text_scale` | Int | 100 | Tamanho do texto do hinario, em % de 22sp (6.7.1; le `hymnal_font_size` antigo) |
 | `song_scroll_mode` | Int | 0 (Horizontal) | 0=Horizontal, 1=Vertical |
 
-Flows: `themeModeFlow`, `hymnalFontSizeFlow`, `songScrollModeFlow`.
+Flows: `themeModeFlow`, `hymnalTextScaleFlow`, `songScrollModeFlow`.
 
 #### SetlistPreferences (`@SetlistPrefs`)
 
@@ -841,6 +841,49 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `AppMessages` / `AppMessageHost` | Avisos do app inteiro: qualquer tela ou nav graph chama `AppMessages.show(texto, long)`, e o único `AppMessageHost`, no `CoreActivity` acima da navegação, mostra um Snackbar (curto, ou longo com `long = true`). Como fica acima da navegação, o aviso continua depois que a tela que o mandou fecha ("salvo" e volta). Fica acima da barra de navegação, do teclado e dos botões flutuantes (80dp); um aviso novo substitui o que está na tela. O app não usa Toast; telas com Snackbar próprio (ação de desfazer) continuam com o seu |
 | `PermissionErrorPlaceholder` | Erro de permissao com botao opcional "Conectar a sua conta" |
 | `SquarePhotoPicker` | `rememberSquarePhotoPicker(onPicked, onCancelled)`: escolhe imagem da galeria, recorta com UCrop (1:1, max 512x512, titulo "Recortar Foto") e entrega os bytes JPEG. Apaga o arquivo recortado logo depois de ler e varre `cacheDir/cropped_*` a cada abertura — nenhuma copia fica no aparelho. Usado pela foto de perfil e pela foto de membro |
+| `TextSizeBar` | A barra de tamanho do texto de leitura (6.7.1) |
+
+### 6.7.1 Tamanho do texto de leitura
+
+Toda tela de leitura (Biblia, hinario, Catecismo, Confissao, licao da EBD, cifra, letra) muda o tamanho do texto do
+mesmo jeito, para o app nao parecer remendado.
+
+**Onde abre:** o icone `tT` (`Icons.Filled.FormatSize`) na top bar abre e fecha a barra logo abaixo dela. A tela
+que nao tem espaco na top bar (cifra e letra, com os tres pontos) mostra a mesma barra dentro do painel dos tres
+pontos, sob o rotulo "Tamanho da letra". Nenhuma tela usa "Aa", "A−/A+" ou outro controle.
+
+**A barra (`core/presentation/components/TextSizeBar`):** "−", um slider e "+", com o valor em porcentagem a
+direita ("100%"). O slider anda de 5 em 5% e o − e o + tambem, de 80% a 180%; no limite, o botao daquele lado fica
+desabilitado. Enquanto arrasta, o texto ja muda a cada 5%. As cores vem de `TextSizeBarDefaults`: `colors()` sobre
+a superficie (`surfaceContainer`, trilha e bolinha `primary`) e `onBrandColors()` sobre o verde (hinario: icones
+e valor brancos, trilha e bolinha `onPrimaryContainerLight`). No painel dos tres pontos a barra fica sem fundo.
+
+**Escala (`core/domain/model/TextScale`):** 100% e o tamanho padrao de cada tela, entao o mesmo valor quer dizer o
+mesmo em todo o app, mesmo com bases diferentes:
+
+| Tela | 100% = |
+|------|--------|
+| Biblia | 18sp |
+| Hinario | 22sp |
+| Catecismo, Confissao, licao da EBD | 18sp |
+| Cifra | o tamanho do tema (acordes `labelMedium`, letra `bodyLarge`) |
+| Letra | 22sp |
+
+**Onde fica salvo (`@SettingsPrefs`, `core/data/local/TextScaleStore`):** cada area guarda o seu valor, em %:
+quem projeta o hinario grande no culto nao quer a Biblia gigante no celular.
+
+| Area | Chave (Int, %) | Chave antiga (Float, sp) |
+|------|----------------|--------------------------|
+| Biblia | `bible_text_scale` | `bible_font_size` |
+| Hinario | `hymnal_text_scale` | `hymnal_font_size` |
+| Estudos (Catecismo, Confissao, EBD) | `doctrine_text_scale` | `doctrine_font_size` |
+| Cifras | `chord_text_scale` | — (ja era %) |
+| Letras | nao salva: vale enquanto a letra esta aberta (`specs/worshiphub/spec.md` §5.3) | — |
+
+**Valor antigo:** enquanto a chave nova nao existe, o valor vem da chave antiga convertido (sp ÷ base × 100,
+arredondado para o multiplo de 5 mais proximo e limitado a 80–180%). Ex.: Biblia em 22sp vira 120%. A primeira
+mudanca grava a chave nova e apaga a antiga. Ninguem perde o tamanho que tinha. Qualquer valor lido (inclusive o
+`chord_text_scale` de 80–160% em passos de 10) passa pela mesma normalizacao.
 
 ### 6.8 Modifiers
 
