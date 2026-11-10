@@ -487,9 +487,9 @@ secao mais alta que a pagina comeca numa pagina nova e continua nas seguintes, l
 primeiro pedaco: nada fica cortado. O bloco seguinte pode dividir a ultima pagina dela. A intro nunca se divide.
 Quando as paginas mudam (tamanho da letra, girar a tela), a tela fica na pagina que mostra o trecho que estava no topo.
 
-**Tamanho da letra:** nos tres pontos, a linha "Tamanho da letra" com "A−", o valor ("100%") e "A+", de 80% a 160%
-em passos de 10%; o lado no limite fica desabilitado e o painel nao fecha ao tocar. Muda acordes e letra juntos, e
-as paginas sao refeitas com a medida nova. Fica salvo no aparelho (`chord_text_scale`, `@SettingsPrefs`), um so para
+**Tamanho da letra:** nos tres pontos (a barra de cima nao tem espaco para o `tT`), o rotulo "Tamanho da letra" e,
+embaixo, a barra padrao do app (`specs/core/spec.md` §6.7.1: −, slider, +, "100%", de 80% a 180% em passos de 5%),
+sem fundo; o painel nao fecha ao mexer. Muda acordes e letra juntos, e as paginas sao refeitas com a medida nova. Fica salvo no aparelho (`chord_text_scale`, `@SettingsPrefs`), um so para
 todas as cifras. No modo rolagem, a posicao em pixels se mantem, entao o trecho do topo pode mudar.
 
 **Layout "ajuste fino com faixa"** (o mesmo na letra, 5.3):
@@ -586,9 +586,8 @@ na faixa fina, so o artista e o seletor "Paginas | Rolagem" (letra nao tem tom).
 **Tres pontos:** todos veem os tres pontos na barra, como na cifra (4.3); eles abrem o painel com o nome da musica, o
 artista e, quando ha texto, a linha "Tamanho da letra".
 
-**Tamanho da letra:** a mesma linha da cifra (4.3), com "A−", o valor ("100%") e "A+", de 80% a 160% em passos de 10%
-(100% = 22sp); o lado no limite fica desabilitado e o painel nao fecha ao tocar. O tamanho vale enquanto a letra esta
-aberta; as paginas sao recalculadas com ele.
+**Tamanho da letra:** o mesmo da cifra (4.3), a barra padrao nos tres pontos (100% = 22sp). O tamanho vale enquanto a
+letra esta aberta; as paginas sao recalculadas com ele.
 
 **Modo de leitura:** o mesmo da cifra (4.3) — compartilhado, salvo no aparelho e ja aplicado ao abrir.
 

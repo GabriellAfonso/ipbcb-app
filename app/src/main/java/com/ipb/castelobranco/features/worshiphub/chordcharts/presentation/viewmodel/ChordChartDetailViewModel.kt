@@ -16,7 +16,6 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.repository.C
 import com.ipb.castelobranco.features.worshiphub.chordcharts.domain.usecase.GetChordChartsUseCase
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.ChordProParser
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartDetailUiState
-import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordTextScale
 import com.ipb.castelobranco.features.worshiphub.tables.domain.repository.SongsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,13 +118,8 @@ class ChordChartDetailViewModel @Inject constructor(
         }
     }
 
-    fun shrinkText() = changeTextScale(-ChordTextScale.STEP)
-
-    fun growText() = changeTextScale(ChordTextScale.STEP)
-
-    private fun changeTextScale(step: Int) {
-        val next = (uiState.value.textScalePercent + step).coerceIn(ChordTextScale.MIN, ChordTextScale.MAX)
-        viewModelScope.launch { chartPreferences.setTextScale(next) }
+    fun setTextScale(percent: Int) {
+        viewModelScope.launch { chartPreferences.setTextScale(percent) }
     }
 
     fun enterEditMode() {

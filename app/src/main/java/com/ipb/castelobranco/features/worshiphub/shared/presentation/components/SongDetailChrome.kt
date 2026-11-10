@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +31,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.core.data.local.SongScrollMode
+import com.ipb.castelobranco.core.domain.model.TextScale
+import com.ipb.castelobranco.core.presentation.components.TextSizeBar
+import com.ipb.castelobranco.core.presentation.components.TextSizeBarDefaults
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
 // The chord chart and lyrics screens' chrome, "ajuste fino com faixa" (`specs/worshiphub/spec.md` §4.3, §5.3).
@@ -40,8 +41,6 @@ import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 private const val PAGES_LABEL = "Páginas"
 private const val SCROLL_LABEL = "Rolagem"
 private const val TEXT_SIZE_LABEL = "Tamanho da letra"
-private const val SMALLER_LABEL = "A−"
-private const val BIGGER_LABEL = "A+"
 private const val SAVE_LABEL = "Salvar"
 private const val CANCEL_LABEL = "Cancelar"
 private const val DARK_SURFACE_LUMINANCE = 0.5f
@@ -54,15 +53,11 @@ private val BandCorner = 20.dp
 private val ChordOnLight = Color(0xFFA85F00)
 private val ChordOnDark = Color(0xFFF7B733)
 
-/** Lyrics text size, as a percentage of 22sp: 80% to 160% in steps of 10 (`specs/worshiphub/spec.md` §5.3). */
+/** Lyrics text size: 100% is 22sp (`specs/worshiphub/spec.md` §5.3, `specs/core/spec.md` §6.7.1). */
 object LyricsTextSize {
-    const val DEFAULT = 100
-    const val MIN = 80
-    const val MAX = 160
-    const val STEP = 10
     private const val BASE_SP = 22f
 
-    fun sp(percent: Int): Float = BASE_SP * percent / DEFAULT
+    fun sp(percent: Int): Float = TextScale.sp(BASE_SP, percent)
 }
 
 /**
@@ -128,25 +123,27 @@ fun ToneTag(tone: String) {
     )
 }
 
-/** "Tamanho da letra  A−  100%  A+" in the three dots' panel; a side is disabled at its limit. */
+/**
+ * "Tamanho da letra" and, under it, the app's text size bar, in the three dots' panel: the top bar has no room for the
+ * `tT` (`specs/core/spec.md` §6.7.1).
+ */
 @Composable
-fun TextSizeRow(percent: Int, canShrink: Boolean, canGrow: Boolean, onShrink: () -> Unit, onGrow: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(Icons.Filled.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        OutlinedButton(onClick = onShrink, enabled = canShrink, contentPadding = PaddingValues(horizontal = 12.dp)) {
-            Text(SMALLER_LABEL, fontWeight = FontWeight.SemiBold)
+fun TextSizeRow(percent: Int, onPercentChange: (Int) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Filled.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge)
         }
-        Text("$percent%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        OutlinedButton(onClick = onGrow, enabled = canGrow, contentPadding = PaddingValues(horizontal = 12.dp)) {
-            Text(BIGGER_LABEL, fontWeight = FontWeight.SemiBold)
-        }
+        TextSizeBar(
+            percent = percent,
+            onPercentChange = onPercentChange,
+            modifier = Modifier.padding(horizontal = 4.dp),
+            colors = TextSizeBarDefaults.colors(container = Color.Transparent),
+        )
     }
 }
 

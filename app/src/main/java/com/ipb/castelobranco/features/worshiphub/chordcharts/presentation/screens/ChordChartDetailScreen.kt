@@ -94,8 +94,7 @@ fun ChordChartDetailScreen(
         state              = state,
         scrollMode         = scrollMode,
         onToggleScroll     = viewModel::toggleScrollMode,
-        onShrinkText       = viewModel::shrinkText,
-        onGrowText         = viewModel::growText,
+        onTextScaleChange  = viewModel::setTextScale,
         onBackClick        = onBackClick,
         onEnterEdit        = viewModel::enterEditMode,
         onEditContentChange = viewModel::onEditContentChange,
@@ -111,8 +110,7 @@ private fun ChordChartDetailContent(
     state: ChordChartDetailUiState,
     scrollMode: SongScrollMode?,
     onToggleScroll: () -> Unit,
-    onShrinkText: () -> Unit,
-    onGrowText: () -> Unit,
+    onTextScaleChange: (Int) -> Unit,
     onBackClick: () -> Unit,
     onEnterEdit: () -> Unit,
     onEditContentChange: (String) -> Unit,
@@ -179,13 +177,7 @@ private fun ChordChartDetailContent(
                         ).joinToString(" · "),
                     ),
                     controls = {
-                        TextSizeRow(
-                            percent   = state.textScalePercent,
-                            canShrink = state.canShrinkText,
-                            canGrow   = state.canGrowText,
-                            onShrink  = onShrinkText,
-                            onGrow    = onGrowText,
-                        )
+                        TextSizeRow(percent = state.textScalePercent, onPercentChange = onTextScaleChange)
                     },
                 )
             }

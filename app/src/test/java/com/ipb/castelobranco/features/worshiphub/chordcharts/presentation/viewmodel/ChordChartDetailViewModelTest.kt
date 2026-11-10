@@ -32,7 +32,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -169,25 +168,18 @@ class ChordChartDetailViewModelTest {
     // region text size
 
     @Test
-    fun `the text size is saved and stops at its limits`() = runTest(testDispatcher) {
+    fun `the text size from the bar is saved and shown`() = runTest(testDispatcher) {
         textScale.value = 150
         val vm = editableViewModel()
         val collector = testScope.launch { vm.uiState.collect {} }
         advanceUntilIdle()
-
-        vm.growText()
-        advanceUntilIdle()
-        assertEquals(160, vm.uiState.value.textScalePercent)
-        assertFalse(vm.uiState.value.canGrowText)
-
-        vm.growText()
-        advanceUntilIdle()
-        assertEquals(160, vm.uiState.value.textScalePercent)
-
-        vm.shrinkText()
-        advanceUntilIdle()
         assertEquals(150, vm.uiState.value.textScalePercent)
-        coVerify { chartPreferences.setTextScale(150) }
+
+        vm.setTextScale(175)
+        advanceUntilIdle()
+        assertEquals(175, vm.uiState.value.textScalePercent)
+        assertEquals(1.75f, vm.uiState.value.textScale)
+        coVerify { chartPreferences.setTextScale(175) }
 
         collector.cancel()
     }

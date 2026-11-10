@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.data.local.SongScrollMode
+import com.ipb.castelobranco.core.domain.model.TextScale
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.modifier.tapToPaginate
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.parser.LyricsStanza
@@ -93,7 +94,7 @@ private fun LyricsDetailContent(
 ) {
     var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     // Only while the lyrics stay open (`specs/worshiphub/spec.md` §5.3).
-    var textPercent by rememberSaveable { mutableIntStateOf(LyricsTextSize.DEFAULT) }
+    var textPercent by rememberSaveable { mutableIntStateOf(TextScale.DEFAULT) }
     val textSize = LyricsTextSize.sp(textPercent)
     BaseScreen(
         tabName       = if (state.isEditing) EDIT_LABEL else state.songName.ifEmpty { "Letra" },
@@ -147,13 +148,7 @@ private fun LyricsDetailContent(
                 header = PanelHeader(name = state.songName, detail = state.artist.takeIf { it.isNotBlank() }),
                 controls = {
                     if (state.stanzas.isNotEmpty()) {
-                        TextSizeRow(
-                            percent   = textPercent,
-                            canShrink = textPercent > LyricsTextSize.MIN,
-                            canGrow   = textPercent < LyricsTextSize.MAX,
-                            onShrink  = { textPercent = (textPercent - LyricsTextSize.STEP) },
-                            onGrow    = { textPercent = (textPercent + LyricsTextSize.STEP) },
-                        )
+                        TextSizeRow(percent = textPercent, onPercentChange = { textPercent = it })
                     }
                 },
             )
