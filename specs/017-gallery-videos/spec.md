@@ -102,7 +102,8 @@ download, plays offline, and that nothing downloads with the switch off or on mo
 5. **When** a video's file is complete, **Then** it appears in its album without reopening the screen.
 6. **Given** a video in a grid, **Then** its thumbnail shows a play icon and the duration (`1:24`, `1:02:03`).
 7. **When** a video is opened, **Then** the viewer plays the local file as soon as the page settles, muted, with
-   play/pause and a seek bar; swiping away pauses it.
+   play/pause and a seek bar at the bottom; while the seek bar shows, the viewer's buttons step up above it, and
+   they slide back down when it hides; swiping away pauses it.
 8. **Given** the person turned the sound on, **Then** the following videos start with sound until the gallery is
    left; the next time the gallery is opened, videos start muted.
 9. **Given** a video ended, **Then** it does not restart unless the person turned on the player's repeat toggle.
@@ -314,6 +315,10 @@ tags, move, rename, trash, restore, use as cover, filter by people and by type.
 - **FR-017**: The sound choice MUST last while the gallery stays open and reset to muted on the next visit.
 - **FR-018**: The player MUST offer play/pause, seek, and the built-in repeat toggle (off by default); landscape MUST
   show the video full screen.
+- **FR-018a**: The player's controls MUST sit at the bottom of the screen, above the navigation bar, and the viewer's
+  bottom bar ("Baixar", "Compartilhar", "Detalhes") MUST stay above them, never under: while the controls show, the
+  bar slides up over the seek bar; when they hide, it slides back down, following the seek bar in both directions. Showing the controls also brings back the
+  viewer's bars if they were hidden; hiding the controls leaves the bars as they are.
 - **FR-019**: A playback failure MUST show "Não foi possível reproduzir este vídeo neste aparelho".
 - **FR-020**: Share and save-to-device MUST work for videos with the video MIME type.
 

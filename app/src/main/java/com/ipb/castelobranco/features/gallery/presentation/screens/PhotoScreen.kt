@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,8 +45,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
@@ -213,6 +216,11 @@ fun PhotoContent(
     // Recriado quando as fotos chegam, para abrir já na foto tocada.
     val pagerState = key(state.isLoading) { rememberPagerState(initialPage = state.currentIndex) { photos.size } }
     var isZoomed by remember { mutableStateOf(false) }
+    // The top bar's height puts a video's sound button under it; the last measure stays while hidden.
+    val density = LocalDensity.current
+    var topBarPx by remember { mutableIntStateOf(0) }
+    // On a video, the buttons step up over the player's seek bar while it shows, as it slides in.
+    var videoControlsPx by remember { mutableIntStateOf(0) }
 
     // A foto na tela saiu do álbum: o ViewModel aponta a próxima.
     LaunchedEffect(state.currentIndex, photos.size) {
@@ -225,15 +233,11 @@ fun PhotoContent(
             .distinctUntilChanged()
             .collect { page -> photos.getOrNull(page)?.let { onPageChanged(it.id) } }
     }
-    // "Baixada" stays a moment on the button, then it is "Baixar" again.
-    LaunchedEffect(savedPhotoId) {
-        if (savedPhotoId != null) {
-            delay(SAVED_FEEDBACK_MS)
-            savedPhotoId = null
-        }
-    }
 
     val current = photos.getOrNull(pagerState.currentPage)
+    val isOnVideo = current?.isVideo == true && pagerState.settledPage == pagerState.currentPage
+    // No animation of its own: the value already follows the player's slide frame by frame.
+    val bottomLift = with(density) { (if (isOnVideo) videoControlsPx else 0).toDp() }
 
     // Landscape on a video: the video alone, full screen. Back in portrait, the pager is where it was.
     val landscapeVideo = current?.videoFile?.takeIf { isLandscape && current.isVideo }
@@ -278,6 +282,12 @@ fun PhotoContent(
                     onMutedChange = video.onMutedChange,
                     failedText = VideoTexts.PLAYBACK_FAILED,
                     modifier = Modifier.fillMaxSize(),
+                    topInset = with(density) { topBarPx.toDp() },
+                    onControlsChange = { controls ->
+                        videoControlsPx = controls.heightPx
+                        // Showing the controls brings the bars back; hiding them leaves the bars as they are.
+                        if (controls.visible) showChrome = true
+                    },
                 )
             } else {
                 ZoomablePage(
@@ -299,7 +309,7 @@ fun PhotoContent(
             visible = showChrome,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = Modifier.align(Alignment.TopCenter).onSizeChanged { topBarPx = it.height },
         ) {
             ViewerTopBar(
                 title = state.title,
@@ -316,7 +326,7 @@ fun PhotoContent(
             visible = showChrome,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomLift),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 current?.people?.takeIf { it.isNotEmpty() }?.let { PeopleTags(it) }
