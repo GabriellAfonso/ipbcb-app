@@ -12,8 +12,11 @@ import com.ipb.castelobranco.features.gallery.data.local.GalleryMediaStore
 import com.ipb.castelobranco.features.gallery.data.local.GalleryPreferences
 import com.ipb.castelobranco.features.gallery.data.manage.GalleryManageRepositoryImpl
 import com.ipb.castelobranco.features.gallery.data.upload.AndroidImageCodec
+import com.ipb.castelobranco.features.gallery.data.upload.AndroidPickedVideoReader
 import com.ipb.castelobranco.features.gallery.data.upload.AndroidVideoProbe
+import com.ipb.castelobranco.features.gallery.data.upload.Media3VideoTrimmer
 import com.ipb.castelobranco.features.gallery.data.upload.NetworkStatus
+import com.ipb.castelobranco.features.gallery.data.upload.PickedVideoReader
 import com.ipb.castelobranco.features.gallery.data.upload.VideoProbe
 import com.ipb.castelobranco.features.gallery.data.upload.GalleryUploadQueueStore
 import com.ipb.castelobranco.features.gallery.data.upload.GalleryUploadRepositoryImpl
@@ -31,6 +34,7 @@ import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepositor
 import com.ipb.castelobranco.features.gallery.domain.sync.GallerySyncScheduler
 import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadRepository
 import com.ipb.castelobranco.features.gallery.domain.upload.GalleryUploadScheduler
+import com.ipb.castelobranco.features.gallery.domain.upload.VideoTrimmer
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -72,6 +76,12 @@ abstract class GalleryModule {
 
     @Binds
     abstract fun bindVideoProbe(impl: AndroidVideoProbe): VideoProbe
+
+    @Binds
+    abstract fun bindPickedVideoReader(impl: AndroidPickedVideoReader): PickedVideoReader
+
+    @Binds
+    abstract fun bindVideoTrimmer(impl: Media3VideoTrimmer): VideoTrimmer
 
     @Binds
     @Singleton
@@ -119,5 +129,9 @@ abstract class GalleryModule {
         @Provides @IntoSet
         fun bindGalleryUploadQueuePreloadable(queue: GalleryUploadQueueStore): Preloadable =
             Preloadable { queue.load() }
+
+        @Provides @IntoSet
+        fun bindGalleryOrphanCutsPreloadable(uploads: GalleryUploadRepository): Preloadable =
+            Preloadable { uploads.sweepOrphanCuts() }
     }
 }

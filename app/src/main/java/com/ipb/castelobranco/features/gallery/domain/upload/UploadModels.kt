@@ -3,12 +3,36 @@ package com.ipb.castelobranco.features.gallery.domain.upload
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryPhoto
 
 /** A picked file before it is copied: what the confirmation on mobile data needs. */
-data class PickedMedia(val source: String, val mimeType: String?, val sizeBytes: Long?) {
+data class PickedMedia(
+    val source: String,
+    val mimeType: String?,
+    val sizeBytes: Long?,
+    /** Set when the video may open the editor; `null` for a photo or a format trimming cannot fix. */
+    val trimmable: TrimmableVideo? = null,
+) {
     val isVideo: Boolean get() = mimeType?.startsWith(VIDEO_MIME_PREFIX) == true
 
     private companion object {
         const val VIDEO_MIME_PREFIX = "video/"
     }
+}
+
+/** What the editor needs from a picked video, read from its URI without copying it. */
+data class TrimmableVideo(
+    val displayName: String,
+    val durationMs: Long,
+    /** `yyyy-MM-dd`, when the original says when it was recorded. */
+    val dateTaken: String?,
+    /** MIME of the video track, kept in the cut. */
+    val videoMime: String,
+)
+
+/** One thing to queue: a picked file still to be copied, or a video already cut into `gallery/uploads/`. */
+sealed interface UploadEntry {
+    data class Picked(val source: String) : UploadEntry
+
+    /** [dateTaken] is the original's: the cut's own metadata does not promise to keep it. */
+    data class Cut(val fileName: String, val displayName: String, val dateTaken: String?) : UploadEntry
 }
 
 enum class UploadKind { PHOTO, VIDEO }

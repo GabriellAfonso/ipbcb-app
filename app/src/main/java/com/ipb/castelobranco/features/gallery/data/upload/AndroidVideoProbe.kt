@@ -33,7 +33,7 @@ class AndroidVideoProbe @Inject constructor() : VideoProbe {
                 videoMime = videoMime,
                 audioMimes = audioMimes,
                 durationMs = duration,
-                dateTaken = parseDate(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)),
+                dateTaken = parseRecordingDate(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)),
                 hasPoster = writePoster(retriever, poster),
             )
         } finally {
@@ -48,10 +48,7 @@ class AndroidVideoProbe @Inject constructor() : VideoProbe {
         val extractor = MediaExtractor()
         try {
             extractor.setDataSource(video.absolutePath)
-            val mimes = (0 until extractor.trackCount).mapNotNull {
-                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)
-            }
-            return mimes.firstOrNull { it.startsWith(VIDEO_PREFIX) } to mimes.filter { it.startsWith(AUDIO_PREFIX) }
+            return extractor.trackMimes()
         } finally {
             extractor.release()
         }
@@ -97,16 +94,7 @@ class AndroidVideoProbe @Inject constructor() : VideoProbe {
         )
     }
 
-    /** `20260314T101500.000Z` → `2026-03-14`; anything else (or the empty 1904 date) → `null`. */
-    private fun parseDate(raw: String?): String? {
-        val digits = raw?.take(DATE_DIGITS)?.takeIf { it.length == DATE_DIGITS && it.all(Char::isDigit) }
-        if (digits == null || digits.startsWith(EMPTY_YEAR)) return null
-        return "${digits.substring(0, 4)}-${digits.substring(4, 6)}-${digits.substring(6, 8)}"
-    }
-
     private companion object {
-        const val VIDEO_PREFIX = "video/"
-        const val AUDIO_PREFIX = "audio/"
         const val HEADER_BYTES = 12
         const val BOX_START = 4
         const val BRAND_START = 8
@@ -117,7 +105,23 @@ class AndroidVideoProbe @Inject constructor() : VideoProbe {
         const val POSTER_TIME_US = 500_000L
         const val POSTER_MAX_SIDE = 1280
         const val POSTER_QUALITY = 85
-        const val DATE_DIGITS = 8
-        const val EMPTY_YEAR = "1904"
     }
+}
+
+private const val VIDEO_PREFIX = "video/"
+private const val AUDIO_PREFIX = "audio/"
+private const val DATE_DIGITS = 8
+private const val EMPTY_YEAR = "1904"
+
+/** The MIME of the video track and those of the audio tracks. */
+internal fun MediaExtractor.trackMimes(): Pair<String?, List<String>> {
+    val mimes = (0 until trackCount).mapNotNull { getTrackFormat(it).getString(MediaFormat.KEY_MIME) }
+    return mimes.firstOrNull { it.startsWith(VIDEO_PREFIX) } to mimes.filter { it.startsWith(AUDIO_PREFIX) }
+}
+
+/** `20260314T101500.000Z` → `2026-03-14`; anything else (or the empty 1904 date) → `null`. */
+internal fun parseRecordingDate(raw: String?): String? {
+    val digits = raw?.take(DATE_DIGITS)?.takeIf { it.length == DATE_DIGITS && it.all(Char::isDigit) }
+    if (digits == null || digits.startsWith(EMPTY_YEAR)) return null
+    return "${digits.substring(0, 4)}-${digits.substring(4, 6)}-${digits.substring(6, 8)}"
 }

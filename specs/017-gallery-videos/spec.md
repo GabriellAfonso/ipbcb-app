@@ -22,7 +22,8 @@ The user's guiding wishes, which explain most decisions below:
 - **Videos are opt-in.** They are big, so by default nobody downloads them. Only people who want them get them.
 - **A video the device does not have does not exist for the user.** No streaming, no "tap to download" placeholders
   in the normal gallery.
-- **Simple and without extra problems**: no compression on the phone, no MKV, no streaming.
+- **Simple and without extra problems**: no compression on the phone, no MKV, no streaming. A video is processed only
+  when the person chooses to cut it before sending (feature 022).
 
 ### Source of truth on the backend (not redefined here)
 
@@ -62,8 +63,8 @@ Taken in the decision conversation (session above), each with the user's reason.
 | 11 | Player autoplay and sound | Autoplays muted; once unmuted, following videos start with sound until the gallery is left | Quiet by default; no repeated unmuting while browsing |
 | 12 | Loop | Off by default; the player's built-in repeat toggle is available | Only because it is built-in |
 | 13 | Who uploads | The same people who upload photos (`manage`) | Media team |
-| 14 | Upload picker | One "Adicionar fotos e vídeos" picker; photos keep today's preparation, videos are sent as they are | No load on the uploader's phone; quality must not drop |
-| 15 | Upload checks | On the phone when picking: ≤ 100 MB, MP4/MOV container, H.264/HEVC video, AAC or no audio; no duration limit; each refusal listed with its reason | The person converts the file elsewhere and comes back |
+| 14 | Upload picker | One "Adicionar fotos e vídeos" picker; photos keep today's preparation, videos are sent as they are unless cut first (feature 022) | No load on the uploader's phone; quality must not drop |
+| 15 | Upload checks | On the phone: ≤ 100 MB, MP4/MOV container, H.264/HEVC video, AAC or no audio; no duration limit; each refusal listed with its reason. An MP4/MOV over 100 MB opens the editor of feature 022 instead of being refused at once | The person converts the file elsewhere and comes back, or trims it |
 | 16 | Poster and duration | Made on the uploader's phone; poster failure refuses the video | A video without a poster must never exist |
 | 17 | Upload on mobile data | Allowed, but confirmed first with the size | The uploader decides whether to spend data |
 | 18 | Uploader's own video | Their file becomes the local copy; shown at once even with the switch off; nothing downloaded back | The uploader just picked it |
@@ -319,14 +320,15 @@ tags, move, rename, trash, restore, use as cover, filter by people and by type.
 **Upload**
 
 - **FR-021**: The album's upload entry MUST read "Adicionar fotos e vídeos" and pick images and videos in one picker.
-- **FR-022**: Each picked video MUST be checked on the phone: ≤ 100 MB, MP4/MOV container, H.264 or HEVC video, AAC or
-  no audio; each refusal MUST be listed with its reason; there is no duration limit.
+- **FR-022**: Each video to send, whole or cut, MUST be checked on the phone: ≤ 100 MB, MP4/MOV container, H.264 or
+  HEVC video, AAC or no audio; each refusal MUST be listed with its reason; there is no duration limit. An MP4/MOV over
+  100 MB first opens the editor of feature 022.
 - **FR-023**: The poster (a frame near the start) and the duration MUST be made on the phone; failure MUST refuse the
   video.
-- **FR-024**: Videos MUST be sent unchanged through the existing queue, one per request, with the existing
-  idempotency, retries, notification and rejected list.
-- **FR-025**: When a batch with videos is picked on a metered network, the app MUST ask first with the count and size;
-  "Esperar WiFi" defers the videos until WiFi; photo-only batches MUST behave as today.
+- **FR-024**: A video accepted whole MUST be sent unchanged through the existing queue, one per request, with the
+  existing idempotency, retries, notification and rejected list; a cut goes through the same queue.
+- **FR-025**: When the last video of a batch is decided on a metered network, the app MUST ask first with the count and
+  the final sizes; "Esperar WiFi" defers the videos until WiFi; photo-only batches MUST behave as today.
 - **FR-026**: An accepted video MUST become the local copy from the uploaded file and be visible at once regardless of
   the switch.
 
@@ -372,6 +374,6 @@ tags, move, rename, trash, restore, use as cover, filter by people and by type.
 - The existing gallery sync, trash, tags, order and cover flows work for videos without server changes beyond that
   contract.
 - The media team prepares small playable files; the app never compresses or transcodes.
-- Out of scope: streaming or playing before the download completes; a per-video download button; compression,
-  trimming or editing on the phone; MKV and other containers; push notifications about new videos; a video-specific
+- Out of scope: streaming or playing before the download completes; a per-video download button; compression or
+  editing on the phone other than the trim of feature 022; MKV and other containers; push notifications about new videos; a video-specific
   storage quota.

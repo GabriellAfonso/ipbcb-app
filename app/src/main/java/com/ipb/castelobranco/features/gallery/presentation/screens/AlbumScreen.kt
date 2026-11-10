@@ -153,6 +153,10 @@ fun AlbumScreen(
         if (state.isRemoved) nav.back()
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.openVideoTrim.collect { nav.toVideoTrim() }
+    }
+
     val pickPhotos = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         viewModel.addPhotos(albumId, uris.map { it.toString() })
     }

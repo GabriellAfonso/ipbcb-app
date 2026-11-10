@@ -6,6 +6,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.security.MessageDigest
+import java.util.UUID
 
 /**
  * The gallery's files on disk.
@@ -94,6 +95,12 @@ class GalleryMediaStore(private val context: Context) {
     /** Where the queue file [fileName] lives; it may not exist. */
     fun uploadFile(fileName: String): File = File(uploadsDir, fileName)
 
+    /** A fresh name for a trimmed video, always MP4. The prefix tells cuts apart from picked copies. */
+    fun newCutFileName(): String = "$CUT_PREFIX${UUID.randomUUID()}.$CUT_EXTENSION"
+
+    fun cutFiles(): List<File> =
+        uploadsDir.listFiles()?.filter { it.isFile && it.name.startsWith(CUT_PREFIX) }.orEmpty()
+
     /**
      * Makes a prepared upload the original of the photo the server created from it — the server
      * stores the file as sent, so there is nothing to download back.
@@ -165,6 +172,8 @@ class GalleryMediaStore(private val context: Context) {
         const val UPLOADS_DIR = "uploads"
         const val VIDEOS_DIR = "videos"
         private const val PARTIAL_SUFFIX = ".part"
+        private const val CUT_PREFIX = "trim-"
+        private const val CUT_EXTENSION = "mp4"
         private val VIDEO_EXTENSIONS = setOf("mp4", "mov")
         private const val COVER_EXTENSION = "jpg"
         private const val TEMP_PREFIX = "gallery-"

@@ -22,6 +22,7 @@ import com.ipb.castelobranco.features.gallery.domain.model.GallerySyncStatus
 import com.ipb.castelobranco.features.gallery.domain.model.MediaType
 import com.ipb.castelobranco.features.gallery.domain.repository.GalleryRepository
 import com.ipb.castelobranco.features.gallery.domain.upload.PickedMedia
+import com.ipb.castelobranco.features.gallery.domain.upload.TrimmableVideo
 import com.ipb.castelobranco.features.gallery.domain.usecase.SyncGalleryUseCase
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDialogState
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryMessage
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -267,6 +269,92 @@ class GalleryViewModelVideoTest {
 
         assertNull(viewModel.dialog.value)
         assertEquals(listOf(false), uploads.wifiOnlyBatches)
+    }
+
+    private fun trimmable(source: String, mb: Long) = PickedMedia(
+        source,
+        "video/mp4",
+        mb * MB,
+        TrimmableVideo("$source.mp4", 60_000, "2026-03-14", "video/avc"),
+    )
+
+    @Test
+    fun `a batch with a trimmable video waits in the editor, with nothing queued`() = runTest(dispatcher) {
+        publish()
+        observe(viewModel.rootState)()
+        uploads.picked["v"] = trimmable("v", 70)
+        val opened = mutableListOf<Unit>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.openVideoTrim.collect { opened += it }
+        }
+
+        viewModel.addPhotos(1, listOf("p", "v"))
+        advanceUntilIdle()
+
+        assertEquals(1, opened.size)
+        assertEquals("v", viewModel.videoTrim.state.value?.source)
+        assertTrue(uploads.enqueued.isEmpty())
+        assertNull(viewModel.dialog.value)
+    }
+
+    @Test
+    fun `the last decision enqueues the batch in picked order`() = runTest(dispatcher) {
+        publish()
+        observe(viewModel.rootState)()
+        uploads.picked["v"] = trimmable("v", 70)
+
+        viewModel.addPhotos(1, listOf("p", "v", "q"))
+        advanceUntilIdle()
+        viewModel.videoTrim.confirm()
+        advanceUntilIdle()
+
+        assertEquals(listOf(1L to listOf("p", "v", "q")), uploads.enqueued)
+    }
+
+    @Test
+    fun `off WiFi the question comes after the editor and counts the real sizes`() = runTest(dispatcher) {
+        onWifi.value = false
+        publish()
+        observe(viewModel.rootState)()
+        uploads.picked["cut"] = trimmable("cut", 400)
+        uploads.picked["whole"] = trimmable("whole", 30)
+
+        viewModel.addPhotos(1, listOf("cut", "whole"))
+        advanceUntilIdle()
+        assertNull(viewModel.dialog.value)
+
+        viewModel.videoTrim.setRange(0, 3_000)
+        viewModel.videoTrim.confirm()
+        advanceUntilIdle()
+        viewModel.videoTrim.confirm()
+        advanceUntilIdle()
+
+        val ask = viewModel.dialog.value as GalleryDialogState.UploadOnMobileData
+        assertEquals(2, ask.videoCount)
+        assertEquals(40L * MB, ask.videoBytes)
+        assertTrue(uploads.enqueued.isEmpty())
+
+        viewModel.confirmUploadOnMobileData(waitForWifi = false)
+        advanceUntilIdle()
+
+        assertEquals(listOf(1L to listOf("trim-1.mp4", "whole")), uploads.enqueued)
+    }
+
+    @Test
+    fun `discarding queues nothing and asks nothing`() = runTest(dispatcher) {
+        onWifi.value = false
+        publish()
+        observe(viewModel.rootState)()
+        uploads.picked["v"] = trimmable("v", 70)
+
+        viewModel.addPhotos(1, listOf("v"))
+        advanceUntilIdle()
+        viewModel.videoTrim.discard()
+        advanceUntilIdle()
+
+        assertNull(viewModel.videoTrim.state.value)
+        assertNull(viewModel.dialog.value)
+        assertTrue(uploads.enqueued.isEmpty())
     }
 
     private companion object {

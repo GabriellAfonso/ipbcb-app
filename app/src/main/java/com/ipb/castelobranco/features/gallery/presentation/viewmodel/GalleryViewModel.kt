@@ -33,6 +33,8 @@ import com.ipb.castelobranco.features.gallery.domain.tags.TagSaveResult
 import com.ipb.castelobranco.features.gallery.domain.trash.RestoreResult
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKey
 import com.ipb.castelobranco.features.gallery.domain.trash.TrashKind
+import com.ipb.castelobranco.features.gallery.domain.upload.UploadBatch
+import com.ipb.castelobranco.features.gallery.domain.upload.UploadEntry
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadItem
 import com.ipb.castelobranco.features.gallery.domain.upload.UploadState
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryAutoDownloadUseCase
@@ -63,7 +65,6 @@ import com.ipb.castelobranco.core.presentation.components.GalleryStorageChoice
 import com.ipb.castelobranco.core.presentation.components.GalleryStorageDialogs
 import com.ipb.castelobranco.core.presentation.components.formatDiskUsage
 import com.ipb.castelobranco.features.gallery.data.work.GalleryVideoDownloadWorker
-import com.ipb.castelobranco.features.gallery.domain.upload.VideoUploadCheck
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryStorageUseCase
 import com.ipb.castelobranco.features.gallery.domain.usecase.GalleryVideoSettingsUseCase
 import com.ipb.castelobranco.features.gallery.presentation.state.VideoCard
@@ -72,12 +73,16 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -106,7 +111,7 @@ class GalleryViewModel @Inject constructor(
     private val videoSettings: GalleryVideoSettingsUseCase,
     private val storage: GalleryStorageUseCase,
     observeAccess: ObserveAccessUseCase,
-    connectivityObserver: NetworkConnectivityObserver,
+    private val connectivityObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
     @param:GalleryThumbnailLoader val previewLoader: ImageLoader,
     @param:DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
@@ -187,6 +192,16 @@ class GalleryViewModel @Inject constructor(
     private val selfRetaggedPhotos = mutableSetOf<Long>()
 
     private var pickerLoad: Job? = null
+
+    /** The batch in the editor. Its route carries no URIs: the batch lives only here. */
+    val videoTrim = VideoTrimController(viewModelScope, manage.trimVideo) { batch ->
+        viewModelScope.launch { finishBatch(batch) }
+    }
+
+    private val _openVideoTrim = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** A batch is waiting in [videoTrim]: the album opens the editor. */
+    val openVideoTrim: SharedFlow<Unit> = _openVideoTrim.asSharedFlow()
 
     private val isOnWifi: StateFlow<Boolean> = connectivityObserver.isOnWifi
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
@@ -934,30 +949,34 @@ class GalleryViewModel @Inject constructor(
     // region uploads
 
     /**
-     * [sources] are the picked images' and videos' URIs. A batch with videos picked off WiFi asks
-     * first ([GalleryDialogState.UploadOnMobileData]); otherwise everything is copied and queued.
+     * [sources] are the picked images' and videos' URIs. A batch with a video that can be trimmed opens
+     * the editor and waits there; any other goes straight on.
      */
     fun addPhotos(albumId: Long, sources: List<String>) {
         if (sources.isEmpty()) return
         viewModelScope.launch {
-            val videos = if (isOnWifi.value) {
-                emptyList()
+            val batch = whileCopying(albumId) { UploadBatch.of(albumId, manage.enqueueUploads.inspect(sources)) }
+            if (batch.isComplete) {
+                finishBatch(batch)
             } else {
-                // Too big ones will be refused anyway: they are not sent on any network.
-                manage.enqueueUploads.inspect(sources).filter { media ->
-                    media.isVideo && (media.sizeBytes ?: 0L) <= VideoUploadCheck.MAX_BYTES
-                }
+                videoTrim.open(batch)
+                _openVideoTrim.emit(Unit)
             }
-            if (videos.isEmpty()) {
-                enqueue(albumId, sources, videosWifiOnly = false)
-            } else {
-                _dialog.value = GalleryDialogState.UploadOnMobileData(
-                    albumId = albumId,
-                    sources = sources,
-                    videoCount = videos.size,
-                    videoBytes = videos.sumOf { it.sizeBytes ?: 0L },
-                )
-            }
+        }
+    }
+
+    /** Every video is decided. Off WiFi the videos ask first, counting what is really sent. */
+    private suspend fun finishBatch(batch: UploadBatch) {
+        val load = batch.mobileDataLoad
+        if (load.count > 0 && !connectivityObserver.isOnWifi.first()) {
+            _dialog.value = GalleryDialogState.UploadOnMobileData(
+                albumId = batch.albumId,
+                entries = batch.entries,
+                videoCount = load.count,
+                videoBytes = load.bytes,
+            )
+        } else {
+            enqueue(batch.albumId, batch.entries, videosWifiOnly = false)
         }
     }
 
@@ -965,13 +984,17 @@ class GalleryViewModel @Inject constructor(
     fun confirmUploadOnMobileData(waitForWifi: Boolean) {
         val pending = _dialog.value as? GalleryDialogState.UploadOnMobileData ?: return
         _dialog.value = null
-        viewModelScope.launch { enqueue(pending.albumId, pending.sources, videosWifiOnly = waitForWifi) }
+        viewModelScope.launch { enqueue(pending.albumId, pending.entries, videosWifiOnly = waitForWifi) }
     }
 
-    private suspend fun enqueue(albumId: Long, sources: List<String>, videosWifiOnly: Boolean) {
+    private suspend fun enqueue(albumId: Long, entries: List<UploadEntry>, videosWifiOnly: Boolean) {
+        whileCopying(albumId) { manage.enqueueUploads(albumId, entries, videosWifiOnly) }
+    }
+
+    private suspend fun <T> whileCopying(albumId: Long, block: suspend () -> T): T {
         copying.update { it + albumId }
         try {
-            manage.enqueueUploads(albumId, sources, videosWifiOnly)
+            return block()
         } finally {
             copying.update { it - albumId }
         }

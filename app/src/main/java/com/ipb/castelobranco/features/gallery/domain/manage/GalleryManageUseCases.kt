@@ -7,6 +7,7 @@ import com.ipb.castelobranco.features.gallery.domain.trash.RestoreTrashItemUseCa
 import com.ipb.castelobranco.features.gallery.domain.upload.DismissUploadUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.EnqueueUploadsUseCase
 import com.ipb.castelobranco.features.gallery.domain.upload.ObserveUploadsUseCase
+import com.ipb.castelobranco.features.gallery.domain.upload.TrimVideoUseCase
 import javax.inject.Inject
 
 /** Every management use case the gallery screens need, injected as one. */
@@ -22,6 +23,7 @@ class GalleryManageUseCases @Inject constructor(
     val movePhotos: MovePhotosUseCase,
     val deletePhotos: DeletePhotosUseCase,
     val enqueueUploads: EnqueueUploadsUseCase,
+    val trimVideo: TrimVideoUseCase,
     val dismissUpload: DismissUploadUseCase,
     val observeUploads: ObserveUploadsUseCase,
     val restore: RestoreTrashItemUseCase,

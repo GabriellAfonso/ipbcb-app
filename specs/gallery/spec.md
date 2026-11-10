@@ -30,6 +30,7 @@ gestão vive nas próprias telas da galeria — o painel de gestão não tem car
 | Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro (seção 10.6) |
 | Pessoas | `GalleryPeople`               | "Pessoas" no painel de ações da raiz (seção 10.6) |
 | Lixeira | `GalleryTrash`                | "Lixeira" no painel de ações da raiz (`owner`, seção 9) |
+| Cortar vídeo | `GalleryVideoTrim`       | Lote com vídeo escolhido no álbum (seção 11.7) |
 
 Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
 ao grafo via `hiltViewModel(graphEntry)`; a Lixeira tem o próprio `TrashViewModel` e Pessoas o próprio
@@ -196,6 +197,7 @@ filesDir/gallery/videos/{id}.{mp4|mov}         vídeos completos (seção 11.2)
 filesDir/gallery/videos/{id}.{ext}.part        vídeo baixando; nunca conta como baixado
 filesDir/gallery/covers/{sha1(cover_url)}.jpg capas, por hash da URL
 filesDir/gallery/uploads/{uploadId}[-src].{ext} fila de envio (cópia do que foi escolhido, depois o preparado)
+filesDir/gallery/uploads/trim-{uuid}.mp4       vídeo cortado (seção 11.7)
 cacheDir/gallery-*.part                       temporários da escrita atômica
 cacheDir/gallery-*.{ext}                      capa sendo enviada (apagada depois do pedido)
 cacheDir/gallery_thumbs/                      cache de previews (Coil, até 100 MB)
@@ -762,8 +764,10 @@ baixar quando você estiver no WiFi". Some durante "Organizar".
 
 ### 11.6 Envio
 
-- Mesmo nível das fotos (`manage`). Fotos seguem a seção 8.7; **vídeos vão como estão**, sem compressão.
-- Na escolha (`GalleryUploadRepositoryImpl.enqueue`), cada vídeo é copiado e conferido (`AndroidVideoProbe` +
+- Mesmo nível das fotos (`manage`). Fotos seguem a seção 8.7; **vídeos vão como estão**, sem compressão, a não ser que
+  a pessoa corte um trecho (11.7).
+- Depois do editor (`GalleryUploadRepositoryImpl.enqueue`), cada vídeo inteiro é copiado, e todo vídeo, inteiro ou
+  cortado, é conferido (`AndroidVideoProbe` +
   `VideoUploadCheck`): até 100 MB; contêiner MP4/MOV pela assinatura `ftyp`; vídeo H.264 ou HEVC; áudio AAC ou nenhum;
   sem limite de duração. Poster (quadro perto de 0,5 s, lado maior ≤ 1280 px, JPEG) e duração do aparelho; data da
   gravação quando o arquivo diz. Recusado entra na fila como falha com o motivo ("Vídeo muito grande (máx. 100 MB)…",
@@ -772,10 +776,36 @@ baixar quando você estiver no WiFi". Some durante "Organizar".
 - Envio: `POST api/photos/` multipart `album_id`, `client_upload_id`, `duration_ms`, `date_taken` (se houver), `video`
   e `poster`; mesma fila, worker, tentativas, notificação e lista "Não enviadas" (texto genérico "Não foi possível
   enviar este vídeo.").
-- **Dados móveis:** escolhido um lote com vídeo (até 100 MB) fora do WiFi, pergunta antes: "Você está nos dados móveis.
+- **Dados móveis:** decidido o último vídeo de um lote fora do WiFi, pergunta antes, contando o tamanho real do que vai
+  (o corte, ou o arquivo inteiro de até 100 MB): "Você está nos dados móveis.
   Enviar {n} vídeo(s) ({tamanho}) agora?" [Esperar WiFi] [Enviar]. "Esperar WiFi" marca os vídeos do lote
   `wifi_only`: a fila os pula em rede medida e o trabalho `gallery_upload_wifi` (`UNMETERED`, `KEEP`) os envia; as
   fotos vão já. Os dois trabalhos rodam a mesma passada, uma por vez.
 - Aceito, o arquivo de quem enviou vira o vídeo do aparelho (`adoptVideo`), visível na hora mesmo com o switch
   desligado; nada é baixado de volta.
+
+### 11.7 Cortar antes de enviar
+
+Feature 022 (`specs/022-gallery-video-trim/`). Só no app: o servidor recebe um MP4 menor pelo mesmo envio.
+
+- **Lote retido:** um lote com vídeo MP4/QuickTime de faixas aceitas e duração legível (lidas da URI, sem copiar)
+  fica em memória no `GalleryViewModel` (`VideoTrimController`) e abre a rota `GalleryVideoTrim`, sem URIs na rota; sem
+  lote (morte do processo), a tela volta ao álbum. Nada entra na fila antes do último vídeo. Lote sem vídeo, ou só com
+  formatos recusados, segue como antes; o formato recusado vai à lista de "Não enviadas" com o motivo de sempre.
+- **Editor:** um vídeo por vez ("Vídeo 2 de 3" com mais de um), sem autoplay e com som, reprodução presa ao trecho.
+  Quadros (Coil `VideoFrameDecoder`) e duas alças; arrastar leva a prévia à alça. Mostra início, fim, duração e o tamanho
+  estimado (`tamanho * trecho / duração`). Trecho mínimo de 1 s.
+- **Botões:** "Usar inteiro" com as alças nas pontas, "Cortar e continuar" com alguma movida. "Enviar todos sem cortar"
+  com este e mais algum vídeo por decidir. Voltar pergunta "Descartar a seleção?": confirmar apaga os cortes do lote e
+  volta ao álbum sem enfileirar nada.
+- **Acima de 100 MB:** MP4/MOV abre o editor com "Usar inteiro" desabilitado e "Vídeo muito grande (máx. 100 MB).
+  Selecione um trecho menor."; "Cortar e continuar" desabilitado enquanto a estimativa passa de 100 MB. Se o corte real
+  passar, é apagado: "O trecho ficou com X MB. Selecione um trecho menor.".
+- **Corte:** Media3 `Transformer` com trim optimization, em primeiro plano, lendo a URI direto, mantendo os formatos da
+  origem e gravando `.mp4` também para MOV. Onde a otimização não se aplica, o trecho é reexportado. "Cortando… N%" com
+  "Cancelar"; falha mostra "Não foi possível cortar este vídeo." e fica no editor. Vídeo inteiro nunca passa pelo
+  `Transformer`.
+- **Depois do corte:** duração, poster e conferência da seção 11.6 valem para a saída; a data da gravação é a do
+  original. O corte não é copiado de novo (`UploadEntry.Cut`). Cortes que nenhum item da fila usa são apagados na abertura do
+  app (processo morto durante um corte).
 

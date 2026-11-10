@@ -23,6 +23,7 @@ import com.ipb.castelobranco.features.gallery.presentation.screens.GalleryScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.PeopleScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.PhotoScreen
 import com.ipb.castelobranco.features.gallery.presentation.screens.TrashScreen
+import com.ipb.castelobranco.features.gallery.presentation.screens.VideoTrimScreen
 import com.ipb.castelobranco.features.gallery.presentation.state.ViewerSource
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.PeopleViewModel
@@ -38,6 +39,7 @@ data class GalleryNav(
     val toPeople: () -> Unit = {},
     /** The viewer over the items with every one of [memberIds] that [filter] accepts. */
     val toPeoplePhoto: (memberIds: Set<Long>, filter: MediaFilter, photoId: Long) -> Unit = { _, _, _ -> },
+    val toVideoTrim: () -> Unit = {},
 )
 
 object GalleryRoutes {
@@ -49,6 +51,7 @@ object GalleryRoutes {
     const val TRASH = "GalleryTrash"
     const val ARG_MEMBER_IDS = "memberIds"
     const val PEOPLE = "GalleryPeople"
+    const val VIDEO_TRIM = "GalleryVideoTrim"
     const val ARG_MEDIA_FILTER = "type"
     const val PEOPLE_PHOTO = "PeoplePhoto/{$ARG_MEMBER_IDS}/{$ARG_PHOTO_ID}?$ARG_MEDIA_FILTER={$ARG_MEDIA_FILTER}"
     private const val NO_MEMBERS = "-"
@@ -93,6 +96,7 @@ fun NavGraphBuilder.galleryGraph(
         toPeoplePhoto = { memberIds, filter, photoId ->
             navController.navigate(GalleryRoutes.peoplePhoto(memberIds, photoId, filter))
         },
+        toVideoTrim = { navController.navigate(GalleryRoutes.VIDEO_TRIM) },
     )
 
     navigation(
@@ -160,6 +164,11 @@ fun NavGraphBuilder.galleryGraph(
                 viewModel = viewModel,
                 nav = nav,
             )
+        }
+
+        // The route carries no URIs: the batch lives in the GalleryViewModel, and without it the screen leaves.
+        composable(GalleryRoutes.VIDEO_TRIM) { entry ->
+            VideoTrimScreen(viewModel = graphViewModel(navController, entry), nav = nav)
         }
 
         // The filter: its own ViewModel, so the selection lasts only this visit.

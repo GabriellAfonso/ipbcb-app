@@ -17,6 +17,14 @@ data class VideoProbeResult(
 
 enum class VideoContainer { MP4, MOV, OTHER }
 
+/** The tracks and metadata of a picked video, read from its URI. */
+data class PickedVideoInfo(
+    val videoMime: String?,
+    val audioMimes: List<String>,
+    val durationMs: Long?,
+    val dateTaken: String?,
+)
+
 /**
  * The server accepts MP4 and MOV up to 100 MB and never converts, so the phone refuses anything a member's
  * phone might not play — before it is sent, with a reason, so the person converts the file elsewhere and
@@ -31,6 +39,17 @@ object VideoUploadCheck {
     const val UNREADABLE = "Não foi possível ler este vídeo."
     private val VIDEO_CODECS = setOf("video/avc", "video/hevc")
     private const val AAC = "audio/mp4a-latm"
+    private val TRIMMABLE_CONTAINERS = setOf("video/mp4", "video/quicktime")
+
+    /**
+     * Whether a picked video may open the editor. Size is not checked: trimming is the way forward for a
+     * big one. A format the phones cannot play is not fixed by trimming, so it goes to the refused list.
+     */
+    fun canTrim(mimeType: String?, info: PickedVideoInfo): Boolean =
+        mimeType?.lowercase() in TRIMMABLE_CONTAINERS &&
+            info.videoMime in VIDEO_CODECS &&
+            info.audioMimes.all { it == AAC } &&
+            (info.durationMs ?: 0L) > 0L
 
     /** The refusal, or `null` when the video may be sent. Size first: the cheapest to fix. */
     fun refusal(probe: VideoProbeResult): String? = when {

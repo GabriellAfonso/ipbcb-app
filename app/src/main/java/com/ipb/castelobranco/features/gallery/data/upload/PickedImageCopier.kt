@@ -66,6 +66,11 @@ class PickedImageCopier @Inject constructor(
         PickedMedia(source, runCatching { resolver.getType(uri) }.getOrNull(), size)
     }
 
+    /** The name a picked video goes by, without copying it. */
+    suspend fun videoDisplayName(source: String): String = withContext(ioDispatcher) {
+        displayNameOf(Uri.parse(source)) ?: defaultName(isVideo = true)
+    }
+
     private fun displayNameOf(uri: Uri): String? = runCatching {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0)?.ifBlank { null } else null

@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.features.gallery.domain.upload
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VideoUploadCheckTest {
@@ -51,5 +53,26 @@ class VideoUploadCheckTest {
     @Test
     fun `no duration reads as unreadable`() {
         assertEquals(VideoUploadCheck.UNREADABLE, VideoUploadCheck.refusal(probe(duration = null)))
+    }
+
+    private fun info(
+        video: String? = "video/hevc",
+        audio: List<String> = listOf("audio/mp4a-latm"),
+        duration: Long? = 45_000,
+    ) = PickedVideoInfo(video, audio, duration, dateTaken = null)
+
+    @Test
+    fun `an MP4 or MOV with accepted tracks may be trimmed`() {
+        assertTrue(VideoUploadCheck.canTrim("video/mp4", info()))
+        assertTrue(VideoUploadCheck.canTrim("video/quicktime", info(audio = emptyList())))
+    }
+
+    @Test
+    fun `another container, codec, audio or no duration may not be trimmed`() {
+        assertFalse(VideoUploadCheck.canTrim("video/x-matroska", info()))
+        assertFalse(VideoUploadCheck.canTrim(null, info()))
+        assertFalse(VideoUploadCheck.canTrim("video/mp4", info(video = "video/mpeg2")))
+        assertFalse(VideoUploadCheck.canTrim("video/mp4", info(audio = listOf("audio/ac3"))))
+        assertFalse(VideoUploadCheck.canTrim("video/mp4", info(duration = null)))
     }
 }

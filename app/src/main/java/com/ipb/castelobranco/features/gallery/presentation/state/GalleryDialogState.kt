@@ -7,6 +7,7 @@ import com.ipb.castelobranco.core.presentation.components.MediaTypesDialogState
 import com.ipb.castelobranco.features.gallery.domain.model.GalleryMember
 import com.ipb.castelobranco.features.gallery.domain.model.TreeTarget
 import com.ipb.castelobranco.features.gallery.domain.tags.NameSearch
+import com.ipb.castelobranco.features.gallery.domain.upload.UploadEntry
 
 /** The one dialog or sheet open over a gallery screen. */
 sealed interface GalleryDialogState {
@@ -29,10 +30,10 @@ sealed interface GalleryDialogState {
             get() = GalleryStorageDialogs.downloadDialog(missing, autoDownloadVideos, choice)
     }
 
-    /** A batch with videos picked on mobile data: send now, or let the videos wait for WiFi. */
+    /** A decided batch with videos on mobile data: send now, or let the videos wait for WiFi. */
     data class UploadOnMobileData(
         val albumId: Long,
-        val sources: List<String>,
+        val entries: List<UploadEntry>,
         val videoCount: Int,
         val videoBytes: Long,
     ) : GalleryDialogState
