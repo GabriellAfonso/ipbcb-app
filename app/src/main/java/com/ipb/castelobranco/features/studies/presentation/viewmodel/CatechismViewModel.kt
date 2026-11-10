@@ -11,7 +11,6 @@ import com.ipb.castelobranco.features.studies.domain.model.DoctrineDocument
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineSearchResult
 import com.ipb.castelobranco.features.studies.domain.model.doctrineShortTitle
 import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
 import com.ipb.castelobranco.features.studies.domain.usecase.ObserveDoctrineDocumentUseCase
 import com.ipb.castelobranco.features.studies.domain.usecase.SearchDoctrineUseCase
 import com.ipb.castelobranco.features.studies.presentation.navigation.StudiesRoutes
@@ -38,7 +37,7 @@ data class CatechismUiState(
     val questions: List<CatechismQuestion> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
-    val fontSize: DoctrineFontSize = DoctrineFontSize(DEFAULT_FONT_SIZE),
+    val fontSize: DoctrineTextSize = DoctrineTextSize(),
     val isSearching: Boolean = false,
     val query: String = "",
     /** Null while the term is blank: the reader stays visible under the search field. */
@@ -76,7 +75,7 @@ class CatechismViewModel @Inject constructor(
         if (catechism == null || term.isBlank()) null else search(catechism, term)
     }.flowOn(defaultDispatcher)
 
-    private val fontSize = preferences.fontSizeFlow.map { DoctrineFontSize(it) }
+    private val fontSize = preferences.textScaleFlow.map(::DoctrineTextSize)
 
     val uiState: StateFlow<CatechismUiState> = combine(
         document, fontSize, isSearching, query, results,
@@ -141,12 +140,8 @@ class CatechismViewModel @Inject constructor(
         if (index >= 0) _events.tryEmit(CatechismEvent.ScrollTo(index))
     }
 
-    fun increaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.increased()) }
-    }
-
-    fun decreaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.decreased()) }
+    fun setTextScale(percent: Int) {
+        viewModelScope.launch { preferences.setTextScale(percent) }
     }
 
     private companion object {

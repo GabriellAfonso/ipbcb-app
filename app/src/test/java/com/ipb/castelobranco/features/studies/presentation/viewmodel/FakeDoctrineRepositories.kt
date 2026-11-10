@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.studies.presentation.viewmodel
 
+import com.ipb.castelobranco.core.domain.model.TextScale
 import com.ipb.castelobranco.core.domain.snapshot.RefreshResult
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineDocument
@@ -27,10 +28,9 @@ class FakeDoctrineRepository : DoctrineRepository {
     override suspend fun refreshDocument(slug: String): RefreshResult = RefreshResult.NotModified
 }
 
-class FakeDoctrinePreferences(initial: Float = DoctrinePreferencesRepository.DEFAULT_FONT_SIZE) :
-    DoctrinePreferencesRepository {
-    override val fontSizeFlow = MutableStateFlow(initial)
-    override suspend fun setFontSize(size: Float) {
-        fontSizeFlow.value = size
+class FakeDoctrinePreferences(initial: Int = TextScale.DEFAULT) : DoctrinePreferencesRepository {
+    override val textScaleFlow = MutableStateFlow(initial)
+    override suspend fun setTextScale(percent: Int) {
+        textScaleFlow.value = percent
     }
 }

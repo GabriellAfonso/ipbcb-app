@@ -10,7 +10,6 @@ import com.ipb.castelobranco.features.studies.domain.model.ConfessionChapter
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineDocument
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineSearchResult
 import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
 import com.ipb.castelobranco.features.studies.domain.usecase.ObserveDoctrineDocumentUseCase
 import com.ipb.castelobranco.features.studies.domain.usecase.SearchDoctrineUseCase
 import com.ipb.castelobranco.features.studies.presentation.navigation.StudiesRoutes
@@ -39,7 +38,7 @@ data class ConfessionChapterUiState(
     val hasNext: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
-    val fontSize: DoctrineFontSize = DoctrineFontSize(DEFAULT_FONT_SIZE),
+    val fontSize: DoctrineTextSize = DoctrineTextSize(),
     val isSearching: Boolean = false,
     val query: String = "",
     val results: List<DoctrineSearchResult>? = null,
@@ -77,7 +76,7 @@ class ConfessionChapterViewModel @Inject constructor(
         if (confession == null || term.isBlank()) null else search(confession, term)
     }.flowOn(defaultDispatcher)
 
-    private val fontSize = preferences.fontSizeFlow.map { DoctrineFontSize(it) }
+    private val fontSize = preferences.textScaleFlow.map(::DoctrineTextSize)
 
     private val reading = combine(document, chapterNumber, fontSize) { state, number, font ->
         val base = ConfessionChapterUiState(fontSize = font)
@@ -157,12 +156,8 @@ class ConfessionChapterViewModel @Inject constructor(
         scrollToParagraph(chapter, paragraph.paragraph)
     }
 
-    fun increaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.increased()) }
-    }
-
-    fun decreaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.decreased()) }
+    fun setTextScale(percent: Int) {
+        viewModelScope.launch { preferences.setTextScale(percent) }
     }
 
     private fun scrollToParagraph(chapter: ConfessionChapter, number: Int) {

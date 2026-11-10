@@ -14,12 +14,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.core.presentation.components.TextSizeButton
 
-/** Top-bar actions of every doctrine reader: search and the "Aa" text-size toggle. */
+/** Top-bar actions of every doctrine reader: search and the `tT` text-size toggle. */
 @Composable
 fun DoctrineReaderActions(
     onSearchClick: () -> Unit,
@@ -28,11 +26,7 @@ fun DoctrineReaderActions(
     IconButton(onClick = onSearchClick) {
         Icon(Icons.Filled.Search, contentDescription = "Buscar")
     }
-    if (onFontSizeClick != null) {
-        IconButton(onClick = onFontSizeClick) {
-            Text(text = "Aa", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-        }
-    }
+    if (onFontSizeClick != null) TextSizeButton(onClick = onFontSizeClick)
 }
 
 /** "Ir para nº…" dialog; validation happens in the ViewModel. */

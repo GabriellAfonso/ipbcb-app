@@ -43,7 +43,7 @@ import com.ipb.castelobranco.features.studies.domain.model.DoctrineSearchResult
 import com.ipb.castelobranco.features.studies.domain.model.ProofText
 import com.ipb.castelobranco.features.studies.domain.model.VerseSpan
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineErrorView
-import com.ipb.castelobranco.features.studies.presentation.components.DoctrineFontSizeBar
+import com.ipb.castelobranco.core.presentation.components.TextSizeBar
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineLoadingView
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineReaderActions
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineSearchField
@@ -63,8 +63,7 @@ data class CatechismActions(
     val onCloseSearch: () -> Unit,
     val onQueryChange: (String) -> Unit,
     val onResultClick: (DoctrineSearchResult) -> Unit,
-    val onIncreaseFont: () -> Unit,
-    val onDecreaseFont: () -> Unit,
+    val onTextScaleChange: (Int) -> Unit,
 )
 
 @Composable
@@ -97,8 +96,7 @@ fun CatechismScreen(
             onCloseSearch = viewModel::closeSearch,
             onQueryChange = viewModel::onQueryChange,
             onResultClick = viewModel::onResultClick,
-            onIncreaseFont = viewModel::increaseFont,
-            onDecreaseFont = viewModel::decreaseFont,
+            onTextScaleChange = viewModel::setTextScale,
         ),
     )
 }
@@ -132,12 +130,9 @@ fun CatechismContent(
                     onQueryChange = actions.onQueryChange,
                     onClose = actions.onCloseSearch,
                 )
-                showFontBar -> DoctrineFontSizeBar(
-                    fontSize = state.fontSize.size,
-                    canDecrease = state.fontSize.canDecrease,
-                    canIncrease = state.fontSize.canIncrease,
-                    onDecrease = actions.onDecreaseFont,
-                    onIncrease = actions.onIncreaseFont,
+                showFontBar -> TextSizeBar(
+                    percent = state.fontSize.percent,
+                    onPercentChange = actions.onTextScaleChange,
                 )
             }
         },
@@ -304,7 +299,7 @@ private fun CatechismContentPreview() {
                 isLoading = false,
             ),
             listState = rememberLazyListState(),
-            actions = CatechismActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = CatechismActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

@@ -36,7 +36,7 @@ import com.ipb.castelobranco.features.studies.domain.model.ConfessionParagraph
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineSearchResult
 import com.ipb.castelobranco.features.studies.domain.model.ParagraphList
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineErrorView
-import com.ipb.castelobranco.features.studies.presentation.components.DoctrineFontSizeBar
+import com.ipb.castelobranco.core.presentation.components.TextSizeBar
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineLoadingView
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineReaderActions
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineSearchField
@@ -53,8 +53,7 @@ data class ConfessionChapterActions(
     val onCloseSearch: () -> Unit,
     val onQueryChange: (String) -> Unit,
     val onResultClick: (DoctrineSearchResult) -> Unit,
-    val onIncreaseFont: () -> Unit,
-    val onDecreaseFont: () -> Unit,
+    val onTextScaleChange: (Int) -> Unit,
 )
 
 @Composable
@@ -84,8 +83,7 @@ fun ConfessionChapterScreen(
             onCloseSearch = viewModel::closeSearch,
             onQueryChange = viewModel::onQueryChange,
             onResultClick = viewModel::onResultClick,
-            onIncreaseFont = viewModel::increaseFont,
-            onDecreaseFont = viewModel::decreaseFont,
+            onTextScaleChange = viewModel::setTextScale,
         ),
     )
 }
@@ -119,12 +117,9 @@ fun ConfessionChapterContent(
                     onQueryChange = actions.onQueryChange,
                     onClose = actions.onCloseSearch,
                 )
-                showFontBar -> DoctrineFontSizeBar(
-                    fontSize = state.fontSize.size,
-                    canDecrease = state.fontSize.canDecrease,
-                    canIncrease = state.fontSize.canIncrease,
-                    onDecrease = actions.onDecreaseFont,
-                    onIncrease = actions.onIncreaseFont,
+                showFontBar -> TextSizeBar(
+                    percent = state.fontSize.percent,
+                    onPercentChange = actions.onTextScaleChange,
                 )
             }
         },
@@ -279,7 +274,7 @@ private fun ConfessionChapterContentPreview() {
                 isLoading = false,
             ),
             listState = rememberLazyListState(),
-            actions = ConfessionChapterActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = ConfessionChapterActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

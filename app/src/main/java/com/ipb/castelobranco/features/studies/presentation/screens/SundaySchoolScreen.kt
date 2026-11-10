@@ -40,7 +40,7 @@ import com.ipb.castelobranco.core.presentation.components.GreenTabBar
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.LessonSummary
 import com.ipb.castelobranco.features.studies.domain.model.SundaySchoolYear
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
+import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.BASE_FONT_SIZE
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineErrorView
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineLoadingView
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.LessonStyle
@@ -221,7 +221,7 @@ private fun EmptyLessons() {
     }
 }
 
-private const val LIST_FONT_SIZE = DEFAULT_FONT_SIZE
+private const val LIST_FONT_SIZE = BASE_FONT_SIZE
 private const val HEADER_KEY = "year-header"
 private val SHEET_RADIUS = 18.dp
 

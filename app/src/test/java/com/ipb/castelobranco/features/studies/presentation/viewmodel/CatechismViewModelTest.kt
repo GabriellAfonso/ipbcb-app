@@ -5,8 +5,6 @@ import app.cash.turbine.test
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.studies.DoctrineTestFixtures
 import com.ipb.castelobranco.features.studies.domain.model.DoctrineSearchResult
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.MAX_FONT_SIZE
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.MIN_FONT_SIZE
 import com.ipb.castelobranco.features.studies.domain.usecase.ObserveDoctrineDocumentUseCase
 import com.ipb.castelobranco.features.studies.domain.usecase.SearchDoctrineUseCase
 import com.ipb.castelobranco.features.studies.presentation.navigation.StudiesRoutes
@@ -22,7 +20,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -105,23 +102,14 @@ class CatechismViewModelTest {
         }
 
     @Test
-    fun `font size steps by two and stops at the limits`() = runTest(dispatcher) {
+    fun `the text size from the bar is saved and sizes the text from 18sp`() = runTest(dispatcher) {
         val vm = loadedViewModel()
+        assertEquals(18f, vm.uiState.value.fontSize.size)
 
-        vm.increaseFont()
+        vm.setTextScale(150)
         advanceUntilIdle()
-        assertEquals(20f, vm.uiState.value.fontSize.size)
-
-        preferences.fontSizeFlow.value = MAX_FONT_SIZE
-        advanceUntilIdle()
-        assertFalse(vm.uiState.value.fontSize.canIncrease)
-        vm.increaseFont()
-        advanceUntilIdle()
-        assertEquals(MAX_FONT_SIZE, preferences.fontSizeFlow.value)
-
-        preferences.fontSizeFlow.value = MIN_FONT_SIZE
-        advanceUntilIdle()
-        assertFalse(vm.uiState.value.fontSize.canDecrease)
-        assertTrue(vm.uiState.value.fontSize.canIncrease)
+        assertEquals(150, preferences.textScaleFlow.value)
+        assertEquals(150, vm.uiState.value.fontSize.percent)
+        assertEquals(27f, vm.uiState.value.fontSize.size)
     }
 }

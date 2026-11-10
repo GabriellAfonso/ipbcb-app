@@ -26,8 +26,8 @@ o estado compartilhado fica no repositório singleton.
 - **Busca** (no aparelho): ignora maiúsculas e acentos, exige todas as palavras em qualquer ordem. No catecismo, um
   número puro põe a pergunta daquele número primeiro. Sem resultado: "Nenhum resultado".
 - **"Ir para nº…"**: número fora do intervalo ou não numérico mostra "Digite um número de 1 a N".
-- **Tamanho do texto**: "Aa" abre a barra A− / A+, de 14 a 32 sp em passos de 2 (padrão 18), compartilhado pelos leitores
-  e separado da Bíblia.
+- **Tamanho do texto**: o `tT` abre a barra padrão do app (`specs/core/spec.md` §6.7.1), 100% = 18 sp, um valor
+  só para Catecismo, Confissão e EBD, separado da Bíblia.
 - **Títulos da Confissão** e cabeçalhos das listas do 1.2 vêm em caixa alta e são mostrados em caixa de frase,
   mantendo maiúsculas em Deus, Cristo, Mediador, Espírito Santo, Sagradas Escrituras, Santíssima Trindade, Lei, Igreja,
   Senhor e Antigo/Novo Testamento.
@@ -60,7 +60,7 @@ Os dois respondem com `ETag` e `304` para `If-None-Match` igual.
 
 - Snapshots via `SnapshotCacheFactory` (ver `core` 4.3): `filesDir/snapshots/doctrine_list.json` e
   `doctrine_<slug>.json`, cada um com seu ETag. Conteúdo público: sem criptografia, não é apagado no login/logout.
-- `DoctrinePreferences` (Settings DataStore): `doctrine_font_size`.
+- `DoctrinePreferences` (Settings DataStore): `doctrine_text_scale` (%; le o `doctrine_font_size` antigo, core §6.7.1).
 
 ## 4. Repositório (`DoctrineRepository`, `@Singleton`)
 
@@ -81,7 +81,7 @@ motivos: `specs/020-sunday-school/research.md`.
 | Tela | Rota | Conteúdo |
 |------|------|----------|
 | EBD | `SundaySchool` | Abas por ano dentro da barra verde (as do servidor, mais recente primeiro; abre o ano padrão do servidor; nenhuma aba com um ano só), cabeçalho "ANO 2026 / Tema / N aulas", aulas na ordem do servidor em cartões com o número da aula, título, data e professor quando conhecidos. Sem aula publicada: "Nenhuma aula publicada ainda". Puxar para atualizar na lista de aulas lê de novo o índice padrão e, com outra aba aberta, o do ano |
-| Aula | `SundaySchoolLesson/{lessonId}` | Cabeçalho (título, ano e tema, data · professor), seções com ícone e blocos; "Aa" |
+| Aula | `SundaySchoolLesson/{lessonId}` | Cabeçalho (título, ano e tema, data · professor), seções com ícone e blocos; `tT` (tamanho do texto) |
 | Gestão | `SundaySchoolManage` (`AppRoutes.SUNDAY_SCHOOL_MANAGE`, aberta pelo card "EBD" do painel) | Faixa verde na barra: "Escola Bíblica Dominical", o tema do ano (ou "Sem tema"), "{ano} · N aulas · M rascunhos" (rascunhos só quando há) e os anos em etiquetas (o escolhido em branco). Abaixo, numa folha de cantos arredondados, as aulas do ano em cards: alça para arrastar (pressão longa) e reordenar, número da aula, título, etiqueta laranja "Rascunho" nas não publicadas, data · professor (ou "Sem data"). Tocar abre a edição; os três pontos abrem um painel com "Editar aula" e, para quem pode apagar, "Apagar aula" separado em "Cuidado". Botão "Nova aula"; menu "Anos e temas" |
 | Formulário | `SundaySchoolLessonForm?lessonId={id}&year={ano}` (`-1` = nova) | Abas verdes "Editar" e "Pré-visualizar" na barra. Seção "Aula" num card com campos tonais: título, ano, data, professor e o seletor Rascunho / Publicada. Seção "Conteúdo": cada seção num card com o número em caixa, ícone e título, seguida dos seus blocos (editados no lugar), e "Adicionar seção". Rodapé fixo com "Salvar rascunho" ou "Salvar e publicar", conforme o status |
 | Anos | `SundaySchoolYears` | Cada ano num card: o ano grande, o tema (ou "Sem tema" em itálico) e "N aulas · M publicadas"; tocar abre o diálogo do tema ("Remover tema" limpa). Nota no fim: "Um ano aparece aqui quando a primeira aula dele é criada." |
@@ -95,7 +95,7 @@ motivos: `specs/020-sunday-school/research.md`.
 - **Visual**: o mesmo das Tabelas e da Escala, no claro e no escuro: lista em `surfaceDim`, leitura em `surface`,
   cartões e cabeçalhos em `surfaceContainer`, destaques em `primary`, títulos em Poppins e texto em Inter. Ícones
   Phosphor duotone (MIT) como vetores do app (`res/drawable/ic_ph_*.xml`), verdes.
-- **Tamanho do texto**: o mesmo "Aa" e a mesma preferência dos leitores de Doutrina.
+- **Tamanho do texto**: o mesmo `tT`, a mesma barra e a mesma preferência dos leitores de Doutrina.
 - **Editor** (só o básico nesta versão): cria, edita, move e apaga seções (título e ícone da lista fechada ou
   nenhum), parágrafos, listas e versículos-chave, e os chips de referência (texto do chip + livro, capítulo e
   versículos "1-3,5", ou sem referência). Os outros tipos aparecem como na leitura, podem ser movidos ou apagados e

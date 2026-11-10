@@ -7,7 +7,6 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.studies.domain.model.Lesson
 import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
 import com.ipb.castelobranco.features.studies.domain.usecase.ObserveSundaySchoolLessonUseCase
 import com.ipb.castelobranco.features.studies.presentation.navigation.StudiesRoutes
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +24,7 @@ data class SundaySchoolLessonUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     /** Shared with the doctrine readers: one reading size for Estudos (research R-04). */
-    val fontSize: DoctrineFontSize = DoctrineFontSize(DEFAULT_FONT_SIZE),
+    val fontSize: DoctrineTextSize = DoctrineTextSize(),
     val showFontBar: Boolean = false,
 )
 
@@ -42,7 +41,7 @@ class SundaySchoolLessonViewModel @Inject constructor(
 
     val uiState: StateFlow<SundaySchoolLessonUiState> = combine(
         observeLesson(lessonId),
-        preferences.fontSizeFlow.map { DoctrineFontSize(it) },
+        preferences.textScaleFlow.map(::DoctrineTextSize),
         showFontBar,
     ) { state, font, fontBar ->
         val base = SundaySchoolLessonUiState(fontSize = font, showFontBar = fontBar)
@@ -65,11 +64,7 @@ class SundaySchoolLessonViewModel @Inject constructor(
         showFontBar.value = !showFontBar.value
     }
 
-    fun increaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.increased()) }
-    }
-
-    fun decreaseFont() {
-        viewModelScope.launch { preferences.setFontSize(uiState.value.fontSize.decreased()) }
+    fun setTextScale(percent: Int) {
+        viewModelScope.launch { preferences.setTextScale(percent) }
     }
 }

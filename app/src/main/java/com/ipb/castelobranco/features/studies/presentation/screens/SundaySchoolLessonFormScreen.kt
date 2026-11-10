@@ -57,7 +57,7 @@ import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.BibleReference
 import com.ipb.castelobranco.features.studies.domain.model.LessonDraft
 import com.ipb.castelobranco.features.studies.domain.model.LessonStatus
-import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.DEFAULT_FONT_SIZE
+import com.ipb.castelobranco.features.studies.domain.repository.DoctrinePreferencesRepository.Companion.BASE_FONT_SIZE
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineErrorView
 import com.ipb.castelobranco.features.studies.presentation.components.DoctrineLoadingView
 import com.ipb.castelobranco.features.studies.presentation.components.sundayschool.LessonContentView
@@ -212,7 +212,7 @@ fun SundaySchoolLessonFormContent(
         draft == null -> DoctrineErrorView(message = state.loadError.orEmpty(), onRetry = onRetry)
         state.mode == LessonFormMode.PREVIEW -> LessonPreview(state, draft)
         else -> {
-            val style = LessonStyle(colors = sundaySchoolColors, fontSize = DEFAULT_FONT_SIZE)
+            val style = LessonStyle(colors = sundaySchoolColors, fontSize = BASE_FONT_SIZE)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 item(key = "metadata") { MetadataFields(draft, state, formActions) }
                 item(key = "content-title") {
@@ -245,7 +245,7 @@ private fun LessonPreview(state: SundaySchoolLessonFormUiState, draft: LessonDra
             ),
             content = draft.content,
             books = state.books,
-            style = LessonStyle(colors = colors, fontSize = DEFAULT_FONT_SIZE),
+            style = LessonStyle(colors = colors, fontSize = BASE_FONT_SIZE),
             onReferenceClick = { _: BibleReference -> },
             modifier = Modifier.fillMaxSize(),
         )
