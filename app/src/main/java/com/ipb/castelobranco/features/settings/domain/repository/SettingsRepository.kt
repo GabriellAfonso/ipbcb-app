@@ -13,9 +13,10 @@ interface SettingsRepository {
     suspend fun setLightMode()
     suspend fun setDarkMode()
 
-    val hymnalFontSizeFlow: Flow<Float>
+    /** The hymn text size, in percent (`specs/core/spec.md` §6.7.1). */
+    val hymnalTextScaleFlow: Flow<Int>
 
-    suspend fun setHymnalFontSize(size: Float)
+    suspend fun setHymnalTextScale(percent: Int)
 
     val birthdayNotificationsFlow: Flow<Boolean>
 

@@ -3,6 +3,7 @@ package com.ipb.castelobranco.features.hymnal.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ipb.castelobranco.core.data.local.ThemePreferences
+import com.ipb.castelobranco.core.domain.model.TextScale
 import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.core.presentation.error.toUserMessage
 import com.ipb.castelobranco.features.hymnal.domain.usecase.ObserveHymnsUseCase
@@ -54,15 +55,16 @@ class HymnalViewModel @Inject constructor(
         }
     }
 
-    val hymnalFontSize: StateFlow<Float> = settingsRepository.hymnalFontSizeFlow
+    /** Percent of [ThemePreferences.HYMNAL_BASE_FONT_SIZE]. */
+    val hymnalTextScale: StateFlow<Int> = settingsRepository.hymnalTextScaleFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = ThemePreferences.DEFAULT_HYMNAL_FONT_SIZE
+            initialValue = TextScale.DEFAULT
         )
 
-    fun setHymnalFontSize(size: Float) {
-        viewModelScope.launch { settingsRepository.setHymnalFontSize(size) }
+    fun setHymnalTextScale(percent: Int) {
+        viewModelScope.launch { settingsRepository.setHymnalTextScale(percent) }
     }
 
     @OptIn(FlowPreview::class)

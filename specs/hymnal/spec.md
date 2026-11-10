@@ -53,7 +53,7 @@ encontrado para “{busca}”."
 ### 1.2 Detalhe
 
 **Cabecalho** no bloco verde da TopBar: "Hino {número}" pequeno (mono, verde-menta) e o titulo grande em
-branco. O botao de fonte da TopBar abre o ajuste no mesmo bloco verde, acima do cabecalho. Abaixo, a folha de
+branco. O `tT` da TopBar abre a barra de tamanho do texto no mesmo bloco verde, acima do cabecalho. Abaixo, a folha de
 conteudo arredondada (`surfaceDim`).
 
 **Estrofes:** um cartao por estrofe (`surfaceContainer`, cantos de 12 dp), com um rotulo em cima dizendo o
@@ -61,8 +61,8 @@ que e (`stanzaLabels`): "1ª estrofe", "2ª estrofe"… so contando as `VERSE`; 
 para `OTHER`. O coro tem fundo verde claro e texto verde escuro em italico (no escuro, fundo verde escuro e
 texto verde-menta). Sem faixa colorida.
 
-Texto selecionável (`SelectionContainer`). Ajuste de fonte de 16 sp a 32 sp por slider na
-extensão da top bar, persistido em `ThemePreferences.hymnalFontSize` (padrão 22 sp).
+Texto selecionável (`SelectionContainer`). Tamanho do texto pela barra padrão do app (`specs/core/spec.md`
+§6.7.1) com as cores sobre o verde (`onBrandColors`), 100% = 22 sp, salvo em `ThemePreferences.hymnalTextScale`.
 
 Hino não encontrado exibe "Hino não encontrado" — não é erro.
 

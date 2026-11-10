@@ -57,7 +57,7 @@ class HymnalViewModelTest {
         settingsRepository = mockk()
 
         every { observeHymnsUseCase() } returns flowOf(SnapshotState.Loading)
-        every { settingsRepository.hymnalFontSizeFlow } returns flowOf(16f)
+        every { settingsRepository.hymnalTextScaleFlow } returns flowOf(100)
         every { searchHymnsUseCase(any(), any()) } returns emptyList()
         coEvery { observeHymnsUseCase.refresh() } returns RefreshResult.Updated
 
@@ -244,26 +244,26 @@ class HymnalViewModelTest {
 
     // endregion
 
-    // region hymnalFontSize
+    // region hymnalTextScale
 
     @Test
-    fun `hymnalFontSize reflects value from settingsRepository`() = runTest {
-        every { settingsRepository.hymnalFontSizeFlow } returns flowOf(20f)
+    fun `hymnalTextScale reflects value from settingsRepository`() = runTest {
+        every { settingsRepository.hymnalTextScaleFlow } returns flowOf(140)
         viewModel = HymnalViewModel(observeHymnsUseCase, searchHymnsUseCase, settingsRepository, testDispatcher)
 
-        val job = launch { viewModel.hymnalFontSize.collect { } }
+        val job = launch { viewModel.hymnalTextScale.collect { } }
         advanceUntilIdle()
         job.cancel()
 
-        assertEquals(20f, viewModel.hymnalFontSize.value)
+        assertEquals(140, viewModel.hymnalTextScale.value)
     }
 
     @Test
-    fun `setHymnalFontSize delegates to settingsRepository`() = runTest {
-        coEvery { settingsRepository.setHymnalFontSize(any()) } returns Unit
-        viewModel.setHymnalFontSize(18f)
+    fun `setHymnalTextScale delegates to settingsRepository`() = runTest {
+        coEvery { settingsRepository.setHymnalTextScale(any()) } returns Unit
+        viewModel.setHymnalTextScale(85)
         advanceUntilIdle()
-        coVerify { settingsRepository.setHymnalFontSize(18f) }
+        coVerify { settingsRepository.setHymnalTextScale(85) }
     }
 
     // endregion

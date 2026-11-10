@@ -19,13 +19,13 @@ class SettingsRepositoryImplTest {
     private lateinit var repository: SettingsRepositoryImpl
 
     private val defaultThemeModeFlow = flowOf(ThemeMode.FOLLOW_SYSTEM)
-    private val defaultFontSizeFlow = flowOf(22f)
+    private val defaultTextScaleFlow = flowOf(100)
 
     @Before
     fun setup() {
         themePreferences = mockk(relaxed = true)
         every { themePreferences.themeModeFlow } returns defaultThemeModeFlow
-        every { themePreferences.hymnalFontSizeFlow } returns defaultFontSizeFlow
+        every { themePreferences.hymnalTextScaleFlow } returns defaultTextScaleFlow
         repository = SettingsRepositoryImpl(themePreferences)
     }
 
@@ -37,8 +37,8 @@ class SettingsRepositoryImplTest {
     }
 
     @Test
-    fun `hymnalFontSizeFlow returns flow from themePreferences`() {
-        assertEquals(defaultFontSizeFlow, repository.hymnalFontSizeFlow)
+    fun `hymnalTextScaleFlow returns flow from themePreferences`() {
+        assertEquals(defaultTextScaleFlow, repository.hymnalTextScaleFlow)
     }
 
     // endregion
@@ -95,12 +95,12 @@ class SettingsRepositoryImplTest {
 
     // endregion
 
-    // region setHymnalFontSize
+    // region setHymnalTextScale
 
     @Test
-    fun `setHymnalFontSize delegates to themePreferences`() = runTest {
-        repository.setHymnalFontSize(18f)
-        coVerify { themePreferences.setHymnalFontSize(18f) }
+    fun `setHymnalTextScale delegates to themePreferences`() = runTest {
+        repository.setHymnalTextScale(120)
+        coVerify { themePreferences.setHymnalTextScale(120) }
     }
 
     // endregion

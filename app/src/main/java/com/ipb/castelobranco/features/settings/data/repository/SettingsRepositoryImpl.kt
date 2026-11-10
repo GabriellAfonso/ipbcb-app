@@ -30,10 +30,10 @@ class SettingsRepositoryImpl @Inject constructor(
         themePreferences.setDarkMode()
     }
 
-    override val hymnalFontSizeFlow: Flow<Float> = themePreferences.hymnalFontSizeFlow
+    override val hymnalTextScaleFlow: Flow<Int> = themePreferences.hymnalTextScaleFlow
 
-    override suspend fun setHymnalFontSize(size: Float) {
-        themePreferences.setHymnalFontSize(size)
+    override suspend fun setHymnalTextScale(percent: Int) {
+        themePreferences.setHymnalTextScale(percent)
     }
 
     override val birthdayNotificationsFlow: Flow<Boolean> = themePreferences.birthdayNotificationsFlow

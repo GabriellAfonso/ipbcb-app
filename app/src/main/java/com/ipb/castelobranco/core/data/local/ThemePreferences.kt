@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import com.ipb.castelobranco.core.di.SettingsPrefs
@@ -25,11 +24,17 @@ class ThemePreferences @Inject constructor(
         private const val MODE_DARK: Int = 2
         private const val SCROLL_MODE_HORIZONTAL: Int = 0
         private const val SCROLL_MODE_VERTICAL: Int = 1
-        const val DEFAULT_HYMNAL_FONT_SIZE: Float = 22f
+        /** The hymn text at 100% (`specs/core/spec.md` §6.7.1). */
+        const val HYMNAL_BASE_FONT_SIZE: Float = 22f
     }
 
     private val themeModeKey = intPreferencesKey("theme_mode")
-    private val hymnalFontSizeKey = floatPreferencesKey("hymnal_font_size")
+    private val hymnalTextScale = TextScaleStore(
+        dataStore = dataStore,
+        key = "hymnal_text_scale",
+        legacySpKey = "hymnal_font_size",
+        legacyBaseSp = HYMNAL_BASE_FONT_SIZE,
+    )
     private val songScrollModeKey = intPreferencesKey("song_scroll_mode")
     private val birthdayNotificationsKey = booleanPreferencesKey("birthday_notifications_enabled")
     private val scheduleNotificationsKey = booleanPreferencesKey("schedule_notifications_enabled")
@@ -61,16 +66,10 @@ class ThemePreferences @Inject constructor(
     suspend fun setLightMode() = setThemeMode(ThemeMode.LIGHT)
     suspend fun setDarkMode() = setThemeMode(ThemeMode.DARK)
 
-    val hymnalFontSizeFlow: Flow<Float> =
-        dataStore.data.map { prefs ->
-            prefs[hymnalFontSizeKey] ?: DEFAULT_HYMNAL_FONT_SIZE
-        }
+    /** Percent of [HYMNAL_BASE_FONT_SIZE]. */
+    val hymnalTextScaleFlow: Flow<Int> = hymnalTextScale.flow
 
-    suspend fun setHymnalFontSize(size: Float) {
-        dataStore.edit { prefs ->
-            prefs[hymnalFontSizeKey] = size
-        }
-    }
+    suspend fun setHymnalTextScale(percent: Int) = hymnalTextScale.set(percent)
 
     val songScrollModeFlow: Flow<SongScrollMode> =
         dataStore.data.map { prefs ->
