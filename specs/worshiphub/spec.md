@@ -23,7 +23,9 @@ letras", com os cartões subindo sobre ela como sempre.
   no fuso do aparelho; sem nome (conta apagada), "Salvo em dd/MM às HH:mm"; data ilegível, sem rodapé.
 - **Sem repertório:** "Ainda não foi salvo.". Com `can_save_setlist`, o botão "Montar repertório" abre Tabelas
   direto na aba Repertório (seção 2.4).
-- **Remover:** com repertório na faixa e `can_save_setlist`, um botão "Remover" (lixeira) ao lado da data. Pede
+- **Remover:** com repertório na faixa e `can_save_setlist`, um ícone de lixeira (sem texto, descrição
+  "Remover" para leitores de tela) no canto direito, depois do de compartilhar e com o mesmo tamanho visual (o de compartilhar
+  é um pouco menor, porque o desenho dele ocupa mais da caixa). Pede
   confirmação ("Remover repertório de dd/MM?" / "As músicas planejadas para esse domingo serão apagadas.") e apaga
   no servidor (`DELETE api/setlists/{date}/`, o mesmo da gestão — admin spec §2), em qualquer dia: a gestão só
   mostra o domingo depois que ele passa. `404` conta como removido. No sucesso o repertório sai do aparelho na hora,

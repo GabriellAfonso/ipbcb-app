@@ -34,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -102,6 +103,9 @@ private const val SHADOW_AMBIENT_ALPHA = 0.08f
 private const val SHADOW_SPOT_ALPHA = 0.12f
 
 private val BandCorner = 28.dp
+private val BandIconSize = 20.dp
+/** The share glyph fills more of its box than the trash can: a bit smaller, they look the same size. */
+private val BandShareIconSize = 18.dp
 private val TileOverlap = 24.dp
 private val TileHeight = 104.dp
 private val TileCorner = 18.dp
@@ -226,31 +230,27 @@ private fun SundayBand(band: HubBandUi, isDeleting: Boolean, onRemoveClick: () -
                     color = Color.White,
                 )
             }
+            // Share and delete: two icons of the same size in the top right corner.
+            val bandIconColors = IconButtonDefaults.iconButtonColors(
+                contentColor = Color.White,
+                disabledContentColor = Color.White.copy(alpha = FAINT_ALPHA),
+            )
             if (band.songs.isNotEmpty()) {
-                IconButton(onClick = { nav.share(band.shareText()) }) {
-                    Icon(Icons.Filled.Share, contentDescription = SHARE, tint = Color.White)
+                IconButton(onClick = { nav.share(band.shareText()) }, colors = bandIconColors) {
+                    Icon(Icons.Filled.Share, contentDescription = SHARE, modifier = Modifier.size(BandShareIconSize))
                 }
             }
             if (band.canDelete) {
-                TextButton(
-                    onClick = onRemoveClick,
-                    enabled = !isDeleting,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color.White,
-                        disabledContentColor = Color.White.copy(alpha = FAINT_ALPHA),
-                    ),
-                ) {
+                IconButton(onClick = onRemoveClick, enabled = !isDeleting, colors = bandIconColors) {
                     if (isDeleting) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(BandIconSize - 4.dp),
                             strokeWidth = 2.dp,
                             color = LocalContentColor.current,
                         )
                     } else {
-                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Delete, contentDescription = REMOVE, modifier = Modifier.size(BandIconSize))
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(REMOVE)
                 }
             }
         }
