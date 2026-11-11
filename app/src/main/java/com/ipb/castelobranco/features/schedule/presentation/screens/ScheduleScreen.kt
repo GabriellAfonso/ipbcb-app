@@ -1,6 +1,9 @@
 package com.ipb.castelobranco.features.schedule.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +31,9 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.GreenTab
 import com.ipb.castelobranco.core.presentation.components.GreenTabBar
+import com.ipb.castelobranco.core.presentation.components.GreenTabRail
+import com.ipb.castelobranco.core.presentation.components.LandscapeSidePanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.PermissionErrorPlaceholder
 import com.ipb.castelobranco.core.presentation.components.access.MembersOnlyPlaceholder
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -39,6 +45,7 @@ import java.util.Locale
 
 private const val HTTP_FORBIDDEN = 403
 private val SheetRadius = 18.dp
+private val LandscapeRailWidth = 200.dp
 private val PT_BR = Locale.forLanguageTag("pt-BR")
 
 @Composable
@@ -74,6 +81,9 @@ fun MonthScheduleContent(
     // Keyed by the next service so the screen opens on it; saveable so rotation keeps the user's pick.
     var selectedTab by rememberSaveable(success?.initialTabIndex) { mutableIntStateOf(success?.initialTabIndex ?: 0) }
     val tabIndex = success?.let { selectedTab.coerceIn(0, it.sections.lastIndex) } ?: 0
+    // Lying down the tabs leave the top bar for a green column on the left (`specs/schedule/spec.md`).
+    val isLandscape = isCompactHeight()
+    val tabs = success?.sections?.map { GreenTab(it.shortTitle, it.time) }
 
     BaseScreen(
         tabName = "Escala",
@@ -81,7 +91,7 @@ fun MonthScheduleContent(
         showBackArrow = true,
         onBackClick = onBackClick,
         // The green behind the sheet's rounded corners continues the top bar.
-        containerColor = if (success != null) ipbGreen else MaterialTheme.colorScheme.background,
+        containerColor = if (success != null && !isLandscape) ipbGreen else MaterialTheme.colorScheme.background,
         extraActions = {
             if (success != null) {
                 IconButton(onClick = { onShare(MonthScheduleWhatsappFormatter.format(success.data)) }) {
@@ -89,16 +99,26 @@ fun MonthScheduleContent(
                 }
             }
         },
-        topBarExtension = success?.let { state ->
-            {
-                GreenTabBar(
-                    tabs = state.sections.map { GreenTab(it.shortTitle, it.time) },
-                    selectedIndex = tabIndex,
-                    onSelect = { selectedTab = it },
-                )
-            }
+        topBarExtension = tabs?.takeIf { !isLandscape }?.let { list ->
+            { GreenTabBar(tabs = list, selectedIndex = tabIndex, onSelect = { selectedTab = it }) }
         },
     ) { innerPadding ->
+        if (tabs != null && isLandscape) {
+            Row(Modifier.fillMaxSize().padding(innerPadding)) {
+                LandscapeSidePanel(width = LandscapeRailWidth, verticalArrangement = Arrangement.Top) {
+                    GreenTabRail(tabs = tabs, selectedIndex = tabIndex, onSelect = { selectedTab = it })
+                }
+                ScheduleBody(
+                    uiState = uiState,
+                    tabIndex = tabIndex,
+                    isRefreshing = isRefreshing,
+                    onRefresh = onRefresh,
+                    onNavigateToAuth = onNavigateToAuth,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+            }
+            return@BaseScreen
+        }
         val contentModifier = if (success != null) {
             Modifier
                 .fillMaxSize()
@@ -112,41 +132,53 @@ fun MonthScheduleContent(
                 .padding(innerPadding)
         }
 
-        ElasticPullToRefresh(
-            isRefreshing = isRefreshing,
-            onRefresh = onRefresh,
-            modifier = contentModifier,
-        ) {
-            when (uiState) {
-                is ScheduleUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+        ScheduleBody(uiState, tabIndex, isRefreshing, onRefresh, onNavigateToAuth, contentModifier)
+    }
+}
 
-                is ScheduleUiState.Empty -> {
-                    Text(
-                        text = "Nenhuma escala encontrada.",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
+@Composable
+private fun ScheduleBody(
+    uiState: ScheduleUiState,
+    tabIndex: Int,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onNavigateToAuth: () -> Unit,
+    modifier: Modifier,
+) {
+    ElasticPullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+    ) {
+        when (uiState) {
+            is ScheduleUiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
 
-                is ScheduleUiState.Success -> {
-                    ScheduleTabContent(
-                        section = uiState.sections[tabIndex],
-                        nextDay = uiState.nextDays.getOrNull(tabIndex),
-                        month = uiState.data.month,
-                        monthName = MonthScheduleWhatsappFormatter.monthPtBr(uiState.data.month).lowercase(PT_BR),
-                    )
-                }
+            is ScheduleUiState.Empty -> {
+                Text(
+                    text = "Nenhuma escala encontrada.",
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
 
-                is ScheduleUiState.Error -> if (uiState.httpCode == HTTP_FORBIDDEN) {
-                    MembersOnlyPlaceholder(message = uiState.message, modifier = Modifier.align(Alignment.Center))
-                } else {
-                    PermissionErrorPlaceholder(
-                        message = uiState.message,
-                        onLoginClick = onNavigateToAuth,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
+            is ScheduleUiState.Success -> {
+                ScheduleTabContent(
+                    section = uiState.sections[tabIndex],
+                    nextDay = uiState.nextDays.getOrNull(tabIndex),
+                    month = uiState.data.month,
+                    monthName = MonthScheduleWhatsappFormatter.monthPtBr(uiState.data.month).lowercase(PT_BR),
+                )
+            }
+
+            is ScheduleUiState.Error -> if (uiState.httpCode == HTTP_FORBIDDEN) {
+                MembersOnlyPlaceholder(message = uiState.message, modifier = Modifier.align(Alignment.Center))
+            } else {
+                PermissionErrorPlaceholder(
+                    message = uiState.message,
+                    onLoginClick = onNavigateToAuth,
+                    modifier = Modifier.align(Alignment.Center),
+                )
             }
         }
     }

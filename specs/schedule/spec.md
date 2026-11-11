@@ -105,3 +105,9 @@ ausente ou outro valor usa "o responsável" / "escalado", sem invalidar a mensag
 
 Toque: abre a Escala com a data do primeiro slot (secao 2). Deslogado ou sem acesso de membro, a tela mostra os
 proprios placeholders. Uma escala publicada de um mes que ainda nao comecou abre o mes corrente na aba padrao.
+
+## 5. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9. As abas dos cultos saem da faixa da top bar e ficam numa coluna verde de
+200dp à esquerda (`GreenTabRail`, uma por linha, com o horário ao lado); a escala do culto escolhido fica à direita.
+Puxar para atualizar e compartilhar continuam iguais.
