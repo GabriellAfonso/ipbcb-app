@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.LandscapeSidePanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.members.presentation.state.HistoryDayUi
@@ -47,6 +50,7 @@ import com.ipb.castelobranco.features.admin.members.presentation.state.MembersEv
 import com.ipb.castelobranco.features.admin.members.presentation.viewmodel.MemberHistoryViewModel
 
 private val SheetRadius = 18.dp
+private val SidePanelWidth = 220.dp
 private const val BAND_SECONDARY_ALPHA = 0.82f
 private const val DIVIDER_ALPHA = 0.6f
 
@@ -59,14 +63,27 @@ fun MemberHistoryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { viewModel.events.collect(onNavigationEvent) }
 
+    val isLandscape = isCompactHeight()
     BaseScreen(
         tabName = "Histórico",
         showBackArrow = true,
         onBackClick = onBack,
         // The green behind the sheet's rounded corners continues the band.
-        containerColor = ipbGreen,
-        topBarExtension = { HistoryBand(state) },
+        containerColor = if (isLandscape) MaterialTheme.colorScheme.surfaceDim else ipbGreen,
+        topBarExtension = if (isLandscape) null else ({ HistoryBand(state) }),
     ) { innerPadding ->
+        // Lying down the band is a green column on the left (`specs/admin/spec.md`, "Celular deitado").
+        if (isLandscape) {
+            Row(Modifier.fillMaxSize().padding(innerPadding)) {
+                if (state.memberName != null || state.summary != null) {
+                    LandscapeSidePanel(width = SidePanelWidth) { HistoryTexts(state) }
+                }
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    MemberHistoryContent(state = state, onRetry = viewModel::load)
+                }
+            }
+            return@BaseScreen
+        }
         Box(
             Modifier
                 .padding(top = innerPadding.calculateTopPadding())
@@ -90,6 +107,14 @@ private fun HistoryBand(state: MemberHistoryUiState) {
             .background(ipbGreen)
             .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 16.dp),
     ) {
+        HistoryTexts(state)
+    }
+}
+
+@Composable
+private fun HistoryTexts(state: MemberHistoryUiState) {
+    val summary = state.summary
+    Column {
         state.memberName?.let {
             Text(
                 text = it,

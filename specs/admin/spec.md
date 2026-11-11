@@ -446,3 +446,18 @@ e-mail.
 `features/admin/profiles/`: `ProfilesAdminApi` → `ProfilesAdminRepositoryImpl` (listas em memória por aba, sem
 disco) → use cases → `ProfilesListViewModel` / `ProfileDetailViewModel`. Fotos pelo `@ProfilePhotoLoader` (Coil
 sobre o `@Client`, só cache em memória). Grafo `profilesGraph` dentro do `adminGraph`.
+
+## 9. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9.
+
+- **Painel:** sem a faixa "Gerencie os recursos da igreja" (a top bar já diz "Painel de Gestão"). As músicas a
+  confirmar ficam numa coluna de 300dp à esquerda (só quando há o card); as funcionalidades em 3 colunas à direita,
+  cada lado rolando sozinho.
+- **Formulário de membro (§7.3):** foto (toque troca, como na faixa), nome e "situação · cargo" numa coluna verde de
+  220dp à esquerda. Os cartões ficam em duas colunas à direita rolando juntas: "Nome" e "Dados pessoais" à esquerda,
+  "Vida na igreja" e "No app" à direita. Sem a barra de baixo: "Salvar" é a pílula branca da top bar.
+- **Histórico do membro:** nome e "N alterações desde …" numa coluna verde de 220dp à esquerda; os dias à direita.
+- **Perfil (conta, §8):** foto de 72dp, nome e "@login · no app desde …" numa coluna verde de 220dp à esquerda; o
+  conteúdo à direita.
+- **Formulário de evento:** ver `specs/events/spec.md` §6.

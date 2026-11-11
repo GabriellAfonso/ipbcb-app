@@ -50,6 +50,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.admin.panel.domain.PanelCard
@@ -131,20 +132,24 @@ fun AdminPanelContent(
     onDeleteSetlist: (LocalDate) -> Unit = {},
 ) {
     val actions = state.cards.map { card -> card.toAction(nav, state.memberCount) }
+    val isLandscape = isCompactHeight()
 
     BaseScreen(
         tabName = PANEL_TITLE,
         logoRes = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick = nav.back,
-        topBarExtension = { AdminHeaderStrip() }
+        // Lying down the strip would take height the cards need; the top bar already names the panel.
+        topBarExtension = if (isLandscape) null else ({ AdminHeaderStrip() })
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(
+            if (isLandscape) {
+                LandscapePanel(state, actions, nav, onRetryPending, onDeleteSetlist)
+            } else Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
@@ -210,6 +215,68 @@ fun AdminPanelContent(
         }
     }
 }
+
+/**
+ * Lying down (`specs/admin/spec.md`, "Celular deitado"): the pending confirmations in a column on the left, the
+ * features in three columns on the right, each side scrolling on its own.
+ */
+@Composable
+private fun LandscapePanel(
+    state: AdminPanelUiState,
+    actions: List<AdminAction>,
+    nav: AdminNav,
+    onRetryPending: () -> Unit,
+    onDeleteSetlist: (LocalDate) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        if (state.pending != PendingConfirmationsUi.Hidden) {
+            Column(
+                modifier = Modifier
+                    .width(LandscapePendingWidth)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 12.dp),
+            ) {
+                PendingConfirmationsCard(
+                    pending = state.pending,
+                    onDateClick = nav.confirmSunday,
+                    onRetry = onRetryPending,
+                    onDelete = onDeleteSetlist,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (state.isEmpty) {
+                Text(
+                    text = EMPTY_PANEL_MESSAGE,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            actions.chunked(LANDSCAPE_COLUMNS).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { action -> AdminActionCard(action = action, modifier = Modifier.weight(1f)) }
+                    repeat(LANDSCAPE_COLUMNS - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+private const val LANDSCAPE_COLUMNS = 3
+private val LandscapePendingWidth = 300.dp
 
 // A card without its feature yet is not listed in `PanelCard` at all: a grey card looks broken.
 internal fun PanelCard.toAction(nav: AdminNav, memberCount: Int?): AdminAction = when (this) {

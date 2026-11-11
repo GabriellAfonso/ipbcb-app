@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -45,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.core.domain.access.AccessRequestType
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.LandscapeSidePanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -105,15 +110,21 @@ fun ProfileDetailScreen(
     }
 
     val account = state.account
+    // Lying down the band is a green column on the left (`specs/admin/spec.md`, "Celular deitado").
+    val isLandscape = isCompactHeight()
+    val showBand = account != null && !isLandscape
     BaseScreen(
         tabName = "Perfil",
         showBackArrow = true,
         onBackClick = onBack,
         // The green behind the sheet's rounded corners continues the band.
-        containerColor = if (account != null) ipbGreen else MaterialTheme.colorScheme.background,
-        topBarExtension = account?.let { { AccountBand(it, viewModel.imageLoader) } },
+        containerColor = if (showBand) ipbGreen else MaterialTheme.colorScheme.background,
+        topBarExtension = account?.takeIf { showBand }?.let { { AccountBand(it, viewModel.imageLoader) } },
     ) { padding ->
-        val contentModifier = if (account != null) {
+        val panelAccount = account?.takeIf { isLandscape }
+        val contentModifier = if (panelAccount != null) {
+            Modifier.padding(padding).background(MaterialTheme.colorScheme.surfaceDim)
+        } else if (account != null) {
             Modifier
                 .padding(top = padding.calculateTopPadding())
                 .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
@@ -122,30 +133,76 @@ fun ProfileDetailScreen(
         } else {
             Modifier.padding(padding)
         }
-        ProfileDetailContent(
-            state = state,
-            imageLoader = viewModel.imageLoader,
-            snackbarHostState = snackbarHostState,
-            modifier = contentModifier,
-            actions = ProfileDetailActions(
-                onRetry = viewModel::load,
-                onApprove = viewModel::approve,
-                onOpenDeny = viewModel::openDeny,
-                onDeny = viewModel::deny,
-                onDismissDeny = viewModel::dismissDeny,
-                onAskSetAccess = viewModel::askSetAccess,
-                onAskUnlink = viewModel::askUnlink,
-                onConfirm = viewModel::confirm,
-                onDismissConfirm = viewModel::dismissConfirm,
-                onSetBlocked = viewModel::setBlocked,
-                onOpenPicker = viewModel::openPicker,
-                onPickerQuery = viewModel::onPickerQuery,
-                onPick = viewModel::pick,
-                onDismissPicker = viewModel::dismissPicker,
-            ),
-        )
+        val content: @Composable (Modifier) -> Unit = { modifier ->
+            ProfileDetailContent(
+                state = state,
+                imageLoader = viewModel.imageLoader,
+                snackbarHostState = snackbarHostState,
+                modifier = modifier,
+                actions = ProfileDetailActions(
+                    onRetry = viewModel::load,
+                    onApprove = viewModel::approve,
+                    onOpenDeny = viewModel::openDeny,
+                    onDeny = viewModel::deny,
+                    onDismissDeny = viewModel::dismissDeny,
+                    onAskSetAccess = viewModel::askSetAccess,
+                    onAskUnlink = viewModel::askUnlink,
+                    onConfirm = viewModel::confirm,
+                    onDismissConfirm = viewModel::dismissConfirm,
+                    onSetBlocked = viewModel::setBlocked,
+                    onOpenPicker = viewModel::openPicker,
+                    onPickerQuery = viewModel::onPickerQuery,
+                    onPick = viewModel::pick,
+                    onDismissPicker = viewModel::dismissPicker,
+                ),
+            )
+        }
+        if (panelAccount != null) {
+            Row(contentModifier.fillMaxSize()) {
+                AccountSidePanel(panelAccount, viewModel.imageLoader)
+                content(Modifier.weight(1f).fillMaxHeight())
+            }
+        } else {
+            content(contentModifier)
+        }
     }
 }
+
+/** The band as a column on the left, for a phone lying down: the avatar on top, then the name and the login. */
+@Composable
+private fun AccountSidePanel(account: ManagedAccount, imageLoader: ImageLoader?) {
+    LandscapeSidePanel(width = SidePanelWidth, horizontalAlignment = Alignment.CenterHorizontally) {
+        MemberAvatar(
+            initials = initialsOf(account.name),
+            photoUrl = account.photoUrl,
+            imageLoader = imageLoader,
+            initialsSize = 22.sp,
+            modifier = Modifier
+                .size(72.dp)
+                .border(2.dp, Color.White.copy(alpha = BAND_BORDER_ALPHA), CircleShape),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = account.name,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+        )
+        accountSubtitle(account).takeIf { it.isNotEmpty() }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = BAND_SUBTITLE_ALPHA),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+private fun accountSubtitle(account: ManagedAccount): String = listOfNotNull(
+    account.username?.let { "@$it" },
+    account.dateJoined?.let { joinedSinceLabel(it).replaceFirstChar(Char::lowercase) },
+).joinToString(" · ")
 
 @Composable
 fun ProfileDetailContent(
@@ -258,10 +315,7 @@ private fun AccountDetail(
 /** Avatar, name, "@login · no app desde …" inside the green top-bar block. */
 @Composable
 private fun AccountBand(account: ManagedAccount, imageLoader: ImageLoader?) {
-    val subtitle = listOfNotNull(
-        account.username?.let { "@$it" },
-        account.dateJoined?.let { joinedSinceLabel(it).replaceFirstChar(Char::lowercase) },
-    ).joinToString(" · ")
+    val subtitle = accountSubtitle(account)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -471,6 +525,7 @@ private fun Note(text: String) {
 }
 
 private val SheetRadius = 18.dp
+private val SidePanelWidth = 220.dp
 private val CardRadius = 18.dp
 private val PendingInk = Color(0xFF9A5B00)
 private const val BAND_BORDER_ALPHA = 0.6f
