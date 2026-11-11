@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +61,8 @@ import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.TopBarPillButton
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.rememberCroppedPhotoPicker
 import com.ipb.castelobranco.core.presentation.format.EventDateLabel
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -102,6 +106,7 @@ fun EventFormScreen(
         onPicked = viewModel::onImagePicked,
     )
     val leave = { if (state.hasUnsavedChanges) confirmDiscard = true else onBack() }
+    val isLandscape = isCompactHeight()
 
     BackHandler(enabled = state.hasUnsavedChanges) { confirmDiscard = true }
     LaunchedEffect(Unit) {
@@ -122,6 +127,10 @@ fun EventFormScreen(
         showBackArrow = true,
         onBackClick = leave,
         extraActions = {
+            val hasForm = !state.isLoading && state.loadError == null && !state.isReadOnly
+            if (isLandscape && hasForm) {
+                TopBarPillButton(label = SAVE_LABEL, onClick = viewModel::onSave, isLoading = state.isSaving)
+            }
             PanelMoreButton(hasActions = state.canDelete && !state.isLoading) { showPanel = true }
         },
     ) { innerPadding ->
@@ -129,6 +138,7 @@ fun EventFormScreen(
             EventFormContent(
                 state = state,
                 tab = tab,
+                isLandscape = isLandscape,
                 imageLoader = viewModel.imageLoader,
                 onSelectTab = { tab = it },
                 onPickImage = pickImage,
@@ -193,6 +203,7 @@ fun EventFormContent(
     onDraftChanged: (EventDraft) -> Unit,
     onSave: () -> Unit,
     onRetry: () -> Unit,
+    isLandscape: Boolean = false,
 ) {
     when {
         state.isLoading -> Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
@@ -207,6 +218,16 @@ fun EventFormContent(
                 Text(state.loadError, textAlign = TextAlign.Center)
                 Button(onClick = onRetry) { Text("Tentar novamente") }
             }
+        }
+        // Lying down: no tabs, the fields and the preview side by side; "Salvar evento" is in the top bar.
+        isLandscape -> Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxHeight()) { FormFields(state, imageLoader, onPickImage, onDraftChanged) }
+            Box(
+                Modifier
+                    .width(LandscapePreviewWidth)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) { FormPreview(state, imageLoader) }
         }
         else -> Column(Modifier.fillMaxSize()) {
             FormTabs(selected = tab, onSelect = onSelectTab)
@@ -503,7 +524,9 @@ private fun SaveBar(isSaving: Boolean, onSave: () -> Unit) {
 }
 
 private const val PREVIEW_ASPECT = 3f / 2f
+private const val SAVE_LABEL = "Salvar evento"
 private val CardRadius = 18.dp
+private val LandscapePreviewWidth = 340.dp
 
 @Preview(showBackground = true, heightDp = 900)
 @Composable

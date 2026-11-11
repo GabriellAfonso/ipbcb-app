@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -64,6 +65,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.openMap
 import com.ipb.castelobranco.features.events.presentation.state.EventCalendarEntry
 import com.ipb.castelobranco.features.events.presentation.state.EventDetailUi
@@ -165,6 +167,30 @@ private fun EventDetailBody(
     onAddToCalendar: (EventCalendarEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Lying down: the poster on the left, the height of the screen; the texts scroll on the right.
+    if (isCompactHeight()) {
+        Row(modifier = modifier.fillMaxSize()) {
+            AsyncImage(
+                model              = event.imageUrl,
+                imageLoader        = imageLoader,
+                contentDescription = event.title,
+                contentScale       = ContentScale.Fit,
+                modifier           = Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(IMAGE_ASPECT_RATIO, matchHeightConstraintsFirst = true)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                EventDetailTexts(event, onOpenMap, onAddToCalendar)
+            }
+        }
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -180,47 +206,57 @@ private fun EventDetailBody(
                 .aspectRatio(IMAGE_ASPECT_RATIO)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         )
+        EventDetailTexts(event, onOpenMap, onAddToCalendar)
+    }
+}
 
+/** Title, tags, the date and place card and the description, under (or beside) the poster. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ColumnScope.EventDetailTexts(
+    event: EventDetailUi,
+    onOpenMap: (String) -> Unit,
+    onAddToCalendar: (EventCalendarEntry) -> Unit,
+) {
+    Text(
+        text       = event.title,
+        style      = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier   = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp),
+    )
+    FlowRow(
+        modifier              = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement   = Arrangement.spacedBy(6.dp),
+    ) {
+        InfoTag(Icons.Filled.CalendarMonth, event.shortDateLabel)
+        event.timeLabel?.let { InfoTag(Icons.Filled.AccessTime, it) }
+        if (event.isMembersOnly) InfoTag(Icons.Filled.Lock, MEMBERS_ONLY_LABEL)
+    }
+
+    InfoCard {
+        InfoRow(icon = Icons.Filled.CalendarMonth, title = event.dateLabel, subtitle = event.durationLabel) {
+            event.calendarEntry?.let { entry ->
+                TextButton(onClick = { onAddToCalendar(entry) }) {
+                    Text(CALENDAR_LABEL, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        event.location?.let { place ->
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = DIVIDER_ALPHA))
+            InfoRow(icon = Icons.Filled.Place, title = place, subtitle = CHURCH_NAME) {
+                TextButton(onClick = { onOpenMap(place) }) { Text(MAP_LABEL, fontWeight = FontWeight.SemiBold) }
+            }
+        }
+    }
+
+    event.description?.let {
+        SectionTitle(ABOUT_TITLE)
         Text(
-            text       = event.title,
-            style      = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            modifier   = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 4.dp),
+            text     = it,
+            style    = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
         )
-        FlowRow(
-            modifier              = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement   = Arrangement.spacedBy(6.dp),
-        ) {
-            InfoTag(Icons.Filled.CalendarMonth, event.shortDateLabel)
-            event.timeLabel?.let { InfoTag(Icons.Filled.AccessTime, it) }
-            if (event.isMembersOnly) InfoTag(Icons.Filled.Lock, MEMBERS_ONLY_LABEL)
-        }
-
-        InfoCard {
-            InfoRow(icon = Icons.Filled.CalendarMonth, title = event.dateLabel, subtitle = event.durationLabel) {
-                event.calendarEntry?.let { entry ->
-                    TextButton(onClick = { onAddToCalendar(entry) }) {
-                        Text(CALENDAR_LABEL, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-            event.location?.let { place ->
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = DIVIDER_ALPHA))
-                InfoRow(icon = Icons.Filled.Place, title = place, subtitle = CHURCH_NAME) {
-                    TextButton(onClick = { onOpenMap(place) }) { Text(MAP_LABEL, fontWeight = FontWeight.SemiBold) }
-                }
-            }
-        }
-
-        event.description?.let {
-            SectionTitle(ABOUT_TITLE)
-            Text(
-                text     = it,
-                style    = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
-            )
-        }
     }
 }
 

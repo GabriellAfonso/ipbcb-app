@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +40,7 @@ import coil.compose.AsyncImage
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.events.presentation.state.EventListItemUi
 import com.ipb.castelobranco.features.events.presentation.state.EventsListUiState
 import com.ipb.castelobranco.features.events.presentation.viewmodel.EventsListViewModel
@@ -49,6 +52,7 @@ private const val RETRY_LABEL = "Tentar novamente"
 private const val MEMBERS_ONLY_LABEL = "Só membros"
 private const val IMAGE_ASPECT_RATIO = 3f / 2f
 private val THUMBNAIL_WIDTH = 108.dp
+private val LandscapeCardMinWidth = 320.dp
 private val CARD_CORNER = 18.dp
 private val THUMBNAIL_CORNER = 12.dp
 
@@ -92,15 +96,19 @@ fun EventsListContent(
         onRefresh    = onRefresh,
         modifier     = modifier.fillMaxSize(),
     ) {
-        // Always a list, even with one message: pulling to refresh needs something that scrolls.
-        LazyColumn(
-            modifier            = Modifier.fillMaxSize(),
-            contentPadding      = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        // Always a list, even with one message: pulling to refresh needs something that scrolls. Lying down the cards
+        // go side by side, as many of at least [LandscapeCardMinWidth] as fit (`specs/events/spec.md`).
+        val columns = if (isCompactHeight()) GridCells.Adaptive(LandscapeCardMinWidth) else GridCells.Fixed(1)
+        LazyVerticalGrid(
+            columns               = columns,
+            modifier              = Modifier.fillMaxSize(),
+            contentPadding        = PaddingValues(16.dp),
+            verticalArrangement   = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when {
-                state.loadFailed -> item { ErrorMessage(onRetry = onRefresh) }
-                state.events.isEmpty() -> item { CenteredMessage(EMPTY_MESSAGE) }
+                state.loadFailed -> item(span = { GridItemSpan(maxLineSpan) }) { ErrorMessage(onRetry = onRefresh) }
+                state.events.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) { CenteredMessage(EMPTY_MESSAGE) }
                 else -> items(state.events, key = { it.id }) { event ->
                     EventListItem(event, imageLoader, onClick = { onEventClick(event.id) })
                 }

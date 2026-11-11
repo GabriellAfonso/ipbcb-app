@@ -192,3 +192,15 @@ nunca o nome do papel.
 - Push quando um evento é publicado.
 - Link de inscrição.
 - Tela de "Eventos passados" para membros.
+
+## 6. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9.
+
+- **Tela "Eventos" (§3.1):** os cartões ficam em grade, tantos de no mínimo 320dp quantos couberem (2 por linha num
+  celular comum). Mensagens de vazio e erro ocupam a linha inteira; puxar para atualizar continua.
+- **Detalhe (§3):** o cartaz à esquerda, na altura da tela e mantendo 3:2; título, etiquetas, o cartão de data e
+  local e a descrição à direita, rolando.
+- **Formulário (§4.2):** sem as abas "Editar | Como fica no app": os campos à esquerda e a prévia (destaque da Home e
+  topo do evento) numa coluna de 340dp à direita, acompanhando o que é digitado. "Salvar evento" é a pílula branca da
+  top bar (somente leitura não tem).
