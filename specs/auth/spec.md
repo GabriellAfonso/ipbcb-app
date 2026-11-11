@@ -138,3 +138,11 @@ o limite do servidor por endereço. Voltar leva ao passo 1 mantendo o e-mail.
 | Senha fora das regras | Erro sob o campo; o código não é gasto |
 | Sem rede ou limite de requisições | Faixa com a mensagem da categoria; o que foi digitado fica; o botão tenta de novo |
 | Sucesso | Volta ao login com "Senha alterada"; a pessoa entra normalmente |
+
+## 6. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9. Vale para login, cadastro e recuperação de senha (`AuthLayout`).
+
+- A faixa verde vira uma coluna de 300dp à esquerda: voltar no canto, sarça de 56dp, título e subtítulo no centro.
+- O formulário fica à direita, rolando, com no máximo 440dp de largura e centralizado. O primeiro campo aparece sem
+  rolar, também com o teclado aberto.

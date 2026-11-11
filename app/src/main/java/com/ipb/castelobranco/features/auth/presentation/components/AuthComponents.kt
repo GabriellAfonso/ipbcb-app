@@ -12,16 +12,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -61,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.R
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.auth.presentation.state.FieldHelp
 import com.ipb.castelobranco.features.auth.presentation.state.HelpTone
@@ -83,6 +91,9 @@ private val FieldCorner = 16.dp
 private val BannerCorner = 12.dp
 private val SmallIconSize = 18.dp
 private val HelpHorizontalPadding = 14.dp
+private val LandscapeBandWidth = 300.dp
+private val LandscapeLogoWidth = 56.dp
+private val LandscapeFormMaxWidth = 440.dp
 
 internal val AuthButtonHeight = 52.dp
 internal val PillShape = RoundedCornerShape(percent = 50)
@@ -102,6 +113,10 @@ internal fun AuthLayout(
     onBackClick: () -> Unit,
     sheet: @Composable ColumnScope.() -> Unit,
 ) {
+    if (isCompactHeight()) {
+        LandscapeAuthLayout(title, subtitle, onBackClick, sheet)
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -122,6 +137,87 @@ internal fun AuthLayout(
             verticalArrangement = Arrangement.spacedBy(ItemSpacing),
             content = sheet,
         )
+    }
+}
+
+/**
+ * Lying down (`specs/auth/spec.md`, "Celular deitado"): the band becomes a green column on the left and the form
+ * scrolls on the right, at most [LandscapeFormMaxWidth] wide, so the first field shows without scrolling.
+ */
+@Composable
+private fun LandscapeAuthLayout(
+    title: String,
+    subtitle: String,
+    onBackClick: () -> Unit,
+    sheet: @Composable ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(LandscapeBandWidth)
+                .fillMaxHeight()
+                .background(ipbGreen)
+                .clipToBounds()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Start)),
+        ) {
+            IconButton(onClick = onBackClick, modifier = Modifier.statusBarsPadding()) {
+                Icon(
+                    painter = painterResource(id = R.drawable.back_arrow_icon),
+                    contentDescription = "Voltar",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_sarca_ipb),
+                    contentDescription = "Logo SARCA IPB",
+                    colorFilter = ColorFilter.tint(Color.White),
+                    modifier = Modifier.width(LandscapeLogoWidth),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = SUBTITLE_ALPHA),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Vertical))
+                .verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = LandscapeFormMaxWidth)
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(ItemSpacing),
+                content = sheet,
+            )
+        }
     }
 }
 
