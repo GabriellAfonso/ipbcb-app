@@ -11,6 +11,7 @@ import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.components.
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.state.LyricsCreateUiState
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.viewmodel.LyricsCreateViewModel
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormSaveAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongPicker
 
 private const val TITLE = "Nova letra"
@@ -55,6 +56,7 @@ private fun LyricsCreateContent(
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
+        extraActions  = { SongFormSaveAction(SAVE_LABEL, state.missing, state.isSaving, onSave) },
     ) { innerPadding ->
         SongFormScaffold(
             innerPadding = innerPadding,
@@ -63,6 +65,14 @@ private fun LyricsCreateContent(
             isSaving     = state.isSaving,
             error        = state.saveError,
             onSave       = onSave,
+            editor       = {
+                LyricsEditor(
+                    content         = state.content,
+                    previewStanzas  = state.previewStanzas,
+                    enabled         = enabled,
+                    onContentChange = onContentChange,
+                )
+            },
         ) {
             SongPicker(
                 query         = state.songQuery,
@@ -72,12 +82,6 @@ private fun LyricsCreateContent(
                 onQueryChange = onSongQuery,
                 onSelect      = onSongSelected,
                 onClear       = onSongCleared,
-            )
-            LyricsEditor(
-                content         = state.content,
-                previewStanzas  = state.previewStanzas,
-                enabled         = enabled,
-                onContentChange = onContentChange,
             )
         }
     }

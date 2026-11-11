@@ -1,7 +1,9 @@
 package com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.screens
 
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,8 +63,10 @@ import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.CancelBarAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormSaveAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongSummary
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.InstrumentPicker
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TonePicker
@@ -81,6 +85,8 @@ private const val SAVE_LABEL = "Salvar cifra"
 
 /** A tap on the right half turns the page, on the left half goes back. */
 private const val HALF_SCREEN = 0.5f
+private const val LANDSCAPE_PAGE_COLUMNS = 2
+private val PageColumnGap = 28.dp
 
 @Composable
 fun ChordChartDetailScreen(
@@ -127,7 +133,10 @@ private fun ChordChartDetailContent(
         onBackClick   = onBackClick,
         extraActions  = {
             when {
-                state.isEditing -> CancelBarAction(state.isSaving, onCancelEdit)
+                state.isEditing -> {
+                    SongFormSaveAction(SAVE_LABEL, state.editMissing, state.isSaving, onSaveEdit)
+                    CancelBarAction(state.isSaving, onCancelEdit)
+                }
                 else -> PanelMoreButton(hasActions = state.blocks.isNotEmpty(), onClick = { isPanelOpen = true })
             }
         },
@@ -199,12 +208,15 @@ private fun ChordPager(
 ) {
     // The piece at the top of the page being read: kept on screen when the pages change.
     var anchor by remember { mutableStateOf(PiecePosition(0, 0)) }
+    // Lying down each page shows its pieces in columns, side by side (`specs/worshiphub/spec.md` §4).
+    val columns = if (isCompactHeight()) LANDSCAPE_PAGE_COLUMNS else 1
     SubcomposeLayout(modifier = modifier.fillMaxSize()) { constraints ->
         val blockSpacingPx = 16.dp.roundToPx()
-        // Matches ChordPageContent padding(horizontal = 20.dp, vertical = 12.dp)
+        // Matches ChordPageContent padding(horizontal = 20.dp, vertical = 12.dp) and its column gap
         val hPaddingPx = 40.dp.roundToPx()
         val vPaddingPx = 24.dp.roundToPx()
-        val measureWidth = (constraints.maxWidth - hPaddingPx).coerceAtLeast(0)
+        val gapsPx = PageColumnGap.roundToPx() * (columns - 1)
+        val measureWidth = ((constraints.maxWidth - hPaddingPx - gapsPx) / columns).coerceAtLeast(0)
 
         // Phase 1: measure chrome (header + dots) to determine pager area height
         val headerHeight = subcompose("chrome_header") {
@@ -243,8 +255,9 @@ private fun ChordPager(
             }
         }
 
-        // Phase 3: compute pages with the actual available height for block content
+        // Phase 3: compute the columns with the actual available height, then put [columns] of them on each page
         val pages = BlockPaginator.paginate(blocks, blockHeights, availableForBlocks, blockSpacingPx)
+            .chunked(columns)
 
         // Phase 4: render the full pager — pagerState lives inside this subcomposition
         val contentPlaceable = subcompose("pager") {
@@ -263,23 +276,25 @@ private fun ChordPager(
     }
 }
 
+/** [pages]: each page's columns, each column's pieces. */
 @Composable
 private fun PagerContent(
-    pages: List<List<PagePiece>>,
+    pages: List<List<List<PagePiece>>>,
     textScale: Float,
     anchor: PiecePosition,
     onAnchor: (PiecePosition) -> Unit,
     band: @Composable () -> Unit,
 ) {
-    val pagerState = rememberPagerState(initialPage = BlockPaginator.pageOf(pages, anchor)) { pages.size }
+    val flatPages = remember(pages) { pages.map { it.flatten() } }
+    val pagerState = rememberPagerState(initialPage = BlockPaginator.pageOf(flatPages, anchor)) { pages.size }
     val scope = rememberCoroutineScope()
 
     // New pages (text size, rotation): back to the page with the anchor, then follow the reader again.
     LaunchedEffect(pages) {
-        val target = BlockPaginator.pageOf(pages, anchor)
+        val target = BlockPaginator.pageOf(flatPages, anchor)
         if (pagerState.currentPage != target) pagerState.scrollToPage(target)
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            pages.getOrNull(page)?.firstOrNull()?.let { onAnchor(it.position) }
+            flatPages.getOrNull(page)?.firstOrNull()?.let { onAnchor(it.position) }
         }
     }
 
@@ -296,7 +311,7 @@ private fun PagerContent(
                 state    = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                ChordPageContent(pieces = pages[index], textScale = textScale)
+                ChordPageContent(columns = pages[index], textScale = textScale)
             }
         }
 
@@ -342,20 +357,27 @@ private fun ChordBand(state: ChordChartDetailUiState, scrollMode: SongScrollMode
 }
 
 @Composable
-private fun ChordPageContent(pieces: List<PagePiece>, textScale: Float) {
-    Column(
+private fun ChordPageContent(columns: List<List<PagePiece>>, textScale: Float) {
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(PageColumnGap),
     ) {
-        // Long press selects the text to copy; taps still turn the page.
-        SelectionContainer {
-            Column {
-                pieces.forEachIndexed { index, piece ->
-                    if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                    ChordBlockView(piece.block, textScale)
+        columns.forEach { pieces ->
+            // Long press selects the text to copy; taps still turn the page.
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Column {
+                    pieces.forEachIndexed { index, piece ->
+                        if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                        ChordBlockView(piece.block, textScale)
+                    }
                 }
             }
+        }
+        // A last page with fewer columns keeps them the same width.
+        if (columns.size < LANDSCAPE_PAGE_COLUMNS && isCompactHeight()) {
+            repeat(LANDSCAPE_PAGE_COLUMNS - columns.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -377,20 +399,22 @@ private fun EditContent(
         isSaving     = state.isSaving,
         error        = state.saveError,
         onSave       = onSave,
+        editor       = {
+            ChordChartEditor(
+                content           = state.editContent,
+                tone              = state.editTone,
+                instrument        = state.editInstrument,
+                previewBlocks     = state.editPreviewBlocks,
+                unknownDirectives = state.editUnknownDirectives,
+                enabled           = !state.isSaving,
+                onContentChange   = onContentChange,
+            )
+        },
     ) {
         val enabled = !state.isSaving
         SongSummary(title = state.songName, detail = state.artist)
         TonePicker(selected = state.editTone, enabled = enabled, onSelect = onToneChange)
         InstrumentPicker(value = state.editInstrument, enabled = enabled, onChange = onInstrumentChange)
-        ChordChartEditor(
-            content           = state.editContent,
-            tone              = state.editTone,
-            instrument        = state.editInstrument,
-            previewBlocks     = state.editPreviewBlocks,
-            unknownDirectives = state.editUnknownDirectives,
-            enabled           = enabled,
-            onContentChange   = onContentChange,
-        )
     }
 }
 

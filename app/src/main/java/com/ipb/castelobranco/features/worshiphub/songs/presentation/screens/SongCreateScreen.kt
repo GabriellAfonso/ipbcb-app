@@ -12,6 +12,7 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.FormHelp
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.FormTextField
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormSaveAction
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.state.SongCreateUiState
 import com.ipb.castelobranco.features.worshiphub.songs.presentation.viewmodel.SongCreateViewModel
 
@@ -55,6 +56,7 @@ private fun SongCreateContent(
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
+        extraActions  = { SongFormSaveAction(SAVE_LABEL, state.missing, state.isSaving, onSave) },
     ) { innerPadding ->
         SongFormScaffold(
             innerPadding = innerPadding,

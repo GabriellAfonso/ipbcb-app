@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -75,6 +77,8 @@ import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.domain.constants.MUSIC_TONES
 import com.ipb.castelobranco.core.domain.model.Song
 import com.ipb.castelobranco.core.presentation.components.ResizeForKeyboard
+import com.ipb.castelobranco.core.presentation.components.TopBarPillButton
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import kotlinx.coroutines.flow.collectLatest
@@ -104,6 +108,9 @@ private val INSTRUMENTS = listOf("Baixo", "Violão")
 private val FieldCorner = 16.dp
 private val CardCorner = 16.dp
 private val EditorMinHeight = 170.dp
+private val LandscapeFieldsWidth = 320.dp
+private val MissingOnBarMaxWidth = 200.dp
+private const val MISSING_ON_BAR_ALPHA = 0.85f
 private val PreviewMinHeight = 200.dp
 
 /** "Escrever | Prévia". */
@@ -115,6 +122,9 @@ data class EditorSnippet(val label: String, val text: String, val block: Boolean
 /**
  * The form's frame: the fields scroll, the save bar stays at the bottom with "Falta: …" over the button. The whole
  * frame sits above the keyboard.
+ *
+ * Lying down (`specs/worshiphub/spec.md` §3.3, "Celular deitado") there is no save bar: [fields] go in a column on the
+ * left, [editor] takes the rest on the right, and the screen puts [SongFormSaveAction] in its top bar.
  */
 @Composable
 fun SongFormScaffold(
@@ -124,9 +134,11 @@ fun SongFormScaffold(
     isSaving: Boolean,
     error: String?,
     onSave: () -> Unit,
+    editor: (@Composable ColumnScope.() -> Unit)? = null,
     fields: @Composable ColumnScope.() -> Unit,
 ) {
     ResizeForKeyboard()
+    val isLandscape = isCompactHeight()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -134,16 +146,69 @@ fun SongFormScaffold(
             .consumeWindowInsets(innerPadding)
             .imePadding(),
     ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = fields,
-        )
-        FormSaveBar(saveLabel, missing, isSaving, error, onSave)
+        if (isLandscape) {
+            Row(Modifier.weight(1f).fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .then(if (editor != null) Modifier.width(LandscapeFieldsWidth) else Modifier.weight(1f))
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    error?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    fields()
+                }
+                if (editor != null) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        content = editor,
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                fields()
+                editor?.invoke(this)
+            }
+            FormSaveBar(saveLabel, missing, isSaving, error, onSave)
+        }
+    }
+}
+
+/**
+ * The save bar's place in the top bar when the phone lies down: "Falta: …" and the white pill. Standing up it draws
+ * nothing, the bar at the bottom does the job.
+ */
+@Composable
+fun SongFormSaveAction(label: String, missing: List<String>, isSaving: Boolean, onSave: () -> Unit) {
+    if (!isCompactHeight()) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (missing.isNotEmpty()) {
+            Text(
+                text = MISSING_PREFIX + missing.joinToString(", "),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = MISSING_ON_BAR_ALPHA),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = MissingOnBarMaxWidth).padding(end = 8.dp),
+            )
+        }
+        TopBarPillButton(label = label, onClick = onSave, enabled = missing.isEmpty(), isLoading = isSaving)
     }
 }
 

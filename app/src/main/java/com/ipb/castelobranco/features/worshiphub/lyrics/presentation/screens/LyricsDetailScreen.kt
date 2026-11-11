@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.worshiphub.lyrics.presentation.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,8 +45,10 @@ import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.CancelBarAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormSaveAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongSummary
 import com.ipb.castelobranco.features.worshiphub.lyrics.presentation.components.LyricsEditor
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,6 +63,8 @@ private const val SAVE_LABEL = "Salvar letra"
 
 /** A tap on the right half turns the page, on the left half goes back. */
 private const val HALF_SCREEN = 0.5f
+private const val LANDSCAPE_PAGE_COLUMNS = 2
+private val PageColumnGap = 28.dp
 private const val LINE_HEIGHT = 1.3f
 
 @Composable
@@ -103,7 +109,10 @@ private fun LyricsDetailContent(
         onBackClick   = onBackClick,
         extraActions  = {
             when {
-                state.isEditing -> CancelBarAction(state.isSaving, onCancelEdit)
+                state.isEditing -> {
+                    SongFormSaveAction(SAVE_LABEL, state.editMissing, state.isSaving, onSaveEdit)
+                    CancelBarAction(state.isSaving, onCancelEdit)
+                }
                 else -> PanelMoreButton(
                     hasActions = state.canEdit || state.stanzas.isNotEmpty(),
                     onClick    = { isPanelOpen = true },
@@ -170,11 +179,14 @@ private fun LyricsPager(
     onToggleScroll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Lying down each page shows its stanzas in columns, side by side (`specs/worshiphub/spec.md` §5).
+    val columns = if (isCompactHeight()) LANDSCAPE_PAGE_COLUMNS else 1
     SubcomposeLayout(modifier = modifier.fillMaxSize()) { constraints ->
         val stanzaSpacingPx = 16.dp.roundToPx()
         val hPaddingPx      = 40.dp.roundToPx()  // matches LyricsPageContent padding(horizontal = 20.dp)
         val vPaddingPx      = 24.dp.roundToPx()  // matches LyricsPageContent padding(vertical = 12.dp)
-        val measureWidth    = (constraints.maxWidth - hPaddingPx).coerceAtLeast(0)
+        val gapsPx          = PageColumnGap.roundToPx() * (columns - 1)
+        val measureWidth    = ((constraints.maxWidth - hPaddingPx - gapsPx) / columns).coerceAtLeast(0)
 
         // Phase 1: measure each stanza at the correct render width
         val stanzaHeights = stanzas.mapIndexed { i, stanza ->
@@ -197,7 +209,7 @@ private fun LyricsPager(
         // Phase 3: compute pages
         val availableForStanzas = (constraints.maxHeight - headerHeight - dotsHeight - vPaddingPx)
             .coerceAtLeast(1)
-        val pages = paginate(stanzas, stanzaHeights, availableForStanzas, stanzaSpacingPx)
+        val pages = paginate(stanzas, stanzaHeights, availableForStanzas, stanzaSpacingPx).chunked(columns)
 
         // Phase 4: render full pager — pagerState lives inside this subcomposition
         val contentPlaceable = subcompose("pager") {
@@ -244,9 +256,10 @@ private fun paginate(
     return pages
 }
 
+/** [pages]: each page's columns, each column's stanzas. */
 @Composable
 private fun PagerContent(
-    pages: List<List<LyricsStanza>>,
+    pages: List<List<List<LyricsStanza>>>,
     artist: String,
     textSize: Float,
     scrollMode: SongScrollMode,
@@ -268,7 +281,7 @@ private fun PagerContent(
                 state    = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { index ->
-                LyricsPageContent(stanzas = pages[index], textSize = textSize)
+                LyricsPageContent(columns = pages[index], textSize = textSize)
             }
         }
 
@@ -314,20 +327,27 @@ private fun LyricsBand(artist: String, scrollMode: SongScrollMode, onToggleScrol
 }
 
 @Composable
-private fun LyricsPageContent(stanzas: List<LyricsStanza>, textSize: Float) {
-    Column(
+private fun LyricsPageContent(columns: List<List<LyricsStanza>>, textSize: Float) {
+    Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(PageColumnGap),
     ) {
-        // Long press selects the text to copy; taps still turn the page.
-        SelectionContainer {
-            Column {
-                stanzas.forEachIndexed { index, stanza ->
-                    if (index > 0) Spacer(modifier = Modifier.height(16.dp))
-                    StanzaBlock(stanza, textSize)
+        columns.forEach { stanzas ->
+            // Long press selects the text to copy; taps still turn the page.
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Column {
+                    stanzas.forEachIndexed { index, stanza ->
+                        if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+                        StanzaBlock(stanza, textSize)
+                    }
                 }
             }
+        }
+        // A last page with fewer columns keeps them the same width.
+        if (columns.size < LANDSCAPE_PAGE_COLUMNS && isCompactHeight()) {
+            repeat(LANDSCAPE_PAGE_COLUMNS - columns.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -363,14 +383,16 @@ private fun EditContent(
         isSaving     = state.isSaving,
         error        = state.saveError,
         onSave       = onSave,
+        editor       = {
+            LyricsEditor(
+                content         = state.editContent,
+                previewStanzas  = state.editPreviewStanzas,
+                enabled         = !state.isSaving,
+                onContentChange = onContentChange,
+            )
+        },
     ) {
         SongSummary(title = state.songName, detail = state.artist)
-        LyricsEditor(
-            content         = state.editContent,
-            previewStanzas  = state.editPreviewStanzas,
-            enabled         = !state.isSaving,
-            onContentChange = onContentChange,
-        )
     }
 }
 

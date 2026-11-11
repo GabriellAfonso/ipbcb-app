@@ -12,6 +12,7 @@ import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmodel.ChordChartCreateViewModel
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.InstrumentPicker
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
+import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormSaveAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongPicker
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TonePicker
 
@@ -61,6 +62,7 @@ private fun ChordChartCreateContent(
         logoRes       = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick   = onBackClick,
+        extraActions  = { SongFormSaveAction(SAVE_LABEL, state.missing, state.isSaving, onSave) },
     ) { innerPadding ->
         SongFormScaffold(
             innerPadding = innerPadding,
@@ -69,6 +71,17 @@ private fun ChordChartCreateContent(
             isSaving     = state.isSaving,
             error        = state.saveError,
             onSave       = onSave,
+            editor       = {
+                ChordChartEditor(
+                    content           = state.content,
+                    tone              = state.tone,
+                    instrument        = state.instrument,
+                    previewBlocks     = state.previewBlocks,
+                    unknownDirectives = state.unknownDirectives,
+                    enabled           = enabled,
+                    onContentChange   = onContentChange,
+                )
+            },
         ) {
             SongPicker(
                 query         = state.songQuery,
@@ -81,15 +94,6 @@ private fun ChordChartCreateContent(
             )
             TonePicker(selected = state.tone, enabled = enabled, onSelect = onToneChange)
             InstrumentPicker(value = state.instrument, enabled = enabled, onChange = onInstrumentChange)
-            ChordChartEditor(
-                content           = state.content,
-                tone              = state.tone,
-                instrument        = state.instrument,
-                previewBlocks     = state.previewBlocks,
-                unknownDirectives = state.unknownDirectives,
-                enabled           = enabled,
-                onContentChange   = onContentChange,
-            )
         }
     }
 }

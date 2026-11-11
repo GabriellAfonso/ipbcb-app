@@ -790,3 +790,17 @@ Para achar uma musica lembrando so de um trecho. Desligada por padrao: a busca n
 
 - **Categorias:** campo `categoryName` existe no modelo mas nunca foi implementado como filtro na UI. Potencial filtro por categoria na lista de musicas.
 - **Pinned em Musicas:** avaliar se faz sentido ter o mesmo mecanismo de pin de Cifras/Letras na lista de Musicas. Como a lista ja usa a `SongContentListScreen`, basta passar `onTogglePin` e preencher `isPinned`.
+
+## 12. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9.
+
+- **Hub (§1):** a faixa do domingo (repertório, botões e "salvo por") vira uma coluna verde de 300dp à esquerda,
+  que rola se o repertório for longo. Os 4 cartões ficam 2×2 à direita, centralizados na altura.
+- **Formulários com prévia (§3.3, §4.2, §4.3, §5.2, §5.3):** sem a barra de baixo. Os campos (música, tom,
+  instrumento) numa coluna de 320dp à esquerda; o editor com "Escrever | Prévia" à direita, rolando sozinho. Na
+  nova música (sem editor) os campos ocupam a largura. "Falta: …" e o botão de salvar vão para a top bar
+  (`SongFormSaveAction`), ao lado do "Cancelar" na edição. O erro de salvar aparece no topo dos campos.
+- **Cifra e letra em páginas (§4.3, §5.3):** cada página tem 2 colunas lado a lado. A paginação mede cada bloco na
+  largura de uma coluna e põe 2 colunas por página; a última página com uma coluna só mantém a largura. A âncora
+  (o trecho no topo da página) continua valendo ao girar. A rolagem vertical não muda.

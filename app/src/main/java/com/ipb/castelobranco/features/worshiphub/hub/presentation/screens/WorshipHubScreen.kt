@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.worshiphub.hub.presentation.navigation.WorshipHubNav
@@ -114,6 +116,7 @@ private val TileElevation = 6.dp
 private val TileCircle = 44.dp
 private val TileIcon = 24.dp
 private val SidePadding = 16.dp
+private val LandscapePanelWidth = 300.dp
 private val PillPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
 private val PillShape = RoundedCornerShape(percent = 50)
 
@@ -154,7 +157,28 @@ private fun WorshipHubContent(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            Column(
+            if (isCompactHeight()) {
+                // Lying down: the band is a green column on the left, the four tiles 2×2 on the right.
+                Row(modifier = Modifier.fillMaxSize()) {
+                    val panel = Modifier
+                        .width(LandscapePanelWidth)
+                        .fillMaxHeight()
+                        .background(ipbGreen)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp)
+                    if (band != null) {
+                        SundayBand(band, state.isDeleting, { confirmingRemoval = true }, nav, panel)
+                    } else {
+                        PlainBand(panel)
+                    }
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        HubTiles(nav = nav, modifier = Modifier.padding(vertical = SidePadding))
+                    }
+                }
+            } else Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
@@ -196,8 +220,8 @@ private fun WorshipHubContent(
 
 /** The band for whoever is not a worship member: same shape as everywhere in the app, no setlist. */
 @Composable
-private fun PlainBand() {
-    Column(modifier = Modifier.bandModifier()) {
+private fun PlainBand(modifier: Modifier = Modifier.bandModifier()) {
+    Column(modifier = modifier) {
         Text(PLAIN_LABEL, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = MUTED_ALPHA))
         Text(
             text = PLAIN_TITLE,
@@ -214,8 +238,14 @@ private fun Modifier.bandModifier(): Modifier = fillMaxWidth()
     .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = TileOverlap + 18.dp)
 
 @Composable
-private fun SundayBand(band: HubBandUi, isDeleting: Boolean, onRemoveClick: () -> Unit, nav: WorshipHubNav) {
-    Column(modifier = Modifier.bandModifier()) {
+private fun SundayBand(
+    band: HubBandUi,
+    isDeleting: Boolean,
+    onRemoveClick: () -> Unit,
+    nav: WorshipHubNav,
+    modifier: Modifier = Modifier.bandModifier(),
+) {
+    Column(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
