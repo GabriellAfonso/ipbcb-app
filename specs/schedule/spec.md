@@ -109,5 +109,11 @@ proprios placeholders. Uma escala publicada de um mes que ainda nao comecou abre
 ## 5. Celular deitado
 
 Regras gerais em `specs/core/spec.md` §6.9. As abas dos cultos saem da faixa da top bar e ficam numa coluna verde de
-200dp à esquerda (`GreenTabRail`, uma por linha, com o horário ao lado); a escala do culto escolhido fica à direita.
-Puxar para atualizar e compartilhar continuam iguais.
+200dp à esquerda (`GreenTabRail`, uma por linha, com o horário ao lado); a escala do culto escolhido fica à direita,
+também em duas partes para caber sem rolar:
+
+- numa coluna de 220dp, o card "Próximo" e as notas de rodapé;
+- ao lado, todas as datas em 2 colunas de cartões compactos (48dp de altura, cada um com cantos de 12dp), sem o
+  título "Todas as datas". A próxima data e as passadas mantêm o destaque e o esmaecido de sempre.
+
+Cada lado rola sozinho só se não couber. Puxar para atualizar e compartilhar continuam iguais.

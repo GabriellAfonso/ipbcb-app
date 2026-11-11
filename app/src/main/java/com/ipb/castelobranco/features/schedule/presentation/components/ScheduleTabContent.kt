@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -12,7 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,14 +31,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.nextRowColors
 import java.util.Locale
 
 private val PT_BR = Locale.forLanguageTag("pt-BR")
 private val CardSideMargin = 10.dp
 private val CardRadius = 12.dp
+private val CellGap = 8.dp
+private val LandscapeNextWidth = 220.dp
+private const val LANDSCAPE_DATE_COLUMNS = 2
 private const val PAST_ALPHA = 0.45f
 private const val RULE_ALPHA = 0.35f
 private const val DIVIDER_ALPHA = 0.45f
@@ -58,6 +67,10 @@ fun ScheduleTabContent(
     modifier: Modifier = Modifier,
 ) {
     val rows = section.rows
+    if (isCompactHeight()) {
+        LandscapeTabContent(section, nextDay, month, monthName, modifier)
+        return
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 12.dp, bottom = 8.dp),
@@ -86,14 +99,75 @@ fun ScheduleTabContent(
     }
 }
 
+/**
+ * Lying down (`specs/schedule/spec.md` §5): the "next" card and the footnotes in a column on the left, every date on
+ * the right in two columns of compact cells. A month of dates fits without scrolling; each side scrolls if not.
+ */
 @Composable
-private fun NextServiceCard(section: ScheduleSectionUi, nextDay: Int?, month: Int, monthName: String) {
+private fun LandscapeTabContent(
+    section: ScheduleSectionUi,
+    nextDay: Int?,
+    month: Int,
+    monthName: String,
+    modifier: Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = CardSideMargin, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(CellGap),
+    ) {
+        Column(
+            modifier = Modifier
+                .width(LandscapeNextWidth)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            NextServiceCard(section, nextDay, month, monthName, sideMargin = 0.dp)
+            Footnotes()
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(CellGap),
+        ) {
+            section.rows.chunked(LANDSCAPE_DATE_COLUMNS).forEach { line ->
+                Row(horizontalArrangement = Arrangement.spacedBy(CellGap)) {
+                    line.forEach { row ->
+                        val isNext = row.day == nextDay
+                        val isPast = nextDay == null || row.day < nextDay
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(CardRadius))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                        ) {
+                            ScheduleDateRow(row = row, isNext = isNext, isPast = isPast && !isNext, compact = true)
+                        }
+                    }
+                    repeat(LANDSCAPE_DATE_COLUMNS - line.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NextServiceCard(
+    section: ScheduleSectionUi,
+    nextDay: Int?,
+    month: Int,
+    monthName: String,
+    sideMargin: Dp = CardSideMargin,
+) {
     val nextRow = section.rows.firstOrNull { it.day == nextDay }
     val shortLower = section.shortTitle.lowercase(PT_BR)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CardSideMargin)
+            .padding(horizontal = sideMargin)
             .clip(RoundedCornerShape(CardRadius))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -130,7 +204,7 @@ private fun NextServiceCard(section: ScheduleSectionUi, nextDay: Int?, month: In
 }
 
 @Composable
-private fun ScheduleDateRow(row: ScheduleRowUi, isNext: Boolean, isPast: Boolean) {
+private fun ScheduleDateRow(row: ScheduleRowUi, isNext: Boolean, isPast: Boolean, compact: Boolean = false) {
     val next = nextRowColors()
     val stripeWidth = 3.dp
     Row(
@@ -146,8 +220,8 @@ private fun ScheduleDateRow(row: ScheduleRowUi, isNext: Boolean, isPast: Boolean
                 } else Modifier
             )
             .alpha(if (isPast) PAST_ALPHA else 1f)
-            .heightIn(min = 58.dp)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .heightIn(min = if (compact) 48.dp else 58.dp)
+            .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
