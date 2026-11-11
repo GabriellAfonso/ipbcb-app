@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.worshiphub.lyrics.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,10 +42,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.sp
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.CancelBarAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
@@ -58,7 +55,6 @@ import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TextSizeRow
 
 private const val EDIT_LABEL = "Editar letra"
-private const val EDIT_HINT = "Muda o texto"
 private const val SAVE_LABEL = "Salvar letra"
 
 /** A tap on the right half turns the page, on the left half goes back. */
@@ -98,7 +94,6 @@ private fun LyricsDetailContent(
     onCancelEdit: () -> Unit,
     onSaveEdit: () -> Unit,
 ) {
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     // Only while the lyrics stay open (`specs/worshiphub/spec.md` §5.3).
     var textPercent by rememberSaveable { mutableIntStateOf(TextScale.DEFAULT) }
     val textSize = LyricsTextSize.sp(textPercent)
@@ -113,9 +108,15 @@ private fun LyricsDetailContent(
                     SongFormSaveAction(SAVE_LABEL, state.editMissing, state.isSaving, onSaveEdit)
                     CancelBarAction(state.isSaving, onCancelEdit)
                 }
-                else -> PanelMoreButton(
-                    hasActions = state.canEdit || state.stanzas.isNotEmpty(),
-                    onClick    = { isPanelOpen = true },
+                else -> OverflowMenu(
+                    actions  = listOfNotNull(
+                        MenuAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit).takeIf { state.canEdit },
+                    ),
+                    controls = if (state.stanzas.isNotEmpty()) {
+                        { TextSizeRow(percent = textPercent, onPercentChange = { textPercent = it }) }
+                    } else {
+                        null
+                    },
                 )
             }
         },
@@ -143,23 +144,6 @@ private fun LyricsDetailContent(
                 scrollMode     = scrollMode,
                 onToggleScroll = onToggleScroll,
                 modifier       = Modifier.padding(innerPadding),
-            )
-        }
-        Box(Modifier.padding(innerPadding)) {
-            TopActionPanel(
-                visible = isPanelOpen && !state.isEditing,
-                actions = if (state.canEdit) {
-                    listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT))
-                } else {
-                    emptyList()
-                },
-                onDismiss = { isPanelOpen = false },
-                header = PanelHeader(name = state.songName, detail = state.artist.takeIf { it.isNotBlank() }),
-                controls = {
-                    if (state.stanzas.isNotEmpty()) {
-                        TextSizeRow(percent = textPercent, onPercentChange = { textPercent = it })
-                    }
-                },
             )
         }
         }

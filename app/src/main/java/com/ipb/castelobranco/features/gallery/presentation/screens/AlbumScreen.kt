@@ -22,11 +22,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.CreateNewFolder
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,17 +71,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HideImage
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import com.ipb.castelobranco.features.gallery.presentation.components.BandText
 import com.ipb.castelobranco.features.gallery.presentation.components.BandHeadline
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -104,11 +102,6 @@ private const val CHANGE_COVER_LABEL = "Trocar capa"
 private const val REMOVE_COVER_LABEL = "Remover capa"
 private const val DELETE_ALBUM_LABEL = "Apagar álbum"
 private const val SELECTED_BORDER_DP = 3
-private const val EDIT_ALBUM_HINT = "Nome, data e descrição"
-private const val MOVE_ALBUM_HINT = "Para dentro de outro álbum"
-private const val ORGANIZE_HINT_SHORT = "Arrastar a ordem"
-private const val DELETE_ALBUM_HINT = "Vai para a lixeira"
-private const val DETAIL_SEPARATOR = " · "
 private val GridEdge = 8.dp
 private val PhotoCorner = 6.dp
 private val SectionBarWidth = 4.dp
@@ -216,8 +209,7 @@ fun AlbumContent(
         state.isSelecting -> selectedTitle(state.selection.size)
         else -> GALLERY_TITLE
     }
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
-    val panelActions = albumPanelActions(state, actions)
+    val menuActions = albumMenuActions(state, actions)
     BaseScreen(
         tabName = title,
         logoRes = R.drawable.ic_galery,
@@ -227,7 +219,7 @@ fun AlbumContent(
             state.isSelecting -> actions.onSelectionClose
             else -> actions.onBack
         },
-        extraActions = { AlbumTopActions(state, actions, hasPanel = panelActions.isNotEmpty()) { isPanelOpen = true } },
+        extraActions = { AlbumTopActions(state, actions, menuActions) },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -241,24 +233,12 @@ fun AlbumContent(
             if (state.permissions.canManage && !state.isOrganizing && !state.isSelecting && !state.isLoading) {
                 AddButton(actions, Modifier.align(Alignment.BottomEnd).padding(16.dp))
             }
-            TopActionPanel(
-                visible = isPanelOpen && !state.isOrganizing && !state.isSelecting,
-                actions = panelActions,
-                onDismiss = { isPanelOpen = false },
-                header = PanelHeader(
-                    name = state.title,
-                    detail = listOfNotNull(state.eventDate, state.countLabel).joinToString(DETAIL_SEPARATOR)
-                        .ifEmpty { null },
-                    cover = state.cover,
-                    showCover = true,
-                ),
-            )
         }
     }
 }
 
 @Composable
-private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions, hasPanel: Boolean, onOpenPanel: () -> Unit) {
+private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions, menuActions: List<MenuAction>) {
     when {
         state.isOrganizing -> OrganizeActions(state.isSavingOrder, actions.onOrganizeCancel, actions.onOrganizeSave)
         state.isSelecting -> SelectionActions(
@@ -276,29 +256,27 @@ private fun AlbumTopActions(state: AlbumUiState, actions: AlbumActions, hasPanel
                 null
             },
         )
-        else -> PanelMoreButton(hasActions = hasPanel, onClick = onOpenPanel)
+        else -> OverflowMenu(menuActions)
     }
 }
 
-/** The actions panel of an album (`specs/gallery/spec.md` §1.5), by level (§8.1). */
-private fun albumPanelActions(state: AlbumUiState, actions: AlbumActions): List<PanelAction> {
+/** The three dots' menu of an album (`specs/gallery/spec.md` §1.5), by level (§8.1). */
+private fun albumMenuActions(state: AlbumUiState, actions: AlbumActions): List<MenuAction> {
     if (state.isLoading || state.isRemoved) return emptyList()
     val permissions = state.permissions
     return buildList {
         if (permissions.canManage) {
-            add(PanelAction(Icons.Filled.Edit, EDIT_ALBUM_LABEL, actions.onEditAlbum, EDIT_ALBUM_HINT))
-            add(PanelAction(Icons.AutoMirrored.Filled.DriveFileMove, MOVE_ALBUM_LABEL, actions.onMoveAlbum, MOVE_ALBUM_HINT))
-            add(PanelAction(Icons.Filled.Image, CHANGE_COVER_LABEL, actions.onChangeCover))
+            add(MenuAction(Icons.Filled.Edit, EDIT_ALBUM_LABEL, actions.onEditAlbum))
+            add(MenuAction(Icons.AutoMirrored.Filled.DriveFileMove, MOVE_ALBUM_LABEL, actions.onMoveAlbum))
+            add(MenuAction(Icons.Filled.Image, CHANGE_COVER_LABEL, actions.onChangeCover))
             if (state.subAlbums.size > 1 || state.photos.size > 1) {
-                add(PanelAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, actions.onOrganize, ORGANIZE_HINT_SHORT))
+                add(MenuAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, actions.onOrganize))
             }
         }
-        if (state.canRemoveCover) add(PanelAction(Icons.Filled.HideImage, REMOVE_COVER_LABEL, actions.onRemoveCover))
+        if (state.canRemoveCover) add(MenuAction(Icons.Filled.HideImage, REMOVE_COVER_LABEL, actions.onRemoveCover))
         if (permissions.canDelete) {
             add(
-                PanelAction(
-                    Icons.Filled.Delete, DELETE_ALBUM_LABEL, actions.onDeleteAlbum, DELETE_ALBUM_HINT, isDanger = true,
-                ),
+                MenuAction(Icons.Filled.Delete, DELETE_ALBUM_LABEL, actions.onDeleteAlbum, isDanger = true),
             )
         }
     }
@@ -443,12 +421,12 @@ private fun AddButton(actions: AlbumActions, modifier: Modifier) {
         FloatingActionButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.Add, contentDescription = ADD_LABEL)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text(ADD_PHOTOS_LABEL) }, onClick = {
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            AppMenuItem(text = ADD_PHOTOS_LABEL, icon = Icons.Filled.AddPhotoAlternate, onClick = {
                 expanded = false
                 actions.onAddPhotos()
             })
-            DropdownMenuItem(text = { Text(NEW_ALBUM_LABEL) }, onClick = {
+            AppMenuItem(text = NEW_ALBUM_LABEL, icon = Icons.Filled.CreateNewFolder, onClick = {
                 expanded = false
                 actions.onNewAlbum()
             })

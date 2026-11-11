@@ -28,8 +28,8 @@ gestão vive nas próprias telas da galeria — o painel de gestão não tem car
 | Álbum   | `Album/{albumId}`             | Álbum na grid (raiz ou sub-álbum) |
 | Foto    | `Photo/{albumId}/{photoId}`   | Foto na grid do álbum       |
 | Foto (resultado) | `PeoplePhoto/{memberIds}/{photoId}` | Foto no resultado do filtro (seção 10.6) |
-| Pessoas | `GalleryPeople`               | "Pessoas" no painel de ações da raiz (seção 10.6) |
-| Lixeira | `GalleryTrash`                | "Lixeira" no painel de ações da raiz (`owner`, seção 9) |
+| Pessoas | `GalleryPeople`               | "Pessoas" no menu de opções da raiz (seção 10.6) |
+| Lixeira | `GalleryTrash`                | "Lixeira" no menu de opções da raiz (`owner`, seção 9) |
 | Cortar vídeo | `GalleryVideoTrim`       | Lote com vídeo escolhido no álbum (seção 11.7) |
 
 Todas vivem em `galleryGraph` (`GalleryNavGraph.kt`). Galeria, Álbum e Foto usam um `GalleryViewModel` escopado
@@ -58,7 +58,7 @@ erro, vazia), a faixa fica só com "Galeria da igreja" e "Galeria", e o estado a
 **Grid** de 2 colunas com os álbuns raiz (`parent_id` nulo), subindo 28dp sobre a faixa. Cada cartão: cantos de 16dp,
 sombra, capa quadrada (preta quando não há), degradê escuro na metade de baixo e, em branco, à esquerda, o nome (até 2
 linhas) e a data do evento (`dd/MM/yyyy`, quando existe). O card de descoberta de vídeos (11.4) é a primeira linha da
-grid. Na barra (título "Galeria"), os três pontos abrem o painel de ações (seção 1.5) com "Pessoas" (abre o filtro,
+grid. Na barra (título "Galeria"), os três pontos abrem o menu de opções (seção 1.5) com "Pessoas" (abre o filtro,
 seção 10.6), "Lixeira" (`owner`) e "Organizar" (`manage`, com 2+ álbuns); somem durante o "Organizar". Abrir a
 galeria dispara um sync.
 
@@ -72,7 +72,7 @@ existe. No "Organizar", a faixa mostra "Toque e segure para arrastar." no lugar 
 Uma rolagem: sub-álbuns primeiro (2 por linha, o mesmo cartão da raiz), depois as fotos (3 por linha, cantos de 6dp).
 Cada grupo abre com um título de linha inteira com uma barrinha `primary` à esquerda — "Álbuns" e "Fotos" ("Fotos e
 vídeos" quando há vídeo) —, e as fotos sempre começam numa linha nova. Sem fotos e sem sub-álbuns: "Nenhuma foto neste
-álbum." abaixo da faixa. Os três pontos abrem o painel de ações (seção 1.5). Cada álbum aberto é uma entrada do back
+álbum." abaixo da faixa. Os três pontos abrem o menu de opções (seção 1.5). Cada álbum aberto é uma entrada do back
 stack — voltar sobe um nível.
 
 ### 1.3 Foto
@@ -95,27 +95,20 @@ claros enquanto a tela está aberta.
 - Tocar na foto esconde ou mostra topo, etiquetas e rodapé. Zoom por pinça, duplo toque volta ao normal.
 - Foto ainda sem original no aparelho aparece pelo preview (ou cinza), com "Baixar" e "Compartilhar" desabilitados.
 
-### 1.5 Painel de ações
+### 1.5 Menu de opções
 
-Os três pontos da raiz e do álbum abrem um painel que desce colado na barra verde: fundo do card, cantos inferiores
-de 28dp e uma alça embaixo. Abaixo da barra, o resto da tela escurece; tocar fora ou voltar fecha. Cada opção tem um
-ícone num círculo `secondaryContainer`, o nome e uma linha dizendo o que faz:
+Os três pontos da raiz, do álbum e da foto abrem o menu de opções do app (`specs/core/spec.md` §6.7.2), colado nos
+três pontos. Cada opção tem ícone e nome:
 
-| Tela | Opção | Linha |
-|------|-------|-------|
-| Raiz | Pessoas | Quem aparece nas fotos |
-| Raiz | Lixeira | Álbuns e fotos apagados |
-| Raiz | Organizar | Arrastar a ordem dos álbuns |
-| Álbum | Editar álbum | Nome, data e descrição |
-| Álbum | Mover álbum | Para dentro de outro álbum |
-| Álbum | Trocar capa | — |
-| Álbum | Organizar | Arrastar a ordem |
-| Álbum | Remover capa | — |
-| Álbum | Apagar álbum | Vai para a lixeira |
+| Tela | Opções |
+|------|--------|
+| Raiz | Pessoas, Lixeira, Organizar |
+| Álbum | Editar álbum, Mover álbum, Trocar capa, Organizar, Remover capa · Apagar álbum |
+| Foto | Editar foto, Marcar pessoas, Mover, Usar como capa · Apagar |
 
-No álbum, o painel abre com a capa, o nome e "data · contagem" do álbum, e separa os grupos "Gerenciar" e "Cuidado";
-"Apagar álbum" fica no "Cuidado", em vermelho (`error`, círculo `errorContainer`). Quem vê cada opção segue a seção 8.1.
-O menu da foto continua um menu suspenso.
+"Apagar álbum" e "Apagar" ficam por último, depois da divisória, em vermelho. O "+" do álbum ("Adicionar fotos e
+vídeos", "Novo álbum") e o "Pessoas" da seleção ("Adicionar pessoas", "Remover pessoas") usam o mesmo cartão. Quem vê
+cada opção segue a seção 8.1.
 
 ### 1.4 Item removido com a tela aberta
 

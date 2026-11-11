@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.events.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -57,10 +59,6 @@ import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.HighlightEvent
 import com.ipb.castelobranco.core.presentation.components.HighlightEventUi
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.TopBarPillButton
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.components.rememberCroppedPhotoPicker
@@ -95,7 +93,6 @@ fun EventFormScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    var showPanel by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableStateOf(EventFormTab.EDIT) }
     val pickImage = rememberCroppedPhotoPicker(
         aspectX = CROP_ASPECT_X,
@@ -131,7 +128,15 @@ fun EventFormScreen(
             if (isLandscape && hasForm) {
                 TopBarPillButton(label = SAVE_LABEL, onClick = viewModel::onSave, isLoading = state.isSaving)
             }
-            PanelMoreButton(hasActions = state.canDelete && !state.isLoading) { showPanel = true }
+            if (state.canDelete && !state.isLoading) {
+                OverflowMenu(
+                    listOf(
+                        MenuAction(
+                            Icons.Filled.DeleteOutline, "Excluir evento", { confirmDelete = true }, isDanger = true,
+                        ),
+                    ),
+                )
+            }
         },
     ) { innerPadding ->
         Box(Modifier.padding(innerPadding)) {
@@ -149,20 +154,6 @@ fun EventFormScreen(
                     viewModel.onSave()
                 },
                 onRetry = viewModel::load,
-            )
-            TopActionPanel(
-                visible = showPanel,
-                header = PanelHeader(name = state.draft.title, detail = state.previewDateLabel),
-                actions = listOf(
-                    PanelAction(
-                        icon = Icons.Filled.DeleteOutline,
-                        label = "Excluir evento",
-                        description = "Some do app para todos",
-                        isDanger = true,
-                        onClick = { confirmDelete = true },
-                    ),
-                ),
-                onDismiss = { showPanel = false },
             )
             SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
         }

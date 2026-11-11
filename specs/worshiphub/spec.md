@@ -340,10 +340,9 @@ menu de copiar do sistema. A lista "Abrir" nao entra.
 
 #### Edicao (`songs` ≥ `manage`)
 
-Quem tem `manage` ou `owner` no escopo `songs` ve os tres pontos na barra; eles abrem o painel de acoes que desce da
-barra (`core/presentation/components/TopActionPanel`), com o nome da musica e o artista no topo: no grupo
-"Gerenciar", "Editar música" ("Nome, artista e link do YouTube"); no grupo "Cuidado", so para `owner`, "Excluir
-música" ("Apaga junto as cifras e a letra"). Em modo edicao a barra mostra "Cancelar" e "Salvar" — mesmo mecanismo
+Quem tem `manage` ou `owner` no escopo `songs` ve os tres pontos na barra; eles abrem o menu de opcoes
+(`specs/core/spec.md` §6.7.2) com "Editar música" e, so para `owner`, depois da divisoria e em vermelho, "Excluir
+música". Em modo edicao a barra mostra "Cancelar" e "Salvar" — mesmo mecanismo
 de cifras e letras.
 
 **Modo edicao:** a tela troca header, estatisticas e botoes por um formulario com tres campos, ja preenchidos com
@@ -502,12 +501,12 @@ Quando as paginas mudam (tamanho da letra, girar a tela), a tela fica na pagina 
 
 **Tamanho da letra:** nos tres pontos (a barra de cima nao tem espaco para o `tT`), o rotulo "Tamanho da letra" e,
 embaixo, a barra padrao do app (`specs/core/spec.md` §6.7.1: −, slider, +, "100%", de 80% a 180% em passos de 5%),
-sem fundo; o painel nao fecha ao mexer. Muda acordes e letra juntos, e as paginas sao refeitas com a medida nova. Fica salvo no aparelho (`chord_text_scale`, `@SettingsPrefs`), um so para
+sem fundo, no topo do menu; o menu nao fecha ao mexer. Muda acordes e letra juntos, e as paginas sao refeitas com a medida nova. Fica salvo no aparelho (`chord_text_scale`, `@SettingsPrefs`), um so para
 todas as cifras. No modo rolagem, a posicao em pixels se mantem, entao o trecho do topo pode mudar.
 
 **Layout "ajuste fino com faixa"** (o mesmo na letra, 5.3):
 
-- Barra verde do `BaseScreen` com o nome da musica e os tres pontos (painel de acoes, abaixo).
+- Barra verde do `BaseScreen` com o nome da musica e os tres pontos (menu de opcoes, abaixo).
 - Logo abaixo, uma **faixa verde fina** (`ipbGreen`, cantos inferiores de 20dp): o artista numa linha; embaixo, a
   etiqueta branca "Tom {tom}" e, a direita, o seletor "Paginas | Rolagem" (o selecionado com fundo branco
   translucido).
@@ -525,12 +524,11 @@ lida, mostra o carregando — nunca um modo provisorio que depois troca.
 long press seleciona e abre o menu de copiar do sistema; tap nas bordas continua virando a pagina. O cabecalho
 (tom, paginas) nao entra.
 
-**Tres pontos:** todos veem os tres pontos na barra; eles abrem o painel de acoes que desce da barra (o mesmo da
-galeria, `core/presentation/components/TopActionPanel`), com o nome da musica e "artista · Tom {tom}" no topo e a
-linha "Tamanho da letra".
+**Tres pontos:** todos veem os tres pontos na barra; eles abrem o menu de opcoes (`specs/core/spec.md`
+§6.7.2) com o "Tamanho da letra" no topo.
 
-**Edicao (`songs` ≥ `manage`):** no mesmo painel, o grupo "Gerenciar" com "Editar cifra" ("Muda o tom, o instrumento
-e o texto"). Sem permissao, o grupo nao aparece.
+**Edicao (`songs` ≥ `manage`):** no mesmo menu, depois da divisoria, "Editar cifra". Sem permissao, so o tamanho da
+letra aparece.
 
 Em modo edicao a tela usa o formulario "com previa" de 3.3 e 4.2, com o titulo "Editar cifra":
 - **Musica** nao muda: aparece num card so de leitura, com o nome e o artista.
@@ -596,8 +594,8 @@ Exibe letra dividida em estrofes. `LyricsParser` separa o texto em `List<LyricsS
 **Layout:** o da cifra (4.3), com o nome da musica na barra (nao mais "Letra" na barra e o nome repetido no corpo) e,
 na faixa fina, so o artista e o seletor "Paginas | Rolagem" (letra nao tem tom).
 
-**Tres pontos:** todos veem os tres pontos na barra, como na cifra (4.3); eles abrem o painel com o nome da musica, o
-artista e, quando ha texto, a linha "Tamanho da letra".
+**Tres pontos:** todos veem os tres pontos na barra, como na cifra (4.3); eles abrem o menu de opcoes com, quando ha texto, o
+"Tamanho da letra" no topo e, para quem edita, a opcao de editar a letra.
 
 **Tamanho da letra:** o mesmo da cifra (4.3), a barra padrao nos tres pontos (100% = 22sp). O tamanho vale enquanto a
 letra esta aberta; as paginas sao recalculadas com ele.

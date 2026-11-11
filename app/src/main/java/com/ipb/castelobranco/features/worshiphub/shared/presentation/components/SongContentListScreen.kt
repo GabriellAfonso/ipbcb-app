@@ -1,5 +1,9 @@
 package com.ipb.castelobranco.features.worshiphub.shared.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,14 +27,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -39,8 +40,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -433,33 +432,7 @@ private fun EmptyState() {
 
 @Composable
 private fun EditorOverflowMenu(addItemLabel: String, onCreateClick: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector        = Icons.Default.MoreVert,
-                contentDescription = "Menu",
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        DropdownMenu(
-            expanded         = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            DropdownMenuItem(
-                text    = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector        = Icons.Default.Add,
-                            contentDescription = null,
-                            modifier           = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(addItemLabel)
-                    }
-                },
-                onClick = { expanded = false; onCreateClick() },
-            )
-        }
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
+        OverflowMenu(listOf(MenuAction(Icons.Default.Add, addItemLabel, onCreateClick)))
     }
 }

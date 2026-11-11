@@ -1,6 +1,7 @@
 package com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.screens
 
-import androidx.compose.foundation.layout.FlowRow
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -15,54 +16,34 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ViewColumn
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Constraints
-import kotlin.math.roundToInt
 import com.ipb.castelobranco.core.data.local.SongScrollMode
 import com.ipb.castelobranco.core.presentation.modifier.tapToPaginate
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
-import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.components.ChordBlockView
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.ChordBlock
-import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.ChordLine
-import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.parser.LineToken
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.state.ChordChartDetailUiState
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.viewmodel.ChordChartDetailViewModel
 import com.ipb.castelobranco.core.presentation.components.KeepScreenOn
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.saveable.rememberSaveable
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.CancelBarAction
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongFormScaffold
@@ -73,14 +54,11 @@ import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.
 import com.ipb.castelobranco.features.worshiphub.chordcharts.presentation.components.ChordChartEditor
 import androidx.compose.foundation.layout.PaddingValues
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.PageProgress
-import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SectionTag
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.SongBand
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.TextSizeRow
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.ToneTag
-import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.chordColor
 
 private const val EDIT_LABEL = "Editar cifra"
-private const val EDIT_HINT = "Muda o tom, o instrumento e o texto"
 private const val SAVE_LABEL = "Salvar cifra"
 
 /** A tap on the right half turns the page, on the left half goes back. */
@@ -125,7 +103,6 @@ private fun ChordChartDetailContent(
     onCancelEdit: () -> Unit,
     onSaveEdit: () -> Unit,
 ) {
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     BaseScreen(
         tabName       = if (state.isEditing) EDIT_LABEL else state.songName.ifEmpty { "Cifra" },
         logoRes       = R.drawable.ic_sarca_ipb,
@@ -137,7 +114,12 @@ private fun ChordChartDetailContent(
                     SongFormSaveAction(SAVE_LABEL, state.editMissing, state.isSaving, onSaveEdit)
                     CancelBarAction(state.isSaving, onCancelEdit)
                 }
-                else -> PanelMoreButton(hasActions = state.blocks.isNotEmpty(), onClick = { isPanelOpen = true })
+                state.blocks.isNotEmpty() -> OverflowMenu(
+                    actions = listOfNotNull(
+                        MenuAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit).takeIf { state.canEdit },
+                    ),
+                    controls = { TextSizeRow(percent = state.textScalePercent, onPercentChange = onTextScaleChange) },
+                )
             }
         },
     ) { innerPadding ->
@@ -167,27 +149,6 @@ private fun ChordChartDetailContent(
                     textScale = state.textScale,
                     band     = { ChordBand(state, scrollMode, onToggleScroll) },
                     modifier = Modifier.padding(innerPadding),
-                )
-            }
-            Box(Modifier.padding(innerPadding)) {
-                TopActionPanel(
-                    visible = isPanelOpen && !state.isEditing,
-                    actions = if (state.canEdit) {
-                        listOf(PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT))
-                    } else {
-                        emptyList()
-                    },
-                    onDismiss = { isPanelOpen = false },
-                    header = PanelHeader(
-                        name = state.songName,
-                        detail = listOfNotNull(
-                            state.artist.takeIf { it.isNotBlank() },
-                            state.tone.takeIf { it.isNotBlank() }?.let { "Tom $it" },
-                        ).joinToString(" · "),
-                    ),
-                    controls = {
-                        TextSizeRow(percent = state.textScalePercent, onPercentChange = onTextScaleChange)
-                    },
                 )
             }
         }

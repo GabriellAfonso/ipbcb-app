@@ -1,6 +1,8 @@
 package com.ipb.castelobranco.features.bible.presentation.components
 
-import androidx.compose.foundation.background
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -14,8 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.SmartDisplay
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -155,10 +155,11 @@ private fun TranslationPill(
 
     Box {
         ToolbarPill(text = active.displayName, onClick = { if (available.size > 1) expanded = true })
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             available.forEach { translation ->
-                DropdownMenuItem(
-                    text = { Text(translation.displayName) },
+                AppMenuItem(
+                    text = translation.displayName,
+                    icon = if (translation == active) Icons.Filled.Check else null,
                     onClick = {
                         expanded = false
                         if (translation != active) onSelected(translation)

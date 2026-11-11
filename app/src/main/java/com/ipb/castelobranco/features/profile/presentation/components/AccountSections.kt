@@ -1,5 +1,13 @@
 package com.ipb.castelobranco.features.profile.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuActions
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.HideImage
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,12 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -77,23 +81,15 @@ fun ProfilePhotoSection(
             }
         }
 
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text("Trocar foto") },
-                onClick = {
-                    menuOpen = false
-                    onChangePhoto()
-                },
+        AppMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            AppMenuActions(
+                actions = listOfNotNull(
+                    MenuAction(Icons.Filled.PhotoCamera, "Trocar foto", onChangePhoto),
+                    MenuAction(Icons.Filled.HideImage, "Remover foto", onRemovePhoto, isDanger = true)
+                        .takeIf { hasPhoto },
+                ),
+                onDismiss = { menuOpen = false },
             )
-            if (hasPhoto) {
-                DropdownMenuItem(
-                    text = { Text("Remover foto", color = MaterialTheme.colorScheme.error) },
-                    onClick = {
-                        menuOpen = false
-                        onRemovePhoto()
-                    },
-                )
-            }
         }
     }
 }
@@ -137,29 +133,12 @@ fun ProfileOverflowMenu(
     onEditName: () -> Unit,
     onChangePassword: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
-    IconButton(onClick = { expanded = true }) {
-        Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "Mais opções")
-    }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        DropdownMenuItem(
-            text = { Text("Editar nome") },
-            onClick = {
-                expanded = false
-                onEditName()
-            },
-        )
-        if (hasPassword) {
-            DropdownMenuItem(
-                text = { Text("Trocar senha") },
-                onClick = {
-                    expanded = false
-                    onChangePassword()
-                },
-            )
-        }
-    }
+    OverflowMenu(
+        listOfNotNull(
+            MenuAction(Icons.Filled.Edit, "Editar nome", onEditName),
+            MenuAction(Icons.Filled.Lock, "Trocar senha", onChangePassword).takeIf { hasPassword },
+        ),
+    )
 }
 
 private val PHOTO_SIZE = 140.dp

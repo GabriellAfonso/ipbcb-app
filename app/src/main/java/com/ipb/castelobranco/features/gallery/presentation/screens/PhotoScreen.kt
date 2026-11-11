@@ -61,7 +61,14 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PersonAdd
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.LocalContentColor
@@ -83,8 +90,6 @@ import com.ipb.castelobranco.features.gallery.presentation.components.GalleryDia
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryImage
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryVideoPage
 import com.ipb.castelobranco.features.gallery.presentation.components.rememberGalleryPlayer
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageAction
-import com.ipb.castelobranco.features.gallery.presentation.components.ManageOverflowMenu
 import com.ipb.castelobranco.features.gallery.presentation.components.PhotoDetailsSheet
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
 import com.ipb.castelobranco.features.gallery.presentation.state.GalleryDialogState
@@ -324,7 +329,7 @@ fun PhotoContent(
                         .joinToString(DETAIL_SEPARATOR)
                 },
                 onBack = onBack,
-                menu = { current?.let { ManageOverflowMenu(photoMenu(it, state.permissions, manage)) } },
+                menu = { current?.let { OverflowMenu(photoMenu(it, state.permissions, manage)) } },
             )
         }
 
@@ -478,12 +483,14 @@ private fun ViewerAction(
 private fun photoMenu(photo: ViewerPhoto, permissions: GalleryPermissions, manage: PhotoManageActions) =
     buildList {
         if (permissions.canManage) {
-            add(ManageAction(EDIT_LABEL) { manage.onEdit(photo) })
-            add(ManageAction(TAG_PEOPLE_LABEL) { manage.onTagPeople(photo) })
-            add(ManageAction(MOVE_LABEL) { manage.onMove(photo) })
-            add(ManageAction(USE_AS_COVER_LABEL) { manage.onUseAsCover(photo) })
+            add(MenuAction(Icons.Filled.Edit, EDIT_LABEL, { manage.onEdit(photo) }))
+            add(MenuAction(Icons.Filled.PersonAdd, TAG_PEOPLE_LABEL, { manage.onTagPeople(photo) }))
+            add(MenuAction(Icons.AutoMirrored.Filled.DriveFileMove, MOVE_LABEL, { manage.onMove(photo) }))
+            add(MenuAction(Icons.Filled.Image, USE_AS_COVER_LABEL, { manage.onUseAsCover(photo) }))
         }
-        if (permissions.canDelete) add(ManageAction(DELETE_LABEL) { manage.onDelete(photo) })
+        if (permissions.canDelete) {
+            add(MenuAction(Icons.Filled.Delete, DELETE_LABEL, { manage.onDelete(photo) }, isDanger = true))
+        }
     }
 
 /** Pinch to zoom, pan while zoomed, double tap to reset, a single tap is [onTap]. Resets when [resetKey] changes. */

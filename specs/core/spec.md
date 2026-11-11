@@ -848,6 +848,7 @@ Erro se nao provido (staticCompositionLocalOf com error factory).
 | `PermissionErrorPlaceholder` | Erro de permissao com botao opcional "Conectar a sua conta" |
 | `SquarePhotoPicker` | `rememberSquarePhotoPicker(onPicked, onCancelled)`: escolhe imagem da galeria, recorta com UCrop (1:1, max 512x512, titulo "Recortar Foto") e entrega os bytes JPEG. Apaga o arquivo recortado logo depois de ler e varre `cacheDir/cropped_*` a cada abertura — nenhuma copia fica no aparelho. Usado pela foto de perfil e pela foto de membro |
 | `TextSizeBar` | A barra de tamanho do texto de leitura (6.7.1) |
+| `AppMenu` / `OverflowMenu` | O menu de opções do app inteiro (6.7.2) |
 
 ### 6.7.1 Tamanho do texto de leitura
 
@@ -855,14 +856,15 @@ Toda tela de leitura (Biblia, hinario, Catecismo, Confissao, licao da EBD, cifra
 mesmo jeito, para o app nao parecer remendado.
 
 **Onde abre:** o icone `tT` (`Icons.Filled.FormatSize`) na top bar abre e fecha a barra logo abaixo dela. A tela
-que nao tem espaco na top bar (cifra e letra, com os tres pontos) mostra a mesma barra dentro do painel dos tres
-pontos, sob o rotulo "Tamanho da letra". Nenhuma tela usa "Aa", "A−/A+" ou outro controle.
+que nao tem espaco na top bar (cifra e letra, com os tres pontos) mostra a mesma barra no topo do menu dos tres
+pontos (6.7.2), sob o rotulo "Tamanho da letra". Nenhuma tela usa "Aa", "A−/A+" ou outro controle.
 
 **A barra (`core/presentation/components/TextSizeBar`):** "−", um slider e "+", com o valor em porcentagem a
 direita ("100%"). O slider anda de 5 em 5% e o − e o + tambem, de 80% a 180%; no limite, o botao daquele lado fica
 desabilitado. Enquanto arrasta, o texto ja muda a cada 5%. As cores vem de `TextSizeBarDefaults`: `colors()` sobre
 a superficie (`surfaceContainer`, trilha e bolinha `primary`) e `onBrandColors()` sobre o verde (hinario: icones
-e valor brancos, trilha e bolinha `onPrimaryContainerLight`). No painel dos tres pontos a barra fica sem fundo.
+e valor brancos, trilha e bolinha `onPrimaryContainerLight`). No menu dos tres pontos a barra fica sem fundo e o menu tem no minimo 280dp
+de largura, para o slider caber.
 
 **Escala (`core/domain/model/TextScale`):** 100% e o tamanho padrao de cada tela, entao o mesmo valor quer dizer o
 mesmo em todo o app, mesmo com bases diferentes:
@@ -890,6 +892,30 @@ quem projeta o hinario grande no culto nao quer a Biblia gigante no celular.
 arredondado para o multiplo de 5 mais proximo e limitado a 80–180%). Ex.: Biblia em 22sp vira 120%. A primeira
 mudanca grava a chave nova e apaga a antiga. Ninguem perde o tamanho que tinha. Qualquer valor lido (inclusive o
 `chord_text_scale` de 80–160% em passos de 10) passa pela mesma normalizacao.
+
+### 6.7.2 Menu de opcoes
+
+Todo menu que abre de um botao (os tres pontos da barra ou de um card, o "+" do album, a foto de perfil) e as listas
+de escolha de formulario (tom, situacao, livro, traducao, icone da aula) usam o mesmo cartao, para o app ter um jeito
+so de "tres pontos". Nao existe painel que desce da barra nem folha de acoes para isso.
+
+**O cartao (`core/presentation/components/AppMenu`):** abre colado no botao que o abriu (o `DropdownMenu` do
+Material 3), cantos de 16dp, contorno de 1dp `outlineVariant`, fundo do card (`highlightCardColor`:
+`surfaceContainerLowest` no claro, `surfaceContainerHigh` no escuro, para nao sumir no fundo `#121212`), sombra de
+8dp e 6dp de margem dentro. `AppMenuDefaults` tem o mesmo visual para o `ExposedDropdownMenu` de campo de formulario.
+
+**Itens (`AppMenuItem`):** linha arredondada (10dp) ao tocar, icone de 21dp `onSurfaceVariant` a esquerda e o nome
+(`bodyLarge`, medio). Item de acao sempre tem icone; item de lista de escolha so tem icone quando ajuda (o check no
+escolhido). Item desabilitado fica apagado. Nao ha linha de ajuda embaixo do nome nem cabecalho: o que o menu age
+(album, musica, membro) ja aparece na tela logo abaixo da barra.
+
+**Perigo:** acao que apaga ou exclui (`MenuAction.isDanger`) fica por ultimo, depois de uma divisoria
+(`AppMenuDivider`), com texto e icone `error`.
+
+**Tres pontos (`OverflowMenu`):** o botao "Mais opções" e o cartao com uma lista de `MenuAction` (icone, nome,
+acao, perigo, habilitado); tocar numa opcao fecha o menu e roda a acao. Aceita `controls` no topo, que nao fecham o
+menu ao mexer (o tamanho da letra da cifra e da letra, 6.7.1), separados das acoes por uma divisoria. Sem acao e
+sem controle, os tres pontos somem.
 
 ### 6.8 Modifiers
 

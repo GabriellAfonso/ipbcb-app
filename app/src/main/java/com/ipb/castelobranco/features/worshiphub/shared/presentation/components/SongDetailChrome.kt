@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FormatSize
@@ -124,28 +125,29 @@ fun ToneTag(tone: String) {
 }
 
 /**
- * "Tamanho da letra" and, under it, the app's text size bar, in the three dots' panel: the top bar has no room for the
- * `tT` (`specs/core/spec.md` §6.7.1).
+ * "Tamanho da letra" and, under it, the app's text size bar, on top of the three dots' menu: the top bar has no room
+ * for the `tT` (`specs/core/spec.md` §6.7.1). [TextSizeMenuMinWidth] keeps the slider usable inside the card.
  */
 @Composable
 fun TextSizeRow(percent: Int, onPercentChange: (Int) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+    Column(modifier = Modifier.widthIn(min = TextSizeMenuMinWidth).padding(top = 4.dp)) {
         Row(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier = Modifier.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(Icons.Filled.FormatSize, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge)
+            Text(TEXT_SIZE_LABEL, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
         }
         TextSizeBar(
             percent = percent,
             onPercentChange = onPercentChange,
-            modifier = Modifier.padding(horizontal = 4.dp),
             colors = TextSizeBarDefaults.colors(container = Color.Transparent),
         )
     }
 }
+
+private val TextSizeMenuMinWidth = 280.dp
 
 @Composable
 private fun ModeSwitch(isPages: Boolean, onPages: () -> Unit, onScroll: () -> Unit) {

@@ -138,8 +138,6 @@ data class AlbumUiState(
     val uploads: AlbumUploadsUiState = AlbumUploadsUiState(),
     /** Someone is tagged in a selected photo: "Remover pessoas" has something to remove. */
     val canRemovePeople: Boolean = false,
-    /** The album's cover on the device, for the actions panel's header. */
-    val cover: File? = null,
 ) {
     val isEmpty: Boolean get() = !isLoading && !isRemoved && subAlbums.isEmpty() && photos.isEmpty()
 

@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.gallery.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -65,8 +67,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.ipb.castelobranco.features.gallery.presentation.components.BandDownload
 import com.ipb.castelobranco.features.gallery.presentation.components.BandNotice
@@ -76,9 +76,6 @@ import com.ipb.castelobranco.features.gallery.presentation.components.BandHeadli
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.gallery.presentation.components.overlappedBelow
 import com.ipb.castelobranco.features.gallery.presentation.state.albumsLabel
@@ -95,9 +92,6 @@ private const val WAITING_WIFI_MESSAGE = "Aguardando WiFi…"
 private const val MOBILE_DATA_LABEL = "Usar dados móveis"
 private const val STARTING_DOWNLOAD_MESSAGE = "Iniciando download…"
 private const val BAND_LABEL = "Galeria da igreja"
-private const val PEOPLE_HINT = "Quem aparece nas fotos"
-private const val TRASH_HINT = "Álbuns e fotos apagados"
-private const val ORGANIZE_HINT = "Arrastar a ordem dos álbuns"
 private const val VIDEO_CARD_KEY = "video_card"
 private val GridSpacing = 16.dp
 private val LandscapeAlbumMinWidth = 130.dp
@@ -254,12 +248,11 @@ fun GalleryContent(
     onRefresh: () -> Unit = {},
 ) {
     val canManage = isLoggedIn && state.permissions.canManage
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
-    val panelActions = buildList {
-        if (isLoggedIn && state.showPeople) add(PanelAction(Icons.Filled.Groups, PEOPLE_LABEL, onPeople, PEOPLE_HINT))
-        if (isLoggedIn && state.showTrash) add(PanelAction(Icons.Filled.Delete, TRASH_LABEL, onTrash, TRASH_HINT))
+    val menuActions = buildList {
+        if (isLoggedIn && state.showPeople) add(MenuAction(Icons.Filled.Groups, PEOPLE_LABEL, onPeople))
+        if (isLoggedIn && state.showTrash) add(MenuAction(Icons.Filled.Delete, TRASH_LABEL, onTrash))
         if (canManage && state.albums.size > 1) {
-            add(PanelAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, manage.onOrganize, ORGANIZE_HINT))
+            add(MenuAction(Icons.AutoMirrored.Filled.Sort, ORGANIZE_LABEL, manage.onOrganize))
         }
     }
 
@@ -272,7 +265,7 @@ fun GalleryContent(
             if (state.isOrganizing) {
                 OrganizeActions(state.isSavingOrder, manage.onOrganizeCancel, manage.onOrganizeSave)
             } else {
-                PanelMoreButton(hasActions = panelActions.isNotEmpty(), onClick = { isPanelOpen = true })
+                OverflowMenu(menuActions)
             }
         },
     ) { padding ->
@@ -310,11 +303,6 @@ fun GalleryContent(
                     Icon(Icons.Filled.Add, contentDescription = NEW_ALBUM_LABEL)
                 }
             }
-            TopActionPanel(
-                visible = isPanelOpen && !state.isOrganizing,
-                actions = panelActions,
-                onDismiss = { isPanelOpen = false },
-            )
         }
     }
 }

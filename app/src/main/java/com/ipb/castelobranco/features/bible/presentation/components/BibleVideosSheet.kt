@@ -1,5 +1,10 @@
 package com.ipb.castelobranco.features.bible.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
+import androidx.compose.material.icons.filled.EditLocationAlt
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,13 +26,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -325,28 +327,13 @@ private fun VideoMenu(
     onRemove: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "Mais opções")
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("Editar locais") }, onClick = {
-                expanded = false
-                onEditPlaces()
-            })
-            DropdownMenuItem(text = { Text(removeLabel) }, onClick = {
-                expanded = false
-                onRemove()
-            })
-            if (canDelete) {
-                DropdownMenuItem(text = { Text("Excluir vídeo") }, onClick = {
-                    expanded = false
-                    onDelete()
-                })
-            }
-        }
-    }
+    OverflowMenu(
+        listOfNotNull(
+            MenuAction(Icons.Filled.EditLocationAlt, "Editar locais", onEditPlaces),
+            MenuAction(Icons.Filled.RemoveCircleOutline, removeLabel, onRemove),
+            MenuAction(Icons.Filled.DeleteOutline, "Excluir vídeo", onDelete, isDanger = true).takeIf { canDelete },
+        ),
+    )
 }
 
 /** One section with drag handles; the order is saved when a drag stops. */

@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.studies.presentation.components.sundayschool
 
+import com.ipb.castelobranco.core.presentation.components.AppMenuDefaults
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -146,10 +147,17 @@ private fun BookField(book: String, books: List<BibleBookInfo>, onBookChange: (S
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = AppMenuDefaults.shape,
+            containerColor = AppMenuDefaults.containerColor(),
+            shadowElevation = AppMenuDefaults.shadowElevation,
+            border = AppMenuDefaults.border(),
+        ) {
             books.forEach { info ->
-                DropdownMenuItem(
-                    text = { Text(info.name) },
+                AppMenuItem(
+                    text = info.name,
                     onClick = {
                         onBookChange(info.abbrev)
                         expanded = false

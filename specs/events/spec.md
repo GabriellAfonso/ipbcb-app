@@ -171,7 +171,7 @@ nunca o nome do papel.
 
 ### 4.3 Exclusão
 
-- Só para `owner`: os três pontos da barra do formulário abrem o painel de ações com "Excluir evento" em "Cuidado".
+- Só para `owner`: os três pontos da barra do formulário abrem o menu de opções com "Excluir evento", em vermelho.
   A confirmação diz "A exclusão é permanente e não pode ser
   desfeita.".
 - Apaga o evento e a imagem para sempre; não há lixeira.

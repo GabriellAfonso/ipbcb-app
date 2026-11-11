@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.members.presentation.components
 
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +23,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -221,11 +221,11 @@ fun OptionPicker(
             ) {
                 Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(text = { Text(NONE) }, onClick = { onSelect(null); expanded = false })
+            AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                AppMenuItem(text = NONE, onClick = { onSelect(null); expanded = false })
                 options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.name) },
+                    AppMenuItem(
+                        text = option.name,
                         onClick = { onSelect(option.id); expanded = false },
                     )
                 }
@@ -387,9 +387,9 @@ private fun NumberDropdown(
         TonalBox(label = label, value = value, placeholder = "—", error = error, onClick = { expanded = true }) {
             Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             values.forEach { (number, text) ->
-                DropdownMenuItem(text = { Text(text) }, onClick = { onSelect(number); expanded = false })
+                AppMenuItem(text = text, onClick = { onSelect(number); expanded = false })
             }
         }
     }

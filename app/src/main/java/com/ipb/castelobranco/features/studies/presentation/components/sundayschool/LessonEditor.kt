@@ -1,5 +1,12 @@
 package com.ipb.castelobranco.features.studies.presentation.components.sundayschool
 
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,16 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -196,19 +198,19 @@ private fun IconPicker(selected: LessonIcon?, onSelect: (LessonIcon?) -> Unit) {
                 }
             }
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("Sem ícone") },
-                leadingIcon = { Icon(Icons.Outlined.Block, contentDescription = null) },
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            AppMenuItem(
+                text = "Sem ícone",
+                icon = Icons.Outlined.Block,
                 onClick = {
                     onSelect(null)
                     expanded = false
                 },
             )
             LessonIcon.entries.forEach { icon ->
-                DropdownMenuItem(
-                    text = { Text(icon.label) },
-                    leadingIcon = { LessonIconImage(icon = icon, tint = MaterialTheme.colorScheme.primary) },
+                AppMenuItem(
+                    text = icon.label,
+                    leadingContent = { LessonIconImage(icon = icon, tint = MaterialTheme.colorScheme.primary) },
                     onClick = {
                         onSelect(icon)
                         expanded = false
@@ -436,10 +438,10 @@ private fun AddBlockButton(onAdd: (NewBlockKind) -> Unit) {
             Icon(Icons.Filled.Add, contentDescription = null)
             Text("Adicionar bloco", modifier = Modifier.padding(start = 6.dp))
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             NewBlockKind.entries.forEach { kind ->
-                DropdownMenuItem(
-                    text = { Text(kind.label()) },
+                AppMenuItem(
+                    text = kind.label(),
                     onClick = {
                         onAdd(kind)
                         expanded = false
@@ -458,36 +460,13 @@ private fun MoveDeleteMenu(
     onMove: (Int) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) { Icon(Icons.Filled.MoreVert, contentDescription = "Opções") }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("Mover para cima") },
-                enabled = canMoveUp,
-                onClick = {
-                    onMove(-1)
-                    expanded = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Mover para baixo") },
-                enabled = canMoveDown,
-                onClick = {
-                    onMove(1)
-                    expanded = false
-                },
-            )
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text(deleteLabel, color = MaterialTheme.colorScheme.error) },
-                onClick = {
-                    onDelete()
-                    expanded = false
-                },
-            )
-        }
-    }
+    OverflowMenu(
+        listOf(
+            MenuAction(Icons.Filled.ArrowUpward, "Mover para cima", { onMove(-1) }, enabled = canMoveUp),
+            MenuAction(Icons.Filled.ArrowDownward, "Mover para baixo", { onMove(1) }, enabled = canMoveDown),
+            MenuAction(Icons.Filled.DeleteOutline, deleteLabel, onDelete, isDanger = true),
+        ),
+    )
 }
 
 @Composable

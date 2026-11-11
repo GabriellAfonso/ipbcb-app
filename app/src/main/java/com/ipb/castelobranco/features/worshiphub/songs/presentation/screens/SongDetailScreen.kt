@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.worshiphub.songs.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.DrawableRes
@@ -45,7 +47,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,10 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -89,9 +86,7 @@ private const val LYRICS_LABEL = "Letra"
 private const val YOUTUBE_LABEL = "YouTube"
 private const val NOT_REGISTERED = "Ainda não cadastrada"
 private const val EDIT_LABEL = "Editar música"
-private const val EDIT_HINT = "Nome, artista e link do YouTube"
 private const val DELETE_LABEL = "Excluir música"
-private const val DELETE_HINT = "Apaga junto as cifras e a letra"
 /** `dd/MM` of a `dd/MM/yyyy` date. */
 private const val DAY_MONTH_LENGTH = 5
 
@@ -156,7 +151,6 @@ private fun SongDetailContent(
     onDismissDeleteError: () -> Unit,
 ) {
     val context = LocalContext.current
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val isReady = !state.isLoading && state.error == null && !state.isDeleting
 
@@ -173,7 +167,13 @@ private fun SongDetailContent(
                     onCancel = onCancelEdit,
                     onSave   = onSaveEdit,
                 )
-                else -> PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true })
+                else -> OverflowMenu(
+                    listOfNotNull(
+                        MenuAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit),
+                        MenuAction(Icons.Filled.Delete, DELETE_LABEL, { showDeleteConfirm = true }, isDanger = true)
+                            .takeIf { state.canDelete },
+                    ),
+                )
             }
         },
     ) { innerPadding ->
@@ -222,23 +222,6 @@ private fun SongDetailContent(
                         }
                     },
                     modifier          = Modifier.padding(innerPadding),
-                )
-            }
-            Box(Modifier.padding(innerPadding)) {
-                TopActionPanel(
-                    visible   = isPanelOpen && state.canEdit && isReady && !state.isEditing,
-                    actions   = listOfNotNull(
-                        PanelAction(Icons.Filled.Edit, EDIT_LABEL, onEnterEdit, EDIT_HINT),
-                        PanelAction(
-                            icon        = Icons.Filled.Delete,
-                            label       = DELETE_LABEL,
-                            onClick     = { showDeleteConfirm = true },
-                            description = DELETE_HINT,
-                            isDanger    = true,
-                        ).takeIf { state.canDelete },
-                    ),
-                    onDismiss = { isPanelOpen = false },
-                    header    = PanelHeader(name = state.songName, detail = state.artist.takeIf { it.isNotBlank() }),
                 )
             }
         }

@@ -1,5 +1,9 @@
 package com.ipb.castelobranco.features.studies.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,7 +29,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -38,9 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,10 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.LandscapeSidePanel
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.LessonStatus
@@ -77,12 +75,6 @@ private val DraftText = Color(0xFF6B4300)
 private const val BAND_SECONDARY_ALPHA = 0.8f
 private const val CHIP_BORDER_ALPHA = 0.3f
 
-/** What the actions panel acts on: the top bar's menu or one lesson. */
-private sealed interface ManagePanel {
-    data object Years : ManagePanel
-    data class Lesson(val index: Int) : ManagePanel
-}
-
 @Composable
 fun SundaySchoolManageScreen(
     viewModel: SundaySchoolManageViewModel,
@@ -92,7 +84,6 @@ fun SundaySchoolManageScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var panel by remember { mutableStateOf<ManagePanel?>(null) }
     LifecycleResumeEffect(viewModel) {
         viewModel.reload()
         onPauseOrDispose {}
@@ -114,9 +105,7 @@ fun SundaySchoolManageScreen(
         // The green behind the sheet's rounded corners continues the band.
         containerColor = if (isLandscape) MaterialTheme.colorScheme.surfaceDim else ipbGreen,
         extraActions = {
-            IconButton(onClick = { panel = ManagePanel.Years }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "Mais opções", tint = Color.White)
-            }
+            OverflowMenu(listOf(MenuAction(Icons.Filled.CalendarMonth, "Anos e temas", onOpenYears)))
         },
         topBarExtension = if (isLandscape) null else ({ YearBand(state, onSelectYear = viewModel::selectYear) }),
     ) { innerPadding ->
@@ -141,7 +130,7 @@ fun SundaySchoolManageScreen(
                 SundaySchoolManageContent(
                     state = state,
                     onOpenLesson = openLesson,
-                    onOpenActions = { panel = ManagePanel.Lesson(it) },
+                    lessonActions = { lessonActions(it, state.canDelete, openLesson, viewModel::askDelete) },
                     onMove = viewModel::move,
                     onDragStopped = viewModel::saveOrder,
                     onRetry = viewModel::reload,
@@ -158,14 +147,6 @@ fun SundaySchoolManageScreen(
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                     )
                 }
-                ManageActionsPanel(
-                    panel = panel,
-                    state = state,
-                    onDismiss = { panel = null },
-                    onOpenYears = onOpenYears,
-                    onOpenLesson = openLesson,
-                    onDelete = viewModel::askDelete,
-                )
                 SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
             }
         }
@@ -186,51 +167,16 @@ fun SundaySchoolManageScreen(
     }
 }
 
-@Composable
-private fun ManageActionsPanel(
-    panel: ManagePanel?,
-    state: SundaySchoolManageUiState,
-    onDismiss: () -> Unit,
-    onOpenYears: () -> Unit,
+/** The three dots of a lesson: edit, and delete for whoever can. */
+private fun lessonActions(
+    lesson: LessonSummary,
+    canDelete: Boolean,
     onOpenLesson: (LessonSummary) -> Unit,
     onDelete: (LessonSummary) -> Unit,
-) {
-    val lessonIndex = (panel as? ManagePanel.Lesson)?.index
-    val lesson = lessonIndex?.let { state.lessons.getOrNull(it) }
-    val actions = when {
-        panel == ManagePanel.Years -> listOf(
-            PanelAction(
-                icon = Icons.Filled.CalendarMonth,
-                label = "Anos e temas",
-                description = "Dê ou troque o tema de cada ano",
-                onClick = onOpenYears,
-            ),
-        )
-        lesson != null -> listOfNotNull(
-            PanelAction(icon = Icons.Filled.Edit, label = "Editar aula", onClick = { onOpenLesson(lesson) }),
-            PanelAction(
-                icon = Icons.Filled.DeleteOutline,
-                label = "Apagar aula",
-                description = "Não dá para desfazer",
-                isDanger = true,
-                onClick = { onDelete(lesson) },
-            ).takeIf { state.canDelete },
-        )
-        else -> emptyList()
-    }
-    TopActionPanel(
-        visible = actions.isNotEmpty(),
-        actions = actions,
-        onDismiss = onDismiss,
-        header = lesson?.let {
-            val status = if (it.status == LessonStatus.DRAFT) "Rascunho" else "Publicada"
-            PanelHeader(
-                name = "${lessonIndex + 1}. ${it.title}",
-                detail = listOfNotNull(status, lessonMeta(it.date, it.teacher)).joinToString(" · "),
-            )
-        },
-    )
-}
+): List<MenuAction> = listOfNotNull(
+    MenuAction(Icons.Filled.Edit, "Editar aula", { onOpenLesson(lesson) }),
+    MenuAction(Icons.Filled.DeleteOutline, "Apagar aula", { onDelete(lesson) }, isDanger = true).takeIf { canDelete },
+)
 
 /** Theme, counts and the years as chips, inside the green top-bar block. */
 @Composable
@@ -315,13 +261,13 @@ private fun countsLabel(year: Int, state: SundaySchoolManageUiState): String {
 fun SundaySchoolManageContent(
     state: SundaySchoolManageUiState,
     onOpenLesson: (LessonSummary) -> Unit,
-    onOpenActions: (index: Int) -> Unit,
+    lessonActions: (LessonSummary) -> List<MenuAction>,
     onMove: (Int, Int) -> Unit,
     onDragStopped: () -> Unit,
     onRetry: () -> Unit,
 ) {
     when {
-        state.lessons.isNotEmpty() -> LessonsList(state, onOpenLesson, onOpenActions, onMove, onDragStopped)
+        state.lessons.isNotEmpty() -> LessonsList(state, onOpenLesson, lessonActions, onMove, onDragStopped)
         state.isLoading -> DoctrineLoadingView()
         state.error != null -> DoctrineErrorView(message = state.error, onRetry = onRetry)
         else -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -338,7 +284,7 @@ fun SundaySchoolManageContent(
 private fun LessonsList(
     state: SundaySchoolManageUiState,
     onOpenLesson: (LessonSummary) -> Unit,
-    onOpenActions: (index: Int) -> Unit,
+    lessonActions: (LessonSummary) -> List<MenuAction>,
     onMove: (Int, Int) -> Unit,
     onDragStopped: () -> Unit,
 ) {
@@ -399,12 +345,8 @@ private fun LessonsList(
                             )
                         }
                     }
-                    IconButton(onClick = { onOpenActions(index) }) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "Opções da aula",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
+                        OverflowMenu(lessonActions(lesson))
                     }
                 }
             }

@@ -240,9 +240,8 @@ o app coleta visualização de hino e não tem como saber se o culto aconteceu.
 ### 6.3 Janelas de culto e parâmetros de coleta
 
 Alcançadas pelos três pontos da barra do relatório, não pelo hub — o hub lista áreas com relatório, não
-administração. Os três pontos abrem o painel de ações que desce da barra
-(`core/presentation/components/TopActionPanel`), com "Administração da coleta" no topo: "Janelas de culto"
-("Horários que contam como culto") e, só para `owner`, "Parâmetros de coleta" ("Só para o dono do relatório").
+administração. Os três pontos abrem o menu de opções
+(`specs/core/spec.md` §6.7.2): "Janelas de culto" e, só para `owner`, "Parâmetros de coleta".
 
 **Acesso:** relatório e lista de janelas exigem `view` em `reports.hymnal_history`. Configurar exige `owner`
 (backend 012): abaixo disso a tela de janelas fica só leitura — sem criar, editar, apagar nem o switch de ativar —
@@ -329,10 +328,8 @@ checado contra a data completa ou contra o ano; com só dia e mês, não. O mode
   com "há N anos", ministérios; títulos com o traço verde), card "Perfil válido" / "Perfil inválido" só de leitura
   (a validade muda no formulário, para um toque sem querer não esconder o membro), card da
   última alteração e "Cadastrado em". Não há lápis na barra nem "Excluir membro" solto no fim: os três pontos
-  abrem o painel de ações que desce da barra (`core/presentation/components/TopActionPanel`), com o nome e
-  "{situação} · {cargo}" no topo; em "Gerenciar", "Editar membro" ("Dados pessoais e vida na igreja"), "Ver
-  histórico" ("Quem mudou o quê"), "Trocar foto", "Baixar foto" e "Remover foto"; em "Cuidado", "Excluir membro"
-  ("Pede para digitar o nome antes"). Cada ação só aparece com a permissão dela (e as de foto, com foto quando
+  abrem o menu de opções (`specs/core/spec.md` §6.7.2): "Editar membro", "Ver histórico", "Trocar foto", "Baixar
+  foto" e "Remover foto" e, depois da divisória e em vermelho, "Excluir membro". Cada ação só aparece com a permissão dela (e as de foto, com foto quando
   pedem uma); sem nenhuma, os três pontos somem.
   Os textos de "Dados pessoais" e "Vida na igreja" são copiáveis (long press seleciona e abre o menu de copiar do
   sistema); o resto da tela não.

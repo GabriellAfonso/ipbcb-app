@@ -1,5 +1,8 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.tabs
 
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
+import androidx.compose.material.icons.filled.Check
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireSaveState
 import com.ipb.castelobranco.core.domain.util.normalize
 import android.content.Intent
@@ -34,8 +37,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -272,10 +273,11 @@ private fun RepertoireRow(
                 tone = row.tone,
                 modifier = Modifier.clickable(enabled = enabled && hasSong) { toneMenuOpen = true },
             )
-            DropdownMenu(expanded = toneMenuOpen, onDismissRequest = { toneMenuOpen = false }) {
+            AppMenu(expanded = toneMenuOpen, onDismissRequest = { toneMenuOpen = false }) {
                 MUSIC_TONES.forEach { tone ->
-                    DropdownMenuItem(
-                        text = { Text(tone) },
+                    AppMenuItem(
+                        text = tone,
+                        icon = if (tone == row.tone) Icons.Filled.Check else null,
                         onClick = {
                             onToneChange(tone)
                             toneMenuOpen = false

@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.members.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,10 +59,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.rememberSquarePhotoPicker
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -144,51 +140,34 @@ fun MemberProfileScreen(
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDismissed = viewModel::onDeleteDismissed,
     )
-    val panelActions = panelActions(state, actions)
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
+    val menuActions = menuActions(state, actions)
     BaseScreen(
         tabName = "Membro",
         showBackArrow = true,
         onBackClick = onBack,
         extraActions = {
-            PanelMoreButton(hasActions = panelActions.isNotEmpty(), onClick = { isPanelOpen = true })
+            OverflowMenu(menuActions)
         },
     ) { innerPadding ->
         Box(Modifier.padding(innerPadding)) {
             MemberProfileContent(state = state, imageLoader = viewModel.imageLoader, actions = actions)
             SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
-            val profile = state.profile
-            TopActionPanel(
-                visible = isPanelOpen && panelActions.isNotEmpty(),
-                actions = panelActions,
-                onDismiss = { isPanelOpen = false },
-                header = PanelHeader(
-                    name = profile?.name.orEmpty(),
-                    detail = listOfNotNull(profile?.statusLabel, profile?.roleLabel).joinToString(" · "),
-                ),
-            )
         }
     }
 }
 
 /** What the three dots offer, each only with its permission (§7.3). */
-private fun panelActions(state: MemberProfileUiState, actions: MemberProfileActions): List<PanelAction> {
+private fun menuActions(state: MemberProfileUiState, actions: MemberProfileActions): List<MenuAction> {
     if (state.profile == null) return emptyList()
     return listOfNotNull(
-        PanelAction(Icons.Filled.Edit, "Editar membro", actions.onEdit, "Dados pessoais e vida na igreja")
-            .takeIf { state.canEdit },
-        PanelAction(Icons.Filled.History, "Ver histórico", actions.onOpenHistory, "Quem mudou o quê"),
-        PanelAction(Icons.Filled.PhotoCamera, "Trocar foto", actions.onPickPhoto).takeIf { state.canChangePhoto },
-        PanelAction(Icons.Filled.Download, "Baixar foto", actions.onDownloadPhoto).takeIf { state.canDownloadPhoto },
-        PanelAction(Icons.Filled.HideImage, "Remover foto", actions.onRemovePhotoRequested)
+        MenuAction(Icons.Filled.Edit, "Editar membro", actions.onEdit).takeIf { state.canEdit },
+        MenuAction(Icons.Filled.History, "Ver histórico", actions.onOpenHistory),
+        MenuAction(Icons.Filled.PhotoCamera, "Trocar foto", actions.onPickPhoto).takeIf { state.canChangePhoto },
+        MenuAction(Icons.Filled.Download, "Baixar foto", actions.onDownloadPhoto).takeIf { state.canDownloadPhoto },
+        MenuAction(Icons.Filled.HideImage, "Remover foto", actions.onRemovePhotoRequested)
             .takeIf { state.canRemovePhoto },
-        PanelAction(
-            icon = Icons.Filled.DeleteOutline,
-            label = "Excluir membro",
-            onClick = actions.onDeleteRequested,
-            description = "Pede para digitar o nome antes",
-            isDanger = true,
-        ).takeIf { state.canDelete },
+        MenuAction(Icons.Filled.DeleteOutline, "Excluir membro", actions.onDeleteRequested, isDanger = true)
+            .takeIf { state.canDelete },
     )
 }
 

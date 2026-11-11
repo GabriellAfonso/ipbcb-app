@@ -20,14 +20,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
+import com.ipb.castelobranco.core.presentation.components.AppMenu
+import com.ipb.castelobranco.core.presentation.components.AppMenuItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,7 +74,6 @@ private const val NO_DATE_LABEL = "Sem data"
 private const val CLEAR_DATE_LABEL = "Limpar data"
 private const val PICK_DATE_LABEL = "Escolher"
 private const val OK_LABEL = "OK"
-private const val MORE_LABEL = "Mais opções"
 private const val MOVE_LABEL = "Mover"
 private const val DELETE_LABEL = "Apagar"
 private const val CLOSE_LABEL = "Fechar"
@@ -87,8 +87,6 @@ private const val INDENT_PER_LEVEL_DP = 16
 private val DISPLAY_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
 /** One menu entry of a management menu. */
-data class ManageAction(val label: String, val onClick: () -> Unit)
-
 /** Renders whichever dialog the gallery has open. Pure: state in, events out. */
 @Composable
 fun GalleryDialogHost(dialog: GalleryDialogState?, actions: GalleryDialogActions) {
@@ -273,27 +271,6 @@ private fun MoveTargetRow(target: TreeTarget, enabled: Boolean, onClick: () -> U
     )
 }
 
-/** A top-bar overflow menu; nothing is composed when [actions] is empty. */
-@Composable
-fun ManageOverflowMenu(actions: List<ManageAction>) {
-    if (actions.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = true }) { Icon(Icons.Filled.MoreVert, contentDescription = MORE_LABEL) }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            actions.forEach { action ->
-                DropdownMenuItem(
-                    text = { Text(action.label) },
-                    onClick = {
-                        expanded = false
-                        action.onClick()
-                    },
-                )
-            }
-        }
-    }
-}
-
 /** "Pessoas" on the selection bar: add people to, or remove people from, the selected photos. */
 data class SelectionPeopleActions(
     /** Someone is tagged in a selected photo. */
@@ -324,15 +301,20 @@ private fun SelectionPeopleMenu(people: SelectionPeopleActions) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) { Icon(Icons.Filled.People, contentDescription = PEOPLE_LABEL) }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text(ADD_PEOPLE_LABEL) }, onClick = {
+        AppMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            AppMenuItem(text = ADD_PEOPLE_LABEL, icon = Icons.Filled.PersonAdd, onClick = {
                 expanded = false
                 people.onAdd()
             })
-            DropdownMenuItem(text = { Text(REMOVE_PEOPLE_LABEL) }, enabled = people.canRemove, onClick = {
-                expanded = false
-                people.onRemove()
-            })
+            AppMenuItem(
+                text = REMOVE_PEOPLE_LABEL,
+                icon = Icons.Filled.PersonRemove,
+                enabled = people.canRemove,
+                onClick = {
+                    expanded = false
+                    people.onRemove()
+                },
+            )
         }
     }
 }

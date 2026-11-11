@@ -1,5 +1,7 @@
 package com.ipb.castelobranco.features.admin.reports.hymnal.presentation.screens
 
+import com.ipb.castelobranco.core.presentation.components.MenuAction
+import com.ipb.castelobranco.core.presentation.components.OverflowMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,10 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
-import com.ipb.castelobranco.core.presentation.components.PanelAction
-import com.ipb.castelobranco.core.presentation.components.PanelHeader
-import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
-import com.ipb.castelobranco.core.presentation.components.TopActionPanel
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
 import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.admin.reports.hymnal.domain.model.Highlight
@@ -89,23 +87,18 @@ fun HymnalReportScreen(
         }
     }
 
-    var isPanelOpen by rememberSaveable { mutableStateOf(false) }
-    val panelActions = listOfNotNull(
-        PanelAction(Icons.Filled.Schedule, "Janelas de culto", onOpenServiceWindows, "Horários que contam como culto"),
+    val menuActions = listOfNotNull(
+        MenuAction(Icons.Filled.Schedule, "Janelas de culto", onOpenServiceWindows),
         // Configuring collection is `owner` on the report; below that the entry does not exist.
-        PanelAction(
-            icon = Icons.Filled.Tune,
-            label = "Parâmetros de coleta",
-            onClick = onOpenCollectionSettings,
-            description = "Só para o dono do relatório",
-        ).takeIf { state.canOpenSettings },
+        MenuAction(Icons.Filled.Tune, "Parâmetros de coleta", onOpenCollectionSettings)
+            .takeIf { state.canOpenSettings },
     )
     BaseScreen(
         tabName = "Histórico do hinário",
         logoRes = R.drawable.ic_sarca_ipb,
         showBackArrow = true,
         onBackClick = onBack,
-        extraActions = { PanelMoreButton(hasActions = true, onClick = { isPanelOpen = true }) },
+        extraActions = { OverflowMenu(menuActions) },
         topBarExtension = {
             ReadingTabs(selected = state.reading, onReadingSelected = viewModel::onReadingSelected)
         },
@@ -125,14 +118,6 @@ fun HymnalReportScreen(
                     onOpenHymnCard(number)
                 },
             )
-            Box(Modifier.padding(innerPadding)) {
-                TopActionPanel(
-                    visible = isPanelOpen,
-                    actions = panelActions,
-                    onDismiss = { isPanelOpen = false },
-                    header = PanelHeader(name = PANEL_TITLE, detail = null),
-                )
-            }
         }
     }
 }
@@ -524,7 +509,6 @@ private fun ErrorBlock(message: String, onRetry: (() -> Unit)?) {
     }
 }
 
-private const val PANEL_TITLE = "Administração da coleta"
 private const val CARD_CORNER = 18
 private const val CARD_ELEVATION = 6
 private const val SHADOW_ALPHA = 0.12f
