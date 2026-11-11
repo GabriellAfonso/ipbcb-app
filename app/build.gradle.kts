@@ -35,8 +35,8 @@ extensions.configure<ApplicationExtension> {
         applicationId = "com.ipb.castelobranco"
         minSdk = 24
         targetSdk = 36
-        versionCode = 22
-        versionName = "1.0.2"
+        versionCode = 23
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
