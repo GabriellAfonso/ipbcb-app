@@ -69,17 +69,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.ipb.castelobranco.features.gallery.presentation.components.BandDownload
-import com.ipb.castelobranco.features.gallery.presentation.components.BandLabel
 import com.ipb.castelobranco.features.gallery.presentation.components.BandNotice
 import com.ipb.castelobranco.features.gallery.presentation.components.BandOverlap
 import com.ipb.castelobranco.features.gallery.presentation.components.BandText
-import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
+import com.ipb.castelobranco.features.gallery.presentation.components.BandHeadline
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
 import com.ipb.castelobranco.core.presentation.components.ElasticPullToRefresh
 import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.gallery.presentation.components.overlappedBelow
 import com.ipb.castelobranco.features.gallery.presentation.state.albumsLabel
 import com.ipb.castelobranco.features.gallery.presentation.state.galleryCountLabel
@@ -100,6 +100,7 @@ private const val TRASH_HINT = "Álbuns e fotos apagados"
 private const val ORGANIZE_HINT = "Arrastar a ordem dos álbuns"
 private const val VIDEO_CARD_KEY = "video_card"
 private val GridSpacing = 16.dp
+private val LandscapeAlbumMinWidth = 130.dp
 private val BandBottomExtra = 14.dp
 private const val RESUMING_MESSAGE = "Download pausado. Continua automaticamente em instantes."
 private const val NO_ACCESS_MESSAGE = "Disponível apenas para membros."
@@ -287,8 +288,7 @@ fun GalleryContent(
                 ) {
                     RootAlbumGrid(state, onAlbumClick, manage.onOrganizeMove, videoCard) {
                         GalleryBand(bottomPadding = BandOverlap + BandBottomExtra) {
-                            BandLabel(BAND_LABEL)
-                            BandTitle(albumsLabel(state.albums.size))
+                            BandHeadline(title = albumsLabel(state.albums.size), label = BAND_LABEL)
                             RootBandStatus(state, onDownloadWithMobileData, showCount = true)
                         }
                     }
@@ -296,8 +296,7 @@ fun GalleryContent(
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
                     GalleryBand {
-                        BandLabel(BAND_LABEL)
-                        BandTitle(TITLE)
+                        BandHeadline(title = TITLE, label = BAND_LABEL)
                         if (isLoggedIn && !state.isPaused) RootBandStatus(state, onDownloadWithMobileData, showCount = false)
                     }
                     RootPlaceholder(state, isLoggedIn, onNavigateToAuth, onRetrySync, onRetryDownload, onDownloadGallery)
@@ -412,7 +411,8 @@ private fun RootAlbumGrid(
     val reorderState = rememberReorderableLazyGridState(gridState) { from, to -> onOrganizeMove(from.key, to.key) }
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(2),
+        // Standing up 2 albums per line; lying down as many of at least 130 dp as fit (`specs/gallery/spec.md`).
+        columns = if (isCompactHeight()) GridCells.Adaptive(LandscapeAlbumMinWidth) else GridCells.Fixed(2),
         verticalArrangement = Arrangement.spacedBy(GridSpacing),
         horizontalArrangement = Arrangement.spacedBy(GridSpacing),
         contentPadding = PaddingValues(start = GridSpacing, end = GridSpacing, bottom = GridSpacing),

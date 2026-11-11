@@ -53,6 +53,7 @@ import coil.ImageLoader
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.gallery.domain.tags.MediaFilter
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryGridKeys
@@ -67,6 +68,8 @@ import com.ipb.castelobranco.features.gallery.presentation.viewmodel.PeopleViewM
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.TagTexts
 
 private const val GRID_COLUMNS = 3
+private val LandscapeTileMinWidth = 110.dp
+private val LandscapeSearchWidth = 340.dp
 private const val PEOPLE_TITLE = "Pessoas"
 private const val SEARCH_LABEL = "Buscar pessoa"
 private const val UNSELECT_LABEL = "Tirar do filtro"
@@ -145,7 +148,12 @@ fun PeopleContent(state: PeopleUiState, previewLoader: ImageLoader?, actions: Pe
                 return@Box
             }
             LazyVerticalGrid(
-                columns = GridCells.Fixed(GRID_COLUMNS),
+                // Lying down, the result photos follow the width (`specs/gallery/spec.md`, "Celular deitado").
+                columns = if (isCompactHeight()) {
+                    GridCells.Adaptive(LandscapeTileMinWidth)
+                } else {
+                    GridCells.Fixed(GRID_COLUMNS)
+                },
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -208,23 +216,14 @@ private fun PeopleBand(state: PeopleUiState, hasMediaFilter: Boolean, actions: P
             .background(ipbGreen)
             .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = if (hasMediaFilter) 34.dp else 20.dp),
     ) {
-        if (state.showSearch) {
-            Text(
-                text = TagTexts.PEOPLE_BAND_TITLE,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = MUTED_ALPHA),
-            )
-            Text(
-                text = state.peopleCountText,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-            )
-            Text(
-                text = state.taggedPhotosText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = TEXT_ALPHA),
-            )
+        if (state.showSearch && isCompactHeight()) {
+            // Lying down: the texts and the search on one line.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.weight(1f)) { PeopleBandTexts(state) }
+                Box(Modifier.width(LandscapeSearchWidth)) { SearchPill(state.query, actions.onQueryChange) }
+            }
+        } else if (state.showSearch) {
+            PeopleBandTexts(state)
             Spacer(Modifier.height(10.dp))
             SearchPill(state.query, actions.onQueryChange)
         }
@@ -238,6 +237,26 @@ private fun PeopleBand(state: PeopleUiState, hasMediaFilter: Boolean, actions: P
             }
         }
     }
+}
+
+@Composable
+private fun PeopleBandTexts(state: PeopleUiState) {
+    Text(
+        text = TagTexts.PEOPLE_BAND_TITLE,
+        style = MaterialTheme.typography.bodySmall,
+        color = Color.White.copy(alpha = MUTED_ALPHA),
+    )
+    Text(
+        text = state.peopleCountText,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+    )
+    Text(
+        text = state.taggedPhotosText,
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.White.copy(alpha = TEXT_ALPHA),
+    )
 }
 
 @Composable

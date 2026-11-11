@@ -811,3 +811,20 @@ Feature 022 (`specs/022-gallery-video-trim/`). Só no app: o servidor recebe um 
   original. O corte não é copiado de novo (`UploadEntry.Cut`). Cortes que nenhum item da fila usa são apagados na abertura do
   app (processo morto durante um corte).
 
+## 12. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9.
+
+- **Galeria (raiz) e Álbum:** a faixa verde fica mais baixa e põe rótulo, título e chips numa linha só
+  (`BandHeadline`); avisos e progresso continuam embaixo, dentro da faixa.
+- **Grade da raiz:** em pé 2 álbuns por linha; deitado, tantos álbuns de no mínimo 130dp quantos couberem.
+- **Grade do álbum:** em pé 2 subálbuns ou 3 fotos por linha; deitado, subálbuns de no mínimo 140dp e fotos de no
+  mínimo 100dp, contados pela largura da tela (a grade tem subálbuns × fotos colunas, então os dois dividem). Organizar
+  (arrastar) funciona igual.
+- **Pessoas:** a faixa põe os textos e a busca numa linha (busca com 340dp à direita). As fotos do resultado deitado
+  têm no mínimo 110dp; a lista de pessoas continua uma por linha.
+- **Cortar vídeo (§11.7):** player e linha do tempo à esquerda, na altura toda; numa coluna de 220dp à direita, que
+  rola se não couber: "Vídeo N de M", Início, Fim e Trecho (tocáveis para digitar, como em pé), o aviso de erro ou de
+  tamanho e os botões ("Cortar e continuar"/"Usar inteiro", "Enviar todos sem cortar", ou o progresso do corte com
+  "Cancelar").
+- **Foto:** sem mudança; vídeo deitado já abre sozinho em tela cheia (§11).

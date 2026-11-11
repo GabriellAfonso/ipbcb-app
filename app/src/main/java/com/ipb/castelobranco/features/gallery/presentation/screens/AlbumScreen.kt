@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -70,15 +71,15 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import com.ipb.castelobranco.features.gallery.presentation.components.BandChips
 import com.ipb.castelobranco.features.gallery.presentation.components.BandText
-import com.ipb.castelobranco.features.gallery.presentation.components.BandTitle
+import com.ipb.castelobranco.features.gallery.presentation.components.BandHeadline
 import com.ipb.castelobranco.features.gallery.presentation.components.GalleryBand
 import com.ipb.castelobranco.features.gallery.presentation.components.fullBleed
 import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
 import com.ipb.castelobranco.core.presentation.components.PanelMoreButton
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -310,9 +311,10 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
     val reorderState = rememberReorderableLazyGridState(gridState) { from, to ->
         actions.onOrganizeMove(from.key, to.key)
     }
+    val spans = albumGridSpans()
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(GRID_COLUMNS),
+        columns = GridCells.Fixed(spans.columns),
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         contentPadding = PaddingValues(start = GridEdge, end = GridEdge, bottom = GridEdge),
@@ -330,7 +332,7 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         items(
             state.subAlbums,
             key = { GalleryGridKeys.album(it.id) },
-            span = { GridItemSpan(ALBUM_SPAN) },
+            span = { GridItemSpan(spans.album) },
         ) { album ->
             ReorderableItem(reorderState, key = GalleryGridKeys.album(album.id), enabled = state.isOrganizing) {
                 AlbumItem(
@@ -349,7 +351,7 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         items(
             state.photos,
             key = { GalleryGridKeys.photo(it.id) },
-            span = { GridItemSpan(PHOTO_SPAN) },
+            span = { GridItemSpan(spans.photo) },
         ) { photo ->
             ReorderableItem(reorderState, key = GalleryGridKeys.photo(photo.id), enabled = state.isOrganizing) {
                 val selected = photo.id in state.selection
@@ -375,6 +377,28 @@ private fun AlbumGrid(state: AlbumUiState, previewLoader: ImageLoader, actions: 
         }
     }
 }
+
+/** The grid's columns and how many each sub-album and each photo take. */
+private data class AlbumGridSpans(val columns: Int, val album: Int, val photo: Int)
+
+/**
+ * Standing up: 2 sub-albums or 3 photos per line, as always. Lying down (`specs/gallery/spec.md`, "Celular deitado")
+ * the counts follow the width: sub-albums of at least [LandscapeAlbumMinWidth], photos of at least
+ * [LandscapePhotoMinWidth]. The grid has `albums × photos` columns, so both divide it.
+ */
+@Composable
+private fun albumGridSpans(): AlbumGridSpans {
+    if (!isCompactHeight()) return AlbumGridSpans(GRID_COLUMNS, ALBUM_SPAN, PHOTO_SPAN)
+    val width = LocalConfiguration.current.screenWidthDp.dp - GridEdge * 2
+    val albums = (width / LandscapeAlbumMinWidth).toInt().coerceAtLeast(MIN_ALBUMS_PER_LINE)
+    val photos = (width / LandscapePhotoMinWidth).toInt().coerceAtLeast(MIN_PHOTOS_PER_LINE)
+    return AlbumGridSpans(columns = albums * photos, album = photos, photo = albums)
+}
+
+private const val MIN_ALBUMS_PER_LINE = 2
+private const val MIN_PHOTOS_PER_LINE = 3
+private val LandscapeAlbumMinWidth = 140.dp
+private val LandscapePhotoMinWidth = 100.dp
 
 /** A group's title, with a short `primary` bar before it. */
 @Composable
@@ -437,8 +461,7 @@ private fun AddButton(actions: AlbumActions, modifier: Modifier) {
 private fun AlbumHeader(state: AlbumUiState, onDismissUpload: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         GalleryBand(modifier = Modifier.fullBleed(GridEdge)) {
-            BandChips(listOfNotNull(state.eventDate, state.countLabel))
-            BandTitle(state.title)
+            BandHeadline(title = state.title, chips = listOfNotNull(state.eventDate, state.countLabel))
             val text = if (state.isOrganizing) ORGANIZE_HINT else state.description
             text?.let { BandText(it, Modifier.padding(top = 4.dp)) }
         }

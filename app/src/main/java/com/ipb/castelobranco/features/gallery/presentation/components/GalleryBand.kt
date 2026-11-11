@@ -28,6 +28,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
 // The gallery's green band (`specs/gallery/spec.md` §1.1, §1.2).
@@ -47,21 +49,57 @@ val BandOverlap = 28.dp
 /** The band's light green progress, the same as the home's band detail text. */
 private val ProgressGreen = Color(0xFF8ED1BA)
 
-/** Green band under the top bar, rounded at the bottom; [bottomPadding] grows when a grid climbs over it. */
+/**
+ * Green band under the top bar, rounded at the bottom; [bottomPadding] grows when a grid climbs over it. Lying down
+ * it is thinner: [BandHeadline] puts its texts on one line.
+ */
 @Composable
 fun GalleryBand(
     modifier: Modifier = Modifier,
-    bottomPadding: Dp = 20.dp,
+    bottomPadding: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val isCompact = isCompactHeight()
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = BandCorner, bottomEnd = BandCorner))
             .background(ipbGreen)
-            .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = bottomPadding),
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (isCompact) 6.dp else 12.dp,
+                bottom = bottomPadding ?: if (isCompact) 12.dp else 20.dp,
+            ),
         content = content,
     )
+}
+
+/**
+ * The band's label, chips and title: stacked standing up, on one line lying down (`specs/gallery/spec.md`,
+ * "Celular deitado").
+ */
+@Composable
+fun BandHeadline(title: String, label: String? = null, chips: List<String> = emptyList()) {
+    if (!isCompactHeight()) {
+        label?.let { BandLabel(it) }
+        BandChips(chips)
+        BandTitle(title)
+        return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        label?.let { BandLabel(it) }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        BandChips(chips, bottomPadding = 0.dp)
+    }
 }
 
 @Composable
@@ -91,9 +129,9 @@ fun BandText(text: String, modifier: Modifier = Modifier) {
 
 /** Small translucent pills above the album's name: date and count. */
 @Composable
-fun BandChips(chips: List<String>) {
+fun BandChips(chips: List<String>, bottomPadding: Dp = 6.dp) {
     if (chips.isEmpty()) return
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = bottomPadding)) {
         chips.forEach { chip ->
             Text(
                 text = chip,

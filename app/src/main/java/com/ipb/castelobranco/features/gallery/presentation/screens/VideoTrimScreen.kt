@@ -4,14 +4,21 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
@@ -43,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.ImageLoader
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.features.gallery.presentation.components.TrimTimeline
 import com.ipb.castelobranco.features.gallery.presentation.components.TrimVideoPlayer
 import com.ipb.castelobranco.features.gallery.presentation.navigation.GalleryNav
@@ -51,6 +59,8 @@ import com.ipb.castelobranco.features.gallery.presentation.state.TrimTimeEditor
 import com.ipb.castelobranco.features.gallery.presentation.state.VideoTrimUiState
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.GalleryViewModel
 import com.ipb.castelobranco.features.gallery.presentation.viewmodel.VideoTexts
+
+private val LandscapeControlsWidth = 220.dp
 
 /** Everything the editor can ask for; each is a plain event, decided in the controller. */
 data class VideoTrimActions(
@@ -113,41 +123,126 @@ fun VideoTrimContent(
         showBackArrow = true,
         onBackClick = actions.onBack,
     ) { innerPadding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            state.positionLabel?.let { Text(it, style = MaterialTheme.typography.titleSmall) }
-            TrimVideoPlayer(
-                source = state.source,
-                videoKey = state.position,
-                startMs = state.startMs,
-                endMs = state.endMs,
-                previewMs = state.previewMs,
-                isCutting = state.isCutting,
-                modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            )
-            TrimTimeline(
-                source = state.source,
-                durationMs = state.durationMs,
-                startMs = state.startMs,
-                endMs = state.endMs,
-                enabled = state.canMoveHandles,
-                previewLoader = previewLoader,
-                onRangeChange = actions.onRangeChange,
-                onMoveSelection = actions.onMoveSelection,
-            )
-            TrimLabels(state, actions.onEditTime)
-            (state.error ?: state.tooBigMessage)?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-            }
-            if (state.isCutting) CutProgress(state, actions) else TrimButtons(state, actions)
+        if (isCompactHeight()) {
+            LandscapeTrim(state, previewLoader, actions, Modifier.padding(innerPadding))
+        } else {
+            PortraitTrim(state, previewLoader, actions, Modifier.padding(innerPadding))
         }
     }
     if (state.askingDiscard) {
         DiscardDialog(actions)
     } else {
         state.timeEditor?.let { TimeDialog(it, actions) }
+    }
+}
+
+/** Standing up: the player takes what the controls below leave. */
+@Composable
+private fun PortraitTrim(
+    state: VideoTrimUiState,
+    previewLoader: ImageLoader,
+    actions: VideoTrimActions,
+    modifier: Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        state.positionLabel?.let { Text(it, style = MaterialTheme.typography.titleSmall) }
+        TrimPlayer(state, Modifier.weight(1f).fillMaxWidth())
+        Timeline(state, previewLoader, actions)
+        TrimLabels(state, actions.onEditTime)
+        Problem(state)
+        if (state.isCutting) CutProgress(state, actions) else TrimButtons(state, actions)
+    }
+}
+
+/**
+ * Lying down (`specs/gallery/spec.md`, "Celular deitado"): the player and the timeline on the left, the full
+ * height; the times and the buttons in a column on the right.
+ */
+@Composable
+private fun LandscapeTrim(
+    state: VideoTrimUiState,
+    previewLoader: ImageLoader,
+    actions: VideoTrimActions,
+    modifier: Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            TrimPlayer(state, Modifier.weight(1f).fillMaxWidth())
+            Timeline(state, previewLoader, actions)
+        }
+        Column(
+            modifier = Modifier.width(LandscapeControlsWidth).fillMaxHeight().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.positionLabel?.let { Text(it, style = MaterialTheme.typography.titleSmall) }
+            LabeledTime(VideoTexts.START_LABEL) {
+                TimeChip(state.startLabel, state.canMoveHandles) { actions.onEditTime(TrimHandle.START) }
+            }
+            LabeledTime(VideoTexts.END_LABEL) {
+                TimeChip(state.endLabel, state.canMoveHandles) { actions.onEditTime(TrimHandle.END) }
+            }
+            LabeledTime(VideoTexts.SELECTION_LABEL) {
+                Text(state.selectionLabel, style = MaterialTheme.typography.labelLarge)
+            }
+            Problem(state)
+            Spacer(modifier = Modifier.height(4.dp))
+            if (state.isCutting) CutProgress(state, actions) else TrimButtons(state, actions)
+        }
+    }
+}
+
+@Composable
+private fun TrimPlayer(state: VideoTrimUiState, modifier: Modifier) {
+    TrimVideoPlayer(
+        source = state.source,
+        videoKey = state.position,
+        startMs = state.startMs,
+        endMs = state.endMs,
+        previewMs = state.previewMs,
+        isCutting = state.isCutting,
+        modifier = modifier.clip(RoundedCornerShape(12.dp)),
+    )
+}
+
+@Composable
+private fun Timeline(state: VideoTrimUiState, previewLoader: ImageLoader, actions: VideoTrimActions) {
+    TrimTimeline(
+        source = state.source,
+        durationMs = state.durationMs,
+        startMs = state.startMs,
+        endMs = state.endMs,
+        enabled = state.canMoveHandles,
+        previewLoader = previewLoader,
+        onRangeChange = actions.onRangeChange,
+        onMoveSelection = actions.onMoveSelection,
+    )
+}
+
+@Composable
+private fun Problem(state: VideoTrimUiState) {
+    (state.error ?: state.tooBigMessage)?.let {
+        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun LabeledTime(label: String, value: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        value()
     }
 }
 
@@ -219,7 +314,7 @@ private fun TimeDialog(editor: TrimTimeEditor, actions: VideoTrimActions) {
 }
 
 @Composable
-private fun CutProgress(state: VideoTrimUiState, actions: VideoTrimActions) {
+private fun ColumnScope.CutProgress(state: VideoTrimUiState, actions: VideoTrimActions) {
     Text(VideoTexts.cutting(state.progress), style = MaterialTheme.typography.bodyMedium)
     LinearProgressIndicator(
         progress = { state.progress / PERCENT },
@@ -231,7 +326,7 @@ private fun CutProgress(state: VideoTrimUiState, actions: VideoTrimActions) {
 }
 
 @Composable
-private fun TrimButtons(state: VideoTrimUiState, actions: VideoTrimActions) {
+private fun ColumnScope.TrimButtons(state: VideoTrimUiState, actions: VideoTrimActions) {
     Button(
         onClick = actions.onConfirm,
         enabled = state.primaryEnabled,
