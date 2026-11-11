@@ -11,6 +11,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -252,7 +254,11 @@ fun BibleReaderScreen(
                 return@Scaffold
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .chapterSwipe(onPrevious = viewModel::previousChapter, onNext = viewModel::nextChapter),
+            ) {
                 val verses = state.currentChapterVerses
                 if (verses == null || awaitingTarget) {
                     // Same header and line height as the chapter: nothing jumps when the text arrives.
@@ -306,6 +312,32 @@ fun BibleReaderScreen(
         }
     }
 }
+
+/** How far, as a share of the text's width, a horizontal drag must go to change chapter. */
+private const val SWIPE_THRESHOLD_FRACTION = 0.25f
+
+/**
+ * Drag to the left = next chapter, to the right = previous one, same as the arrows (spec, "Mudar de capítulo").
+ * Counts only past [SWIPE_THRESHOLD_FRACTION] of the width; a vertical drag stays with the verse list's scroll.
+ */
+private fun Modifier.chapterSwipe(onPrevious: () -> Unit, onNext: () -> Unit): Modifier =
+    pointerInput(onPrevious, onNext) {
+        var dragged = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { dragged = 0f },
+            onDragCancel = { dragged = 0f },
+            onDragEnd = {
+                val threshold = size.width * SWIPE_THRESHOLD_FRACTION
+                when {
+                    dragged <= -threshold -> onNext()
+                    dragged >= threshold -> onPrevious()
+                }
+            },
+        ) { change, amount ->
+            change.consume()
+            dragged += amount
+        }
+    }
 
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.ChapterChevrons(

@@ -69,3 +69,23 @@ fun List<BibleBook>.byTestament(): List<Pair<Testament, List<BibleBook>>> =
 /** Livro de [abbrev] (sem diferenciar maiúsculas); se não existir, o primeiro do índice. */
 fun List<BibleBook>.resolve(abbrev: String): BibleBook? =
     firstOrNull { it.abbrev.equals(abbrev, ignoreCase = true) } ?: firstOrNull()
+
+/**
+ * Capítulo vizinho de [chapter] em [book]: um à frente ([forward]) ou um atrás. Passa de um livro para o outro e dá a
+ * volta na Bíblia (depois de Apocalipse 22 vem Gênesis 1; antes de Gênesis 1, Apocalipse 22). Null quando [book] não
+ * está no índice.
+ */
+fun List<BibleBook>.adjacentChapter(book: BibleBook, chapter: Int, forward: Boolean): Pair<BibleBook, Int>? {
+    val index = indexOf(book)
+    if (index < 0) return null
+    return if (forward) {
+        if (chapter < book.chapterCount) book to chapter + 1 else get((index + 1) % size) to 1
+    } else {
+        if (chapter > 1) {
+            book to chapter - 1
+        } else {
+            val previous = get((index - 1 + size) % size)
+            previous to previous.chapterCount
+        }
+    }
+}

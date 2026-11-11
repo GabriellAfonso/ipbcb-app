@@ -37,7 +37,15 @@ abriu. `book` é o `abbrev` da Bíblia, comparado sem diferenciar maiúsculas.
 trecho malformado é ignorado). Esses versículos do capítulo aberto ficam destacados com um fundo próprio
 (`secondaryContainer`), diferente da seleção. O destaque não é seleção: não abre a barra de copiar/compartilhar e não
 segura o "voltar". Tocar num versículo destacado o seleciona normalmente (a seleção pinta por cima). Mudar de capítulo
-ou de livro (setas, índice) apaga o destaque.
+ou de livro (setas, arrasto, índice) apaga o destaque.
+
+**Mudar de capítulo.** As setas flutuantes (‹ embaixo à esquerda, › embaixo à direita) e o arrasto horizontal no
+texto fazem o mesmo: arrastar o dedo para a esquerda avança um capítulo, para a direita volta um. O arrasto conta
+quando passa de um quarto da largura do texto; menos que isso não muda nada, e a rolagem vertical segue normal. Do
+último capítulo de um livro avança para o capítulo 1 do livro seguinte; do capítulo 1 volta para o último capítulo do
+livro anterior. A Bíblia dá a volta: depois de Apocalipse 22 vem Gênesis 1, e antes de Gênesis 1 vem Apocalipse 22.
+Com a navegação por gestos do Android, um arrasto que começa colado numa das bordas laterais é o "voltar" do sistema,
+não troca de capítulo.
 
 O leitor permite trocar a tradução, avançar/voltar capítulo, ajustar o tamanho do texto (o `tT` abre a barra
 padrão do app, `specs/core/spec.md` §6.7.1, com 100% = 18sp) e copiar/compartilhar os versículos selecionados. A toolbar do leitor é quase preta (`#141414`) nos dois

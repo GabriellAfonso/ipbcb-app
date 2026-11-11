@@ -15,6 +15,7 @@ import com.ipb.castelobranco.features.bible.domain.model.BibleProgress
 import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import com.ipb.castelobranco.features.bible.domain.model.ProgressTarget
+import com.ipb.castelobranco.features.bible.domain.model.adjacentChapter
 import com.ipb.castelobranco.features.bible.domain.model.VerseRef
 import com.ipb.castelobranco.features.bible.domain.model.resolve
 import com.ipb.castelobranco.features.bible.domain.repository.BibleProgressRepository
@@ -268,33 +269,17 @@ class BibleViewModel @Inject constructor(
         _pendingScroll.value = null
     }
 
-    fun nextChapter() {
-        val state = uiState.value
-        val book = state.currentBook ?: return
-        val nextCh = state.position.chapter + 1
-        if (nextCh <= book.chapterCount) {
-            navigateTo(book.abbrev, nextCh, verse = 1)
-        } else {
-            // Próximo livro
-            val books = state.books
-            val idx = books.indexOf(book)
-            val next = books.getOrNull(idx + 1) ?: return
-            navigateTo(next.abbrev, 1, 1)
-        }
-    }
+    /** Arrow › or a swipe to the left; after Revelation comes Genesis (spec, "Mudar de capítulo"). */
+    fun nextChapter() = moveChapter(forward = true)
 
-    fun previousChapter() {
+    /** Arrow ‹ or a swipe to the right; before Genesis comes Revelation. */
+    fun previousChapter() = moveChapter(forward = false)
+
+    private fun moveChapter(forward: Boolean) {
         val state = uiState.value
         val book = state.currentBook ?: return
-        val prevCh = state.position.chapter - 1
-        if (prevCh >= 1) {
-            navigateTo(book.abbrev, prevCh, verse = 1)
-        } else {
-            val books = state.books
-            val idx = books.indexOf(book)
-            val prev = books.getOrNull(idx - 1) ?: return
-            navigateTo(prev.abbrev, prev.chapterCount, 1)
-        }
+        val (target, chapter) = state.books.adjacentChapter(book, state.position.chapter, forward) ?: return
+        navigateTo(target.abbrev, chapter, verse = 1)
     }
 
     fun setTextScale(percent: Int) {
