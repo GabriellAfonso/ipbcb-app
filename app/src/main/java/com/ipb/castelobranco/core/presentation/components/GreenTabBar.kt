@@ -120,6 +120,59 @@ fun GreenTabBar(
     }
 }
 
+/**
+ * [GreenTabBar] stacked, for the green side panel of a phone lying down (`specs/core/spec.md` §6.6): one tab per
+ * line, the active one on the translucent pill with a mint bar on its left.
+ */
+@Composable
+fun GreenTabRail(
+    tabs: List<GreenTab>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        tabs.forEachIndexed { index, tab ->
+            val selected = index == selectedIndex
+            val textColor = Color.White.copy(alpha = if (selected) 1f else INACTIVE_TAB_ALPHA)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) Color.White.copy(alpha = ACTIVE_TAB_ALPHA) else Color.Transparent)
+                    .drawBehind {
+                        if (selected) {
+                            drawRect(color = onPrimaryContainerLight, size = Size(3.dp.toPx(), size.height))
+                        }
+                    }
+                    .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = tab.label,
+                    color = textColor,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                )
+                tab.subLabel?.takeIf { it.isNotBlank() }?.let { sub ->
+                    Text(
+                        text = sub,
+                        color = textColor.copy(alpha = textColor.alpha * SUB_LABEL_ALPHA),
+                        fontSize = 10.5.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                    )
+                }
+                tab.badge?.takeIf { it > 0 }?.let { TabBadge(it) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TabBadge(count: Int) {
     Box(
@@ -175,6 +228,19 @@ private fun GreenTabBarPreview() {
         selectedIndex = selected,
         onSelect = { selected = it },
     )
+}
+
+@Preview(name = "GreenTabRail", widthDp = 200)
+@Composable
+private fun GreenTabRailPreview() {
+    var selected by remember { mutableIntStateOf(0) }
+    Box(Modifier.background(ipbGreen).padding(12.dp)) {
+        GreenTabRail(
+            tabs = listOf(GreenTab("Domingo", "18h"), GreenTab("Quinta", "19h30"), GreenTab("Pendentes", badge = 2)),
+            selectedIndex = selected,
+            onSelect = { selected = it },
+        )
+    }
 }
 
 @Preview(name = "GreenTabBar — badge")

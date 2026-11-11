@@ -34,6 +34,8 @@ fun TopBar(
     extraActions: @Composable () -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
+        // The camera cutout too: lying down it sits on one side of the bar.
+        windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = ipbGreen,
             titleContentColor = onPrimaryLight,

@@ -775,6 +775,12 @@ tokens ja foram apagados e `isLoggedInFlow` leva o app ao estado deslogado.
 
 **Navegacao:** usa `LocalAppNavigator` para profile/auth no clique do botao de conta.
 
+**Laterais:** o `Scaffold` entrega no `innerPadding` so o espaco de cima e de baixo (`contentWindowInsets` =
+`systemBars` vertical). O conteudo inteiro fica dentro de um `Box` com o espaco lateral de `safeDrawing` (barra de
+navegacao e recorte da camera, que deitado ficam nos lados). Assim uma tela que so le o topo e a base do
+`innerPadding` tambem fica longe deles. A `TopBar` usa `safeDrawing` em cima e nos lados (recorte da camera
+incluso).
+
 ### 6.5 Navegacao
 
 #### AppRoutes
@@ -890,6 +896,30 @@ mudanca grava a chave nova e apaga a antiga. Ninguem perde o tamanho que tinha. 
 - `Modifier.tapToPaginate(pagerState, scope, zoneWidthFraction)` — tap nas bordas (20% default) navega entre paginas com animacao.
 
 ---
+
+### 6.9 Celular deitado (regras gerais)
+
+O app gira livre (secao 6.1). Uma tela troca para o layout deitado quando a altura da tela e menor que 480dp
+(`COMPACT_HEIGHT_DP`, altura compacta do Material: celular deitado), lida por `isCompactHeight()`
+(`core/presentation/components/Landscape.kt`). Tablet em pe continua no layout em pe. As telas seguem seis regras:
+
+1. **Faixa verde vira coluna.** Faixa com foto, nome, repertorio, abas ou filtros vai para uma coluna verde a
+   esquerda (`LandscapeSidePanel`, 200 a 300dp, `ipbGreen`, rola sozinha se nao couber). O conteudo fica a direita
+   com a altura toda. Abas de `GreenTabBar` viram `GreenTabRail`: uma por linha, a ativa na pilula translucida com
+   barra menta a esquerda.
+2. **Faixa so com titulo vira linha.** Faixa que so tem rotulo, titulo e numero fica numa linha fina, como a home
+   deitada (secao 6.3).
+3. **Salvar sobe para a top bar.** Formulario com barra de Salvar fixa embaixo nao mostra a barra deitado: o botao
+   vai para a top bar como pilula branca com texto verde (`TopBarPillButton`, spinner enquanto salva), com
+   "Falta: ..." ao lado quando o formulario tem.
+4. **Editar e Previa lado a lado.** Formulario com abas Editar/Previa mostra os dois ao mesmo tempo: campos a
+   esquerda, previa a direita, cada lado rolando sozinho. A previa acompanha o que e digitado.
+5. **Grade pela largura do item.** Grades com numero fixo de colunas passam a ter itens de largura minima deitado
+   (`GridCells.Adaptive` ou colunas calculadas pela largura). Em pe continuam como sempre.
+6. **Laterais livres.** Deitado, a barra de navegacao de 3 botoes e o recorte da camera ficam nas laterais. O
+   `BaseScreen` (secao 6.4) e a `TopBar` respeitam os dois.
+
+Cada dominio descreve as suas telas deitadas na propria spec (secao "Celular deitado").
 
 ## 7. Dependencias Cross-Feature
 

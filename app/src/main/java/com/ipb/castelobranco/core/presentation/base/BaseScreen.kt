@@ -6,9 +6,16 @@ import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -74,6 +81,8 @@ private class TopBarProfileViewModel(
         _profilePhotoVersion.value += 1
     }
 }
+
+private val SIDES = WindowInsetsSides.Horizontal
 
 @Composable
 fun BaseScreen(
@@ -149,6 +158,9 @@ fun BaseScreen(
     Scaffold(
         containerColor = containerColor,
         modifier = Modifier.fillMaxSize(),
+        // Lying down, the navigation bar and the camera cutout sit on the sides. The content gets them as padding
+        // here, so a screen that only reads the top and bottom of `innerPadding` still stays clear of them.
+        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Vertical),
         topBar = {
             Column {
                 TopBar(
@@ -165,6 +177,8 @@ fun BaseScreen(
             }
         }
     ) { innerPadding ->
-        content(innerPadding)
+        Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(SIDES))) {
+            content(innerPadding)
+        }
     }
 }

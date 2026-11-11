@@ -52,6 +52,7 @@ import com.ipb.castelobranco.core.presentation.components.HighlightScheduleLoadi
 import com.ipb.castelobranco.core.presentation.components.HighlightScheduleUnavailable
 import com.ipb.castelobranco.core.presentation.components.HighlightSundaySchedule
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.core.presentation.theme.onPrimaryContainerLight
 import com.ipb.castelobranco.core.presentation.viewmodel.CoreViewModel
@@ -109,7 +110,6 @@ private val ShortcutElevation = 6.dp
 private const val SHORTCUT_COLUMNS = 3
 
 /** Below this height (Material's compact height: a phone lying down) the home switches to its landscape layout. */
-private const val COMPACT_HEIGHT_DP = 480
 private val LandscapeBandCorner = 22.dp
 private val LandscapeBandCardWidth = 300.dp
 private val LandscapeSidePadding = 20.dp
@@ -310,7 +310,7 @@ fun CoreScreen(
                     )
                 }
             }
-            if (LocalConfiguration.current.screenHeightDp < COMPACT_HEIGHT_DP) {
+            if (isCompactHeight()) {
                 HomeLandscapeLayout(
                     innerPadding = innerPadding,
                     band = {
@@ -669,7 +669,7 @@ fun NavigationDrawer(
     val configuration = LocalConfiguration.current
     val drawerState = key(configuration.screenWidthDp) { rememberDrawerState(DrawerValue.Closed) }
     val drawerWidthFraction =
-        if (configuration.screenHeightDp < COMPACT_HEIGHT_DP) LANDSCAPE_DRAWER_WIDTH_FRACTION else DRAWER_WIDTH_FRACTION
+        if (isCompactHeight()) LANDSCAPE_DRAWER_WIDTH_FRACTION else DRAWER_WIDTH_FRACTION
     val scope       = rememberCoroutineScope()
 
     ModalNavigationDrawer(
