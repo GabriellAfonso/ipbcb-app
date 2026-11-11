@@ -69,7 +69,11 @@ linha da fonte atual. A toolbar já mostra o livro e o capítulo. Quando o texto
 pula. Com um versículo pendente (passagem, índice, setas de capítulo), o placeholder com o título do destino fica
 até a posição bater com o pendente e o texto desse capítulo chegar (`BibleUiState.isShowing`); então a lista já nasce
 naquele versículo (`requestScrollToItem` na composição) e o pendente é descartado — não aparece o capítulo anterior
-nem uma rolagem visível.
+nem uma rolagem visível. O livro aberto e os dois vizinhos ficam em memória, então trocar de capítulo no mesmo
+livro (setas, arrasto, índice) ou passar para o livro vizinho (setas, arrasto) é instantâneo, sem placeholder: o
+`BibleViewModel` guarda a posição nova na hora, não espera ela voltar das preferências, e usa o texto do vizinho que
+já está em `nearbyBooksFlow`. O placeholder só aparece ao pular para um livro distante pelo índice ou ao trocar de
+tradução.
 
 ## 2. Endpoint
 
@@ -125,10 +129,13 @@ Expõe `booksFlow` (índice da tradução ativa), `currentBookFlow` (texto do li
   texto — a toolbar, o índice e a navegação entre livros não esperam nada. `null` = ainda lendo; vazio = tradução
   não está no aparelho (tela oferece o download); lista = pronto. Ao trocar de tradução, o índice anterior fica
   até o novo chegar.
-- **Só um livro de texto em memória.** `currentBookFlow` lê o arquivo do livro da posição atual (o livro de
-  `abbrev` igual, sem diferenciar maiúsculas; se não existir, o primeiro do índice) enquanto alguém coleta (o
-  `BibleViewModel` do `bibleGraph`) e o solta 5 s depois do último coletor sair. Mudar de capítulo no mesmo livro
-  não lê nada; mudar de livro ou de tradução lê o novo arquivo, e o anterior continua no flow até ele chegar. O
+- **Três livros de texto em memória: o aberto e os vizinhos.** `currentBookFlow` lê o arquivo do livro da posição
+  atual (o livro de `abbrev` igual, sem diferenciar maiúsculas; se não existir, o primeiro do índice) enquanto alguém
+  coleta (o `BibleViewModel` do `bibleGraph`) e o solta 5 s depois do último coletor sair. Depois de entregar o
+  livro aberto, lê em segundo plano o anterior e o seguinte (a Bíblia dá a volta: Apocalipse e Gênesis são
+  vizinhos) e oferece os três em `nearbyBooksFlow`; ao andar, o que deixou de ser vizinho sai da memória. Mudar de
+  capítulo no mesmo livro não lê nada; ir para um livro vizinho (setas, arrasto) também não; ir para outro livro
+  (índice) ou trocar de tradução lê o novo arquivo, e o anterior continua no flow até ele chegar. O
   texto vem com os títulos do livro. Quando a tradução ativa sai do formato antigo (fim da atualização), o livro
   aberto é lido de novo, e os títulos aparecem sem trocar de capítulo.
 - `clearAll()`: apaga as duas traduções (e o arquivo antigo), reseta as preferências e esvazia

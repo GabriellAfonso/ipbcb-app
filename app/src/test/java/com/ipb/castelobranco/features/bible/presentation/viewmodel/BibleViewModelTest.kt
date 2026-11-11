@@ -67,6 +67,7 @@ class BibleViewModelTest {
         Dispatchers.setMain(testDispatcher)
         every { repository.booksFlow } returns MutableStateFlow(listOf(genesis, exodus))
         every { repository.currentBookFlow } returns MutableStateFlow(genesisText)
+        every { repository.nearbyBooksFlow } returns MutableStateFlow(emptyList())
         every { repository.activeTranslationFlow } returns MutableStateFlow(BibleTranslation.NAA)
         every { repository.cachedTranslationsFlow } returns MutableStateFlow(setOf(BibleTranslation.NAA))
         every { repository.positionFlow } returns MutableStateFlow(BibleReadingPosition("gn", 1, 1))
@@ -289,6 +290,54 @@ class BibleViewModelTest {
         advanceUntilIdle()
 
         coVerify { repository.savePosition("gn", 2, verse = 1) }
+        job.cancel()
+    }
+
+    @Test
+    fun `a chapter of the book in memory shows before the saved position comes back`() = runTest {
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        // The repository's position never moves here: the screen must not wait for it.
+        vm.nextChapter()
+        advanceUntilIdle()
+
+        assertEquals(BibleReadingPosition("gn", 2, 1), vm.uiState.value.position)
+        assertTrue(vm.uiState.value.isShowing(VerseRef("gn", 2, 1)))
+        job.cancel()
+    }
+
+    @Test
+    fun `a neighbouring book in memory shows before the repository's open book changes`() = runTest {
+        val exodusText = BibleBookText(abbrev = "ex", chapters = listOf(listOf("Estes são os nomes.")))
+        every { repository.nearbyBooksFlow } returns MutableStateFlow(listOf(genesisText, exodusText))
+        every { repository.positionFlow } returns MutableStateFlow(BibleReadingPosition("gn", 2, 1))
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        vm.nextChapter()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.isShowing(VerseRef("ex", 1, 1)))
+        assertEquals(listOf("Estes são os nomes."), vm.uiState.value.currentChapterVerses)
+        job.cancel()
+    }
+
+    @Test
+    fun `once the saved position catches up, a later outside change shows again`() = runTest {
+        val saved = MutableStateFlow(BibleReadingPosition("gn", 1, 1))
+        every { repository.positionFlow } returns saved
+        val vm = buildViewModel()
+        val job = subscribeAndAdvance(vm)
+
+        vm.nextChapter()
+        advanceUntilIdle()
+        saved.value = BibleReadingPosition("gn", 2, 1)
+        advanceUntilIdle()
+        saved.value = BibleReadingPosition("ex", 1, 1)
+        advanceUntilIdle()
+
+        assertEquals(BibleReadingPosition("ex", 1, 1), vm.uiState.value.position)
         job.cancel()
     }
 

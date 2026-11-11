@@ -23,8 +23,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -111,34 +113,60 @@ class BibleRepositoryImpl @Inject constructor(
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
 
     /**
-     * Text of the position's book only, read while someone collects (the Bible graph) and dropped
-     * [BOOK_STOP_TIMEOUT_MS] after the last collector leaves. A chapter change in the same book reads nothing;
-     * on a book or translation change the previous text stays until the new one arrives. When the translation
-     * leaves the old layout (a format upgrade finished), the book is read again to pick up its headings.
+     * Texts of the open book and of the two books around it (the Bible wraps: Revelation and Genesis are neighbours),
+     * so the chapter arrows and the swipe cross a book boundary without reading the disk. Written only by
+     * [currentBookFlow], whose blocks run one at a time; emptied when it stops.
+     */
+    private val bookCache = MutableStateFlow<Map<BookKey, BibleBookText>>(emptyMap())
+
+    override val nearbyBooksFlow: StateFlow<List<BibleBookText>> = bookCache
+        .map { it.values.toList() }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
+
+    /**
+     * Text of the position's book, read while someone collects (the Bible graph) and dropped [BOOK_STOP_TIMEOUT_MS]
+     * after the last collector leaves. Once it is out, the neighbouring books are read in the background into
+     * [bookCache]. A chapter change in the same book reads nothing; on a book or translation change the previous text
+     * stays until the new one arrives. When the translation leaves the old layout (a format upgrade finished), the
+     * book is read again to pick up its headings.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     override val currentBookFlow: StateFlow<BibleBookText?> =
         combine(index, positionFlow, _outdatedTranslations) { loaded, position, outdated ->
             val books = loaded?.books ?: return@combine null
             val book = books.resolve(position.bookAbbrev) ?: return@combine null
-            BookKey(loaded.translation, books.indexOf(book), book.abbrev, loaded.translation in outdated)
+            val at = books.indexOf(book)
+            fun key(i: Int) = BookKey(loaded.translation, i, books[i].abbrev, loaded.translation in outdated)
+            val around = listOf((at + 1) % books.size, (at - 1 + books.size) % books.size).distinct() - at
+            BookRequest(open = key(at), neighbours = around.map(::key))
         }
             .distinctUntilChanged()
-            .transformLatest { key ->
-                if (key == null) {
+            .transformLatest { request ->
+                if (request == null) {
+                    bookCache.value = emptyMap()
                     emit(null)
                     return@transformLatest
                 }
-                val text = store.loadBook(key.translation, key.position, key.abbrev)
-                // A corrupt book took its translation with it.
-                if (text == null) refreshCachedTranslations()
+                val text = bookCache.value[request.open] ?: readBook(request.open)
                 emit(text)
+                val wanted = request.neighbours + request.open
+                bookCache.update { cache ->
+                    cache.filterKeys { it in wanted } + listOfNotNull(text?.let { request.open to it })
+                }
+                request.neighbours.filterNot(bookCache.value::containsKey).forEach { neighbour ->
+                    readBook(neighbour)?.let { neighbourText -> bookCache.update { it + (neighbour to neighbourText) } }
+                }
             }
+            .onCompletion { bookCache.value = emptyMap() }
             .stateIn(
                 scope = scope,
                 started = SharingStarted.WhileSubscribed(BOOK_STOP_TIMEOUT_MS, replayExpirationMillis = 0),
                 initialValue = null,
             )
+
+    /** A corrupt book took its translation with it: the cached set is checked again. */
+    private suspend fun readBook(key: BookKey): BibleBookText? =
+        store.loadBook(key.translation, key.position, key.abbrev).also { if (it == null) refreshCachedTranslations() }
 
     init {
         // File checks only: the reader must know what is on disk without waiting for the boot preload.
@@ -190,6 +218,8 @@ class BibleRepositoryImpl @Inject constructor(
     }
 
     private data class LoadedIndex(val translation: BibleTranslation, val books: List<BibleBook>)
+
+    private data class BookRequest(val open: BookKey, val neighbours: List<BookKey>)
 
     private data class BookKey(
         val translation: BibleTranslation,

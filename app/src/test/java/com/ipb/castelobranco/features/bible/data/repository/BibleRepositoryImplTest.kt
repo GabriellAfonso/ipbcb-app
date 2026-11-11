@@ -8,6 +8,7 @@ import com.ipb.castelobranco.features.bible.domain.model.BibleReadingPosition
 import com.ipb.castelobranco.features.bible.domain.model.BibleTranslation
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -214,7 +215,7 @@ class BibleRepositoryImplTest {
     }
 
     @Test
-    fun `collecting reads only the book of the position`() = runTest {
+    fun `collecting reads the book of the position, then its neighbours`() = runTest {
         onDisk(BibleTranslation.NAA)
 
         val repo = buildRepository()
@@ -222,8 +223,62 @@ class BibleRepositoryImplTest {
         advanceUntilIdle()
 
         assertEquals(genesisText, repo.currentBookFlow.value)
-        coVerify(exactly = 1) { store.loadBook(BibleTranslation.NAA, 0, "gn") }
-        coVerify(exactly = 0) { store.loadBook(any(), 1, any()) }
+        coVerifyOrder {
+            store.loadBook(BibleTranslation.NAA, 0, "gn")
+            store.loadBook(BibleTranslation.NAA, 1, "ex")
+        }
+    }
+
+    @Test
+    fun `crossing into a neighbouring book reads nothing more`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        position.value = BibleReadingPosition("ex", 1, 1)
+        advanceUntilIdle()
+
+        assertEquals(exodusText, repo.currentBookFlow.value)
+        coVerify(exactly = 1) { store.loadBook(any(), 0, "gn") }
+        coVerify(exactly = 1) { store.loadBook(any(), 1, "ex") }
+    }
+
+    @Test
+    fun `the neighbours wrap around the Bible`() = runTest {
+        val revelation = BibleBook(abbrev = "ap", name = "Apocalipse", verseCounts = listOf(1))
+        coEvery { store.loadIndex(any()) } returns listOf(genesis, exodus, revelation)
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { store.loadBook(any(), 2, "ap") }
+        coVerify(exactly = 1) { store.loadBook(any(), 1, "ex") }
+    }
+
+    @Test
+    fun `the open book and its neighbours are offered as nearby books`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        collectBook(repo)
+        advanceUntilIdle()
+
+        assertEquals(setOf(genesisText, exodusText), repo.nearbyBooksFlow.value.toSet())
+    }
+
+    @Test
+    fun `the nearby books are dropped after the last collector leaves`() = runTest {
+        onDisk(BibleTranslation.NAA)
+        val repo = buildRepository()
+        val collector = collectBook(repo)
+        advanceUntilIdle()
+
+        collector.cancel()
+        advanceTimeBy(6_000)
+        runCurrent()
+
+        assertEquals(emptyList<BibleBookText>(), repo.nearbyBooksFlow.value)
     }
 
     @Test
@@ -236,7 +291,8 @@ class BibleRepositoryImplTest {
         position.value = BibleReadingPosition("gn", 2, 1)
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { store.loadBook(any(), any(), any()) }
+        coVerify(exactly = 1) { store.loadBook(any(), 0, "gn") }
+        coVerify(exactly = 1) { store.loadBook(any(), 1, "ex") }
     }
 
     @Test
@@ -304,7 +360,7 @@ class BibleRepositoryImplTest {
         collectBook(repo)
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { store.loadBook(any(), any(), any()) }
+        coVerify(exactly = 1) { store.loadBook(any(), 0, "gn") }
     }
 
     @Test

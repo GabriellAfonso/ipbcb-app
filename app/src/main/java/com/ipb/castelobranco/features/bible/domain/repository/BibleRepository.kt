@@ -25,6 +25,12 @@ interface BibleRepository {
      * `null` = nada lido ainda; ao mudar de livro, o anterior fica até o novo chegar.
      */
     val currentBookFlow: StateFlow<BibleBookText?>
+
+    /**
+     * Textos já em memória: o livro aberto e os dois vizinhos (a Bíblia dá a volta), lidos em segundo plano. Com eles
+     * a tela troca de livro pelas setas ou pelo arrasto sem esperar [currentBookFlow].
+     */
+    val nearbyBooksFlow: StateFlow<List<BibleBookText>>
     val activeTranslationFlow: StateFlow<BibleTranslation>
     val cachedTranslationsFlow: StateFlow<Set<BibleTranslation>>
 

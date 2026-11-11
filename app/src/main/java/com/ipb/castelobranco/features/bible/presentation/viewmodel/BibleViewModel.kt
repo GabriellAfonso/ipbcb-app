@@ -135,6 +135,14 @@ class BibleViewModel @Inject constructor(
     private val _highlightedVerses = MutableStateFlow<Set<VerseRef>>(emptySet())
     private val _isSignedIn = MutableStateFlow(false)
 
+    /**
+     * Where the reader just moved, until the repository's position (which hops through the IO dispatcher) catches up.
+     * The pending verse and the position then change in the same frame, so a chapter of the book already in memory
+     * shows at once instead of flashing the placeholder.
+     */
+    private val _movedTo = MutableStateFlow<BibleReadingPosition?>(null)
+    private val position = combine(repository.positionFlow, _movedTo) { saved, moved -> moved ?: saved }
+
     private val progress = combine(progressRepository.progress, _isSignedIn) { progress, signedIn ->
         progress.takeIf { signedIn }
     }
@@ -170,15 +178,17 @@ class BibleViewModel @Inject constructor(
     val uiState: StateFlow<BibleUiState> = combine(
         combine(
             repository.booksFlow,
-            repository.currentBookFlow,
+            combine(repository.currentBookFlow, repository.nearbyBooksFlow, ::Pair),
             repository.activeTranslationFlow,
             repository.cachedTranslationsFlow,
-            repository.positionFlow,
-        ) { books, bookText, active, cached, position ->
+            position,
+        ) { books, (current, nearby), active, cached, position ->
+            // A neighbouring book already in memory shows in the same frame as the move (arrows, swipe).
+            val abbrev = books?.resolve(position.bookAbbrev)?.abbrev
             BibleUiState(
                 books = books.orEmpty(),
                 isLoadingBooks = books == null,
-                bookText = bookText,
+                bookText = nearby.firstOrNull { it.abbrev == abbrev } ?: current,
                 activeTranslation = active,
                 cachedTranslations = cached,
                 position = position,
@@ -203,6 +213,9 @@ class BibleViewModel @Inject constructor(
     init {
         // The Bible opened: other devices may have marked chapters since the last fetch.
         viewModelScope.launch { progressRepository.refresh() }
+        viewModelScope.launch {
+            repository.positionFlow.collect { saved -> if (saved == _movedTo.value) _movedTo.value = null }
+        }
     }
 
     /** The login state lives in the Activity-scoped `CoreViewModel`; the graph hands it in. */
@@ -236,6 +249,7 @@ class BibleViewModel @Inject constructor(
     }
 
     fun navigateTo(bookAbbrev: String, chapter: Int, verse: Int = 1) {
+        _movedTo.value = BibleReadingPosition(bookAbbrev, chapter, verse)
         _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
         _highlightedVerses.value = emptySet()
         viewModelScope.launch {
@@ -257,6 +271,7 @@ class BibleViewModel @Inject constructor(
      * verse numbers of that chapter, highlighted until the reader moves to another chapter.
      */
     fun openPassage(bookAbbrev: String, chapter: Int, verse: Int, highlighted: Set<Int> = emptySet()) {
+        _movedTo.value = BibleReadingPosition(bookAbbrev, chapter, verse)
         _pendingScroll.value = VerseRef(bookAbbrev, chapter, verse)
         _highlightedVerses.value = highlighted.mapTo(mutableSetOf()) { VerseRef(bookAbbrev, chapter, it) }
         viewModelScope.launch {
