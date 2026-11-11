@@ -69,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.R
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.greenToStartEdge
 import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
@@ -163,7 +164,7 @@ private fun WorshipHubContent(
                     val panel = Modifier
                         .width(LandscapePanelWidth)
                         .fillMaxHeight()
-                        .background(ipbGreen)
+                        .greenToStartEdge()
                         .verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp)
                     if (band != null) {

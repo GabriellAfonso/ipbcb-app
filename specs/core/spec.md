@@ -904,8 +904,9 @@ O app gira livre (secao 6.1). Uma tela troca para o layout deitado quando a altu
 (`core/presentation/components/Landscape.kt`). Tablet em pe continua no layout em pe. As telas seguem seis regras:
 
 1. **Faixa verde vira coluna.** Faixa com foto, nome, repertorio, abas ou filtros vai para uma coluna verde a
-   esquerda (`LandscapeSidePanel`, 200 a 300dp, `ipbGreen`, rola sozinha se nao couber). O conteudo fica a direita
-   com a altura toda. Abas de `GreenTabBar` viram `GreenTabRail`: uma por linha, a ativa na pilula translucida com
+   esquerda (`LandscapeSidePanel`, 200 a 300dp, `ipbGreen`, rola sozinha se nao couber). O verde vai ate a borda da
+   tela, por baixo do recorte da camera ou da barra de navegacao daquele lado (`greenToStartEdge`); so o conteudo da
+   coluna fica afastado deles. O conteudo da tela fica a direita com a altura toda. Abas de `GreenTabBar` viram `GreenTabRail`: uma por linha, a ativa na pilula translucida com
    barra menta a esquerda.
 2. **Faixa so com titulo vira linha.** Faixa que so tem rotulo, titulo e numero fica numa linha fina, como a home
    deitada (secao 6.3).

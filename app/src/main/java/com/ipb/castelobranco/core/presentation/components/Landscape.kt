@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -19,11 +21,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
@@ -56,13 +64,34 @@ fun LandscapeSidePanel(
         modifier = modifier
             .width(width)
             .fillMaxHeight()
-            .background(ipbGreen)
+            .greenToStartEdge()
             .verticalScroll(rememberScrollState())
             .padding(PanelPadding),
         horizontalAlignment = horizontalAlignment,
         verticalArrangement = verticalArrangement,
         content = content,
     )
+}
+
+/**
+ * Paints [ipbGreen] behind the element and on to the screen's start edge. Lying down, `BaseScreen` keeps its content
+ * clear of the camera cutout or the navigation bar on that side; a side panel's green still reaches the edge, so no
+ * dark strip shows beside it. Only the background goes there: the panel's content stays clear.
+ */
+@Composable
+fun Modifier.greenToStartEdge(): Modifier {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val insets = WindowInsets.safeDrawing
+    val extraPx = if (direction == LayoutDirection.Ltr) {
+        insets.getLeft(density, direction)
+    } else {
+        insets.getRight(density, direction)
+    }.toFloat()
+    return drawBehind {
+        val left = if (direction == LayoutDirection.Ltr) -extraPx else 0f
+        drawRect(color = ipbGreen, topLeft = Offset(left, 0f), size = Size(size.width + extraPx, size.height))
+    }
 }
 
 /**
