@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -53,7 +54,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.PanelAction
 import com.ipb.castelobranco.core.presentation.components.PanelHeader
+import com.ipb.castelobranco.core.presentation.components.LandscapeSidePanel
 import com.ipb.castelobranco.core.presentation.components.TopActionPanel
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.LessonStatus
 import com.ipb.castelobranco.features.studies.domain.model.LessonSummary
@@ -67,6 +70,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private val SheetRadius = 18.dp
+private val SidePanelWidth = 220.dp
 private val CardRadius = 16.dp
 private val DraftBackground = Color(0xFFFDE6B3)
 private val DraftText = Color(0xFF6B4300)
@@ -101,56 +105,69 @@ fun SundaySchoolManageScreen(
         }
     }
     val openLesson: (LessonSummary) -> Unit = { lesson -> state.selectedYear?.let { onOpenLesson(lesson.id, it) } }
+    // Lying down the band is a green column on the left (`specs/studies/spec.md`, "Celular deitado").
+    val isLandscape = isCompactHeight()
     BaseScreen(
         tabName = "EBD",
         showBackArrow = true,
         onBackClick = onBackClick,
         // The green behind the sheet's rounded corners continues the band.
-        containerColor = ipbGreen,
+        containerColor = if (isLandscape) MaterialTheme.colorScheme.surfaceDim else ipbGreen,
         extraActions = {
             IconButton(onClick = { panel = ManagePanel.Years }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Mais opções", tint = Color.White)
             }
         },
-        topBarExtension = { YearBand(state, onSelectYear = viewModel::selectYear) },
+        topBarExtension = if (isLandscape) null else ({ YearBand(state, onSelectYear = viewModel::selectYear) }),
     ) { innerPadding ->
-        Box(
+        val sheetModifier = if (isLandscape) {
+            Modifier.padding(innerPadding).fillMaxSize()
+        } else {
             Modifier
                 .padding(top = innerPadding.calculateTopPadding())
                 .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
                 .background(MaterialTheme.colorScheme.surfaceDim)
                 .padding(bottom = innerPadding.calculateBottomPadding())
-                .fillMaxSize(),
-        ) {
-            SundaySchoolManageContent(
-                state = state,
-                onOpenLesson = openLesson,
-                onOpenActions = { panel = ManagePanel.Lesson(it) },
-                onMove = viewModel::move,
-                onDragStopped = viewModel::saveOrder,
-                onRetry = viewModel::reload,
-            )
-            val year = state.selectedYear
-            if (state.canManage && year != null) {
-                ExtendedFloatingActionButton(
-                    onClick = { onOpenLesson(null, year) },
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Nova aula") },
-                    containerColor = ipbGreen,
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                )
+                .fillMaxSize()
+        }
+        Row(sheetModifier) {
+            val panelYear = state.selectedYear?.takeIf { isLandscape }
+            if (panelYear != null) {
+                LandscapeSidePanel(width = SidePanelWidth, verticalArrangement = Arrangement.Top) {
+                    YearTexts(state, panelYear, onSelectYear = viewModel::selectYear, stacked = true)
+                }
             }
-            ManageActionsPanel(
-                panel = panel,
-                state = state,
-                onDismiss = { panel = null },
-                onOpenYears = onOpenYears,
-                onOpenLesson = openLesson,
-                onDelete = viewModel::askDelete,
-            )
-            SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                SundaySchoolManageContent(
+                    state = state,
+                    onOpenLesson = openLesson,
+                    onOpenActions = { panel = ManagePanel.Lesson(it) },
+                    onMove = viewModel::move,
+                    onDragStopped = viewModel::saveOrder,
+                    onRetry = viewModel::reload,
+                )
+                val year = state.selectedYear
+                if (state.canManage && year != null) {
+                    ExtendedFloatingActionButton(
+                        onClick = { onOpenLesson(null, year) },
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = { Text("Nova aula") },
+                        containerColor = ipbGreen,
+                        contentColor = Color.White,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                    )
+                }
+                ManageActionsPanel(
+                    panel = panel,
+                    state = state,
+                    onDismiss = { panel = null },
+                    onOpenYears = onOpenYears,
+                    onOpenLesson = openLesson,
+                    onDelete = viewModel::askDelete,
+                )
+                SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+            }
         }
     }
 
@@ -225,32 +242,42 @@ private fun YearBand(state: SundaySchoolManageUiState, onSelectYear: (Int) -> Un
             .background(ipbGreen)
             .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 16.dp),
     ) {
-        Text(
-            text = "Escola Bíblica Dominical",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = BAND_SECONDARY_ALPHA),
-        )
-        Text(
-            text = state.theme.ifBlank { "Sem tema" },
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-            modifier = Modifier.padding(vertical = 2.dp),
-        )
-        Text(
-            text = countsLabel(year, state),
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = BAND_SECONDARY_ALPHA),
-        )
-        if (state.years.size > 1) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .horizontalScroll(rememberScrollState()),
-            ) {
-                state.years.forEach { YearChip(it, selected = it == year, onClick = { onSelectYear(it) }) }
-            }
+        YearTexts(state, year, onSelectYear, stacked = false)
+    }
+}
+
+/** "Escola Bíblica Dominical", the theme, the counts and the years: in a row, or [stacked] in the side panel. */
+@Composable
+private fun YearTexts(state: SundaySchoolManageUiState, year: Int, onSelectYear: (Int) -> Unit, stacked: Boolean) {
+    Text(
+        text = "Escola Bíblica Dominical",
+        style = MaterialTheme.typography.bodySmall,
+        color = Color.White.copy(alpha = BAND_SECONDARY_ALPHA),
+    )
+    Text(
+        text = state.theme.ifBlank { "Sem tema" },
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+        modifier = Modifier.padding(vertical = 2.dp),
+    )
+    Text(
+        text = countsLabel(year, state),
+        style = MaterialTheme.typography.bodySmall,
+        color = Color.White.copy(alpha = BAND_SECONDARY_ALPHA),
+    )
+    if (state.years.size > 1 && stacked) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 10.dp)) {
+            state.years.forEach { YearChip(it, selected = it == year, onClick = { onSelectYear(it) }) }
+        }
+    } else if (state.years.size > 1) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .horizontalScroll(rememberScrollState()),
+        ) {
+            state.years.forEach { YearChip(it, selected = it == year, onClick = { onSelectYear(it) }) }
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -53,6 +54,8 @@ import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.DateFieldWithPicker
 import com.ipb.castelobranco.core.presentation.components.GreenTab
 import com.ipb.castelobranco.core.presentation.components.GreenTabBar
+import com.ipb.castelobranco.core.presentation.components.TopBarPillButton
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 import com.ipb.castelobranco.features.studies.domain.model.BibleReference
 import com.ipb.castelobranco.features.studies.domain.model.LessonDraft
@@ -105,14 +108,23 @@ fun SundaySchoolLessonFormScreen(
     }
     BackHandler(onBack = viewModel::onBack)
 
+    val isLandscape = isCompactHeight()
     val hasDraft = state.draft != null
+    val showTabs = hasDraft && !isLandscape
     BaseScreen(
         tabName = if (state.isNew) "Nova aula" else "Editar aula",
         showBackArrow = true,
         onBackClick = viewModel::onBack,
         // The green behind the sheet's rounded corners continues the tabs.
-        containerColor = if (hasDraft) ipbGreen else MaterialTheme.colorScheme.background,
-        topBarExtension = if (hasDraft) {
+        containerColor = if (showTabs) ipbGreen else MaterialTheme.colorScheme.background,
+        // Lying down the editor and the preview sit side by side, and the save button moves up here.
+        extraActions = {
+            val draft = state.draft
+            if (isLandscape && draft != null) {
+                TopBarPillButton(label = saveLabel(draft.status), onClick = viewModel::save, isLoading = state.isSaving)
+            }
+        },
+        topBarExtension = if (showTabs) {
             {
                 GreenTabBar(
                     tabs = listOf(GreenTab("Editar"), GreenTab("Pré-visualizar")),
@@ -124,7 +136,7 @@ fun SundaySchoolLessonFormScreen(
             null
         },
     ) { innerPadding ->
-        val contentModifier = if (hasDraft) {
+        val contentModifier = if (showTabs) {
             Modifier
                 .padding(top = innerPadding.calculateTopPadding())
                 .clip(RoundedCornerShape(topStart = SheetRadius, topEnd = SheetRadius))
@@ -156,10 +168,11 @@ fun SundaySchoolLessonFormScreen(
                         onDeleteBlock = viewModel::deleteBlock,
                     ),
                     onRetry = viewModel::load,
+                    isLandscape = isLandscape,
                 )
                 SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
             }
-            state.draft?.let { draft ->
+            state.draft?.takeIf { !isLandscape }?.let { draft ->
                 SaveBar(status = draft.status, isSaving = state.isSaving, onSave = viewModel::save)
             }
         }
@@ -193,11 +206,14 @@ private fun SaveBar(status: LessonStatus, isSaving: Boolean, onSave: () -> Unit)
             if (isSaving) {
                 CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
             } else {
-                Text(if (status == LessonStatus.PUBLISHED) "Salvar e publicar" else "Salvar rascunho")
+                Text(saveLabel(status))
             }
         }
     }
 }
+
+private fun saveLabel(status: LessonStatus): String =
+    if (status == LessonStatus.PUBLISHED) "Salvar e publicar" else "Salvar rascunho"
 
 @Composable
 fun SundaySchoolLessonFormContent(
@@ -205,29 +221,45 @@ fun SundaySchoolLessonFormContent(
     formActions: LessonFormActions,
     editorActions: LessonEditorActions,
     onRetry: () -> Unit,
+    isLandscape: Boolean = false,
 ) {
     val draft = state.draft
     when {
         draft == null && state.isLoading -> DoctrineLoadingView()
         draft == null -> DoctrineErrorView(message = state.loadError.orEmpty(), onRetry = onRetry)
-        state.mode == LessonFormMode.PREVIEW -> LessonPreview(state, draft)
-        else -> {
-            val style = LessonStyle(colors = sundaySchoolColors, fontSize = BASE_FONT_SIZE)
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-                item(key = "metadata") { MetadataFields(draft, state, formActions) }
-                item(key = "content-title") {
-                    FormSectionTitle("Conteúdo", Modifier.padding(start = 16.dp, top = 8.dp))
-                }
-                lessonEditor(
-                    content = draft.content,
-                    books = state.books,
-                    errors = state.locationErrors,
-                    catalog = state.catalog,
-                    style = style,
-                    actions = editorActions,
-                )
+        // Lying down: the editor on the left and the preview on the right, whatever the selected mode.
+        isLandscape -> Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceDim)) {
+                LessonEditor(draft, state, formActions, editorActions)
             }
+            Box(Modifier.weight(1f).fillMaxHeight()) { LessonPreview(state, draft) }
         }
+        state.mode == LessonFormMode.PREVIEW -> LessonPreview(state, draft)
+        else -> LessonEditor(draft, state, formActions, editorActions)
+    }
+}
+
+@Composable
+private fun LessonEditor(
+    draft: LessonDraft,
+    state: SundaySchoolLessonFormUiState,
+    formActions: LessonFormActions,
+    editorActions: LessonEditorActions,
+) {
+    val style = LessonStyle(colors = sundaySchoolColors, fontSize = BASE_FONT_SIZE)
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item(key = "metadata") { MetadataFields(draft, state, formActions) }
+        item(key = "content-title") {
+            FormSectionTitle("Conteúdo", Modifier.padding(start = 16.dp, top = 8.dp))
+        }
+        lessonEditor(
+            content = draft.content,
+            books = state.books,
+            errors = state.locationErrors,
+            catalog = state.catalog,
+            style = style,
+            actions = editorActions,
+        )
     }
 }
 

@@ -37,10 +37,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.ipb.castelobranco.core.presentation.base.BaseScreen
 import com.ipb.castelobranco.core.presentation.components.highlightCardColor
+import com.ipb.castelobranco.core.presentation.components.isCompactHeight
 import com.ipb.castelobranco.core.presentation.theme.IPBCasteloBrancoTheme
 import com.ipb.castelobranco.core.presentation.theme.ipbGreen
 
@@ -100,6 +102,23 @@ fun StudiesContent(
         StudiesTile(Icons.Filled.Person, "Personagens Bíblicos", null),
         StudiesTile(Icons.Filled.History, "História do Cristianismo", null),
     )
+    if (isCompactHeight()) {
+        // Lying down: the band as one line and the four cards on one line, centered in the height left.
+        Column(modifier = modifier.fillMaxSize()) {
+            StudiesBandRow()
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = SidePadding),
+                horizontalArrangement = Arrangement.spacedBy(TileGap),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                tiles.forEach { tile -> StudiesTileCard(tile, Modifier.weight(1f)) }
+            }
+        }
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -140,6 +159,33 @@ private fun StudiesBand() {
         )
         Spacer(Modifier.height(2.dp))
         Text(BAND_TEXT, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = TEXT_ALPHA))
+    }
+}
+
+@Composable
+private fun StudiesBandRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = BandCorner, bottomEnd = BandCorner))
+            .background(ipbGreen)
+            .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = BAND_TITLE,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+        )
+        Text(
+            text = BAND_TEXT,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = TEXT_ALPHA),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

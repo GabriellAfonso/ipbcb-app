@@ -43,7 +43,8 @@ Mesma cara do Hub do Louvor (`specs/worshiphub/spec.md` §1). Título "Estudos" 
   branco num círculo `primaryContainer` de 44dp e o nome: "Doutrina" (abre a lista da doutrina), "EBD" (abre a EBD),
   "Personagens Bíblicos" e "História do Cristianismo". Os dois últimos ainda não existem: ficam apagados, com o círculo
   `outlineVariant`, uma etiqueta "EM BREVE" no canto e sem toque. Quando saírem, perdem a etiqueta.
-- A tela rola quando não cabe (celular deitado).
+- Celular deitado: a faixa vira uma linha ("Aprenda e aprofunde sua fé" e o texto ao lado) e os quatro cartões
+  ficam numa linha só, centralizados na altura que sobra (`specs/core/spec.md` §6.9).
 
 ## 2. Endpoints
 
@@ -125,3 +126,12 @@ motivos: `specs/020-sunday-school/research.md`.
   publicadas." / "Esta aula não está mais disponível.".
 - Nada da gestão vai para o disco (rascunhos não são públicos). Depois de salvar, reordenar, apagar ou mudar tema, o
   app revalida os snapshots públicos do ano para a leitura no aparelho refletir a mudança.
+
+## 6. Celular deitado
+
+Regras gerais em `specs/core/spec.md` §6.9. O hub está em §1.1.
+
+- **Aulas da EBD (gestão):** "Escola Bíblica Dominical", o tema, as contagens e os anos (um por linha) numa coluna verde
+  de 220dp à esquerda; as aulas e o "Nova aula" à direita.
+- **Formulário da aula:** sem as abas "Editar | Pré-visualizar": o editor à esquerda e a pré-visualização à direita,
+  meio a meio, cada um rolando sozinho. "Salvar rascunho" / "Salvar e publicar" é a pílula branca da top bar.
