@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
@@ -52,6 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,13 +65,15 @@ import com.ipb.castelobranco.core.presentation.theme.BrandColors
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.PositionLabel
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.RowDivider
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.SongTitleArtist
-import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.TableCard
+import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.cardItem
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.TableRow
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.components.ToneChip
 import com.ipb.castelobranco.features.worshiphub.tables.presentation.viewmodel.RepertoireRowState
 import com.ipb.castelobranco.features.worshiphub.shared.domain.SetlistShareSong
 import com.ipb.castelobranco.features.worshiphub.shared.domain.setlistShareText
 import java.time.LocalDate
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private val Green = BrandColors.Green
 private const val FIXED_ROW_ALPHA = 0.12f
@@ -77,6 +81,9 @@ private const val SELECTED_OPTION_ALPHA = 0.08f
 private const val DISABLED_ALPHA = 0.6f
 private const val EMPTY_SONG_LABEL = "Escolher música"
 private const val HINT = "Toque na música para trocar e no tom para mudar."
+private const val HEADER_KEY = "repertoire_header"
+private const val HINT_KEY = "repertoire_hint"
+private val HANDLE_PADDING = 10.dp
 
 @Composable
 fun RepertoireTab(
@@ -91,6 +98,8 @@ fun RepertoireTab(
     save: RepertoireSaveState = RepertoireSaveState(),
     onSaveClick: () -> Unit = {},
     onSongInfoClick: (songId: Int) -> Unit = {},
+    onMoveRow: (from: Int, to: Int) -> Unit = { _, _ -> },
+    onMoveDone: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -115,58 +124,83 @@ fun RepertoireTab(
     // Only one row's song picker is open at a time.
     var openPosition by remember { mutableStateOf<Int?>(null) }
     val hasAnySelection = rows.any { it.selectedSong != null }
+    val haptics = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromIndex = rows.indexOfFirst { it.key == from.key }
+        val toIndex = rows.indexOfFirst { it.key == to.key }
+        if (fromIndex >= 0 && toIndex >= 0) {
+            onMoveRow(fromIndex, toIndex)
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .fillMaxWidth(),
         ) {
-            RepertoireHeader(
-                actionsEnabled = !isRefreshing && hasAnySelection,
-                onClearClick = onClearClick,
-                onShareClick = { share() },
-            )
+            item(key = HEADER_KEY) {
+                RepertoireHeader(
+                    actionsEnabled = !isRefreshing && hasAnySelection,
+                    onClearClick = onClearClick,
+                    onShareClick = { share() },
+                )
+            }
 
-            TableCard {
-                rows.forEachIndexed { index, row ->
-                    if (index > 0) RowDivider()
-                    RepertoireRow(
-                        row = row,
-                        enabled = !isRefreshing,
-                        onSongClick = {
-                            openPosition = if (openPosition == row.position) null else row.position
-                        },
-                        onToneChange = { tone -> onToneChange(row.position, tone) },
-                        onToggleFixed = { onToggleFixed(row.position) },
-                    )
-                    AnimatedVisibility(
-                        visible = openPosition == row.position,
-                        enter = expandVertically(),
-                        exit = shrinkVertically(),
-                    ) {
-                        SongPicker(
-                            selectedSong = row.selectedSong,
-                            availableSongs = availableSongs,
-                            onSongSelect = { song ->
-                                onSongSelect(row.position, song)
-                                openPosition = null
+            itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
+                ReorderableItem(reorderState, key = row.key) { isDragging ->
+                    Column(modifier = Modifier.cardItem(index, rows.lastIndex, lifted = isDragging)) {
+                        if (index > 0 && !isDragging) RowDivider()
+                        RepertoireRow(
+                            row = row,
+                            enabled = !isRefreshing,
+                            handleModifier = Modifier.longPressDraggableHandle(
+                                enabled = !isRefreshing && row.selectedSong != null,
+                                onDragStarted = {
+                                    openPosition = null
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
+                                onDragStopped = onMoveDone,
+                            ),
+                            onSongClick = {
+                                openPosition = if (openPosition == row.position) null else row.position
                             },
-                            onSongInfoClick = onSongInfoClick,
+                            onToneChange = { tone -> onToneChange(row.position, tone) },
+                            onToggleFixed = { onToggleFixed(row.position) },
                         )
+                        AnimatedVisibility(
+                            visible = openPosition == row.position,
+                            enter = expandVertically(),
+                            exit = shrinkVertically(),
+                        ) {
+                            SongPicker(
+                                selectedSong = row.selectedSong,
+                                availableSongs = availableSongs,
+                                onSongSelect = { song ->
+                                    onSongSelect(row.position, song)
+                                    openPosition = null
+                                },
+                                onSongInfoClick = onSongInfoClick,
+                            )
+                        }
                     }
                 }
             }
 
-            Text(
-                text = HINT,
-                color = MaterialTheme.colorScheme.outline,
-                fontSize = 11.5.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                textAlign = TextAlign.Center,
-            )
+            item(key = HINT_KEY) {
+                Text(
+                    text = HINT,
+                    color = MaterialTheme.colorScheme.outline,
+                    fontSize = 11.5.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         RepertoireActionBar(
@@ -211,6 +245,7 @@ private fun RepertoireHeader(
 private fun RepertoireRow(
     row: RepertoireRowState,
     enabled: Boolean,
+    handleModifier: Modifier,
     onSongClick: () -> Unit,
     onToneChange: (String) -> Unit,
     onToggleFixed: () -> Unit,
@@ -220,7 +255,8 @@ private fun RepertoireRow(
     var toneMenuOpen by remember { mutableStateOf(false) }
 
     TableRow(background = if (row.isFixed) Green.copy(alpha = FIXED_ROW_ALPHA) else Color.Transparent) {
-        PositionLabel(position = row.position)
+        // Long-press the number to drag the row; the padding makes it easier to grab without moving the row.
+        PositionLabel(position = row.position, modifier = handleModifier.padding(vertical = HANDLE_PADDING))
         SongTitleArtist(
             title = song?.title.orEmpty(),
             artist = song?.artist,

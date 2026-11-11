@@ -19,10 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -76,6 +74,13 @@ import com.ipb.castelobranco.features.worshiphub.register.presentation.state.Sun
 import com.ipb.castelobranco.features.worshiphub.register.presentation.viewmodel.SundayRegistrationViewModel
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.FormSaveBar
 import com.ipb.castelobranco.features.worshiphub.shared.presentation.components.FormTextField
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val TITLE = "Registrar domingo"
 private const val BAND_TITLE = "Culto de domingo"
@@ -105,6 +110,10 @@ private val BandCorner = 24.dp
 private val CardCorner = 16.dp
 private val PrefilledColor = Color(0xFF8ED1BA)
 private val SheetListMaxHeight = 420.dp
+private val RestingElevation = 6.dp
+private val LiftedElevation = 14.dp
+private const val BAND_KEY = "register_band"
+private const val ADD_KEY = "register_add"
 private val DASH = floatArrayOf(12f, 8f)
 
 // ── Actions por domínio ───────────────────────────────────────────────────────
@@ -120,6 +129,7 @@ data class SundayRegistrationActions(
     val onToneChange: (position: Int, tone: String) -> Unit,
     val onAddRow: () -> Unit,
     val onRemoveRow: (position: Int) -> Unit,
+    val onMoveRow: (from: Int, to: Int) -> Unit = { _, _ -> },
 )
 
 /** Which picker is open over the screen, for which row. */
@@ -167,6 +177,7 @@ fun SundayRegistrationScreen(
         onToneChange = { pos, tone -> viewModel.onEvent(SundayRegistrationEvent.SundayToneChanged(pos, tone)) },
         onAddRow = { viewModel.onEvent(SundayRegistrationEvent.AddSundayRow) },
         onRemoveRow = { viewModel.onEvent(SundayRegistrationEvent.RemoveSundayRow(it)) },
+        onMoveRow = { from, to -> viewModel.onEvent(SundayRegistrationEvent.MoveSundayRow(from, to)) },
     )
 
     SundayRegistrationContent(
@@ -204,29 +215,54 @@ fun SundayRegistrationContent(
                 .padding(innerPadding)
         ) {
             Column(Modifier.fillMaxSize()) {
-                Column(
+                val rows = state.sundayRows
+                val haptics = LocalHapticFeedback.current
+                val listState = rememberLazyListState()
+                val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+                    val fromIndex = rows.indexOfFirst { it.key == from.key }
+                    val toIndex = rows.indexOfFirst { it.key == to.key }
+                    if (fromIndex >= 0 && toIndex >= 0) {
+                        sundayActions.onMoveRow(fromIndex, toIndex)
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    }
+                }
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    RegisterBand(state, sundayActions.onOpenDatePicker, screenActions.onRetryPrefill)
-                    Column(
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        state.sundayRows.forEach { row ->
+                    item(key = BAND_KEY) {
+                        RegisterBand(state, sundayActions.onOpenDatePicker, screenActions.onRetryPrefill)
+                        // The band sits flush; the 14dp before the first card adds to the list's 10dp spacing.
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    items(rows, key = { it.key }) { row ->
+                        ReorderableItem(reorderState, key = row.key) { isDragging ->
                             SongCard(
                                 row = row,
                                 song = state.songOf(row),
                                 error = state.sundayRowErrors[row.position],
-                                canRemove = state.sundayRows.size > 1,
+                                canRemove = rows.size > 1,
+                                lifted = isDragging,
+                                handleModifier = Modifier.longPressDraggableHandle(
+                                    enabled = row.selectedSongId != null || row.tone.isNotBlank(),
+                                    onDragStarted = {
+                                        picker = null
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                ),
                                 onSongClick = { picker = RowPicker.SongPicker(row.position) },
                                 onToneClick = { picker = RowPicker.TonePicker(row.position) },
                                 onRemove = { sundayActions.onRemoveRow(row.position) },
+                                modifier = Modifier.padding(horizontal = 16.dp),
                             )
                         }
-                        AddSongButton(sundayActions.onAddRow)
+                    }
+                    item(key = ADD_KEY) {
+                        AddSongButton(sundayActions.onAddRow, Modifier.padding(horizontal = 16.dp))
                     }
                 }
                 FormSaveBar(
@@ -379,23 +415,28 @@ private fun SongCard(
     song: Song?,
     error: String?,
     canRemove: Boolean,
+    lifted: Boolean,
+    handleModifier: Modifier,
     onSongClick: () -> Unit,
     onToneClick: () -> Unit,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(CardCorner)
-    Column {
+    val elevation by animateDpAsState(if (lifted) LiftedElevation else RestingElevation, label = "songCardElevation")
+    Column(modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(6.dp, shape, spotColor = Color.Black.copy(alpha = SHADOW_ALPHA))
+                .shadow(elevation, shape, spotColor = Color.Black.copy(alpha = SHADOW_ALPHA))
                 .clip(shape)
                 .background(highlightCardColor())
                 .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Long-press the number to drag the card to another position.
             Box(
-                modifier = Modifier
+                modifier = handleModifier
                     .size(30.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.secondaryContainer),
@@ -493,10 +534,10 @@ private fun ToneButton(tone: String, onClick: () -> Unit) {
 
 /** "Adicionar música": a dashed button under the cards. */
 @Composable
-private fun AddSongButton(onClick: () -> Unit) {
+private fun AddSongButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val outline = MaterialTheme.colorScheme.outlineVariant
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
             .drawBehind {

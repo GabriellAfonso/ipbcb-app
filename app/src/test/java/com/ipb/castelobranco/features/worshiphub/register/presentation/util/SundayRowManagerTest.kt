@@ -147,4 +147,37 @@ class SundayRowManagerTest {
     }
 
     // endregion
+
+    // region moveRow
+
+    @Test
+    fun `moveRow carries song and tone and renumbers the positions`() {
+        val rows = listOf(row(1, "A", 1, "C"), row(2, "B", 2, "D"), row(3, "C", 3, "E"))
+
+        val result = moveRow(rows, from = 1, to = 2)
+
+        assertEquals(listOf(1, 2, 3), result.map { it.position })
+        assertEquals(listOf(1, 3, 2), result.map { it.selectedSongId })
+        assertEquals(listOf("C", "E", "D"), result.map { it.tone })
+        assertEquals(listOf(1, 3, 2), result.map { it.key })
+    }
+
+    @Test
+    fun `moveRow out of range leaves the list unchanged`() {
+        val rows = listOf(row(1), row(2))
+
+        assertEquals(rows, moveRow(rows, from = 0, to = 5))
+    }
+
+    @Test
+    fun `addRow gives the new row a key no other row has`() {
+        val moved = moveRow(listOf(row(1), row(2), row(3)), from = 2, to = 0)
+        val removed = removeRow(moved, position = 1)
+
+        val result = addRow(removed)
+
+        assertEquals(result.size, result.map { it.key }.toSet().size)
+    }
+
+    // endregion
 }

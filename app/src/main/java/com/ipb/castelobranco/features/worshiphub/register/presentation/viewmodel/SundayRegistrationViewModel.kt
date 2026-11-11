@@ -11,6 +11,7 @@ import com.ipb.castelobranco.features.worshiphub.register.domain.validation.Sund
 import com.ipb.castelobranco.features.worshiphub.register.presentation.state.SundayRegistrationEvent
 import com.ipb.castelobranco.features.worshiphub.register.presentation.state.SundayRegistrationUiState
 import com.ipb.castelobranco.features.worshiphub.register.presentation.util.addRow
+import com.ipb.castelobranco.features.worshiphub.register.presentation.util.moveRow
 import com.ipb.castelobranco.features.worshiphub.register.presentation.util.removeRow
 import com.ipb.castelobranco.features.worshiphub.register.presentation.util.selectSong
 import com.ipb.castelobranco.features.worshiphub.register.presentation.util.updateTone
@@ -128,6 +129,7 @@ class SundayRegistrationViewModel @Inject constructor(
 
             SundayRegistrationEvent.AddSundayRow -> addRow()
             is SundayRegistrationEvent.RemoveSundayRow -> removeRow(event.position)
+            is SundayRegistrationEvent.MoveSundayRow -> moveRow(event.from, event.to)
 
             SundayRegistrationEvent.Submit -> submit()
             SundayRegistrationEvent.SnackbarShown -> consumeSnackbar()
@@ -221,6 +223,13 @@ class SundayRegistrationViewModel @Inject constructor(
     private fun removeRow(position: Int) {
         _uiState.update { state ->
             state.copy(sundayRows = removeRow(state.sundayRows, position))
+                .recomputeSundayErrors()
+        }
+    }
+
+    private fun moveRow(from: Int, to: Int) {
+        _uiState.update { state ->
+            state.copy(sundayRows = moveRow(state.sundayRows, from, to))
                 .recomputeSundayErrors()
         }
     }

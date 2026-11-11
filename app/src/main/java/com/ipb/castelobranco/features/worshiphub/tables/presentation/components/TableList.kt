@@ -1,5 +1,6 @@
 package com.ipb.castelobranco.features.worshiphub.tables.presentation.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,9 +22,11 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.PlatformTextStyle
@@ -45,6 +48,7 @@ import com.ipb.castelobranco.core.presentation.theme.BrandColors
 /** Horizontal margin between the content sheet edge and a list card. */
 val CardSideMargin = 10.dp
 private val CardRadius = 12.dp
+private val LiftedElevation = 8.dp
 private val RowMinHeight = 58.dp
 private const val HIGHLIGHTED_POSITIONS = 3
 private const val DATE_RULE_ALPHA = 0.35f
@@ -72,13 +76,21 @@ fun cardItemShape(index: Int, lastIndex: Int): Shape {
     return RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
 }
 
-/** Modifier for a lazy item that is one row of a card (see [cardItemShape]). */
+/**
+ * Modifier for a lazy item that is one row of a card (see [cardItemShape]). A [lifted] row (being dragged)
+ * leaves the card: all corners rounded and a shadow under it.
+ */
 @Composable
-fun Modifier.cardItem(index: Int, lastIndex: Int): Modifier = this
-    .fillMaxWidth()
-    .padding(horizontal = CardSideMargin)
-    .clip(cardItemShape(index, lastIndex))
-    .background(MaterialTheme.colorScheme.surfaceContainer)
+fun Modifier.cardItem(index: Int, lastIndex: Int, lifted: Boolean = false): Modifier {
+    val shape = if (lifted) RoundedCornerShape(CardRadius) else cardItemShape(index, lastIndex)
+    val elevation by animateDpAsState(if (lifted) LiftedElevation else 0.dp, label = "cardItemElevation")
+    return this
+        .fillMaxWidth()
+        .padding(horizontal = CardSideMargin)
+        .shadow(elevation, shape)
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+}
 
 @Composable
 fun RowDivider() {
@@ -108,8 +120,8 @@ fun TableRow(
 
 /** Row number; the first ranked positions get a green circle when [highlightTop] is set. */
 @Composable
-fun PositionLabel(position: Int, highlightTop: Boolean = false) {
-    Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+fun PositionLabel(position: Int, modifier: Modifier = Modifier, highlightTop: Boolean = false) {
+    Box(modifier = modifier.size(20.dp), contentAlignment = Alignment.Center) {
         if (highlightTop && position <= HIGHLIGHTED_POSITIONS) {
             Box(
                 modifier = Modifier.size(20.dp).clip(CircleShape).background(BrandColors.Green),

@@ -7,12 +7,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** @param key stable identity of the card while it is dragged to another [position]; UI only. */
 @Immutable
 data class SundaySongRowState(
     val position: Int,
     val songQuery: String = "",
     val selectedSongId: Int? = null,
-    val tone: String = ""
+    val tone: String = "",
+    val key: Int = position,
 )
 
 /** Reading the setlist that pre-fills a Sunday opened from a notification or the pending card. */
@@ -118,6 +120,8 @@ sealed interface SundayRegistrationEvent {
     data class SundayToneChanged(val position: Int, val tone: String) : SundayRegistrationEvent
     data object AddSundayRow : SundayRegistrationEvent
     data class RemoveSundayRow(val position: Int) : SundayRegistrationEvent
+    /** Drag to reorder, by list index; fired live while the card passes the others. */
+    data class MoveSundayRow(val from: Int, val to: Int) : SundayRegistrationEvent
 
     data object Submit : SundayRegistrationEvent
     data object SnackbarShown : SundayRegistrationEvent

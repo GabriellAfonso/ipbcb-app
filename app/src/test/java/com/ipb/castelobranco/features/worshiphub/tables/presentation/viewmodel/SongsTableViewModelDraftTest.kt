@@ -128,4 +128,40 @@ class SongsTableViewModelDraftTest {
         assertTrue(viewModel.repertoireRows.value.all { it.selectedSong == null && it.tone.isEmpty() && !it.isFixed })
         assertNull(drafts.stored)
     }
+
+    @Test
+    fun `dragging a row moves the whole row, renumbers live and saves the draft on drop`() = runTest {
+        val drafts = FakeRepertoireDraftRepository(RepertoireDraft(draftRows, now - 1_000))
+        val viewModel = songsTableViewModel(repository, drafts, FakeWallClock(now))
+        catalog.value = SnapshotState.Data(listOf(oceans, wayMaker))
+        advanceUntilIdle()
+
+        // Row 1 (Oceans, D, fixed) passes rows 2 and 3 on its way down.
+        viewModel.moveRow(0, 1)
+        viewModel.moveRow(1, 2)
+        advanceUntilIdle()
+        assertTrue("moving is not a draft change until the drop", drafts.saves.isEmpty())
+
+        val rows = viewModel.repertoireRows.value
+        assertEquals(listOf(1, 2, 3, 4), rows.map { it.position })
+        assertEquals(oceans, rows[2].selectedSong)
+        assertEquals("D", rows[2].tone)
+        assertTrue(rows[2].isFixed)
+        assertEquals(1, rows[2].key)
+
+        viewModel.finishMove()
+        advanceUntilIdle()
+        assertEquals(DraftRow(3, 1, "D", true), drafts.saves.single().rows[2])
+    }
+
+    @Test
+    fun `a move outside the rows is ignored`() = runTest {
+        val viewModel = songsTableViewModel(repository, FakeRepertoireDraftRepository(), FakeWallClock(now))
+        advanceUntilIdle()
+        val before = viewModel.repertoireRows.value
+
+        viewModel.moveRow(0, 7)
+
+        assertEquals(before, viewModel.repertoireRows.value)
+    }
 }

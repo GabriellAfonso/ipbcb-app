@@ -140,6 +140,15 @@ para `SongDetailScreen` usando `songId`.
 **Alfinete:** fixa/desafixa a posicao (regras em "Fixar", abaixo). Desabilitado em posicao vazia. Linha fixada
 fica com fundo verde leve e alfinete verde.
 
+**Mudar a ordem:** segurar o numero da linha e arrastar move a linha inteira (musica, tom, fixada e execucao
+sugerida) para outra posicao. A linha no dedo sobe (sombra, cantos arredondados) e acompanha o dedo; as outras
+deslizam para abrir espaco. Os numeros sao das posicoes: ao passar a linha 2 para o lugar da 3, ela ja mostra 3
+durante o arraste, e a que desceu mostra 2. Linha fixada tambem se move (fixar e manter a musica, nao a posicao).
+Linha vazia nao pode ser pega, mas recebe a que vem de outra posicao. Pegar a linha fecha a busca aberta; nada se
+move enquanto "Gerar" esta rodando. Vibra de leve ao pegar e a cada troca. Soltar conta como mudanca do rascunho.
+A lista do "Sem repetir ao gerar de novo" fica com a posicao, nao vai junto com a musica: ela guarda o que o
+sorteio daquela posicao ja mostrou, e o backend sorteia por posicao. A dica embaixo do cartao nao muda.
+
 **Rascunho local (spec 011):** as 4 linhas (musica, tom, fixada, execucao sugerida) ficam salvas no aparelho a cada mudanca
 (escolha a mao, tom, fixar/desafixar, "Gerar") e voltam ao reabrir a tela ou o app. Expiram 1h depois da
 ultima mudanca (TTL deslizante); a expiracao so e checada ao restaurar, nunca esvazia uma tela aberta, e
@@ -220,6 +229,10 @@ Entradas:
   "Escolher música"), o botao do tom (vazio: "Tom" com contorno; escolhido: verde) e "×" para remover. Qualquer linha
   pode sair enquanto houver mais de uma; as posicoes sao renumeradas. "Adicionar música" (botao tracejado) cria mais
   uma no fim.
+- **Mudar a ordem:** segurar o numero do card e arrastar move o card (musica e tom), como no Repertorio (§2.4): o
+  card no dedo sobe e acompanha o dedo, os outros deslizam, os numeros mudam durante o arraste, vibra ao pegar e a
+  cada troca. Card vazio nao pode ser pego, mas recebe outro. A lista rola sozinha ao chegar na borda. Os avisos de
+  posicao incompleta seguem os novos numeros.
 - Tocar na musica abre um painel de baixo "{N}ª música" com a busca "Buscar música ou artista" (titulo ou artista,
   sem acentos) e a lista do catalogo com titulo e artista; nenhuma: "Nenhuma música encontrada". Tocar no tom abre
   o painel "Tom da {N}ª música" com os 12 tons (`MUSIC_TONES`, core) numa grade de 6. Escolher fecha o painel.

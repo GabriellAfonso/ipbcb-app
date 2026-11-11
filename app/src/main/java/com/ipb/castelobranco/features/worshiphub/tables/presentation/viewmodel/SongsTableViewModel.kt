@@ -68,13 +68,17 @@ sealed interface RepertoireEvent {
     data class SaveFailed(val message: String) : RepertoireEvent
 }
 
-/** @param playedId the suggested item's `id` (a Played) when the song came from "Gerar"; `null` when picked by hand. */
+/**
+ * @param playedId the suggested item's `id` (a Played) when the song came from "Gerar"; `null` when picked by hand.
+ * @param key stable identity of the row while it is dragged to another [position]; UI only, never persisted.
+ */
 data class RepertoireRowState(
     val position: Int,
     val selectedSong: Song? = null,
     val tone: String = "",
     val isFixed: Boolean = false,
     val playedId: Int? = null,
+    val key: Int = position,
 )
 
 @HiltViewModel
@@ -315,6 +319,24 @@ class SongsTableViewModel @Inject constructor(
         } else {
             shownSuggestions.fix(position)
         }
+        persistDraft()
+    }
+
+    /**
+     * Drag to reorder: the row at [from] goes to [to] (list indices) and the positions follow the new order,
+     * live while the finger moves. Per-position "Gerar" history stays with the position, not the song.
+     */
+    fun moveRow(from: Int, to: Int) {
+        _repertoireRows.update { rows ->
+            if (from !in rows.indices || to !in rows.indices || from == to) return@update rows
+            rows.toMutableList()
+                .apply { add(to, removeAt(from)) }
+                .mapIndexed { index, row -> row.copy(position = index + 1) }
+        }
+    }
+
+    /** The drag ended: the new order is a draft change. */
+    fun finishMove() {
         persistDraft()
     }
 
