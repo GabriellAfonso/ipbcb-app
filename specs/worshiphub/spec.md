@@ -114,7 +114,7 @@ em circulo verde), tom num selo, barra proporcional ao mais usado e "N vezes".
 
 Gera sugestao de 4 musicas para o proximo domingo, priorizando musicas nao tocadas nos ultimos 90 dias. Permite fixar musicas em posicoes especificas e re-gerar as demais.
 
-**Tom automatico:** ao selecionar uma musica, o tom mais usado historicamente para aquela musica e preenchido automaticamente (calculado client-side a partir de `songsBySunday`).
+**Tom automatico:** ao selecionar uma musica, o tom mais usado historicamente para aquela musica e preenchido automaticamente (calculado client-side a partir de `songsBySunday`, `mostPlayedToneOf`: casa pelo `song_id`, ou titulo+artista quando o historico nao tem id; empate fica com o domingo mais recente; musica nunca tocada fica sem tom). O Registrar domingo (§2.6) usa a mesma regra.
 O seletor de tom oferece os 12 tons (naturais e sustenidos: C, C#, D, D#, E, F, F#, G, G#, A, A#, B — `MUSIC_TONES`, core).
 
 **Catalogo ao abrir:** entrar na aba Repertorio atualiza o catalogo de musicas (`GET songs/`), para que

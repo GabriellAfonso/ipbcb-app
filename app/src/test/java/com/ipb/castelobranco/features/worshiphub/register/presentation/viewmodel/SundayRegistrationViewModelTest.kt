@@ -14,6 +14,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySet
+import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySetItem
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.observePlayedSundaysOf
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +44,7 @@ class SundayRegistrationViewModelTest {
     private lateinit var submitSundayPlaysUseCase: SubmitSundayPlaysUseCase
     private lateinit var viewModel: SundayRegistrationViewModel
     private val refreshPlayedTables = mockk<RefreshPlayedTablesUseCase>(relaxed = true)
+    private var observePlayedSundays = observePlayedSundaysOf()
 
     private val songsFlow = MutableStateFlow<SnapshotState<List<Song>>>(SnapshotState.Loading)
 
@@ -70,6 +74,7 @@ class SundayRegistrationViewModelTest {
             submitSundayPlaysUseCase,
             GetSetlistForDateUseCase(FakeSetlistConfirmationRepository()),
             refreshPlayedTables,
+            observePlayedSundays,
             SavedStateHandle(),
         ).also {
             viewModel = it
@@ -178,6 +183,26 @@ class SundayRegistrationViewModelTest {
 
         val row = viewModel.uiState.value.sundayRows.find { it.position == 1 }!!
         assertEquals(fakeSongs[0].id, row.selectedSongId)
+    }
+
+    @Test
+    fun `SundaySongSelected fills the tone the song was played in most often`() = runTest {
+        val played = { tone: String ->
+            SundaySet("01/01/2026", listOf(SundaySetItem(1, "Oceans", "Hillsong", tone, songId = 1)))
+        }
+        observePlayedSundays = observePlayedSundaysOf(listOf(played("D"), played("G"), played("G")))
+        createViewModel()
+        viewModel.onEvent(SundayRegistrationEvent.Init)
+        songsFlow.value = SnapshotState.Data(fakeSongs)
+        advanceUntilIdle()
+
+        viewModel.onEvent(SundayRegistrationEvent.SundayToneChanged(2, "A"))
+        viewModel.onEvent(SundayRegistrationEvent.SundaySongSelected(1, fakeSongs[0]))
+        viewModel.onEvent(SundayRegistrationEvent.SundaySongSelected(2, fakeSongs[1]))
+
+        val rows = viewModel.uiState.value.sundayRows
+        assertEquals("G", rows.first { it.position == 1 }.tone)
+        assertEquals("", rows.first { it.position == 2 }.tone)
     }
 
     @Test

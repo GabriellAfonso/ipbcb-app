@@ -7,6 +7,9 @@ import com.ipb.castelobranco.core.domain.snapshot.SnapshotState
 import com.ipb.castelobranco.features.worshiphub.register.domain.usecase.ObserveSongsUseCase
 import com.ipb.castelobranco.features.worshiphub.register.domain.usecase.SubmitSundayPlaysUseCase
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.RefreshPlayedTablesUseCase
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.ObservePlayedSundaysUseCase
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.mostPlayedToneOf
+import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySet
 import com.ipb.castelobranco.features.worshiphub.register.domain.validation.SundayRegistrationValidator
 import com.ipb.castelobranco.features.worshiphub.register.presentation.state.SundayRegistrationEvent
 import com.ipb.castelobranco.features.worshiphub.register.presentation.state.SundayRegistrationUiState
@@ -43,6 +46,7 @@ class SundayRegistrationViewModel @Inject constructor(
     private val submitSundayPlaysUseCase: SubmitSundayPlaysUseCase,
     private val getSetlistForDate: GetSetlistForDateUseCase,
     private val refreshPlayedTables: RefreshPlayedTablesUseCase,
+    private val observePlayedSundays: ObservePlayedSundaysUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -59,6 +63,9 @@ class SundayRegistrationViewModel @Inject constructor(
     val uiState: StateFlow<SundayRegistrationUiState> = _uiState.asStateFlow()
 
     private var songsJob: Job? = null
+
+    /** History behind the automatic tone; not UI state, only read when a song is picked. */
+    private var playedSundays: List<SundaySet> = emptyList()
 
     init {
         if (prefillDate != null) loadPrefill(prefillDate)
@@ -139,7 +146,10 @@ class SundayRegistrationViewModel @Inject constructor(
 
     /** Observes the catalog once per ViewModel, but refreshes it every time the screen opens. */
     private fun init() {
-        if (songsJob == null) observeSongs()
+        if (songsJob == null) {
+            observeSongs()
+            viewModelScope.launch { observePlayedSundays().collect { playedSundays = it } }
+        }
         refreshSongs()
     }
 
@@ -199,9 +209,12 @@ class SundayRegistrationViewModel @Inject constructor(
         _uiState.update { it.copy(selectedDate = date, showDatePicker = false) }
     }
 
+    /** Picking a song brings the tone it was played in most often (empty when never played). */
     private fun selectSong(position: Int, song: Song) {
+        val tone = playedSundays.mostPlayedToneOf(song)
         _uiState.update { state ->
-            state.copy(sundayRows = selectSong(state.sundayRows, position, song))
+            val rows = selectSong(state.sundayRows, position, song)
+            state.copy(sundayRows = updateTone(rows, position, tone))
                 .recomputeSundayErrors()
         }
     }

@@ -9,6 +9,7 @@ import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SuggestedSo
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.SundaySet
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.TopSong
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.TopTone
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.mostPlayedToneOf
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.DraftRow
 import com.ipb.castelobranco.features.worshiphub.tables.domain.model.ShownSuggestions
 import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.ClearRepertoireDraftUseCase
@@ -342,15 +343,7 @@ class SongsTableViewModel @Inject constructor(
 
     private fun mostUsedToneFor(song: Song): String {
         val sundays = (lastSundays.value as? SnapshotState.Data)?.value ?: return ""
-        return sundays
-            .flatMap { it.songs }
-            .filter { it.title == song.title && it.artist == song.artist }
-            .takeIf { it.isNotEmpty() }
-            ?.groupingBy { it.tone }
-            ?.eachCount()
-            ?.maxByOrNull { it.value }
-            ?.key
-            .orEmpty()
+        return sundays.mostPlayedToneOf(song)
     }
 
     fun refreshSuggestedSongs(minDurationMs: Long = 600L) {

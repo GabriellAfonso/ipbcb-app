@@ -17,6 +17,7 @@ import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.RefreshPl
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import com.ipb.castelobranco.features.worshiphub.tables.domain.usecase.observePlayedSundaysOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ class SundayRegistrationViewModelPrefillTest {
         SnapshotState.Data(listOf(Song(12, "Grande é o Senhor", "Adhemar", "Louvor"))),
     )
     private lateinit var observeSongs: ObserveSongsUseCase
+    private val observePlayedSundays = observePlayedSundaysOf()
 
     @Before
     fun setUp() {
@@ -63,6 +65,7 @@ class SundayRegistrationViewModelPrefillTest {
             mockk<SubmitSundayPlaysUseCase>(),
             GetSetlistForDateUseCase(repository),
             mockk<RefreshPlayedTablesUseCase>(relaxed = true),
+            observePlayedSundays,
             SavedStateHandle(if (date == null) emptyMap() else mapOf(AppRoutes.ARG_SUNDAY_DATE to date)),
         )
 
